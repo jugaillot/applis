@@ -1,0 +1,7 @@
+AuthType Basic
+AuthName "Atelier"
+AuthUserFile "/home/rdutemps/.htpasswd-applis"
+Require valid-user
+<Files "diag.php">
+  Require all granted
+</Files>
