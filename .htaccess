@@ -2,6 +2,3 @@ AuthType Basic
 AuthName "Atelier"
 AuthUserFile "/home/rdutemps/.htpasswd-applis"
 Require valid-user
-<FilesMatch "^(diag|reglage)\.php$">
-  Require all granted
-</FilesMatch>
