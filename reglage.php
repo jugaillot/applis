@@ -35,17 +35,16 @@ if ($ligne && !$migrer) {
   $msg = 'L’accès est déjà réglé. Cette page est désactivée.'; $ok = true;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $u = trim($_POST['u'] ?? ''); $p = $_POST['p'] ?? ''; $p2 = $_POST['p2'] ?? '';
-  if ($migrer && !($u === $ancienU && password_verify($p, $ancienH))) $msg = 'Identifiant ou mot de passe différent de celui enregistré tout à l’heure.';
-  elseif (!$migrer && !preg_match('/^[A-Za-z0-9._-]{2,32}$/', $u)) $msg = 'Nom d’utilisateur : lettres, chiffres, point, tiret (2 à 32 caractères).';
+  if (!preg_match('/^[A-Za-z0-9._-]{2,32}$/', $u)) $msg = 'Nom d’utilisateur : lettres, chiffres, point, tiret (2 à 32 caractères).';
   elseif (strlen($p) < 8) $msg = 'Mot de passe : 8 caractères minimum.';
   elseif ($p !== $p2) $msg = 'Les deux mots de passe ne correspondent pas.';
   elseif (file_put_contents($fichier, $u . ':' . apr1($p) . "\n", LOCK_EX) === false) $msg = 'Impossible d’écrire le fichier sur le serveur.';
-  else { @chmod($fichier, 0644); $msg = 'C’est enregistré. Tu peux prévenir Claude.'; $ok = true; }
+  else { @chmod($fichier, 0644); $msg = 'C’est enregistré. Ton identifiant exact est : « ' . $u . ' ». Tu peux prévenir Claude.'; $ok = true; }
 }
 ?><!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Réglage de l’accès</title>
 <style>body{font:15px/1.5 system-ui,sans-serif;background:#f1efea;color:#1d1d1f;margin:0;padding:40px 16px}main{max-width:380px;margin:auto;background:#fff;border:1px solid #e3e0d9;border-radius:10px;padding:20px}h1{font-size:18px;margin:0 0 12px}p{font-size:13px;color:#77756f}label{display:block;margin:10px 0 4px;font-size:13px;color:#77756f}input{width:100%;box-sizing:border-box;font:inherit;padding:8px;border:1px solid #e3e0d9;border-radius:6px}button{margin-top:16px;width:100%;font:inherit;padding:9px;border:0;border-radius:6px;background:#1d1d1f;color:#fff;cursor:pointer}.m{margin-top:12px;padding:8px 10px;border-radius:6px;background:#f7f6f2}</style></head>
 <body><main><h1>Accès à l’atelier</h1>
-<?php if ($migrer && !$ok) echo '<p>Ressaisis l’identifiant et le mot de passe choisis tout à l’heure, pour les réenregistrer dans un format compatible avec le serveur.</p>'; ?>
+<?php if ($migrer && !$ok) echo '<p>Choisis un identifiant et un mot de passe : ils remplaceront ceux enregistrés tout à l’heure.</p>'; ?>
 <?php if ($msg) echo '<div class="m">' . htmlspecialchars($msg) . '</div>'; ?>
 <?php if (!$ok): ?>
 <form method="post" autocomplete="off">
