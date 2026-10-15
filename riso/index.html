@@ -81,7 +81,7 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
 </head>
 <body>
 <header>
-  <h1>Atelier <span>Riso</span></h1>
+  <h1><a href="../" style="color:inherit;text-decoration:none">Atelier</a> <span>Riso</span></h1>
   <label class="btn primary">Importer…<input type="file" id="fileIn" multiple accept="image/*,.svg,.pdf,.ai" hidden></label>
   <span class="sp"></span>
   <label class="btn">Ouvrir projet<input type="file" id="projIn" accept=".json,application/json" hidden></label>
@@ -683,6 +683,19 @@ document.addEventListener('keydown',e=>{
 });
 
 syncPaperUI();renderSide();scheduleRender();
+
+/* ---------- réception depuis Vecto ---------- */
+(async function fromVecto(){
+  if(!/[?&]depuis=vecto/.test(location.search))return;
+  history.replaceState(null,'',location.pathname);
+  const db=await new Promise(res=>{try{const r=indexedDB.open('atelier',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('kv'))r.result.createObjectStore('kv');};r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);}catch(e){res(null);}});
+  if(!db)return;
+  const t=await new Promise(res=>{const q=db.transaction('kv').objectStore('kv').get('transfert.riso');q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);});
+  if(!t||!t.svg)return;
+  await new Promise(res=>{const tx=db.transaction('kv','readwrite');tx.objectStore('kv').delete('transfert.riso');tx.oncomplete=res;tx.onerror=res;});
+  if(t.fmt){S.paper.fmt=t.fmt;S.paper.orient=t.orient||'portrait';savePrefs();syncPaperUI();scheduleRender();}
+  await importFile(new File([t.svg],(t.name||'Vecto')+'.svg',{type:'image/svg+xml'}));
+})();
 </script>
 </body>
 </html>
