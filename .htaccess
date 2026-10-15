@@ -1,0 +1,6 @@
+AuthType Basic
+AuthName "Atelier"
+AuthUserFile /home/rdutemps/.htpasswd-applis
+Require valid-user
+
+RedirectMatch 404 /\.git
