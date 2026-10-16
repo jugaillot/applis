@@ -209,6 +209,8 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
       <div id="vxInfo">Scan ou photo d'un dessin au trait noir.</div>
       <label class="rng"><span>Seuil (noir / blanc)<b id="vSeuil">50 %</b></span><input type="range" id="vxSeuil" min="1" max="99" value="50"></label>
       <label class="rng"><span>Adoucir le grain<b id="vFlou">0</b></span><input type="range" id="vxFlou" min="0" max="4" step="0.5" value="0"></label>
+      <label class="rng"><span>Fermer les lignes<b id="vFerme">0 px</b></span><input type="range" id="vxFerme" min="0" max="40" step="1" value="0"></label>
+      <div class="muted" style="margin-top:-4px">Relie les traits presque jointifs pour fermer les zones. Les raccords apparaissent en rose dans l’aperçu « Noir et blanc ».</div>
       <label class="rng"><span>Ignorer les taches de moins de<b id="vTache">4 px</b></span><input type="range" id="vxTache" min="0" max="200" value="4"></label>
       <label class="rng"><span>Angles ↔ courbes<b id="vLisse">1.0</b></span><input type="range" id="vxLisse" min="0" max="1.33" step="0.01" value="1"></label>
       <label class="rng"><span>Précision des courbes<b id="vPrec">0.20</b></span><input type="range" id="vxPrec" min="0.05" max="1.5" step="0.05" value="0.2"></label>
@@ -767,8 +769,8 @@ function setGeo(k,v){
 /* ---------- vectorisation ---------- */
 const VX={img:null,bits:null,w:0,h:0,shapes:null,id:0,worker:null,place:'fit',mode:'sep',show:'trace',origW:0,timer:0};
 function worker(){if(!VX.worker){VX.worker=new Worker('potrace-worker.js');}return VX.worker;}
-function vxParams(){return{seuil:+$('#vxSeuil').value,flou:+$('#vxFlou').value,tache:+$('#vxTache').value,lisse:+$('#vxLisse').value,prec:+$('#vxPrec').value,def:+$('#vxDef').value,inv:$('#vxInv').checked};}
-function vxLabels(){const p=vxParams();$('#vSeuil').textContent=p.seuil+' %';$('#vFlou').textContent=p.flou;$('#vTache').textContent=p.tache+' px';$('#vLisse').textContent=p.lisse.toFixed(2);$('#vPrec').textContent=p.prec.toFixed(2);$('#vDef').textContent=p.def+' Mpx';}
+function vxParams(){return{seuil:+$('#vxSeuil').value,flou:+$('#vxFlou').value,tache:+$('#vxTache').value,lisse:+$('#vxLisse').value,ferme:+$('#vxFerme').value,prec:+$('#vxPrec').value,def:+$('#vxDef').value,inv:$('#vxInv').checked};}
+function vxLabels(){const p=vxParams();$('#vSeuil').textContent=p.seuil+' %';$('#vFlou').textContent=p.flou;$('#vTache').textContent=p.tache+' px';$('#vLisse').textContent=p.lisse.toFixed(2);$('#vFerme').textContent=p.ferme+' px';$('#vPrec').textContent=p.prec.toFixed(2);$('#vDef').textContent=p.def+' Mpx';}
 function vxBitmap(){
   const p=vxParams(),img=VX.img;
   const W0=img.naturalWidth,H0=img.naturalHeight;
@@ -789,6 +791,7 @@ function vxRun(){
   vxLabels();
   const p=vxParams();
   const {w,h,bits}=vxBitmap();
+  VX.added=null;
   vxDraw();
   const id=++VX.id;
   $('#vxStat').textContent='Calcul…';$('#vxOk').disabled=true;
@@ -796,14 +799,14 @@ function vxRun(){
   wk.onmessage=ev=>{
     if(ev.data.id!==VX.id)return;
     if(ev.data.error){$('#vxStat').textContent='Erreur : '+ev.data.error;return;}
-    VX.shapes=ev.data.shapes;
-    $('#vxStat').textContent=VX.shapes.length+' forme'+(VX.shapes.length>1?'s':'')+' · '+w+' × '+h+' px';
+    VX.shapes=ev.data.shapes;VX.added=ev.data.added||null;
+    $('#vxStat').textContent=VX.shapes.length+' forme'+(VX.shapes.length>1?'s':'')+' · '+w+' × '+h+' px'+(ev.data.addedCount?' · '+ev.data.addedCount.toLocaleString('fr-FR')+' px de raccord':'');
     $('#vxOk').disabled=!VX.shapes.length;
     vxDraw();
   };
   wk.onerror=err=>{$('#vxStat').textContent='Erreur de calcul ('+(err.message||'worker')+')';};
   const copy=bits.slice();
-  wk.postMessage({id,w,h,data:copy,params:{turdsize:p.tache,alphamax:p.lisse,opttolerance:p.prec,optcurve:true}},[copy.buffer]);
+  wk.postMessage({id,w,h,data:copy,params:{turdsize:p.tache,alphamax:p.lisse,opttolerance:p.prec,optcurve:true,close:p.ferme}},[copy.buffer]);
 }
 function vxSchedule(){clearTimeout(VX.timer);vxLabels();VX.timer=setTimeout(vxRun,250);}
 function vxDraw(){
@@ -816,7 +819,8 @@ function vxDraw(){
   if(VX.show==='bitmap'||!VX.shapes){
     const c=document.createElement('canvas');c.width=VX.w;c.height=VX.h;c.style.width=dw+'px';c.style.height=dh+'px';
     const x=c.getContext('2d'),id=x.createImageData(VX.w,VX.h),o=id.data;
-    for(let j=0,i=0;j<VX.bits.length;j++,i+=4){const v=VX.bits[j]?0:255;o[i]=o[i+1]=o[i+2]=v;o[i+3]=255;}
+    const ad=VX.added&&VX.added.length===VX.bits.length?VX.added:null;
+    for(let j=0,i=0;j<VX.bits.length;j++,i+=4){if(ad&&ad[j]){o[i]=255;o[i+1]=40;o[i+2]=160;}else{const v=VX.bits[j]?0:255;o[i]=o[i+1]=o[i+2]=v;}o[i+3]=255;}
     x.putImageData(id,0,0);box.appendChild(c);if(VX.show==='bitmap')return;
   }
   if(VX.shapes){
@@ -953,7 +957,7 @@ $('#zIn').onclick=()=>zoomAt(1.25);$('#zOut').onclick=()=>zoomAt(0.8);$('#zFit')
 $('#bDoc').onclick=openDoc;
 $('#bVecto').onclick=openVx;
 $('#vxFile').onchange=e=>{const f=e.target.files[0];e.target.value='';vxOpenFile(f);};
-['vxSeuil','vxFlou','vxTache','vxLisse','vxPrec','vxDef'].forEach(id=>$('#'+id).addEventListener('input',vxSchedule));
+['vxSeuil','vxFlou','vxFerme','vxTache','vxLisse','vxPrec','vxDef'].forEach(id=>$('#'+id).addEventListener('input',vxSchedule));
 $('#vxInv').onchange=vxSchedule;
 function segBind(id,key,cb){$('#'+id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;VX[key]=b.dataset.v;$('#'+id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));cb&&cb();});}
 segBind('vxPlace','place',()=>{$('#vxDpiBox').hidden=VX.place!=='dpi';});

@@ -1129,6 +1129,85 @@ function pip(pt, poly) {
   }
   return inside;
 }
+/* distance euclidienne au carré (Felzenszwalb & Huttenlocher) */
+function edt1d(f, n, d, v, z) {
+  var k = 0, q, sq; v[0] = 0; z[0] = -1e20; z[1] = 1e20;
+  for (q = 1; q < n; q++) {
+    sq = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+    while (sq <= z[k]) { k--; sq = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); }
+    k++; v[k] = q; z[k] = sq; z[k + 1] = 1e20;
+  }
+  k = 0;
+  for (q = 0; q < n; q++) { while (z[k + 1] < q) k++; d[q] = (q - v[k]) * (q - v[k]) + f[v[k]]; }
+}
+function edt(isFeature, w, h) {
+  var INF = 1e20, n = Math.max(w, h), g = new Float32Array(w * h);
+  var f = new Float64Array(n), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1), x, y;
+  for (x = 0; x < w; x++) {
+    for (y = 0; y < h; y++) f[y] = isFeature(y * w + x) ? 0 : INF;
+    edt1d(f, h, d, v, z);
+    for (y = 0; y < h; y++) g[y * w + x] = d[y];
+  }
+  for (y = 0; y < h; y++) {
+    var o = y * w;
+    for (x = 0; x < w; x++) f[x] = g[o + x];
+    edt1d(f, w, d, v, z);
+    for (x = 0; x < w; x++) g[o + x] = d[x];
+  }
+  return g;
+}
+/* Fermeture des lignes : on ne garde que les « ponts » qui ferment des zones.
+   1. fermeture morphologique (disque de rayon r) → les écarts < 2r sont bouchés ;
+   2. on numérote les zones blanches de cette image fermée ;
+   3. on fait grandir ces zones dans les blancs de l'image d'origine : là où deux zones différentes
+      se rencontrent, c'est un écart à fermer → on y trace un raccord, de l'épaisseur du trait voisin.
+   Les coins intérieurs ne sont donc pas bouchés, seuls les raccords sont ajoutés. */
+function closeGaps(data, w, h, r) {
+  var r2 = r * r, i, n = w * h;
+  var d1 = edt(function (i) { return data[i] === 1; }, w, h);
+  var C = new Uint8Array(n);
+  for (i = 0; i < n; i++) C[i] = d1[i] <= r2 ? 1 : 0;
+  var d2 = edt(function (i) { return C[i] === 0; }, w, h);
+  for (i = 0; i < n; i++) C[i] = (C[i] && d2[i] > r2) || data[i] === 1 ? 1 : 0;
+  d2 = null;
+  // zones blanches de l'image fermée (4-connexité)
+  var lab = new Int32Array(n), stack = new Int32Array(n), sp, nl = 0, p, x, y;
+  for (i = 0; i < n; i++) {
+    if (C[i] || lab[i]) continue;
+    nl++; sp = 0; stack[sp++] = i; lab[i] = nl;
+    while (sp) {
+      p = stack[--sp]; x = p % w; y = (p - x) / w;
+      if (x > 0 && !C[p - 1] && !lab[p - 1]) { lab[p - 1] = nl; stack[sp++] = p - 1; }
+      if (x < w - 1 && !C[p + 1] && !lab[p + 1]) { lab[p + 1] = nl; stack[sp++] = p + 1; }
+      if (y > 0 && !C[p - w] && !lab[p - w]) { lab[p - w] = nl; stack[sp++] = p - w; }
+      if (y < h - 1 && !C[p + w] && !lab[p + w]) { lab[p + w] = nl; stack[sp++] = p + w; }
+    }
+  }
+  // croissance des zones dans les blancs d'origine, détection des rencontres
+  var q = new Int32Array(n), qh = 0, qt = 0, dist = new Uint16Array(n), meet = new Uint8Array(n), maxd = Math.ceil(r) + 2, cnt = 0;
+  for (i = 0; i < n; i++) if (lab[i]) { q[qt++] = i; }
+  while (qh < qt) {
+    p = q[qh++]; if (dist[p] >= maxd) continue;
+    x = p % w; y = (p - x) / w;
+    var nb = [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1];
+    for (var k = 0; k < 4; k++) {
+      var t = nb[k]; if (t < 0 || data[t] === 1) continue;
+      if (!lab[t]) { lab[t] = lab[p]; dist[t] = dist[p] + 1; q[qt++] = t; }
+      else if (lab[t] !== lab[p]) { meet[t] = 1; meet[p] = 1; }
+    }
+  }
+  q = null; stack = null;
+  // épaisseur des raccords = épaisseur moyenne des traits du dessin (bornée par r)
+  var din = edt(function (i) { return data[i] === 0; }, w, h), half = 0, hc = 0;
+  for (i = 0; i < n; i += 5) if (data[i] === 1) { half += Math.sqrt(din[i]); hc++; }
+  din = null;
+  half = hc ? Math.max(1, Math.min(r, 2 * half / hc)) : Math.max(1, r / 2);
+  var dm = edt(function (i) { return meet[i] === 1; }, w, h), h2 = half * half, added = new Uint8Array(n);
+  for (i = 0; i < n; i++) {
+    if (data[i] !== 1 && C[i] === 1 && dm[i] <= h2) { data[i] = 1; added[i] = 1; cnt++; }
+  }
+  return { added: added, count: cnt };
+}
 self.onmessage = function (e) {
   var m = e.data;
   try {
@@ -1137,6 +1216,8 @@ self.onmessage = function (e) {
     info.turnpolicy = 'minority';
     bm = new Bitmap(m.w, m.h);
     bm.data.set(m.data);
+    var gap = null;
+    if (m.params.close > 0) gap = closeGaps(bm.data, m.w, m.h, m.params.close);
     pathlist = [];
     bmToPathlist();
     processPath();
@@ -1155,7 +1236,8 @@ self.onmessage = function (e) {
       if (best) best.holes.push(h.d);
     }
     var shapes = outer.map(function (o) { return { d: o.d + o.holes.join(''), area: o.area }; });
-    self.postMessage({ id: m.id, shapes: shapes });
+    if (gap) self.postMessage({ id: m.id, shapes: shapes, added: gap.added, addedCount: gap.count }, [gap.added.buffer]);
+    else self.postMessage({ id: m.id, shapes: shapes });
   } catch (err) {
     self.postMessage({ id: m.id, error: String(err && err.message || err) });
   }
