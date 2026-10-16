@@ -116,6 +116,9 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
     <button class="tool" data-tool="rect" title="Rectangle (M)"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <button class="tool" data-tool="ellipse" title="Ellipse (L)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <div class="tsep"></div>
+    <button class="tool" data-tool="bucket" title="Pot de peinture — remplir une zone (K)"><svg viewBox="0 0 24 24"><path d="M4 11l7-7 8 8-7 7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 11h15" stroke="currentColor" stroke-width="1.8"/><path d="M20 15c0 0 2 2.5 2 3.6a2 2 0 01-4 0c0-1.1 2-3.6 2-3.6z" fill="currentColor"/></svg></button>
+    <button class="tool" data-tool="eyedrop" title="Pipette — reprendre la couleur et le style d’un objet (I)"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-2 2-6-6zM12 6l6 6-8 8H6v-4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+    <div class="tsep"></div>
     <button class="tool" data-tool="hand" title="Main — déplacer la vue (H ou Espace)"><svg viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 013 0v5V4.5a1.5 1.5 0 013 0V11V5.5a1.5 1.5 0 013 0V14c0 4-2.5 7-6 7s-5-2-6.5-4.5L3 13a1.5 1.5 0 012.4-1.6L8 14z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
     <div class="tsep"></div>
     <button class="tool" id="bUndo" title="Annuler (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 7L4 12l5 5M4 12h10a6 6 0 010 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" transform="translate(0,-3)"/></svg></button>
@@ -353,6 +356,12 @@ function setSel(items){sel=items.filter(i=>i&&i.parent);syncPanel();drawUI();}
 function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
 function selBounds(){if(!sel.length)return null;let b=sel[0].bounds.clone();for(let i=1;i<sel.length;i++)b=b.unite(sel[i].bounds);return b;}
 function allTop(){const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children);});return out;}
+function hitLeaf(point){
+  const r=P.project.hitTest(point,{fill:true,stroke:true,segments:false,tolerance:px(4),match:h=>selectable(h.item)});
+  if(!r)return null;let it=r.item;
+  if(it.parent instanceof P.CompoundPath)it=it.parent;
+  return it;
+}
 function hitTop(point){
   const r=P.project.hitTest(point,{fill:true,stroke:true,segments:false,tolerance:px(5),match:h=>selectable(h.item)});
   return r?topOf(r.item):null;
@@ -477,12 +486,14 @@ function renderLayers(){
 
 /* ---------- outils ---------- */
 const HINTS={
-  select:'Clic : sélectionner · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : dupliquer · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
+  select:'Clic : sélectionner · Ctrl+clic : sélectionner une forme à l’intérieur d’un groupe · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : dupliquer · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
   direct:'Clic sur un tracé : voir ses points · glisser un point ou une poignée · Maj : ajouter des points · double-clic sur un point : angle ↔ courbe · Suppr : effacer les points',
   pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer',
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
   rect:'Glisser pour dessiner · Maj : carré · Alt : depuis le centre',
   ellipse:'Glisser pour dessiner · Maj : cercle · Alt : depuis le centre',
+  bucket:'Clic dans une zone : la remplit avec la couleur de fond choisie (zone délimitée par des traits, ou forme existante) · Alt+clic : remplit aussi si la forme cliquée est un trait',
+  eyedrop:'Clic sur un objet : reprend sa couleur et son style · si des objets sont sélectionnés, ils reçoivent ce style',
   hand:'Glisser pour déplacer la vue · molette : défiler · Ctrl+molette : zoom'
 };
 function setTool(t){
@@ -491,7 +502,7 @@ function setTool(t){
   S.tool=t;
   document.querySelectorAll('.tool[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
   $('#hint').textContent=HINTS[t]||'';
-  cv.style.cursor=t==='hand'?'grab':(t==='select'||t==='direct')?'default':'crosshair';
+  cv.style.cursor=t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?'cell':'crosshair';
   drawUI();
 }
 
@@ -512,6 +523,8 @@ tool.onMouseDown=function(e){
   if(S.tool==='select')return selDown(e,dbl);
   if(S.tool==='direct')return dirDown(e,dbl);
   if(S.tool==='pen')return penDown(e);
+  if(S.tool==='bucket')return bucketDown(e);
+  if(S.tool==='eyedrop')return eyedropDown(e);
   ensureLayer(true);
   if(S.tool==='pencil'){pencilPath=new P.Path(newPathStyle({fillColor:null,strokeColor:new P.Color(S.stroke||S.fill||'#000000'),strokeWidth:S.strokeW||0.5}));pencilPath.add(e.point);return;}
   if(S.tool==='rect'||S.tool==='ellipse'){drag={mode:'shape',from:e.point};return;}
@@ -563,9 +576,10 @@ function selDown(e,dbl){
     return;
   }
   let hit=hitTop(e.point);
-  if(dbl&&hit instanceof P.Group){
+  if(hit&&(e.modifiers.control||e.modifiers.meta)){const lf=hitLeaf(e.point);if(lf)hit=lf;}
+  else if(dbl&&hit instanceof P.Group){
     const r=P.project.hitTest(e.point,{fill:true,stroke:true,tolerance:px(5),match:x=>selectable(x.item)});
-    if(r){let it=r.item;while(it.parent&&it.parent!==hit)it=it.parent;if(it.parent===hit){setSel([it]);drag={mode:'move',start:e.point,last:e.point,moved:false};return;}}
+    if(r){const base=sel.length===1&&sel[0] instanceof P.Group&&r.item.isDescendant(sel[0])?sel[0]:hit;let it=r.item;while(it.parent&&it.parent!==base)it=it.parent;if(it.parent===base){setSel([it]);drag={mode:'move',start:e.point,last:e.point,moved:false};return;}}
   }
   if(hit){
     if(!sel.includes(hit)){
@@ -707,6 +721,79 @@ function finishPen(){
   if(p.closed&&p.data.penFill){p.fillColor=new P.Color(p.data.penFill);p.strokeColor=null;}
   delete p.data.penFill;
   sel=[p];commit();
+}
+
+/* ---------- pipette ---------- */
+function styleOf(it){const l=leafPaths(it)[0]||it;return{fill:colorHex(l.fillColor),stroke:colorHex(l.strokeColor),strokeW:l.strokeWidth,cap:l.strokeCap,join:l.strokeJoin,opacity:l.opacity};}
+function eyedropDown(e){
+  const src=hitLeaf(e.point);if(!src){$('#hint').textContent='Rien sous la pipette.';return;}
+  const st=styleOf(src);
+  S.fill=st.fill;S.stroke=st.stroke;if(st.strokeW!=null)S.strokeW=f1(st.strokeW*100)/100;if(st.cap)S.cap=st.cap;
+  const targets=sel.filter(s=>s!==src&&s.parent);
+  if(targets.length){
+    targets.forEach(t=>leafPaths(t).forEach(p=>{p.fillColor=st.fill?new P.Color(st.fill):null;p.strokeColor=st.stroke?new P.Color(st.stroke):null;p.strokeWidth=st.strokeW||0;if(st.cap)p.strokeCap=st.cap;if(st.join)p.strokeJoin=st.join;p.opacity=st.opacity??1;}));
+    commit();
+  }
+  syncChips();
+}
+
+/* ---------- pot de peinture ---------- */
+let bucketWorker=null,bucketId=0;
+function isClosedFill(it){if(!it)return false;if(it instanceof P.CompoundPath)return true;return it instanceof P.Path&&it.closed;}
+async function bucketDown(e){
+  const col=S.fill;
+  if(!col){alert('Choisis d’abord une couleur de fond (pas « aucune »).');return;}
+  // 1. on clique sur une forme fermée (zone blanche, forme pleine) : on la colore directement
+  const hitR=P.project.hitTest(e.point,{fill:true,stroke:false,tolerance:0,match:h=>selectable(h.item)});
+  let it=hitR&&hitR.item;if(it&&it.parent instanceof P.CompoundPath)it=it.parent;
+  const isBlack=it&&it.fillColor&&colorHex(it.fillColor)==='#000000';
+  if(it&&isClosedFill(it)&&it.fillColor&&(!isBlack||e.modifiers.alt)){it.fillColor=new P.Color(col);sel=[it];commit();return;}
+  if(it&&isBlack){$('#hint').textContent='C’est un trait : clique dans la zone à côté, ou Alt+clic pour recolorer le trait lui-même.';return;}
+  // 2. sinon : on cherche la zone délimitée par les traits autour du clic (comme un remplissage de peinture)
+  await fillRegion(e.point,col);
+}
+async function fillRegion(pt,col){
+  const W=S.page.w,H=S.page.h;
+  if(pt.x<0||pt.y<0||pt.x>W||pt.y>H){$('#hint').textContent='Clique à l’intérieur de la page.';return;}
+  await busy('Recherche de la zone…');
+  try{
+    const ppm=Math.min(10,Math.sqrt(14e6/(W*H)));
+    const cw=Math.round(W*ppm),ch=Math.round(H*ppm);
+    const prevSel=sel;sel=[];drawUI();
+    const svg=buildSVG();sel=prevSel;
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
+    const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d',{willReadFrequently:true});
+    x.fillStyle='#fff';x.fillRect(0,0,cw,ch);x.drawImage(img,0,0,cw,ch);
+    const d=x.getImageData(0,0,cw,ch).data;
+    const sx=Math.min(cw-1,Math.max(0,Math.floor(pt.x*ppm))),sy=Math.min(ch-1,Math.max(0,Math.floor(pt.y*ppm)));
+    const idx=(sy*cw+sx)*4;
+    const ref=[d[idx],d[idx+1],d[idx+2]];
+    const tol=60,same=i=>Math.abs(d[i]-ref[0])+Math.abs(d[i+1]-ref[1])+Math.abs(d[i+2]-ref[2])<=tol;
+    if(!same(idx)){await busy();return;}
+    const n=cw*ch,mask=new Int8Array(n),stack=new Int32Array(n);let sp=0,touches=false,count=0;
+    mask[sy*cw+sx]=1;stack[sp++]=sy*cw+sx;
+    while(sp){const p=stack[--sp];count++;const px_=p%cw,py_=(p-px_)/cw;if(px_===0||py_===0||px_===cw-1||py_===ch-1)touches=true;
+      const nb=[px_>0?p-1:-1,px_<cw-1?p+1:-1,py_>0?p-cw:-1,py_<ch-1?p+cw:-1];
+      for(const q of nb){if(q<0||mask[q])continue;if(same(q*4)){mask[q]=1;stack[sp++]=q;}}}
+    if(touches||count>n*0.6){await busy();alert('Cette zone n’est pas fermée : le remplissage déborderait sur toute la page.\nFerme-la (plume, crayon, ou « Fermer les lignes » en revectorisant), puis recommence.');return;}
+    // on élargit d'un pixel pour passer sous les traits
+    const grow=new Int8Array(mask);for(let p=0;p<n;p++){if(!mask[p])continue;const px_=p%cw;if(px_>0)grow[p-1]=1;if(px_<cw-1)grow[p+1]=1;if(p>=cw)grow[p-cw]=1;if(p<n-cw)grow[p+cw]=1;}
+    if(!bucketWorker)bucketWorker=new Worker('potrace-worker.js');
+    const id=++bucketId;
+    const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1,opttolerance:0.2,optcurve:true,close:0}},[grow.buffer]);});
+    if(res.error)throw new Error(res.error);
+    if(!res.shapes.length){await busy();return;}
+    ensureLayer(true);
+    const fill=new P.CompoundPath({pathData:res.shapes.map(s=>s.d).join(''),fillRule:'evenodd',fillColor:new P.Color(col)});
+    fill.transform(new P.Matrix().scale(1/ppm,new P.Point(0,0)));
+    fill.name='Remplissage';
+    // sous les traits : on le place sous l'objet cliqué s'il y en a un dans ce calque, sinon tout en bas du calque
+    const under=P.project.hitTest(pt,{fill:true,stroke:true,tolerance:px(40),match:h=>selectable(h.item)&&h.item.layer===activeLayer});
+    const top=under?topOf(under.item):null;
+    if(top&&top!==fill)fill.insertBelow(top);else activeLayer.insertChild(0,fill);
+    setSel([fill]);commit();
+  }catch(err){console.error(err);alert('Remplissage impossible : '+(err.message||err));}
+  await busy();
 }
 
 /* ---------- commandes ---------- */
@@ -1141,7 +1228,7 @@ document.addEventListener('keydown',e=>{
   }
   if(k==='+'||k==='='){zoomAt(1.25);return;}
   if(k==='-'){zoomAt(0.8);return;}
-  const map={v:'select',a:'direct',p:'pen',n:'pencil',m:'rect',l:'ellipse',h:'hand'};
+  const map={v:'select',a:'direct',p:'pen',n:'pencil',m:'rect',l:'ellipse',h:'hand',k:'bucket',i:'eyedrop'};
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
