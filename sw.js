@@ -1,10 +1,10 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Bibliothèques et autres fichiers : copie locale d'abord, mise à jour en arrière-plan. */
-const VERSION = 'atelier-v1';
+const VERSION = 'atelier-v2';
 const PRECACHE = [
   '/', '/riso/', '/vecto/', '/compil/',
-  '/vecto/potrace-worker.js',
+  '/vecto/potrace-worker.js', '/lib/sync.js',
   '/lib/paper-core.min.js', '/lib/jspdf.umd.min.js', '/lib/svg2pdf.umd.min.js',
   '/lib/pdf.min.js', '/lib/pdf.worker.min.js', '/lib/pdf-lib.min.js',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'
@@ -43,6 +43,7 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname === '/api.php') return; // la synchronisation passe toujours par le réseau
   const key = keyFor(req);
   const isPage = req.mode === 'navigate' || req.destination === 'document';
 

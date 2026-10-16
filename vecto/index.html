@@ -7,6 +7,7 @@
 <script src="../lib/paper-core.min.js"></script>
 <script src="../lib/jspdf.umd.min.js"></script>
 <script src="../lib/svg2pdf.umd.min.js"></script>
+<script src="../lib/sync.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#ff48b0;--soft:#f7f6f2;--board:#d9d6cf}
 *{box-sizing:border-box}
@@ -101,12 +102,14 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 <body>
 <header>
   <h1><a href="../">Atelier</a> <span>Vecto</span></h1>
+  <span class="muted" id="docName" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
   <button class="btn primary" id="bVecto">Vectoriser une image…</button>
   <label class="btn">Importer SVG<input type="file" id="fSvg" accept=".svg,image/svg+xml" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bNew">Nouveau</button>
-  <label class="btn">Ouvrir<input type="file" id="fProj" accept=".json,application/json" hidden></label>
-  <button class="btn" id="bSave">Enregistrer</button>
+  <span id="syncBadge"></span>
+  <button class="btn" id="bOpen">Mes dessins…</button><input type="file" id="fProj" accept=".json,application/json" hidden>
+  <button class="btn" id="bSave" title="Enregistrer (Ctrl+S) — sur cet appareil et sur le serveur">Enregistrer</button>
   <button class="btn" id="bSvg">Export SVG</button>
   <button class="btn" id="bPdf">Export PDF</button>
   <button class="btn accent" id="bRiso">Envoyer vers Riso →</button>
@@ -297,7 +300,8 @@ const S={
   target:'fill',
   fill:'#000000',stroke:null,strokeW:0.5,cap:'round',
   undo:[],redo:[],
-  clip:null
+  clip:null,
+  doc:{id:null,name:''}
 };
 const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;return new Promise(r=>setTimeout(r,30));};
 const f1=v=>Math.round(v*10)/10;
@@ -425,7 +429,21 @@ function resetHistory(){S.undo=[];S.redo=[];lastSnap=snapshot();syncPanel();}
 
 /* ---------- autosauvegarde ---------- */
 let asT=0;
-function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{IDB.set('vecto.autosave',projectData());},1500);}
+function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{const d=projectData();IDB.set('vecto.autosave',Object.assign({},d,{doc:S.doc}));if(S.doc.id&&window.AtelierSync)AtelierSync.save('vecto',S.doc.id,S.doc.name,d,{lazy:true});},1500);}
+function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'— sans titre';}
+async function saveDoc(asNew){
+  if(!window.AtelierSync)return download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`vecto-${stamp()}.json`);
+  if(!S.doc.id||asNew){const n=prompt('Nom du dessin :',S.doc.name||('Dessin '+new Date().toLocaleDateString('fr-FR')));if(!n||!n.trim())return;S.doc={id:null,name:n.trim()};}
+  S.doc.id=await AtelierSync.save('vecto',S.doc.id,S.doc.name,projectData());
+  IDB.set('vecto.autosave',Object.assign({},projectData(),{doc:S.doc}));showDoc();
+}
+function openDocs(){
+  AtelierSync.openDialog({app:'vecto',title:'Mes dessins',current:S.doc.id,
+    onOpen:(id,data,inf)=>{try{loadProject(data);S.doc={id,name:inf?inf.name:id};showDoc();IDB.set('vecto.autosave',Object.assign({},data,{doc:S.doc}));}catch(e){alert('Ouverture impossible : '+e.message);}},
+    onRename:(id,n)=>{if(id===S.doc.id){S.doc.name=n;showDoc();}},
+    onDelete:id=>{if(id===S.doc.id){S.doc={id:null,name:''};showDoc();}},
+    extra:[{label:'Enregistrer sous un autre nom…',action:()=>saveDoc(true)},{label:'Importer un fichier .json…',action:()=>$('#fProj').click()},{label:'Télécharger une copie .json',action:()=>download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`vecto-${stamp()}.json`)}]});
+}
 function projectData(){return{app:'atelier-vecto',v:1,page:S.page,layers:snapshot()};}
 function loadProject(d){
   if(!d||d.app!=='atelier-vecto')throw new Error('ce fichier n’est pas un document Atelier Vecto');
@@ -1014,7 +1032,7 @@ async function vxPlace(){
   moveIt(g,new P.Point(S.page.w/2,S.page.h/2).subtract(g.position));
   setTool('select');setSel([g]);commit();
 }
-async function storeSrc(blob){const key='vxsrc.'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);const ok=await IDB.set(key,blob);return ok?key:null;}
+async function storeSrc(blob){const key='vxsrc.'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);const ok=await IDB.set(key,blob);if(ok&&window.AtelierSync)AtelierSync.saveBlob(key,blob);return ok?key:null;}
 async function blobToImage(blob){const url=URL.createObjectURL(blob);const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(new Error('image illisible'));img.src=url;});return img;}
 function setVxParams(p){
   const set=(id,v)=>{if(v!=null)$('#'+id).value=v;};
@@ -1034,7 +1052,7 @@ async function openRevec(){
   try{
     const vx=item.data&&item.data.vx;
     let img=null,src=null,m=null,params=null,mode='sep';
-    if(vx&&vx.src){const blob=await IDB.get(vx.src);if(blob){img=await blobToImage(blob);src=vx.src;m=vx.m;params=vx.params;mode=vx.mode||'sep';}}
+    if(vx&&vx.src){let blob=await IDB.get(vx.src);if(!blob&&window.AtelierSync){blob=await AtelierSync.getBlob(vx.src);if(blob)IDB.set(vx.src,blob);}if(blob){img=await blobToImage(blob);src=vx.src;m=vx.m;params=vx.params;mode=vx.mode||'sep';}}
     if(!img){
       // pas d'image source (dessin importé, dessiné, ou ouvert sur une autre machine) : on « photographie » le dessin en noir et blanc
       const b=item.strokeBounds;
@@ -1176,9 +1194,13 @@ $('#vxCancel').onclick=()=>$('#vxDlg').close();
 $('#bRevec').onclick=openRevec;
 $('#vxOk').onclick=()=>{$('#vxDlg').close();vxPlace();};
 $('#fSvg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{importSVGText(await f.text(),f.name.replace(/\.[^.]+$/,''));}catch(err){alert('Import impossible : '+err.message);}};
-$('#bNew').onclick=()=>{if(!confirm('Commencer un nouveau document ? Le dessin actuel sera effacé (pense à l’enregistrer).'))return;userLayers().forEach(l=>l.remove());activeLayer=null;newLayer('Calque 1');setSel([]);renderLayers();resetHistory();scheduleAutosave();};
-$('#bSave').onclick=()=>download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`vecto-${stamp()}.json`);
-$('#fProj').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{loadProject(JSON.parse(await f.text()));scheduleAutosave();}catch(err){alert('Ouverture impossible : '+err.message);}};
+$('#bNew').onclick=()=>{if(!confirm('Commencer un nouveau document ? Le dessin actuel sera effacé (pense à l’enregistrer).'))return;userLayers().forEach(l=>l.remove());activeLayer=null;newLayer('Calque 1');setSel([]);renderLayers();resetHistory();S.doc={id:null,name:''};showDoc();scheduleAutosave();};
+$('#bSave').onclick=()=>saveDoc(false);
+$('#bOpen').onclick=()=>window.AtelierSync?openDocs():$('#fProj').click();
+if(window.AtelierSync)$('#syncBadge').appendChild(AtelierSync.badge());
+window.addEventListener('atelier-inks',renderSwatches);
+window.addEventListener('atelier-conflict',e=>{if(e.detail.id!==S.doc.id)return;S.doc={id:e.detail.copyId,name:e.detail.name};showDoc();IDB.set('vecto.autosave',Object.assign({},projectData(),{doc:S.doc}));alert('Ce document a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
+$('#fProj').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{loadProject(JSON.parse(await f.text()));S.doc={id:null,name:f.name.replace(/\.json$/i,'')};showDoc();scheduleAutosave();}catch(err){alert('Ouverture impossible : '+err.message);}};
 $('#bSvg').onclick=()=>download(new Blob([buildSVG()],{type:'image/svg+xml'}),`vecto-${stamp()}.svg`);
 $('#bPdf').onclick=exportPDF;
 $('#bPts').onclick=()=>{showPts=!showPts;$('#bPts').classList.toggle('on',showPts);drawPts();};
@@ -1252,7 +1274,8 @@ window.addEventListener('storage',e=>{if(e.key==='atelierRiso.inks')renderSwatch
   renderSwatches();
   let restored=false;
   const saved=await IDB.get('vecto.autosave');
-  if(saved){try{loadProject(saved);restored=true;}catch(e){}}
+  if(saved){try{loadProject(saved);restored=true;if(saved.doc)S.doc=saved.doc;}catch(e){}}
+  showDoc();
   if(!restored){if(!userLayers().length)newLayer('Calque 1');drawPage();fitView();resetHistory();}
   renderLayers();setTool('select');syncPanel();
 })();

@@ -6,6 +6,7 @@
 <title>Atelier Riso</title>
 <script src="../lib/jspdf.umd.min.js"></script>
 <script src="../lib/pdf.min.js"></script>
+<script src="../lib/sync.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#ff48b0;--acc2:#3255a4;--soft:#f7f6f2}
 *{box-sizing:border-box}
@@ -89,8 +90,10 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
   <h1><a href="../" style="color:inherit;text-decoration:none">Atelier</a> <span>Riso</span></h1>
   <label class="btn primary">Importer…<input type="file" id="fileIn" multiple accept="image/*,.svg,.pdf,.ai" hidden></label>
   <span class="sp"></span>
-  <label class="btn">Ouvrir projet<input type="file" id="projIn" accept=".json,application/json" hidden></label>
-  <button class="btn" id="saveProj">Enregistrer projet</button>
+  <span class="muted" id="docName" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+  <span id="syncBadge"></span>
+  <button class="btn" id="openProj">Mes projets…</button><input type="file" id="projIn" accept=".json,application/json" hidden>
+  <button class="btn" id="saveProj" title="Enregistrer (Ctrl+S) — sur cet appareil et sur le serveur">Enregistrer</button>
   <button class="btn accent" id="exportBtn">Exporter PDF</button>
 </header>
 <main>
@@ -160,13 +163,15 @@ const S={
   paper:{fmt:'A3',orient:'portrait'},
   guides:{show:true,margin:10,top:30},
   inks:loadInks(),
-  groups:[],layers:[],sel:null,zoom:1,showTrame:false
+  groups:[],layers:[],sel:null,zoom:1,showTrame:false,
+  doc:{id:null,name:''}
 };
 loadPrefs();
 
 /* ---------- stockage local ---------- */
 function loadInks(){try{const s=localStorage.getItem('atelierRiso.inks');if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length)return a;}}catch(e){}return DEFAULT_INKS.map(o=>({...o}));}
-function saveInks(){try{localStorage.setItem('atelierRiso.inks',JSON.stringify(S.inks));}catch(e){}}
+let inkT=0;
+function saveInks(){try{localStorage.setItem('atelierRiso.inks',JSON.stringify(S.inks));}catch(e){}clearTimeout(inkT);inkT=setTimeout(()=>{if(window.AtelierSync)AtelierSync.save('reglages','reglages.encres','Encres riso',S.inks);},1200);}
 function loadPrefs(){try{const p=JSON.parse(localStorage.getItem('atelierRiso.prefs')||'null');if(p){Object.assign(S.paper,p.paper||{});Object.assign(S.guides,p.guides||{});}}catch(e){}}
 function savePrefs(){try{localStorage.setItem('atelierRiso.prefs',JSON.stringify({paper:S.paper,guides:S.guides}));}catch(e){}}
 
@@ -459,20 +464,37 @@ async function exportPDF(){
 }
 
 /* ---------- projet ---------- */
-async function saveProject(){
-  await busy('Enregistrement…');
-  try{
+function buildProject(){
     const P={app:'atelier-riso',v:1,paper:S.paper,guides:S.guides,inks:S.inks,groups:[],layers:[]};
     for(const g of S.groups){const o={id:g.id,name:g.name,kind:g.kind,w:g.w,h:g.h,cx:g.cx,cy:g.cy,scale:g.scale,rot:g.rot,sep:g.sep};if(g.srcCanvas)o.src=g.srcCanvas.toDataURL('image/png');P.groups.push(o);}
     for(const L of S.layers){const o={...L};delete o.src;delete o.cache;const g=groupById(L.groupId);if(!L.svgText&&!(g&&g.sep)&&L.src)o.srcData=toCanvas(L.src).toDataURL('image/png');P.layers.push(o);}
-    const blob=new Blob([JSON.stringify(P)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='projet-riso.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-  }catch(e){alert('Enregistrement impossible : '+(e.message||e));}
+    return P;
+}
+function downloadProject(){const blob=new Blob([JSON.stringify(buildProject())],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(S.doc.name||'projet-riso')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
+function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'';}
+async function saveProject(asNew){
+  if(!window.AtelierSync){downloadProject();return;}
+  if(!S.doc.id||asNew){const n=prompt('Nom du projet :',S.doc.name||('Riso '+new Date().toLocaleDateString('fr-FR')));if(!n||!n.trim())return;S.doc={id:null,name:n.trim()};}
+  await busy('Enregistrement…');
+  try{S.doc.id=await AtelierSync.save('riso',S.doc.id,S.doc.name,buildProject());showDoc();}
+  catch(e){alert('Enregistrement impossible : '+(e.message||e));}
   await busy();
 }
+function openDocs(){
+  AtelierSync.openDialog({app:'riso',title:'Mes projets riso',current:S.doc.id,
+    onOpen:async(id,P,inf)=>{await openProjectData(P);S.doc={id,name:inf?inf.name:id};showDoc();},
+    onRename:(id,n)=>{if(id===S.doc.id){S.doc.name=n;showDoc();}},
+    onDelete:id=>{if(id===S.doc.id){S.doc={id:null,name:''};showDoc();}},
+    extra:[{label:'Enregistrer sous un autre nom…',action:()=>saveProject(true)},{label:'Importer un fichier .json…',action:()=>$('#projIn').click()},{label:'Télécharger une copie .json',action:downloadProject}]});
+}
 async function openProject(file){
+  try{await openProjectData(JSON.parse(await file.text()));S.doc={id:null,name:file.name.replace(/\.json$/i,'')};showDoc();}
+  catch(e){alert('Ouverture impossible : '+(e.message||e));}
+}
+async function openProjectData(P){
   await busy('Ouverture…');
   try{
-    const P=JSON.parse(await file.text());if(P.app!=='atelier-riso')throw new Error('ce fichier n’est pas un projet Atelier Riso');
+    if(!P||P.app!=='atelier-riso')throw new Error('ce fichier n’est pas un projet Atelier Riso');
     Object.assign(S.paper,P.paper||{});Object.assign(S.guides,P.guides||{});
     (P.inks||[]).forEach(i=>{if(!S.inks.some(x=>x.id===i.id))S.inks.push(i);});
     S.groups=[];S.layers=[];let mx=0;const num=id=>{const n=parseInt(String(id).slice(1));if(n>mx)mx=n;};
@@ -595,7 +617,12 @@ function syncPaperUI(){$('#pFmt').value=S.paper.fmt;$('#pOr').value=S.paper.orie
 /* ---------- événements ---------- */
 $('#fileIn').onchange=async e=>{const files=[...e.target.files];e.target.value='';for(const f of files)await importFile(f);};
 $('#projIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)await openProject(f);};
-$('#saveProj').onclick=saveProject;
+$('#saveProj').onclick=()=>saveProject(false);
+$('#openProj').onclick=()=>window.AtelierSync?openDocs():$('#projIn').click();
+if(window.AtelierSync)$('#syncBadge').appendChild(AtelierSync.badge());
+window.addEventListener('atelier-inks',()=>{S.inks=loadInks();renderSide();scheduleRender();});
+window.addEventListener('atelier-conflict',e=>{if(e.detail.id!==S.doc.id)return;S.doc={id:e.detail.copyId,name:e.detail.name};showDoc();alert('Ce document a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();saveProject(false);}});
 $('#exportBtn').onclick=exportPDF;
 $('#pFmt').onchange=e=>{S.paper.fmt=e.target.value;savePrefs();scheduleRender();};
 $('#pOr').onchange=e=>{S.paper.orient=e.target.value;savePrefs();scheduleRender();};
