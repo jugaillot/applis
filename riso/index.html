@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Atelier Riso</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="../lib/jspdf.umd.min.js"></script>
+<script src="../lib/pdf.min.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#ff48b0;--acc2:#3255a4;--soft:#f7f6f2}
 *{box-sizing:border-box}
@@ -78,6 +78,11 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
   aside{border-right:0;border-top:1px solid var(--line);overflow:visible}
 }
 </style>
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+<meta name="theme-color" content="#1d1d1f">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}));</script>
 </head>
 <body>
 <header>
@@ -247,7 +252,7 @@ async function buildSVG(name,info,opt){
 }
 
 /* ---------- PDF / AI ---------- */
-function pdfLib(){const L=window.pdfjsLib||window['pdfjs-dist/build/pdf'];if(!L)throw new Error('bibliothèque PDF non chargée (connexion ?)');L.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';return L;}
+function pdfLib(){const L=window.pdfjsLib||window['pdfjs-dist/build/pdf'];if(!L)throw new Error('bibliothèque PDF non chargée (connexion ?)');L.GlobalWorkerOptions.workerSrc='../lib/pdf.worker.min.js';return L;}
 async function analyzePDF(buf){
   const L=pdfLib();
   const pdf=await L.getDocument({data:new Uint8Array(buf)}).promise;

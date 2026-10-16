@@ -1,8 +1,21 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Atelier</title>
-<style>body{font:15px/1.5 system-ui,sans-serif;background:#f1efea;color:#1d1d1f;margin:0;padding:40px 16px}main{max-width:640px;margin:auto}h1{font-size:22px}a.card{display:block;background:#fff;border:1px solid #e3e0d9;border-radius:10px;padding:16px;margin:10px 0;color:inherit;text-decoration:none}a.card:hover{border-color:#c9c5bc}a.card b{display:block;font-size:16px}a.card span{color:#77756f;font-size:13px}</style></head>
+<style>body{font:15px/1.5 system-ui,sans-serif;background:#f1efea;color:#1d1d1f;margin:0;padding:40px 16px}main{max-width:640px;margin:auto}h1{font-size:22px}a.card{display:block;background:#fff;border:1px solid #e3e0d9;border-radius:10px;padding:16px;margin:10px 0;color:inherit;text-decoration:none}a.card:hover{border-color:#c9c5bc}a.card b{display:block;font-size:16px}a.card span{color:#77756f;font-size:13px}</style><link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+<meta name="theme-color" content="#1d1d1f">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}));</script>
+</head>
 <body><main><h1>Atelier</h1>
+<p id="inst" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:#77756f;font-size:13px;margin:-6px 0 14px"><button id="bInst" hidden style="font:inherit;border:0;border-radius:7px;background:#1d1d1f;color:#fff;padding:6px 12px;cursor:pointer">Installer l’atelier sur cet ordinateur</button><span id="offl"></span></p>
 <a class="card" href="riso/"><b>Riso</b><span>Séparation des couleurs, calques, trames et export PDF par encre</span></a>
 <a class="card" href="vecto/"><b>Vecto</b><span>Vectoriser des dessins au trait, les retoucher et les composer, export PDF vectoriel ou vers Riso</span></a>
 <a class="card" href="compil/"><b>Compil</b><span>Assembler des PDF et des images, plusieurs pages par feuille ou en répétition, impression et export PDF</span></a>
-</main></body></html>
+</main><script>
+let deferred=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;document.getElementById('bInst').hidden=false;});
+document.getElementById('bInst').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;document.getElementById('bInst').hidden=true;};
+window.addEventListener('appinstalled',()=>{document.getElementById('bInst').hidden=true;});
+if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(()=>{document.getElementById('offl').textContent=navigator.onLine?'✓ Disponible hors connexion sur cet appareil':'Hors connexion — version enregistrée sur cet appareil';});
+</script>
+</body></html>

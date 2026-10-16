@@ -92,6 +92,11 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   #vxView{width:92vw;height:40vh}
 }
 </style>
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+<meta name="theme-color" content="#1d1d1f">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}));</script>
 </head>
 <body>
 <header>
