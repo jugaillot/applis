@@ -1156,57 +1156,109 @@ function edt(isFeature, w, h) {
   }
   return g;
 }
-/* Fermeture des lignes : on ne garde que les « ponts » qui ferment des zones.
-   1. fermeture morphologique (disque de rayon r) → les écarts < 2r sont bouchés ;
-   2. on numérote les zones blanches de cette image fermée ;
-   3. on fait grandir ces zones dans les blancs de l'image d'origine : là où deux zones différentes
-      se rencontrent, c'est un écart à fermer → on y trace un raccord, de l'épaisseur du trait voisin.
-   Les coins intérieurs ne sont donc pas bouchés, seuls les raccords sont ajoutés. */
-function closeGaps(data, w, h, r) {
-  var r2 = r * r, i, n = w * h;
-  var d1 = edt(function (i) { return data[i] === 1; }, w, h);
-  var C = new Uint8Array(n);
-  for (i = 0; i < n; i++) C[i] = d1[i] <= r2 ? 1 : 0;
-  var d2 = edt(function (i) { return C[i] === 0; }, w, h);
-  for (i = 0; i < n; i++) C[i] = (C[i] && d2[i] > r2) || data[i] === 1 ? 1 : 0;
-  d2 = null;
-  // zones blanches de l'image fermée (4-connexité)
-  var lab = new Int32Array(n), stack = new Int32Array(n), sp, nl = 0, p, x, y;
-  for (i = 0; i < n; i++) {
-    if (C[i] || lab[i]) continue;
-    nl++; sp = 0; stack[sp++] = i; lab[i] = nl;
-    while (sp) {
-      p = stack[--sp]; x = p % w; y = (p - x) / w;
-      if (x > 0 && !C[p - 1] && !lab[p - 1]) { lab[p - 1] = nl; stack[sp++] = p - 1; }
-      if (x < w - 1 && !C[p + 1] && !lab[p + 1]) { lab[p + 1] = nl; stack[sp++] = p + 1; }
-      if (y > 0 && !C[p - w] && !lab[p - w]) { lab[p - w] = nl; stack[sp++] = p - w; }
-      if (y < h - 1 && !C[p + w] && !lab[p + w]) { lab[p + w] = nl; stack[sp++] = p + w; }
+/* Fermeture des lignes : on repère les extrémités des traits (squelette) et on prolonge
+   chaque extrémité jusqu'au trait le plus proche situé devant elle, à moins de « r » pixels.
+   Le raccord prend l'épaisseur du trait qu'il prolonge. Le reste du dessin n'est pas modifié. */
+function skeleton(data, w, h) {
+  var n = w * h, sk = new Uint8Array(n), list = [], i, x, y;
+  for (y = 1; y < h - 1; y++) for (x = 1; x < w - 1; x++) { i = y * w + x; if (data[i] === 1) { sk[i] = 1; list.push(i); } }
+  var changed = true, del = [];
+  while (changed) {
+    changed = false;
+    for (var step = 0; step < 2; step++) {
+      del.length = 0;
+      for (var k = 0; k < list.length; k++) {
+        var p = list[k]; if (!sk[p]) continue;
+        var p2 = sk[p - w], p3 = sk[p - w + 1], p4 = sk[p + 1], p5 = sk[p + w + 1], p6 = sk[p + w], p7 = sk[p + w - 1], p8 = sk[p - 1], p9 = sk[p - w - 1];
+        var B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+        if (B < 2 || B > 6) continue;
+        var A = (!p2 && p3) + (!p3 && p4) + (!p4 && p5) + (!p5 && p6) + (!p6 && p7) + (!p7 && p8) + (!p8 && p9) + (!p9 && p2);
+        if (A !== 1) continue;
+        if (step === 0 ? (p2 * p4 * p6 === 0 && p4 * p6 * p8 === 0) : (p2 * p4 * p8 === 0 && p2 * p6 * p8 === 0)) del.push(p);
+      }
+      for (k = 0; k < del.length; k++) sk[del[k]] = 0;
+      if (del.length) changed = true;
+    }
+    var nl = []; for (k = 0; k < list.length; k++) if (sk[list[k]]) nl.push(list[k]); list = nl;
+  }
+  return { sk: sk, list: list };
+}
+function closeGaps(data, w, h, r, toLines) {
+  var n = w * h, i, cnt = 0, added = new Uint8Array(n);
+  var S = skeleton(data, w, h), sk = S.sk;
+  var din = edt(function (i) { return data[i] === 0; }, w, h);
+  var off = [-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1];
+  // épaisseur typique des traits (médiane le long du squelette)
+  var ws = []; for (var j = 0; j < S.list.length; j += Math.max(1, Math.floor(S.list.length / 4000))) ws.push(Math.sqrt(din[S.list[j]]));
+  ws.sort(function (a, b) { return a - b; });
+  var med = ws.length ? ws[Math.floor(ws.length / 2)] : 1;
+  function nbs(p) { var o = []; for (var k = 0; k < 8; k++) if (sk[p + off[k]]) o.push(p + off[k]); return o; }
+  var black = function (x, y) { return x >= 0 && y >= 0 && x < w && y < h && data[y * w + x] === 1; };
+  var bridges = [], ends = [];
+  for (var k = 0; k < S.list.length; k++) {
+    var E = S.list[k], nb = nbs(E);
+    if (nb.length !== 1) continue;
+    // remonte le trait pour trouver sa direction et son épaisseur
+    var prev = E, cur = nb[0], len = 1, back = cur, maxW = 0, junction = false, visited = {}; visited[E] = 1;
+    while (len < 60) {
+      visited[cur] = 1;
+      var wv = Math.sqrt(din[cur]); if (wv > maxW) maxW = wv;
+      var nx = nbs(cur).filter(function (q) { return !visited[q]; });
+      if (nx.length !== 1) { junction = nx.length > 1; break; }
+      prev = cur; cur = nx[0]; len++;
+      if (len <= 12) back = cur;
+    }
+    var half = Math.max(1, maxW);
+    if (junction && len < Math.max(6, 3 * half)) continue; // petite excroissance, pas une extrémité
+    var ex = E % w, ey = (E - ex) / w, bx = back % w, by = (back - bx) / w;
+    var dx = ex - bx, dy = ey - by, dl = Math.hypot(dx, dy); if (dl < 1) continue;
+    ends.push({ x: ex, y: ey, ux: dx / dl, uy: dy / dl, half: half, used: false });
+  }
+  // 1. extrémités qui se font face : on les relie entre elles (le cas le plus courant d'une zone mal fermée)
+  var pairs = [];
+  for (var i1 = 0; i1 < ends.length; i1++) for (var i2 = i1 + 1; i2 < ends.length; i2++) {
+    var e1 = ends[i1], e2 = ends[i2], vx = e2.x - e1.x, vy = e2.y - e1.y, d = Math.hypot(vx, vy);
+    if (d > r + e1.half + e2.half || d < 1) continue;
+    var c1 = (e1.ux * vx + e1.uy * vy) / d, c2 = -(e2.ux * vx + e2.uy * vy) / d;
+    if (c1 < -0.3 || c2 < -0.3) continue;
+    pairs.push([d * (2 - (c1 + c2) / 2), i1, i2]);
+  }
+  pairs.sort(function (a, b) { return a[0] - b[0]; });
+  for (var pi = 0; pi < pairs.length; pi++) {
+    var A = ends[pairs[pi][1]], Bq = ends[pairs[pi][2]];
+    if (A.used || Bq.used) continue;
+    A.used = Bq.used = true;
+    bridges.push([A.x, A.y, Bq.x, Bq.y, (A.half + Bq.half) / 2]);
+  }
+  // 2. option : une extrémité restante est prolongée jusqu'au trait le plus proche devant elle
+  if (toLines) for (k = 0; k < ends.length; k++) {
+    var e = ends[k]; if (e.used) continue;
+    var half = e.half, ex = e.x, ey = e.y, a0 = Math.atan2(e.uy, e.ux), best = null;
+    for (var da = -50; da <= 50; da += 5) {
+      var a = a0 + da * Math.PI / 180, cx = Math.cos(a), cy = Math.sin(a), left = false;
+      for (var t = 1; t <= r + half + 2; t++) {
+        var px = Math.round(ex + cx * t), py = Math.round(ey + cy * t);
+        if (px < 0 || py < 0 || px >= w || py >= h) break;
+        var b = data[py * w + px] === 1;
+        if (!left) { if (!b) left = true; else if (t > half + 2) break; continue; }
+        if (b) { var score = t * (1 + Math.abs(da) / 90); if (!best || score < best.s) best = { s: score, x: px, y: py, t: t }; break; }
+      }
+    }
+    if (best && best.t <= r + half) bridges.push([ex, ey, best.x, best.y, half]);
+  }
+  // trace les raccords (sans modifier les données pendant la recherche)
+  for (k = 0; k < bridges.length; k++) {
+    var B = bridges[k], L = Math.hypot(B[2] - B[0], B[3] - B[1]), steps = Math.max(1, Math.ceil(L * 2)), rad = B[4], rr = rad * rad;
+    for (var st = 0; st <= steps; st++) {
+      var cxp = B[0] + (B[2] - B[0]) * st / steps, cyp = B[1] + (B[3] - B[1]) * st / steps;
+      for (var yy = Math.floor(cyp - rad); yy <= Math.ceil(cyp + rad); yy++) for (var xx = Math.floor(cxp - rad); xx <= Math.ceil(cxp + rad); xx++) {
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        if ((xx - cxp) * (xx - cxp) + (yy - cyp) * (yy - cyp) > rr + 0.25) continue;
+        var q = yy * w + xx; if (data[q] !== 1) { data[q] = 1; added[q] = 1; cnt++; }
+      }
     }
   }
-  // croissance des zones dans les blancs d'origine, détection des rencontres
-  var q = new Int32Array(n), qh = 0, qt = 0, dist = new Uint16Array(n), meet = new Uint8Array(n), maxd = Math.ceil(r) + 2, cnt = 0;
-  for (i = 0; i < n; i++) if (lab[i]) { q[qt++] = i; }
-  while (qh < qt) {
-    p = q[qh++]; if (dist[p] >= maxd) continue;
-    x = p % w; y = (p - x) / w;
-    var nb = [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1];
-    for (var k = 0; k < 4; k++) {
-      var t = nb[k]; if (t < 0 || data[t] === 1) continue;
-      if (!lab[t]) { lab[t] = lab[p]; dist[t] = dist[p] + 1; q[qt++] = t; }
-      else if (lab[t] !== lab[p]) { meet[t] = 1; meet[p] = 1; }
-    }
-  }
-  q = null; stack = null;
-  // épaisseur des raccords = épaisseur moyenne des traits du dessin (bornée par r)
-  var din = edt(function (i) { return data[i] === 0; }, w, h), half = 0, hc = 0;
-  for (i = 0; i < n; i += 5) if (data[i] === 1) { half += Math.sqrt(din[i]); hc++; }
-  din = null;
-  half = hc ? Math.max(1, Math.min(r, 2 * half / hc)) : Math.max(1, r / 2);
-  var dm = edt(function (i) { return meet[i] === 1; }, w, h), h2 = half * half, added = new Uint8Array(n);
-  for (i = 0; i < n; i++) {
-    if (data[i] !== 1 && C[i] === 1 && dm[i] <= h2) { data[i] = 1; added[i] = 1; cnt++; }
-  }
-  return { added: added, count: cnt };
+  return { added: added, count: cnt, bridges: bridges.length };
 }
 self.onmessage = function (e) {
   var m = e.data;
@@ -1217,7 +1269,7 @@ self.onmessage = function (e) {
     bm = new Bitmap(m.w, m.h);
     bm.data.set(m.data);
     var gap = null;
-    if (m.params.close > 0) gap = closeGaps(bm.data, m.w, m.h, m.params.close);
+    if (m.params.close > 0) gap = closeGaps(bm.data, m.w, m.h, m.params.close, !!m.params.closeLines);
     pathlist = [];
     bmToPathlist();
     processPath();
@@ -1236,8 +1288,9 @@ self.onmessage = function (e) {
       if (best) best.holes.push(h.d);
     }
     var shapes = outer.map(function (o) { return { d: o.d + o.holes.join(''), area: o.area }; });
-    if (gap) self.postMessage({ id: m.id, shapes: shapes, added: gap.added, addedCount: gap.count }, [gap.added.buffer]);
-    else self.postMessage({ id: m.id, shapes: shapes });
+    var whites = holes.map(function (o) { return { d: o.d, area: o.area }; });
+    if (gap) self.postMessage({ id: m.id, shapes: shapes, whites: whites, added: gap.added, addedCount: gap.count }, [gap.added.buffer]);
+    else self.postMessage({ id: m.id, shapes: shapes, whites: whites });
   } catch (err) {
     self.postMessage({ id: m.id, error: String(err && err.message || err) });
   }

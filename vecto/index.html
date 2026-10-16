@@ -33,6 +33,8 @@ main{flex:1;display:grid;grid-template-columns:48px 1fr 290px;min-height:0}
 .tsep{width:26px;height:1px;background:var(--line);margin:4px 0}
 #stage{position:relative;min-width:0;min-height:0;background:var(--board)}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#pts{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 #hint{position:absolute;left:10px;bottom:8px;background:rgba(255,255,255,.88);border-radius:6px;padding:3px 8px;font-size:12px;color:var(--mute);pointer-events:none;max-width:calc(100% - 270px)}
 #zoomBox{position:absolute;right:10px;bottom:8px;display:flex;gap:4px;align-items:center;background:rgba(255,255,255,.88);border-radius:7px;padding:3px}
 #zoomBox span{min-width:44px;text-align:center;color:var(--mute);font-size:12px}
@@ -73,6 +75,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 .df{padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;align-items:center}
 #vxBody{display:grid;grid-template-columns:270px 1fr;min-height:0}
 #vxSide{padding:12px 16px;display:flex;flex-direction:column;gap:9px;border-right:1px solid var(--line);overflow:auto;max-height:calc(94vh - 110px)}
+#vxSide>*{flex:none}
 #vxView{position:relative;background:#ececea;display:flex;align-items:center;justify-content:center;width:min(62vw,820px);height:min(70vh,700px);overflow:hidden}
 #vxView canvas,#vxView svg{position:absolute;max-width:96%;max-height:96%}
 #vxInfo{font-size:12px;color:var(--mute)}
@@ -120,8 +123,9 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   </nav>
   <div id="stage">
     <canvas id="cv"></canvas>
+    <canvas id="pts"></canvas>
     <div id="hint"></div>
-    <div id="zoomBox"><button class="btn sm ic" id="zOut">−</button><span id="zLab">100 %</span><button class="btn sm ic" id="zIn">+</button><button class="btn sm" id="zFit">Page</button></div>
+    <div id="zoomBox"><button class="btn sm ic" id="zOut">−</button><span id="zLab">100 %</span><button class="btn sm ic" id="zIn">+</button><button class="btn sm" id="zFit">Page</button><button class="btn sm" id="bPts" title="Afficher les points des tracés (P pour la plume, ici bouton)">Points</button></div>
   </div>
   <aside>
     <section>
@@ -191,6 +195,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
         <button class="btn sm" data-cmd="simplify" title="Réduit le nombre de points">Simplifier</button>
         <button class="btn sm" data-cmd="smooth" title="Arrondit les angles">Lisser</button>
         <button class="btn sm" data-cmd="outline" title="Transforme le contour en forme pleine (pour la riso)">Contour → forme</button>
+        <button class="btn sm" id="bRevec" title="Reprendre les réglages de vectorisation du dessin sélectionné">Revectoriser…</button>
       </div>
     </section>
     <section>
@@ -202,7 +207,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 </main>
 
 <dialog id="vxDlg">
-  <div class="dh">Vectoriser un dessin</div>
+  <div class="dh" id="vxTitle">Vectoriser un dessin</div>
   <div id="vxBody">
     <div id="vxSide">
       <label class="btn" style="justify-content:center">Choisir une image…<input type="file" id="vxFile" accept="image/*" hidden></label>
@@ -210,19 +215,23 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
       <label class="rng"><span>Seuil (noir / blanc)<b id="vSeuil">50 %</b></span><input type="range" id="vxSeuil" min="1" max="99" value="50"></label>
       <label class="rng"><span>Adoucir le grain<b id="vFlou">0</b></span><input type="range" id="vxFlou" min="0" max="4" step="0.5" value="0"></label>
       <label class="rng"><span>Fermer les lignes<b id="vFerme">0 px</b></span><input type="range" id="vxFerme" min="0" max="60" step="1" value="0"></label>
-      <div class="muted" style="margin-top:-4px">Relie les traits presque jointifs pour fermer les zones. Les raccords apparaissent en rose dans l’aperçu « Noir et blanc ».</div>
+      <div class="muted" style="margin-top:-4px">Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué. Les raccords apparaissent en rose dans l’aperçu « Noir et blanc ».</div>
+      <label class="chk"><input type="checkbox" id="vxFin"> Relier aussi un bout de trait au trait le plus proche (plus fort : peut prolonger nervures et hachures)</label>
       <label class="rng"><span>Ignorer les taches de moins de<b id="vTache">4 px</b></span><input type="range" id="vxTache" min="0" max="200" value="4"></label>
       <label class="rng"><span>Angles ↔ courbes<b id="vLisse">1.0</b></span><input type="range" id="vxLisse" min="0" max="1.33" step="0.01" value="1"></label>
       <label class="rng"><span>Précision des courbes<b id="vPrec">0.20</b></span><input type="range" id="vxPrec" min="0.05" max="1.5" step="0.05" value="0.2"></label>
       <label class="rng"><span>Définition de calcul<b id="vDef">12 Mpx</b></span><input type="range" id="vxDef" min="1" max="30" step="1" value="12"></label>
       <label class="chk"><input type="checkbox" id="vxInv"> Inverser (dessin clair sur fond sombre)</label>
-      <div class="muted" style="margin-top:4px">Placement</div>
+      <label class="chk"><input type="checkbox" id="vxBlanc" checked> Zones blanches en formes (à colorier ensuite)</label>
+      <div class="muted" style="margin-top:4px" id="vxPlaceLab">Placement</div>
       <div class="seg" id="vxPlace"><button data-v="fit" class="on">Ajuster à la page</button><button data-v="dpi">Taille réelle</button></div>
       <label id="vxDpiBox" hidden>Résolution du scan (dpi)<input type="number" id="vxDpi" value="300" min="30" max="2400"></label>
       <div class="muted" style="margin-top:4px">Résultat</div>
       <div class="seg" id="vxMode"><button data-v="sep" class="on">Formes séparées</button><button data-v="one">Un seul tracé</button></div>
       <div class="muted" style="margin-top:4px">Aperçu</div>
       <div class="seg" id="vxShow"><button data-v="trace" class="on">Vecteurs</button><button data-v="bitmap">Noir et blanc</button><button data-v="orig">Original</button></div>
+      <label class="chk"><input type="checkbox" id="vxPts"> Afficher les points des tracés</label>
+      <label class="chk"><input type="checkbox" id="vxZoom"> Aperçu à 100 % (détail)</label>
     </div>
     <div id="vxView"><div class="muted" id="vxEmpty">Aucune image</div></div>
   </div>
@@ -313,9 +322,28 @@ function fitView(){
   afterView();
 }
 function resizeView(){const r=$('#stage').getBoundingClientRect();view.viewSize=new P.Size(Math.max(10,r.width),Math.max(10,r.height));afterView();}
-function afterView(){$('#zLab').textContent=Math.round(view.zoom/(96/25.4)*100)+' %';drawUI();}
+let showPts=false,ptsRaf=0;
+function drawPts(){if(ptsRaf)return;ptsRaf=requestAnimationFrame(()=>{ptsRaf=0;_drawPts();});}
+function _drawPts(){
+  const c=$('#pts'),dpr=window.devicePixelRatio||1,r=c.getBoundingClientRect();
+  if(c.width!==Math.round(r.width*dpr)||c.height!==Math.round(r.height*dpr)){c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);}
+  const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,c.width,c.height);
+  if(!showPts)return;
+  x.setTransform(dpr,0,0,dpr,0,0);
+  const vb=view.bounds,s=3;
+  x.fillStyle='#fff';x.strokeStyle='#ff2d9b';x.lineWidth=1;
+  userLayers().forEach(l=>{if(!l.visible)return;l.getItems({class:P.Path,match:p=>p.bounds.intersects(vb)}).forEach(p=>{
+    p.segments.forEach(sg=>{const v=view.projectToView(sg.point);if(v.x<-5||v.y<-5||v.x>r.width+5||v.y>r.height+5)return;x.fillRect(v.x-s/2,v.y-s/2,s,s);x.strokeRect(v.x-s/2,v.y-s/2,s,s);});
+  });});
+}
+function afterView(){drawPts();$('#zLab').textContent=Math.round(view.zoom/(96/25.4)*100)+' %';drawUI();}
 function zoomAt(f,pt){const z0=view.zoom,z=Math.min(200,Math.max(0.05,z0*f));const p=pt||view.center;const c=view.center;view.zoom=z;view.center=p.add(c.subtract(p).multiply(z0/z));afterView();}
 const px=n=>n/view.zoom;
+
+/* ---------- transformations (avec suivi pour les dessins vectorisés) ---------- */
+function track(it,mx){if(it.data&&it.data.vx){const M=new P.Matrix(it.data.vx.m);it.data=Object.assign({},it.data,{vx:Object.assign({},it.data.vx,{m:mx.clone().append(M).values})});}}
+function xf(it,mx){it.transform(mx);track(it,mx);}
+function moveIt(it,d){xf(it,new P.Matrix().translate(d));}
 
 /* ---------- sélection ---------- */
 let sel=[];
@@ -333,6 +361,7 @@ function hitTop(point){
 /* ---------- interface de sélection (cadre + poignées) ---------- */
 let handles=[];
 function drawUI(){
+  drawPts();
   const prev=P.project.activeLayer;
   uiLayer.removeChildren();uiLayer.activate();
   handles=[];
@@ -551,7 +580,7 @@ function selDown(e,dbl){
 }
 function selDrag(e){
   if(!drag)return;
-  if(drag.mode==='move'){const d=e.point.subtract(drag.last);sel.forEach(s=>s.position=s.position.add(d));drag.last=e.point;drag.moved=true;drawUI();syncPanel();return;}
+  if(drag.mode==='move'){const d=e.point.subtract(drag.last);sel.forEach(s=>moveIt(s,d));drag.last=e.point;drag.moved=true;drawUI();syncPanel();return;}
   if(drag.mode==='marquee'){drawMarquee(drag.start,e.point);return;}
   if(drag.mode==='scale'){
     const b=drag.b,h=drag.h;
@@ -571,7 +600,7 @@ function selDrag(e){
     const fx=sx/drag.psx,fy=sy/drag.psy;drag.psx=sx;drag.psy=sy;
     if(drag.pfrom&&!drag.pfrom.equals(from)){/* bascule Alt : on repart proprement */}
     drag.pfrom=from;
-    sel.forEach(s=>s.scale(fx,fy,from));
+    sel.forEach(s=>xf(s,new P.Matrix().scale(fx,fy,from)));
     drag.moved=true;drawUI();syncPanel();return;
   }
   if(drag.mode==='rot'){
@@ -579,7 +608,7 @@ function selDrag(e){
     let a=e.point.subtract(c).angle-drag.start.subtract(c).angle;
     if(e.modifiers.shift)a=Math.round(a/15)*15;
     const da=a-drag.pa;drag.pa=a;
-    sel.forEach(s=>s.rotate(da,c));
+    sel.forEach(s=>xf(s,new P.Matrix().rotate(da,c)));
     drag.moved=true;drawUI();syncPanel();
   }
 }
@@ -686,12 +715,12 @@ function cmd(name){
   const b=selBounds();
   switch(name){
     case'del':sel.forEach(s=>s.remove());setSel([]);break;
-    case'dup':{const c=sel.map(s=>{const x=s.clone();x.position=x.position.add(new P.Point(5,5));return x;});setSel(c);break;}
-    case'rotL':sel.forEach(s=>s.rotate(-90,b.center));break;
-    case'rotR':sel.forEach(s=>s.rotate(90,b.center));break;
-    case'rotN':{const a=parseFloat($('#rotVal').value)||0;sel.forEach(s=>s.rotate(a,b.center));break;}
-    case'flipH':sel.forEach(s=>s.scale(-1,1,b.center));break;
-    case'flipV':sel.forEach(s=>s.scale(1,-1,b.center));break;
+    case'dup':{const c=sel.map(s=>{const x=s.clone();moveIt(x,new P.Point(5,5));return x;});setSel(c);break;}
+    case'rotL':sel.forEach(s=>xf(s,new P.Matrix().rotate(-90,b.center)));break;
+    case'rotR':sel.forEach(s=>xf(s,new P.Matrix().rotate(90,b.center)));break;
+    case'rotN':{const a=parseFloat($('#rotVal').value)||0;sel.forEach(s=>xf(s,new P.Matrix().rotate(a,b.center)));break;}
+    case'flipH':sel.forEach(s=>xf(s,new P.Matrix().scale(-1,1,b.center)));break;
+    case'flipV':sel.forEach(s=>xf(s,new P.Matrix().scale(1,-1,b.center)));break;
     case'front':sel.forEach(s=>s.bringToFront());break;
     case'back':sel.slice().reverse().forEach(s=>s.sendToBack());break;
     case'group':{const g=new P.Group();g.insertAbove(sel[sel.length-1]);g.addChildren(sel.slice().sort((a,b)=>a.index-b.index));setSel([g]);break;}
@@ -750,18 +779,18 @@ function align(kind){
   sel.forEach(s=>{const b=s.bounds;let dx=0,dy=0;
     if(kind==='left')dx=ref.left-b.left;if(kind==='right')dx=ref.right-b.right;if(kind==='hcenter')dx=ref.center.x-b.center.x;
     if(kind==='top')dy=ref.top-b.top;if(kind==='bottom')dy=ref.bottom-b.bottom;if(kind==='vcenter')dy=ref.center.y-b.center.y;
-    s.position=s.position.add(new P.Point(dx,dy));});
+    moveIt(s,new P.Point(dx,dy));});
   commit();
 }
 function setGeo(k,v){
   const b=selBounds();if(!b||isNaN(v))return;
-  if(k==='x'){sel.forEach(s=>s.position=s.position.add(new P.Point(v-b.x,0)));}
-  else if(k==='y'){sel.forEach(s=>s.position=s.position.add(new P.Point(0,v-b.y)));}
+  if(k==='x'){sel.forEach(s=>moveIt(s,new P.Point(v-b.x,0)));}
+  else if(k==='y'){sel.forEach(s=>moveIt(s,new P.Point(0,v-b.y)));}
   else{
     v=Math.max(0.1,v);let sx=1,sy=1;
     if(k==='w')sx=v/b.width;else sy=v/b.height;
     if($('#keepRatio').checked){if(k==='w')sy=sx;else sx=sy;}
-    sel.forEach(s=>s.scale(sx,sy,b.topLeft));
+    sel.forEach(s=>xf(s,new P.Matrix().scale(sx,sy,b.topLeft)));
   }
   commit();
 }
@@ -769,8 +798,8 @@ function setGeo(k,v){
 /* ---------- vectorisation ---------- */
 const VX={img:null,bits:null,w:0,h:0,shapes:null,id:0,worker:null,place:'fit',mode:'sep',show:'trace',origW:0,timer:0};
 function worker(){if(!VX.worker){VX.worker=new Worker('potrace-worker.js');}return VX.worker;}
-function vxParams(){return{seuil:+$('#vxSeuil').value,flou:+$('#vxFlou').value,tache:+$('#vxTache').value,lisse:+$('#vxLisse').value,ferme:+$('#vxFerme').value,prec:+$('#vxPrec').value,def:+$('#vxDef').value,inv:$('#vxInv').checked};}
-function vxLabels(){const p=vxParams();$('#vSeuil').textContent=p.seuil+' %';$('#vFlou').textContent=p.flou;$('#vTache').textContent=p.tache+' px';$('#vLisse').textContent=p.lisse.toFixed(2);$('#vFerme').textContent=p.ferme+' px';$('#vPrec').textContent=p.prec.toFixed(2);$('#vDef').textContent=p.def+' Mpx';}
+function vxParams(){return{seuil:+$('#vxSeuil').value,flou:+$('#vxFlou').value,tache:+$('#vxTache').value,lisse:+$('#vxLisse').value,ferme:+$('#vxFerme').value,lignes:$('#vxFin').checked,blanc:$('#vxBlanc').checked,prec:+$('#vxPrec').value,def:+$('#vxDef').value,inv:$('#vxInv').checked};}
+function vxLabels(){const p=vxParams();$('#vSeuil').textContent=p.seuil+' %';$('#vFlou').textContent=p.flou;$('#vTache').textContent=p.tache+' px';$('#vLisse').textContent=p.lisse.toFixed(2);$('#vFerme').textContent=p.ferme+' px';$('#vPrec').textContent=p.prec.toFixed(2);$('#vDef').textContent=p.def+' Mpx'+(VX.img&&VX.img.naturalWidth*VX.img.naturalHeight<p.def*1e6?' (image : '+(VX.img.naturalWidth*VX.img.naturalHeight/1e6).toFixed(1)+' Mpx, max atteint)':'');}
 function vxBitmap(){
   const p=vxParams(),img=VX.img;
   const W0=img.naturalWidth,H0=img.naturalHeight;
@@ -799,55 +828,143 @@ function vxRun(){
   wk.onmessage=ev=>{
     if(ev.data.id!==VX.id)return;
     if(ev.data.error){$('#vxStat').textContent='Erreur : '+ev.data.error;return;}
-    VX.shapes=ev.data.shapes;VX.added=ev.data.added||null;
-    $('#vxStat').textContent=VX.shapes.length+' forme'+(VX.shapes.length>1?'s':'')+' · '+w+' × '+h+' px'+(ev.data.addedCount?' · '+ev.data.addedCount.toLocaleString('fr-FR')+' px de raccord':'');
+    VX.shapes=ev.data.shapes;VX.whites=ev.data.whites||[];VX.added=ev.data.added||null;
+    $('#vxStat').textContent=VX.shapes.length+' forme'+(VX.shapes.length>1?'s':'')+' noires'+(vxParams().blanc?' · '+VX.whites.length+' zone'+(VX.whites.length>1?'s':'')+' blanche'+(VX.whites.length>1?'s':''):'')+' · '+countPts(VX.shapes).toLocaleString('fr-FR')+' points · '+w+' × '+h+' px'+(ev.data.addedCount?' · '+ev.data.addedCount.toLocaleString('fr-FR')+' px de raccord':'');
     $('#vxOk').disabled=!VX.shapes.length;
     vxDraw();
   };
   wk.onerror=err=>{$('#vxStat').textContent='Erreur de calcul ('+(err.message||'worker')+')';};
   const copy=bits.slice();
-  wk.postMessage({id,w,h,data:copy,params:{turdsize:p.tache,alphamax:p.lisse,opttolerance:p.prec,optcurve:true,close:p.ferme}},[copy.buffer]);
+  wk.postMessage({id,w,h,data:copy,params:{turdsize:p.tache,alphamax:p.lisse,opttolerance:p.prec,optcurve:true,close:p.ferme,closeLines:p.lignes}},[copy.buffer]);
 }
 function vxSchedule(){clearTimeout(VX.timer);vxLabels();VX.timer=setTimeout(vxRun,250);}
+function endpoints(d){const out=[];const re=/([MLC])([^MLCZ]*)/g;let m;while((m=re.exec(d))){const n=m[2].trim().split(/[\s,]+/).map(Number);if(n.length>=2)out.push(n[n.length-2],n[n.length-1]);}return out;}
+function countPts(shapes){let c=0;for(const s of shapes){const m=s.d.match(/[MLC]/g);if(m)c+=m.length-(s.d.match(/M/g)||[]).length;}return c;}
 function vxDraw(){
   const box=$('#vxView');box.innerHTML='';
   if(!VX.img){box.innerHTML='<div class="muted">Aucune image</div>';return;}
   const r=box.getBoundingClientRect();
-  const k=Math.min((r.width-16)/VX.w,(r.height-16)/VX.h);
+  const full=$('#vxZoom').checked;
+  const k=full?1:Math.min((r.width-16)/VX.w,(r.height-16)/VX.h);
   const dw=Math.round(VX.w*k),dh=Math.round(VX.h*k);
-  if(VX.show==='orig'){const c=document.createElement('canvas');c.width=dw;c.height=dh;c.getContext('2d').drawImage(VX.img,0,0,dw,dh);box.appendChild(c);return;}
+  box.style.overflow=full?'auto':'hidden';box.style.alignItems=full?'flex-start':'center';box.style.justifyContent=full?'flex-start':'center';
+  const place=el=>{if(full){el.style.position='relative';el.style.maxWidth='none';el.style.maxHeight='none';el.style.flex='none';}box.appendChild(el);};
+  if(VX.show==='orig'){const c=document.createElement('canvas');c.width=dw;c.height=dh;c.getContext('2d').drawImage(VX.img,0,0,dw,dh);place(c);return;}
   if(VX.show==='bitmap'||!VX.shapes){
     const c=document.createElement('canvas');c.width=VX.w;c.height=VX.h;c.style.width=dw+'px';c.style.height=dh+'px';
     const x=c.getContext('2d'),id=x.createImageData(VX.w,VX.h),o=id.data;
     const ad=VX.added&&VX.added.length===VX.bits.length?VX.added:null;
     for(let j=0,i=0;j<VX.bits.length;j++,i+=4){if(ad&&ad[j]){o[i]=255;o[i+1]=40;o[i+2]=160;}else{const v=VX.bits[j]?0:255;o[i]=o[i+1]=o[i+2]=v;}o[i+3]=255;}
-    x.putImageData(id,0,0);box.appendChild(c);if(VX.show==='bitmap')return;
+    x.putImageData(id,0,0);place(c);if(VX.show==='bitmap'||!VX.shapes)return;
   }
-  if(VX.shapes){
-    box.innerHTML='';
-    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('viewBox',`0 0 ${VX.w} ${VX.h}`);svg.setAttribute('width',dw);svg.setAttribute('height',dh);svg.style.background='#fff';
-    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d',VX.shapes.map(s=>s.d).join(''));path.setAttribute('fill-rule','evenodd');path.setAttribute('fill','#000');
-    svg.appendChild(path);box.appendChild(svg);
+  box.innerHTML='';
+  const NS='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('viewBox',`0 0 ${VX.w} ${VX.h}`);svg.setAttribute('width',dw);svg.setAttribute('height',dh);svg.style.background='#fff';
+  if($('#vxBlanc').checked&&VX.whites&&VX.whites.length){
+    const wz=document.createElementNS(NS,'path');wz.setAttribute('d',VX.whites.map(s=>s.d).join(''));wz.setAttribute('fill','#d9e6ff');svg.appendChild(wz);
   }
+  const path=document.createElementNS(NS,'path');
+  path.setAttribute('d',VX.shapes.map(s=>s.d).join(''));path.setAttribute('fill-rule','evenodd');path.setAttribute('fill','#000');
+  svg.appendChild(path);
+  if($('#vxPts').checked){
+    const rad=Math.max(0.6,2.2/k);let pts='';
+    VX.shapes.forEach(s=>{const e=endpoints(s.d);for(let i=0;i<e.length;i+=2)pts+=`M${e[i]-rad} ${e[i+1]}a${rad} ${rad} 0 1 0 ${2*rad} 0a${rad} ${rad} 0 1 0 ${-2*rad} 0`;});
+    const pp=document.createElementNS(NS,'path');pp.setAttribute('d',pts);pp.setAttribute('fill','#ff2d9b');svg.appendChild(pp);
+  }
+  place(svg);
 }
-function vxPlace(){
+/* Un dessin vectorisé garde : la clé de son image source, ses réglages, et la matrice
+   « pixels de l'image d'origine → page ». Ainsi on peut le revectoriser plus tard, au même endroit. */
+function buildVx(shapes,whites,opts){
+  const g=new P.Group({name:opts.name||'Dessin'});
+  const black=new P.Color(opts.black||'#000000'),white=new P.Color(opts.white||'#ffffff');
+  if(opts.blanc&&whites.length){
+    const z=new P.Group({name:'Zones blanches'});
+    if(opts.mode==='one')z.addChild(new P.CompoundPath({pathData:whites.map(s=>s.d).join(''),fillColor:white,insert:false}));
+    else whites.forEach(s=>z.addChild(new P.Path({pathData:s.d,fillColor:white,insert:false})));
+    g.addChild(z);
+  }
+  const t=new P.Group({name:'Traits'});
+  if(opts.mode==='one')t.addChild(new P.CompoundPath({pathData:shapes.map(s=>s.d).join(''),fillRule:'evenodd',fillColor:black,insert:false}));
+  else shapes.forEach(s=>{const cp=new P.CompoundPath({pathData:s.d,fillRule:'evenodd',fillColor:black,insert:false});t.addChild(cp.children.length===1?(()=>{const c=cp.firstChild;c.fillColor=black;c.fillRule='evenodd';return c;})():cp);});
+  g.addChild(t);
+  // pixels de calcul → pixels de l'image d'origine
+  g.transform(new P.Matrix().scale(1/opts.scale,new P.Point(0,0)));
+  g.data.vx={src:opts.src||null,params:opts.params,mode:opts.mode,m:[1,0,0,1,0,0]};
+  return g;
+}
+function vxColors(item){
+  const out={};
+  const find=(name)=>{const sub=item.children&&item.children.find(c=>c.name===name);if(!sub)return null;const leaf=leafPaths(sub)[0];return leaf&&leaf.fillColor?colorHex(leaf.fillColor):null;};
+  out.black=find('Traits');out.white=find('Zones blanches');
+  if(!out.black){const l=leafPaths(item).find(p=>p.fillColor&&colorHex(p.fillColor)!=='#ffffff');if(l)out.black=colorHex(l.fillColor);}
+  return out;
+}
+async function vxPlace(){
   if(!VX.shapes||!VX.shapes.length)return;
   const p=vxParams();
   ensureLayer(true);
-  const col=new P.Color(S.fill||'#000000');
-  let item;
-  if(VX.mode==='one'){item=new P.CompoundPath({pathData:VX.shapes.map(s=>s.d).join(''),fillRule:'evenodd',fillColor:col});}
-  else{item=new P.Group();VX.shapes.forEach(s=>{const cp=new P.CompoundPath({pathData:s.d,fillRule:'evenodd',fillColor:col,insert:false});item.addChild(cp.children.length===1?(()=>{const c=cp.firstChild;c.fillColor=col;c.fillRule='evenodd';return c;})():cp);});}
-  item.name=VX.name||'Dessin';
-  // pixels de calcul → mm
-  let mmPerPx;
-  if(VX.place==='dpi'){const dpi=+$('#vxDpi').value||300;mmPerPx=25.4/dpi/VX.scale;}
-  else{const m=10;mmPerPx=Math.min((S.page.w-2*m)/VX.w,(S.page.h-2*m)/VX.h);}
-  item.scale(mmPerPx,new P.Point(0,0));
-  item.position=new P.Point(S.page.w/2,S.page.h/2);
-  setTool('select');setSel([item]);commit();
+  if(VX.edit){
+    const old=VX.edit.item;
+    const cols=old.parent?vxColors(old):{};
+    const g=buildVx(VX.shapes,VX.whites||[],{name:old.name,scale:VX.scale,mode:VX.mode,blanc:p.blanc,params:p,src:VX.edit.src,black:cols.black||S.fill||'#000000',white:cols.white||'#ffffff'});
+    xf(g,new P.Matrix(VX.edit.m));
+    if(old.parent){g.insertAbove(old);old.remove();}
+    VX.edit=null;setTool('select');setSel([g]);commit();return;
+  }
+  const g=buildVx(VX.shapes,VX.whites||[],{name:VX.name,scale:VX.scale,mode:VX.mode,blanc:p.blanc,params:p,src:VX.srcKey,black:S.fill||'#000000'});
+  // pixels d'origine → mm
+  let k;
+  if(VX.place==='dpi'){k=25.4/(+$('#vxDpi').value||300);}
+  else{const m=10;k=Math.min((S.page.w-2*m)/VX.img.naturalWidth,(S.page.h-2*m)/VX.img.naturalHeight);}
+  xf(g,new P.Matrix().scale(k,new P.Point(0,0)));
+  moveIt(g,new P.Point(S.page.w/2,S.page.h/2).subtract(g.position));
+  setTool('select');setSel([g]);commit();
+}
+async function storeSrc(blob){const key='vxsrc.'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);const ok=await IDB.set(key,blob);return ok?key:null;}
+async function blobToImage(blob){const url=URL.createObjectURL(blob);const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(new Error('image illisible'));img.src=url;});return img;}
+function setVxParams(p){
+  const set=(id,v)=>{if(v!=null)$('#'+id).value=v;};
+  set('vxSeuil',p.seuil);set('vxFlou',p.flou);set('vxFerme',p.ferme);set('vxTache',p.tache);set('vxLisse',p.lisse);set('vxPrec',p.prec);set('vxDef',p.def);
+  if(p.inv!=null)$('#vxInv').checked=p.inv;if(p.lignes!=null)$('#vxFin').checked=p.lignes;if(p.blanc!=null)$('#vxBlanc').checked=p.blanc;
+}
+function vxDialogMode(edit){
+  $('#vxTitle').textContent=edit?'Revectoriser le dessin sélectionné':'Vectoriser un dessin';
+  $('#vxOk').textContent=edit?'Remplacer le dessin':'Placer dans le document';
+  $('#vxPlaceLab').hidden=$('#vxPlace').hidden=!!edit;$('#vxDpiBox').hidden=!!edit||VX.place!=='dpi';
+  document.querySelector('#vxSide label.btn').hidden=!!edit;
+}
+async function openRevec(){
+  if(sel.length!==1)return alert('Sélectionne un seul dessin.');
+  const item=sel[0];
+  await busy('Préparation…');
+  try{
+    const vx=item.data&&item.data.vx;
+    let img=null,src=null,m=null,params=null,mode='sep';
+    if(vx&&vx.src){const blob=await IDB.get(vx.src);if(blob){img=await blobToImage(blob);src=vx.src;m=vx.m;params=vx.params;mode=vx.mode||'sep';}}
+    if(!img){
+      // pas d'image source (dessin importé, dessiné, ou ouvert sur une autre machine) : on « photographie » le dessin en noir et blanc
+      const b=item.strokeBounds;
+      const mp=(params&&params.def||12)*1e6;
+      let dpi=Math.sqrt(mp/((b.width/25.4)*(b.height/25.4)));dpi=Math.max(150,Math.min(1200,dpi));
+      const c=item.clone({insert:false});
+      leafPaths(c).forEach(p=>{const f=p.fillColor&&colorHex(p.fillColor);p.fillColor=f?(f==='#ffffff'?'#ffffff':'#000000'):null;if(p.strokeColor)p.strokeColor='#000000';});
+      const ras=c.rasterize({resolution:dpi*72/25.4,insert:false});
+      const rc=document.createElement('canvas');rc.width=ras.width;rc.height=ras.height;const x=rc.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,rc.width,rc.height);x.drawImage(ras.canvas,0,0);
+      const blob=await new Promise(res=>rc.toBlob(res,'image/png'));
+      src=await storeSrc(blob);img=await blobToImage(blob);
+      const rb=ras.bounds;m=new P.Matrix().translate(rb.topLeft).scale(rb.width/ras.width,rb.height/ras.height).values;
+      params=Object.assign(vxParams(),params||{},{seuil:50,flou:0,inv:false});
+      if(vx&&vx.params)params=Object.assign(params,{ferme:vx.params.ferme,tache:vx.params.tache,lisse:vx.params.lisse,prec:vx.params.prec,lignes:vx.params.lignes,blanc:vx.params.blanc});
+      mode=vx&&vx.mode||mode;
+    }
+    VX.edit={item,src,m};VX.img=img;VX.name=item.name||'Dessin';VX.shapes=null;
+    setVxParams(params||{});VX.mode=mode;$('#vxMode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.v===mode));
+    $('#vxInfo').textContent=(vx&&vx.src&&src===vx.src?'Image d’origine retrouvée':'Dessin repris à partir des vecteurs')+' — '+img.naturalWidth+' × '+img.naturalHeight+' px';
+    vxDialogMode(true);$('#vxDlg').showModal();vxRun();
+  }catch(e){console.error(e);alert('Impossible de revectoriser : '+(e.message||e));}
+  await busy();
 }
 async function vxOpenFile(f){
   if(!f)return;
@@ -855,11 +972,11 @@ async function vxOpenFile(f){
   const img=new Image();
   await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(new Error('image illisible'));img.src=url;}).catch(e=>{alert('Image illisible : '+e.message);});
   if(!img.naturalWidth)return;
-  VX.img=img;VX.name=f.name.replace(/\.[^.]+$/,'');VX.shapes=null;VX.origW=img.naturalWidth;
+  VX.img=img;VX.name=f.name.replace(/\.[^.]+$/,'');VX.shapes=null;VX.origW=img.naturalWidth;VX.edit=null;VX.srcKey=await storeSrc(f);
   $('#vxInfo').textContent=f.name+' — '+img.naturalWidth+' × '+img.naturalHeight+' px';
   vxRun();
 }
-function openVx(){$('#vxDlg').showModal();if(!VX.img)setTimeout(()=>$('#vxFile').click(),50);else vxDraw();}
+function openVx(){if(VX.edit){VX.edit=null;VX.img=null;VX.shapes=null;$('#vxInfo').textContent='Scan ou photo d’un dessin au trait noir.';}vxDialogMode(false);$('#vxDlg').showModal();if(!VX.img)setTimeout(()=>$('#vxFile').click(),50);else vxDraw();}
 
 /* ---------- import SVG ---------- */
 function parseLen(s){if(!s)return 0;const m=String(s).trim().match(/^([\d.]+)\s*(mm|cm|in|pt|pc|px)?$/);if(!m)return 0;const v=parseFloat(m[1]);return{mm:v,cm:v*10,in:v*25.4,pt:v*25.4/72,pc:v*25.4/6}[m[2]]??v*25.4/96;}
@@ -937,7 +1054,7 @@ $('#dOk').onclick=()=>{
   const dx=(w-S.page.w)/2,dy=(h-S.page.h)/2;
   const fv=$('#dFmt').value;const f=FORMATS[fv];
   S.page={w,h,fmt:f&&((f[0]===w&&f[1]===h)||(f[1]===w&&f[0]===h))?fv:'custom'};
-  if($('#dCenter').checked)userLayers().forEach(l=>l.children.forEach(c=>c.position=c.position.add(new P.Point(dx,dy))));
+  if($('#dCenter').checked)userLayers().forEach(l=>l.children.forEach(c=>moveIt(c,new P.Point(dx,dy))));
   $('#docDlg').close();drawPage();fitView();commit();
 };
 
@@ -958,12 +1075,13 @@ $('#bDoc').onclick=openDoc;
 $('#bVecto').onclick=openVx;
 $('#vxFile').onchange=e=>{const f=e.target.files[0];e.target.value='';vxOpenFile(f);};
 ['vxSeuil','vxFlou','vxFerme','vxTache','vxLisse','vxPrec','vxDef'].forEach(id=>$('#'+id).addEventListener('input',vxSchedule));
-$('#vxInv').onchange=vxSchedule;
+$('#vxInv').onchange=vxSchedule;$('#vxBlanc').onchange=()=>{vxLabels();vxDraw();};$('#vxPts').onchange=vxDraw;$('#vxZoom').onchange=vxDraw;$('#vxFin').onchange=vxSchedule;
 function segBind(id,key,cb){$('#'+id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;VX[key]=b.dataset.v;$('#'+id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));cb&&cb();});}
 segBind('vxPlace','place',()=>{$('#vxDpiBox').hidden=VX.place!=='dpi';});
 segBind('vxMode','mode');
 segBind('vxShow','show',vxDraw);
 $('#vxCancel').onclick=()=>$('#vxDlg').close();
+$('#bRevec').onclick=openRevec;
 $('#vxOk').onclick=()=>{$('#vxDlg').close();vxPlace();};
 $('#fSvg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{importSVGText(await f.text(),f.name.replace(/\.[^.]+$/,''));}catch(err){alert('Import impossible : '+err.message);}};
 $('#bNew').onclick=()=>{if(!confirm('Commencer un nouveau document ? Le dessin actuel sera effacé (pense à l’enregistrer).'))return;userLayers().forEach(l=>l.remove());activeLayer=null;newLayer('Calque 1');setSel([]);renderLayers();resetHistory();scheduleAutosave();};
@@ -971,6 +1089,7 @@ $('#bSave').onclick=()=>download(new Blob([JSON.stringify(projectData())],{type:
 $('#fProj').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{loadProject(JSON.parse(await f.text()));scheduleAutosave();}catch(err){alert('Ouverture impossible : '+err.message);}};
 $('#bSvg').onclick=()=>download(new Blob([buildSVG()],{type:'image/svg+xml'}),`vecto-${stamp()}.svg`);
 $('#bPdf').onclick=exportPDF;
+$('#bPts').onclick=()=>{showPts=!showPts;$('#bPts').classList.toggle('on',showPts);drawPts();};
 $('#bRiso').onclick=sendToRiso;
 
 /* calques */
@@ -1008,7 +1127,7 @@ document.addEventListener('keydown',e=>{
   if(ctrl&&(k==='a'||k==='A')){e.preventDefault();setTool('select');setSel(allTop());return;}
   if(ctrl&&(k==='c'||k==='C')){if(sel.length){S.clip=sel.map(s=>s.exportJSON({asString:true}));}return;}
   if(ctrl&&(k==='x'||k==='X')){if(sel.length){S.clip=sel.map(s=>s.exportJSON({asString:true}));cmd('del');}return;}
-  if(ctrl&&(k==='v'||k==='V')){if(S.clip){ensureLayer(true);const items=S.clip.map(j=>{const it=activeLayer.importJSON(j);it.position=it.position.add(new P.Point(5,5));return it;});S.clip=items.map(s=>s.exportJSON({asString:true}));setTool('select');setSel(items);commit();}e.preventDefault();return;}
+  if(ctrl&&(k==='v'||k==='V')){if(S.clip){ensureLayer(true);const items=S.clip.map(j=>{const it=activeLayer.importJSON(j);moveIt(it,new P.Point(5,5));return it;});S.clip=items.map(s=>s.exportJSON({asString:true}));setTool('select');setSel(items);commit();}e.preventDefault();return;}
   if(ctrl&&k==='0'){e.preventDefault();fitView();return;}
   if(ctrl&&(k==='s'||k==='S')){e.preventDefault();$('#bSave').click();return;}
   if(ctrl)return;
@@ -1018,7 +1137,7 @@ document.addEventListener('keydown',e=>{
   if(k.startsWith('Arrow')&&(sel.length||S.tool==='direct')){
     e.preventDefault();const s=e.shiftKey?10:1;const d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[k];const v=new P.Point(d);
     if(S.tool==='direct'){const segs=selectedSegs();if(segs.length){segs.forEach(x=>x.point=x.point.add(v));commit();return;}}
-    sel.forEach(x=>x.position=x.position.add(v));commit();return;
+    sel.forEach(x=>moveIt(x,v));commit();return;
   }
   if(k==='+'||k==='='){zoomAt(1.25);return;}
   if(k==='-'){zoomAt(0.8);return;}
