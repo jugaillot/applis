@@ -124,13 +124,44 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
       <button class="btn sm" id="pDup">Dupliquer</button>
       <button class="btn sm" id="pBlank">+ Page blanche</button>
       <button class="btn sm" id="pDel">Supprimer</button>
-      <span class="muted">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner</span>
+      <span class="muted">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : rogner / niveaux</b></span>
     </div>
     <div id="pages"><div id="empty">Glisse ici des PDF ou des images (JPG, PNG),<br>ou utilise « Ajouter des fichiers… ».</div></div>
     <div class="bar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2></div>
     <div id="sheets"></div>
   </div>
 </main>
+<dialog id="edDlg" style="width:min(1080px,96vw);max-width:96vw">
+  <div class="dh" style="padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700" id="edTitle">Modifier la page</div>
+  <div style="display:grid;grid-template-columns:1fr 280px;min-height:0">
+    <div id="edStage" style="position:relative;background:#e9e7e1;height:min(72vh,720px);display:flex;align-items:center;justify-content:center;overflow:hidden;user-select:none">
+      <canvas id="edCv" style="box-shadow:0 2px 10px rgba(0,0,0,.2)"></canvas>
+      <div id="edCrop" style="position:absolute;border:2px solid var(--acc);box-shadow:0 0 0 9999px rgba(30,30,30,.45);cursor:move"></div>
+    </div>
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:min(72vh,720px)">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);font-weight:600">Rogner</div>
+      <div class="muted">Tire les bords ou les coins du cadre, ou saisis les marges à enlever.</div>
+      <div class="g2">
+        <label>Gauche (mm)<input type="number" step="0.5" min="0" id="cL"></label>
+        <label>Droite (mm)<input type="number" step="0.5" min="0" id="cR"></label>
+        <label>Haut (mm)<input type="number" step="0.5" min="0" id="cT"></label>
+        <label>Bas (mm)<input type="number" step="0.5" min="0" id="cB"></label>
+      </div>
+      <div class="muted" id="cSize"></div>
+      <button class="btn sm" id="cReset" type="button">Ne pas rogner</button>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);font-weight:600;margin-top:6px">Niveaux</div>
+      <canvas id="lHist" width="248" height="70" style="width:100%;height:70px;background:#f7f6f2;border-radius:6px"></canvas>
+      <label>Noir <b id="lBv" style="color:var(--ink)"></b><input type="range" id="lB" min="0" max="254"></label>
+      <label>Gris moyens (gamma) <b id="lGv" style="color:var(--ink)"></b><input type="range" id="lG" min="0.2" max="3" step="0.01"></label>
+      <label>Blanc <b id="lWv" style="color:var(--ink)"></b><input type="range" id="lW" min="1" max="255"></label>
+      <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="lGray"> Noir et blanc (niveaux de gris)</label>
+      <div class="row" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="lAuto" type="button">Niveaux auto</button><button class="btn sm" id="lReset" type="button">Réinitialiser</button></div>
+      <div class="muted">Modifier les niveaux d’une page PDF la transforme en image (300 dpi) à l’export. Le rognage seul garde le PDF vectoriel.</div>
+      <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)" id="edAllBox"><input type="checkbox" id="edAll"> Appliquer à toutes les pages sélectionnées</label>
+    </div>
+  </div>
+  <div style="padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px"><button class="btn" id="edCancel">Annuler</button><button class="btn primary" id="edOk">Appliquer</button></div>
+</dialog>
 <div id="busy" hidden>…</div>
 <div id="dropAll" hidden>Dépose tes fichiers</div>
 
@@ -198,7 +229,19 @@ function blankPage(){
 
 /* ---------- mise en page ---------- */
 const effRot=p=>((p.srcRot+p.rot)%360+360)%360;
-function effSize(p){const r=effRot(p);return r%180?[p.h,p.w]:[p.w,p.h];}
+const NOCROP={l:0,t:0,r:0,b:0};
+const cropOf=p=>p.crop||NOCROP;
+function cropSize(p){const c=cropOf(p);return [p.w*(1-c.l-c.r),p.h*(1-c.t-c.b)];}
+function effSize(p){const r=effRot(p),[w,h]=cropSize(p);return r%180?[h,w]:[w,h];}
+const hasLevels=p=>!!(p.levels&&(p.levels.black>0||p.levels.white<255||Math.abs(p.levels.gamma-1)>1e-3||p.levels.gray));
+const editSig=p=>JSON.stringify([cropOf(p),hasLevels(p)?p.levels:null]);
+function levelsLUT(L){const t=new Uint8ClampedArray(256);const b=L.black,w=Math.max(b+1,L.white),g=L.gamma||1;for(let v=0;v<256;v++){let x=(v-b)/(w-b);x=x<0?0:x>1?1:x;t[v]=Math.round(Math.pow(x,1/g)*255);}return t;}
+function applyLevels(c,L){if(!L)return c;const x=c.getContext('2d',{willReadFrequently:true});const im=x.getImageData(0,0,c.width,c.height),d=im.data,t=levelsLUT(L);
+  for(let i=0;i<d.length;i+=4){if(L.gray){const y=Math.round(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2]);d[i]=d[i+1]=d[i+2]=t[y];}else{d[i]=t[d[i]];d[i+1]=t[d[i+1]];d[i+2]=t[d[i+2]];}}x.putImageData(im,0,0);return c;}
+/* image d'une page (non tournée) avec rognage + niveaux */
+function editedCanvas(src,p){const c=cropOf(p),W=src.width,H=src.height;const sx=Math.round(c.l*W),sy=Math.round(c.t*H),sw=Math.max(1,Math.round(W*(1-c.l-c.r))),sh=Math.max(1,Math.round(H*(1-c.t-c.b)));
+  const o=document.createElement('canvas');o.width=sw;o.height=sh;const x=o.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,sw,sh);x.drawImage(src,sx,sy,sw,sh,0,0,sw,sh);return hasLevels(p)?applyLevels(o,p.levels):o;}
+function vis(p){const k=editSig(p);if(p._vis&&p._visK===k&&p._visT===p.thumb)return p._vis;p._vis=(p.crop||hasLevels(p))?editedCanvas(p.thumb,p):p.thumb;p._visK=k;p._visT=p.thumb;return p._vis;}
 const GRIDS={1:[[1,1]],2:[[1,2],[2,1]],3:[[1,3],[3,1]],4:[[2,2],[1,4],[4,1]],6:[[2,3],[3,2]],8:[[2,4],[4,2]]};
 function sheetSize(){const o=S.opt;if(o.fmt==='custom')return[Math.max(20,+o.w||210),Math.max(20,+o.h||297)];return FORMATS[o.fmt]||FORMATS.A4;}
 function cellsFor(W,H,cols,rows){
@@ -249,7 +292,7 @@ function placeIn(p,cell){
 
 /* ---------- affichage des pages ---------- */
 function thumbCanvas(p,max){
-  const r=effRot(p),t=p.thumb;const sw=r%180?t.height:t.width,sh=r%180?t.width:t.height;
+  const r=effRot(p),t=vis(p);const sw=r%180?t.height:t.width,sh=r%180?t.width:t.height;
   const k=Math.min(1,max/Math.max(sw,sh));
   const c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));
   const x=c.getContext('2d');x.translate(c.width/2,c.height/2);x.rotate(r*Math.PI/180);x.drawImage(t,-t.width*k/2,-t.height*k/2,t.width*k,t.height*k);
@@ -265,7 +308,7 @@ function renderPages(){
     const th=document.createElement('div');th.className='th';th.appendChild(thumbCanvas(p,104));
     const f=S.files.get(p.fileId);
     d.innerHTML='';d.appendChild(th);
-    const lb=document.createElement('div');lb.className='lb';lb.textContent=p.blank?'Page blanche':(f?f.name+(f.type==='pdf'?' · p.'+(p.index+1):''):'');lb.title=lb.textContent;d.appendChild(lb);
+    const lb=document.createElement('div');lb.className='lb';lb.textContent=(p.blank?'Page blanche':(f?f.name+(f.type==='pdf'?' · p.'+(p.index+1):''):''))+(p.crop?' · rognée':'')+(hasLevels(p)?' · niveaux':'');lb.title=lb.textContent;d.appendChild(lb);
     const no=document.createElement('span');no.className='no';no.textContent=i+1;d.appendChild(no);
     box.appendChild(d);
   });
@@ -298,7 +341,7 @@ function _renderSheets(){
     x.strokeStyle='rgba(30,136,255,.25)';x.setLineDash([3,3]);
     sl.forEach(cell=>x.strokeRect(cell.x*scale,cell.y*scale,cell.w*scale,cell.h*scale));x.setLineDash([]);
     pages.forEach((p,i)=>{
-      const cell=sl[i];if(!cell)return;const q=placeIn(p,cell);const r=effRot(p),t=p.thumb;
+      const cell=sl[i];if(!cell)return;const q=placeIn(p,cell);const r=effRot(p),t=vis(p);
       const dw=(r%180?q.h:q.w)*scale,dh=(r%180?q.w:q.h)*scale;
       x.save();x.translate(q.cx*scale,q.cy*scale);x.rotate(r*Math.PI/180);x.drawImage(t,-dw/2,-dh/2,dw,dh);
       x.strokeStyle='rgba(0,0,0,.15)';x.strokeRect(-dw/2,-dh/2,dw,dh);x.restore();
@@ -317,8 +360,31 @@ async function buildPDF(){
   const srcDocs=new Map(),embedded=new Map();
   async function getEmb(p){
     if(p.blank)return null;
-    const key=p.fileId+':'+p.index;if(embedded.has(key))return embedded.get(key);
+    const key=p.fileId+':'+p.index+':'+editSig(p);if(embedded.has(key))return embedded.get(key);
     const f=S.files.get(p.fileId);let e;
+    if(hasLevels(p)){
+      // niveaux modifiés : la page est convertie en image haute définition
+      let src;
+      if(f.type==='pdf'){const page=await f.doc.getPage(p.index+1);const v1=page.getViewport({scale:1,rotation:0});const k=Math.min(300/72,Math.sqrt(36e6/(v1.width*v1.height)));const v=page.getViewport({scale:k,rotation:0});src=document.createElement('canvas');src.width=Math.ceil(v.width);src.height=Math.ceil(v.height);const x=src.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,src.width,src.height);await page.render({canvasContext:x,viewport:v}).promise;}
+      else{src=document.createElement('canvas');src.width=f.img.naturalWidth;src.height=f.img.naturalHeight;src.getContext('2d').drawImage(f.img,0,0);}
+      const c=editedCanvas(src,p);const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.93));
+      const img=await out.embedJpg(await b.arrayBuffer());
+      e={kind:'img',obj:img,rot:f.type==='pdf'?p.srcRot:0};
+      embedded.set(key,e);return e;
+    }
+    if(f.type==='pdf'&&p.crop){
+      let src=srcDocs.get(f.id);if(!src){src=await PDFDocument.load(f.bytes,{ignoreEncryption:true});srcDocs.set(f.id,src);}
+      const page=src.getPage(p.index);const cb=page.getCropBox();const c=p.crop;
+      const [emb]=await out.embedPages([page],[{left:cb.x+c.l*cb.width,bottom:cb.y+c.b*cb.height,right:cb.x+cb.width*(1-c.r),top:cb.y+cb.height*(1-c.t)}]);
+      e={kind:'page',obj:emb,rot:((page.getRotation().angle%360)+360)%360};
+      embedded.set(key,e);return e;
+    }
+    if(f.type==='img'&&p.crop){
+      const src=document.createElement('canvas');src.width=f.img.naturalWidth;src.height=f.img.naturalHeight;src.getContext('2d').drawImage(f.img,0,0);
+      const c=editedCanvas(src,p);const png=f.mime==='png';const b=await new Promise(r=>c.toBlob(r,png?'image/png':'image/jpeg',0.95));
+      const img=png?await out.embedPng(await b.arrayBuffer()):await out.embedJpg(await b.arrayBuffer());
+      e={kind:'img',obj:img,rot:0};embedded.set(key,e);return e;
+    }
     if(f.type==='pdf'){
       let src=srcDocs.get(f.id);if(!src){src=await PDFDocument.load(f.bytes,{ignoreEncryption:true});srcDocs.set(f.id,src);}
       const page=src.getPage(p.index);
@@ -376,6 +442,85 @@ async function printPDF(){
 
 /* ---------- interactions pages ---------- */
 const PG=$('#pages');
+/* ---------- éditeur de page : rogner + niveaux ---------- */
+const ED={p:null,base:null,crop:null,lv:null,hist:null,k:1,dw:0,dh:0};
+// rognage stocké sur la page non tournée ; affichage dans le sens où on voit la page
+function toDisp(u,r){return r===90?{l:u.b,t:u.l,r:u.t,b:u.r}:r===180?{l:u.r,t:u.b,r:u.l,b:u.t}:r===270?{l:u.t,t:u.r,r:u.b,b:u.l}:{...u};}
+function fromDisp(d,r){return r===90?{b:d.l,l:d.t,t:d.r,r:d.b}:r===180?{r:d.l,b:d.t,l:d.r,t:d.b}:r===270?{t:d.l,r:d.t,b:d.r,l:d.b}:{...d};}
+async function openEditor(p){
+  if(p.blank)return;
+  await busy('Préparation de la page…');
+  const f=S.files.get(p.fileId);let base;
+  if(f.type==='pdf'){const page=await f.doc.getPage(p.index+1);const v1=page.getViewport({scale:1,rotation:0});const k=Math.min(4,1400/Math.max(v1.width,v1.height));const v=page.getViewport({scale:k,rotation:0});base=document.createElement('canvas');base.width=Math.ceil(v.width);base.height=Math.ceil(v.height);const x=base.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,base.width,base.height);await page.render({canvasContext:x,viewport:v}).promise;}
+  else{const k=Math.min(1,1400/Math.max(f.img.naturalWidth,f.img.naturalHeight));base=document.createElement('canvas');base.width=Math.round(f.img.naturalWidth*k);base.height=Math.round(f.img.naturalHeight*k);base.getContext('2d').drawImage(f.img,0,0,base.width,base.height);}
+  await busy();
+  ED.p=p;ED.base=base;const r=effRot(p);ED.r=r;
+  ED.crop=toDisp(cropOf(p),r);ED.lv=Object.assign({black:0,white:255,gamma:1,gray:false},p.levels||{});
+  // histogramme (luminance)
+  const d=base.getContext('2d',{willReadFrequently:true}).getImageData(0,0,base.width,base.height).data;const h=new Uint32Array(256);for(let i=0;i<d.length;i+=16)h[Math.round(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])]++;ED.hist=h;
+  $('#edTitle').textContent='Modifier la page '+(S.pages.indexOf(p)+1)+(f?' — '+f.name:'');
+  $('#edAllBox').hidden=S.sel.size<2||!S.sel.has(p.uid);$('#edAll').checked=false;
+  $('#edDlg').showModal();edSyncInputs();edRender();
+}
+function edDispSize(){const p=ED.p,r=ED.r;return r%180?[p.h/PT,p.w/PT]:[p.w/PT,p.h/PT];}   // mm, page entière affichée
+function edRender(){
+  const st=$('#edStage').getBoundingClientRect();const r=ED.r,b=ED.base;
+  const bw=r%180?b.height:b.width,bh=r%180?b.width:b.height;
+  const k=Math.min((st.width-40)/bw,(st.height-40)/bh);ED.dw=Math.round(bw*k);ED.dh=Math.round(bh*k);
+  const c=$('#edCv');c.width=ED.dw;c.height=ED.dh;const x=c.getContext('2d');
+  // aperçu avec niveaux (sur une copie réduite)
+  const sm=document.createElement('canvas');sm.width=Math.round(b.width*k);sm.height=Math.round(b.height*k);sm.getContext('2d').drawImage(b,0,0,sm.width,sm.height);
+  const lv=(ED.lv.black>0||ED.lv.white<255||Math.abs(ED.lv.gamma-1)>1e-3||ED.lv.gray)?ED.lv:null;if(lv)applyLevels(sm,lv);
+  x.save();x.translate(c.width/2,c.height/2);x.rotate(r*Math.PI/180);x.drawImage(sm,-sm.width/2,-sm.height/2);x.restore();
+  edPlaceCrop();edHist();
+}
+function edPlaceCrop(){
+  const c=$('#edCv').getBoundingClientRect(),st=$('#edStage').getBoundingClientRect(),cr=ED.crop,box=$('#edCrop');
+  box.style.left=(c.left-st.left+cr.l*c.width)+'px';box.style.top=(c.top-st.top+cr.t*c.height)+'px';
+  box.style.width=Math.max(4,c.width*(1-cr.l-cr.r))+'px';box.style.height=Math.max(4,c.height*(1-cr.t-cr.b))+'px';
+  const [W,H]=edDispSize();$('#cSize').textContent=`Taille après rognage : ${Math.round(W*(1-cr.l-cr.r)*10)/10} × ${Math.round(H*(1-cr.t-cr.b)*10)/10} mm`;
+}
+function edHist(){const c=$('#lHist'),x=c.getContext('2d'),h=ED.hist;x.clearRect(0,0,c.width,c.height);let m=0;for(let i=1;i<255;i++)m=Math.max(m,h[i]);m=m||1;x.fillStyle='#9a978f';for(let i=0;i<256;i++){const v=Math.min(1,h[i]/m)*c.height;x.fillRect(i*c.width/256,c.height-v,c.width/256+0.5,v);}
+  x.fillStyle='rgba(0,0,0,.08)';x.fillRect(0,0,ED.lv.black*c.width/256,c.height);x.fillRect(ED.lv.white*c.width/256,0,c.width,c.height);}
+function edSyncInputs(){
+  const [W,H]=edDispSize(),cr=ED.crop,r1=v=>Math.round(v*10)/10;
+  $('#cL').value=r1(cr.l*W);$('#cR').value=r1(cr.r*W);$('#cT').value=r1(cr.t*H);$('#cB').value=r1(cr.b*H);
+  $('#lB').value=ED.lv.black;$('#lW').value=ED.lv.white;$('#lG').value=ED.lv.gamma;$('#lGray').checked=!!ED.lv.gray;
+  $('#lBv').textContent=ED.lv.black;$('#lWv').textContent=ED.lv.white;$('#lGv').textContent=(+ED.lv.gamma).toFixed(2);
+}
+['cL','cR','cT','cB'].forEach(id=>$('#'+id).addEventListener('input',()=>{const [W,H]=edDispSize();const v=k=>Math.max(0,parseFloat($('#'+k).value)||0);let l=v('cL')/W,r=v('cR')/W,t=v('cT')/H,b=v('cB')/H;if(l+r>0.98){r=Math.max(0,0.98-l);}if(t+b>0.98){b=Math.max(0,0.98-t);}ED.crop={l,t,r,b};edPlaceCrop();}));
+$('#cReset').onclick=()=>{ED.crop={l:0,t:0,r:0,b:0};edSyncInputs();edPlaceCrop();};
+let edT=0;const edLater=()=>{clearTimeout(edT);edT=setTimeout(edRender,40);};
+$('#lB').oninput=e=>{ED.lv.black=Math.min(+e.target.value,ED.lv.white-1);edSyncInputs();edLater();};
+$('#lW').oninput=e=>{ED.lv.white=Math.max(+e.target.value,ED.lv.black+1);edSyncInputs();edLater();};
+$('#lG').oninput=e=>{ED.lv.gamma=+e.target.value;edSyncInputs();edLater();};
+$('#lGray').onchange=e=>{ED.lv.gray=e.target.checked;edLater();};
+$('#lReset').onclick=()=>{ED.lv={black:0,white:255,gamma:1,gray:ED.lv.gray};edSyncInputs();edRender();};
+$('#lAuto').onclick=()=>{const h=ED.hist;let tot=0;for(let i=0;i<256;i++)tot+=h[i];let a=0,lo=0,hi=255;for(let i=0;i<256;i++){a+=h[i];if(a>tot*0.005){lo=i;break;}}a=0;for(let i=255;i>=0;i--){a+=h[i];if(a>tot*0.005){hi=i;break;}}ED.lv.black=Math.min(lo,hi-1);ED.lv.white=Math.max(hi,lo+1);ED.lv.gamma=1;edSyncInputs();edRender();};
+// glisser le cadre de rognage
+(function(){
+  const box=$('#edCrop');let drag=null;
+  box.addEventListener('mousemove',e=>{if(drag)return;const r=box.getBoundingClientRect(),m=8;const L=e.clientX-r.left<m,R=r.right-e.clientX<m,T=e.clientY-r.top<m,B=r.bottom-e.clientY<m;box.style.cursor=(T&&L)||(B&&R)?'nwse-resize':(T&&R)||(B&&L)?'nesw-resize':L||R?'ew-resize':T||B?'ns-resize':'move';});
+  box.addEventListener('mousedown',e=>{e.preventDefault();const r=box.getBoundingClientRect(),m=8;drag={L:e.clientX-r.left<m,R:r.right-e.clientX<m,T:e.clientY-r.top<m,B:r.bottom-e.clientY<m,x:e.clientX,y:e.clientY,c:{...ED.crop}};if(!drag.L&&!drag.R&&!drag.T&&!drag.B)drag.move=true;});
+  window.addEventListener('mousemove',e=>{if(!drag)return;const c=$('#edCv').getBoundingClientRect();const dx=(e.clientX-drag.x)/c.width,dy=(e.clientY-drag.y)/c.height,o=drag.c,n={...o};const cl=v=>Math.max(0,Math.min(0.98,v));
+    if(drag.move){const w=1-o.l-o.r,h=1-o.t-o.b;n.l=Math.max(0,Math.min(1-w,o.l+dx));n.r=1-w-n.l;n.t=Math.max(0,Math.min(1-h,o.t+dy));n.b=1-h-n.t;}
+    else{if(drag.L)n.l=cl(Math.min(o.l+dx,0.98-o.r));if(drag.R)n.r=cl(Math.min(o.r-dx,0.98-o.l));if(drag.T)n.t=cl(Math.min(o.t+dy,0.98-o.b));if(drag.B)n.b=cl(Math.min(o.b-dy,0.98-o.t));}
+    ED.crop=n;edSyncInputs();edPlaceCrop();});
+  window.addEventListener('mouseup',()=>{drag=null;});
+})();
+$('#edCancel').onclick=()=>$('#edDlg').close();
+$('#edOk').onclick=()=>{
+  const lv=ED.lv,lvOn=lv.black>0||lv.white<255||Math.abs(lv.gamma-1)>1e-3||lv.gray;
+  const targets=$('#edAll').checked?S.pages.filter(q=>S.sel.has(q.uid)&&!q.blank):[ED.p];
+  for(const q of targets){
+    const u=fromDisp(ED.crop,effRot(q));const any=u.l>1e-4||u.t>1e-4||u.r>1e-4||u.b>1e-4;
+    q.crop=any?{l:u.l,t:u.t,r:u.r,b:u.b}:null;q.levels=lvOn?{black:lv.black,white:lv.white,gamma:lv.gamma,gray:!!lv.gray}:null;
+  }
+  $('#edDlg').close();renderPages();renderSheets();
+};
+window.addEventListener('resize',()=>{if($('#edDlg').open)edRender();});
+PG.addEventListener('dblclick',e=>{const d=e.target.closest('.pg');if(!d)return;const p=S.pages.find(x=>x.uid===d.dataset.u);if(p)openEditor(p);});
+
 PG.addEventListener('click',e=>{
   const d=e.target.closest('.pg');if(!d)return;const u=d.dataset.u;
   const idx=S.pages.findIndex(p=>p.uid===u);
@@ -441,6 +586,6 @@ $('#oFmt').onchange=e=>{S.opt.fmt=e.target.value;$('#customBox').hidden=S.opt.fm
 renderPages();renderSheets();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "Atelier Compil", "sections": [{"title": "Pages", "keys": [["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "Atelier Compil", "sections": [{"title": "Pages", "keys": [["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
 </body>
 </html>
