@@ -37,7 +37,7 @@ main{flex:1;display:grid;grid-template-columns:112px 1fr 330px;min-height:0}
 #view{max-width:100%;max-height:100%;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 #cropBox{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);cursor:move}
 #cropBox::before,#cropBox::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent calc(33.33% - .5px),rgba(255,255,255,.45) calc(33.33% - .5px),rgba(255,255,255,.45) calc(33.33% + .5px),transparent calc(33.33% + .5px),transparent calc(66.66% - .5px),rgba(255,255,255,.45) calc(66.66% - .5px),rgba(255,255,255,.45) calc(66.66% + .5px),transparent calc(66.66% + .5px))}
-#cropBox::after{transform:rotate(90deg) scale(var(--sy,1),var(--sx,1))}
+#cropBox::after{background:linear-gradient(180deg,transparent calc(33.33% - .5px),rgba(255,255,255,.45) calc(33.33% - .5px),rgba(255,255,255,.45) calc(33.33% + .5px),transparent calc(33.33% + .5px),transparent calc(66.66% - .5px),rgba(255,255,255,.45) calc(66.66% - .5px),rgba(255,255,255,.45) calc(66.66% + .5px),transparent calc(66.66% + .5px))}
 #empty{color:#bbb;text-align:center;font-size:14px;padding:30px;border:2px dashed #555;border-radius:14px}
 #bar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--panel);border-top:1px solid var(--line);flex-wrap:wrap}
 #info{margin-left:auto}
@@ -45,6 +45,11 @@ aside{overflow:auto;background:var(--panel);border-left:1px solid var(--line);pa
 details{border-bottom:1px solid var(--line)}
 details>summary{list-style:none;cursor:pointer;padding:11px 0;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);font-weight:600;display:flex;align-items:center;justify-content:space-between}
 details>summary::-webkit-details-marker{display:none}
+details>summary .grip{font-style:normal;letter-spacing:-2px;margin-right:8px;color:#c9c5bc;cursor:grab}
+details.dragging{opacity:.4}
+details.dropBefore{box-shadow:0 -3px 0 var(--acc)}
+details.dropAfter{box-shadow:0 3px 0 var(--acc)}
+#stage.cropping{cursor:crosshair}
 details>summary::after{content:"▸";font-size:12px}
 details[open]>summary::after{content:"▾"}
 .sec{padding:0 0 12px;display:flex;flex-direction:column;gap:8px}
@@ -100,18 +105,18 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
     </div>
   </div>
   <aside>
-    <details open><summary>Préréglages</summary><div class="sec"><div id="presets"></div>
-      <div class="row"><button class="btn sm" id="bSavePreset">+ Enregistrer mes réglages comme préréglage</button></div></div></details>
-    <details open><summary>Lumière</summary><div class="sec" id="secLight"></div></details>
-    <details><summary>Niveaux et courbe</summary><div class="sec">
+    <details data-sec="filtres"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Filtres</span></summary><div class="sec"><div id="presets"></div>
+      <div class="row"><button class="btn sm" id="bSavePreset">+ Enregistrer mes réglages comme filtre</button></div></div></details>
+    <details data-sec="lumiere"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Lumière</span></summary><div class="sec" id="secLight"></div></details>
+    <details data-sec="niveaux"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Niveaux et courbe</span></summary><div class="sec">
       <canvas id="hist" width="300" height="56"></canvas>
       <div id="secLevels"></div>
       <div class="muted">Courbe : clique pour ajouter un point, glisse pour le déplacer, double-clic pour le retirer.</div>
       <canvas id="curve" width="300" height="300"></canvas>
       <div class="row"><button class="btn sm" id="bCurveReset">Courbe droite</button><button class="btn sm" id="bAutoLv">Niveaux auto</button></div>
     </div></details>
-    <details open><summary>Couleur</summary><div class="sec" id="secColor"></div></details>
-    <details><summary>Effets</summary><div class="sec" id="secFx">
+    <details data-sec="couleur"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Couleur</span></summary><div class="sec" id="secColor"></div></details>
+    <details data-sec="effets"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Effets</span></summary><div class="sec" id="secFx">
       <label class="chk"><input type="checkbox" id="fBw"> Noir et blanc</label>
       <label class="chk"><input type="checkbox" id="fDuo"> Bichromie (duotone)</label>
       <div class="g2" id="duoBox"><label>Ombres<input type="color" id="fDuoA" value="#1b2a6b"></label><label>Lumières<input type="color" id="fDuoB" value="#ffb3c8"></label></div>
@@ -119,8 +124,8 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
       <div class="g2"><label>Ombres<input type="color" id="fSplitA" value="#1f6f78"></label><label>Lumières<input type="color" id="fSplitB" value="#ffb070"></label></div>
       <div id="secFx2"></div>
     </div></details>
-    <details><summary>Détails</summary><div class="sec" id="secDetail"></div></details>
-    <details id="dGeo"><summary>Rognage et rotation</summary><div class="sec">
+    <details data-sec="details"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Détails</span></summary><div class="sec" id="secDetail"></div></details>
+    <details data-sec="rognage" id="dGeo"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Rognage et rotation</span></summary><div class="sec">
       <label>Proportions<select id="gRatio">
         <option value="free">Libre</option><option value="orig">Originale</option><option value="1">1:1 (carré)</option><option value="0.8">4:5</option><option value="1.25">5:4</option>
         <option value="1.5">3:2</option><option value="0.6667">2:3</option><option value="1.3333">4:3</option><option value="0.75">3:4</option><option value="1.7778">16:9</option><option value="0.5625">9:16</option>
@@ -128,7 +133,7 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
       <div class="sl"><span>Redresser</span><b id="vStraight">0°</b><input type="range" id="gStraight" min="-45" max="45" step="0.1" value="0"></div>
       <div class="row"><button class="btn sm" id="gRotL">⟲ 90°</button><button class="btn sm" id="gRotR">⟳ 90°</button><button class="btn sm" id="gFlipH">⇋ Miroir</button><button class="btn sm" id="gFlipV">⥮ Miroir</button><button class="btn sm" id="gCropReset">Pas de rognage</button></div>
     </div></details>
-    <details open><summary>Taille et export JPG</summary><div class="sec">
+    <details data-sec="export"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Taille et export JPG</span></summary><div class="sec">
       <div class="seg" id="xMode"><button data-v="px" class="on">Pixels</button><button data-v="pct">%</button><button data-v="kb">Poids</button></div>
       <div id="xPx" class="g2"><label>Largeur (px)<input type="number" id="xW" min="1"></label><label>Hauteur (px)<input type="number" id="xH" min="1"></label></div>
       <label class="chk" id="xLockBox"><input type="checkbox" id="xLock" checked> Garder les proportions</label>
@@ -356,8 +361,8 @@ function fitRatio(it){
 (function(){
   const box=$('#cropBox');let drag=null;
   const zone=e=>{const r=box.getBoundingClientRect(),m=10;return {L:e.clientX-r.left<m,R:r.right-e.clientX<m,T:e.clientY-r.top<m,B:r.bottom-e.clientY<m};};
-  box.addEventListener('mousemove',e=>{if(drag)return;const z=zone(e);box.style.cursor=(z.T&&z.L)||(z.B&&z.R)?'nwse-resize':(z.T&&z.R)||(z.B&&z.L)?'nesw-resize':z.L||z.R?'ew-resize':z.T||z.B?'ns-resize':'move';});
-  box.addEventListener('mousedown',e=>{e.preventDefault();const it=cur();if(!it)return;const z=zone(e);drag=Object.assign(z,{x:e.clientX,y:e.clientY,c:{...it.st.crop},move:!(z.L||z.R||z.T||z.B)});pushHist(it);});
+  box.addEventListener('mousemove',e=>{if(drag)return;const z=zone(e);const it=cur();const full=it&&it.st.crop.w>0.995&&it.st.crop.h>0.995;box.style.cursor=full&&!(z.L||z.R||z.T||z.B)?'crosshair':(z.T&&z.L)||(z.B&&z.R)?'nwse-resize':(z.T&&z.R)||(z.B&&z.L)?'nesw-resize':z.L||z.R?'ew-resize':z.T||z.B?'ns-resize':'move';});
+  box.addEventListener('mousedown',e=>{e.preventDefault();const it=cur();if(!it)return;const z=zone(e);const cr0=it.st.crop;if(!(z.L||z.R||z.T||z.B)&&cr0.w>0.995&&cr0.h>0.995){startDraw(e);return;}drag=Object.assign(z,{x:e.clientX,y:e.clientY,c:{...it.st.crop},move:!(z.L||z.R||z.T||z.B)});pushHist(it);});
   window.addEventListener('mousemove',e=>{
     if(!drag)return;const it=cur();if(!it)return;const v=view.getBoundingClientRect();const dx=(e.clientX-drag.x)/v.width,dy=(e.clientY-drag.y)/v.height,o=drag.c;let n={...o};const min=0.02;
     if(drag.move){n.x=Math.min(1-o.w,Math.max(0,o.x+dx));n.y=Math.min(1-o.h,Math.max(0,o.y+dy));}
@@ -376,6 +381,21 @@ function fitRatio(it){
     it.st.crop=n;placeCropBox();updateExportInfo();
   });
   window.addEventListener('mouseup',()=>{if(drag){drag=null;const it=cur();if(it){renderStrip();}}});
+  // tracer une nouvelle fenêtre de rognage en glissant sur l'image
+  $('#stage').addEventListener('mousedown',e=>{if(!S.cropMode||e.button!==0||box.contains(e.target))return;startDraw(e);});
+  function startDraw(e){
+    const it=cur();if(!it)return;e.preventDefault();
+    const v=view.getBoundingClientRect();const cl=(a)=>Math.min(1,Math.max(0,a));
+    const ax=cl((e.clientX-v.left)/v.width),ay=cl((e.clientY-v.top)/v.height);pushHist(it);const [W1,H1]=frameSize(it.W,it.H,it.st);const R=ratioVal(it);
+    const mv=ev=>{let bx=cl((ev.clientX-v.left)/v.width),by=cl((ev.clientY-v.top)/v.height);
+      if(R){let w=Math.abs(bx-ax)*W1,h=Math.abs(by-ay)*H1;if(w/h>R)h=w/R;else w=h*R;
+        const maxW=(bx>=ax?1-ax:ax)*W1,maxH=(by>=ay?1-ay:ay)*H1;if(w>maxW){w=maxW;h=w/R;}if(h>maxH){h=maxH;w=h*R;}
+        bx=ax+(bx>=ax?1:-1)*w/W1;by=ay+(by>=ay?1:-1)*h/H1;}
+      const x=Math.min(ax,bx),y=Math.min(ay,by),w=Math.abs(bx-ax),h=Math.abs(by-ay);
+      if(w>0.01&&h>0.01){it.st.crop={x,y,w,h};placeCropBox();updateExportInfo();}};
+    const up=()=>{window.removeEventListener('mousemove',mv);window.removeEventListener('mouseup',up);renderStrip();};
+    window.addEventListener('mousemove',mv);window.addEventListener('mouseup',up);
+  }
 })();
 
 /* =====================================================================
@@ -449,6 +469,18 @@ $('#xKbV').oninput=e=>change(st=>{st.out.kb=Math.max(10,+e.target.value||500);},
 $('#xQ').oninput=e=>{change(st=>{st.out.q=+e.target.value;},true);$('#vQ').textContent=e.target.value;};
 $('#xSuffix').oninput=e=>change(st=>{st.out.suffix=e.target.value;},true);
 
+
+/* ---------- menus : ordre par glisser-déposer (mémorisé) ---------- */
+(function(){
+  const aside=document.querySelector('aside');let dragged=null;
+  try{const ord=JSON.parse(localStorage.getItem('atelierPhoto.ordre')||'[]');ord.forEach(id=>{const d=aside.querySelector(`details[data-sec="${id}"]`);if(d)aside.appendChild(d);});}catch(e){}
+  const clear=()=>aside.querySelectorAll('details').forEach(d=>d.classList.remove('dropBefore','dropAfter'));
+  aside.addEventListener('dragstart',e=>{const sm=e.target.closest&&e.target.closest('summary');if(!sm){return;}dragged=sm.parentElement;dragged.classList.add('dragging');e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',dragged.dataset.sec);}catch(_){}});
+  aside.addEventListener('dragover',e=>{if(!dragged)return;const d=e.target.closest('details');if(!d||d===dragged)return;e.preventDefault();clear();const r=d.getBoundingClientRect();d.classList.add(e.clientY<r.top+r.height/2?'dropBefore':'dropAfter');});
+  aside.addEventListener('drop',e=>{if(!dragged)return;e.preventDefault();const d=e.target.closest('details');if(d&&d!==dragged){const r=d.getBoundingClientRect();if(e.clientY<r.top+r.height/2)aside.insertBefore(dragged,d);else aside.insertBefore(dragged,d.nextSibling);try{localStorage.setItem('atelierPhoto.ordre',JSON.stringify([...aside.querySelectorAll('details')].map(x=>x.dataset.sec)));}catch(_){}}});
+  aside.addEventListener('dragend',()=>{if(dragged)dragged.classList.remove('dragging');dragged=null;clear();});
+})();
+
 /* ---------- préréglages ---------- */
 function userPresets(){try{return JSON.parse(localStorage.getItem('atelierPhoto.presets')||'[]');}catch(e){return [];}}
 function allPresets(){return PRESETS.concat(userPresets().map(p=>[p.name,p.v,true]));}
@@ -456,7 +488,7 @@ function applyPreset(name){const p=allPresets().find(x=>x[0]===name);if(!p)retur
 let presetBusy=false;
 async function renderPresets(){
   const box=$('#presets');const it=cur();const list=allPresets();
-  box.innerHTML=list.map(([n,,u])=>`<button class="pr" data-name="${n.replace(/"/g,'&quot;')}" title="${u?'Préréglage perso — clic droit pour supprimer':n}"><canvas width="96" height="96"></canvas><span>${n}</span></button>`).join('');
+  box.innerHTML=list.map(([n,,u])=>`<button class="pr" data-name="${n.replace(/"/g,'&quot;')}" title="${u?'Filtre perso — clic droit pour supprimer':n}"><canvas width="96" height="96"></canvas><span>${n}</span></button>`).join('');
   if(!it||presetBusy)return;presetBusy=true;
   try{const src=await ensurePrev(it);const [cw,ch]=outCrop(it);const k=96/Math.min(cw,ch);
     const base=geom(src,it.st,Math.max(1,Math.round(cw*k)),Math.max(1,Math.round(ch*k)));
@@ -466,8 +498,8 @@ async function renderPresets(){
   syncLabels();
 }
 $('#presets').addEventListener('click',e=>{const b=e.target.closest('.pr');if(b)applyPreset(b.dataset.name);});
-$('#presets').addEventListener('contextmenu',e=>{const b=e.target.closest('.pr');if(!b)return;const u=userPresets();const i=u.findIndex(p=>p.name===b.dataset.name);if(i<0)return;e.preventDefault();if(confirm('Supprimer le préréglage « '+b.dataset.name+' » ?')){u.splice(i,1);localStorage.setItem('atelierPhoto.presets',JSON.stringify(u));renderPresets();}});
-$('#bSavePreset').onclick=()=>{const it=cur();if(!it)return;const n=prompt('Nom du préréglage :');if(!n)return;const v=clone(it.st);['crop','ratio','rot','flipH','flipV','straight','out','preset'].forEach(k=>delete v[k]);const u=userPresets().filter(p=>p.name!==n);u.push({name:n,v});try{localStorage.setItem('atelierPhoto.presets',JSON.stringify(u));}catch(e){}it.st.preset=n;renderPresets();};
+$('#presets').addEventListener('contextmenu',e=>{const b=e.target.closest('.pr');if(!b)return;const u=userPresets();const i=u.findIndex(p=>p.name===b.dataset.name);if(i<0)return;e.preventDefault();if(confirm('Supprimer le filtre « '+b.dataset.name+' » ?')){u.splice(i,1);localStorage.setItem('atelierPhoto.presets',JSON.stringify(u));renderPresets();}});
+$('#bSavePreset').onclick=()=>{const it=cur();if(!it)return;const n=prompt('Nom du filtre :');if(!n)return;const v=clone(it.st);['crop','ratio','rot','flipH','flipV','straight','out','preset'].forEach(k=>delete v[k]);const u=userPresets().filter(p=>p.name!==n);u.push({name:n,v});try{localStorage.setItem('atelierPhoto.presets',JSON.stringify(u));}catch(e){}it.st.preset=n;renderPresets();};
 
 /* =====================================================================
    Bande d'images (lot)
@@ -562,7 +594,7 @@ $('#bExportAll').onclick=async()=>{
 /* =====================================================================
    Divers : avant/après, rognage, annuler, glisser-déposer, clavier
    ===================================================================== */
-function toggleCrop(on){S.cropMode=on==null?!S.cropMode:on;$('#bCrop').classList.toggle('on',S.cropMode);$('#bCrop').textContent=S.cropMode?'✓ Terminer le rognage':'✂ Rogner';if(S.cropMode)$('#dGeo').open=true;schedule();if(!S.cropMode){const it=cur();if(it){refreshThumb(it);renderPresets();}}}
+function toggleCrop(on){S.cropMode=on==null?!S.cropMode:on;$('#bCrop').classList.toggle('on',S.cropMode);$('#stage').classList.toggle('cropping',S.cropMode);$('#bCrop').textContent=S.cropMode?'✓ Terminer le rognage':'✂ Rogner';if(S.cropMode)$('#dGeo').open=true;schedule();if(!S.cropMode){const it=cur();if(it){refreshThumb(it);renderPresets();}}}
 $('#bCrop').onclick=()=>toggleCrop();
 const setBefore=v=>{if(S.before===v)return;S.before=v;$('#bBefore').classList.toggle('on',v);schedule();};
 $('#bBefore').addEventListener('mousedown',()=>setBefore(true));window.addEventListener('mouseup',()=>setBefore(false));
@@ -599,6 +631,6 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(b)b.
 renderStrip();syncPanel();renderPresets();renderPreview();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "Atelier Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner (Entrée ou Échap pour terminer)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Clic droit sur un préréglage perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "Atelier Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
 </body>
 </html>

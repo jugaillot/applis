@@ -1,7 +1,7 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Bibliothèques et autres fichiers : copie locale d'abord, mise à jour en arrière-plan. */
-const VERSION = 'atelier-v5';
+const VERSION = 'atelier-v6';
 const PRECACHE = [
   '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/',
   '/vecto/potrace-worker.js', '/lib/sync.js', '/lib/help.js',
