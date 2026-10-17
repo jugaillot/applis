@@ -95,7 +95,7 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
 <main>
   <nav id="strip"></nav>
   <div id="center">
-    <div id="stage"><div id="empty">Glisse ici tes photos (JPG, PNG, WebP)<br>ou utilise « Ajouter des images… »</div><canvas id="view" hidden></canvas><div id="cropBox" hidden></div></div>
+    <div id="stage"><div id="empty">Glisse ici tes photos (JPG, PNG, WebP),<br>colle une image avec Ctrl+V<br>ou utilise « Ajouter des images… »</div><canvas id="view" hidden></canvas><div id="cropBox" hidden></div></div>
     <div id="bar">
       <button class="btn sm" id="bBefore" title="Maintenir pour voir l’original (touche B)">Avant / après</button>
       <button class="btn sm" id="bCrop" title="Rogner (C)">✂ Rogner</button>
@@ -643,6 +643,15 @@ window.addEventListener('dragenter',e=>{if(!isFiles(e))return;dragDepth++;$('#dr
 window.addEventListener('dragleave',e=>{if(!isFiles(e))return;dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)$('#dropAll').hidden=true;});
 window.addEventListener('dragover',e=>{if(isFiles(e))e.preventDefault();});
 window.addEventListener('drop',e=>{if(!isFiles(e))return;e.preventDefault();dragDepth=0;$('#dropAll').hidden=true;addFiles(e.dataTransfer.files);});
+/* coller une image (Ctrl+V) */
+document.addEventListener('paste',e=>{
+  if(/INPUT|TEXTAREA/.test(document.activeElement.tagName)&&document.activeElement.type==='text')return;
+  const items=[...(e.clipboardData?e.clipboardData.items:[])].filter(i=>i.kind==='file'&&/^image\//.test(i.type));
+  if(!items.length)return;e.preventDefault();
+  const t=new Date(),stamp=String(t.getHours()).padStart(2,'0')+'h'+String(t.getMinutes()).padStart(2,'0')+'-'+String(t.getSeconds()).padStart(2,'0');
+  const files=items.map((i,k)=>{const f=i.getAsFile();const ext=(f.type.split('/')[1]||'png').replace('jpeg','jpg');return new File([f],`colle-${stamp}${items.length>1?'-'+(k+1):''}.${ext}`,{type:f.type});});
+  addFiles(files);
+});
 $('#fIn').onchange=e=>{const f=[...e.target.files];e.target.value='';addFiles(f);};
 window.addEventListener('resize',schedule);
 // un bouton cliqué ne garde pas le focus (sinon Entrée le re-déclenche)
@@ -650,6 +659,6 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(b)b.
 renderStrip();syncPanel();renderPresets();renderPreview();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "Atelier Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "Atelier Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
 </body>
 </html>
