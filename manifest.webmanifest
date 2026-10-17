@@ -17,6 +17,7 @@
     {"name": "Riso", "url": "/riso/"},
     {"name": "Vecto", "url": "/vecto/"},
     {"name": "Compil", "url": "/compil/"},
-    {"name": "Plan", "url": "/plan/"}
+    {"name": "Plan", "url": "/plan/"},
+    {"name": "Photo", "url": "/photo/"}
   ]
 }
