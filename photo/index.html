@@ -88,6 +88,7 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
   <label class="btn primary">Ajouter des images…<input type="file" id="fIn" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/bmp" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bApplyAll" title="Copier les réglages de cette image sur les autres">Appliquer à toutes…</button>
+  <button class="btn" id="bPrint" title="Imprimer l’image retouchée (Ctrl+P)">Imprimer</button>
   <button class="btn" id="bExportOne">Exporter cette image</button>
   <button class="btn accent" id="bExportAll">Exporter tout (ZIP)</button>
 </header>
@@ -131,6 +132,7 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
         <option value="1.5">3:2</option><option value="0.6667">2:3</option><option value="1.3333">4:3</option><option value="0.75">3:4</option><option value="1.7778">16:9</option><option value="0.5625">9:16</option>
         <option value="0.7071">A4 portrait</option><option value="1.4142">A4 paysage</option></select></label>
       <div class="sl"><span>Redresser</span><b id="vStraight">0°</b><input type="range" id="gStraight" min="-45" max="45" step="0.1" value="0"></div>
+      <div class="row"><button class="btn sm" id="gCropBtn">✂ Rogner</button></div>
       <div class="row"><button class="btn sm" id="gRotL">⟲ 90°</button><button class="btn sm" id="gRotR">⟳ 90°</button><button class="btn sm" id="gFlipH">⇋ Miroir</button><button class="btn sm" id="gFlipV">⥮ Miroir</button><button class="btn sm" id="gCropReset">Pas de rognage</button></div>
     </div></details>
     <details data-sec="export"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Taille et export JPG</span></summary><div class="sec">
@@ -509,7 +511,7 @@ function renderStrip(){
   const s=$('#strip');
   s.innerHTML=S.items.map(it=>`<div class="th${it.id===S.cur?' on':''}${S.sel.has(it.id)?' sel':''}" data-id="${it.id}" title="${it.name.replace(/"/g,'&quot;')} — Ctrl+clic : sélection multiple"><canvas></canvas><button class="x" data-x="${it.id}" title="Retirer">✕</button></div>`).join('')+`<div class="muted" style="text-align:center">${S.items.length} image${S.items.length>1?'s':''}</div>`;
   S.items.forEach(it=>{const el=s.querySelector(`.th[data-id="${it.id}"] canvas`);el.width=it.thumb.width;el.height=it.thumb.height;el.getContext('2d').drawImage(it.thumb,0,0);});
-  const has=S.items.length>0;['#bExportOne','#bExportAll','#bApplyAll','#bReset','#bUndo','#bRedo','#bCrop','#bBefore'].forEach(id=>$(id).disabled=!has);
+  const has=S.items.length>0;['#bPrint','#bExportOne','#bExportAll','#bApplyAll','#bReset','#bUndo','#bRedo','#bCrop','#bBefore'].forEach(id=>$(id).disabled=!has);
 }
 $('#strip').addEventListener('click',e=>{
   const x=e.target.closest('[data-x]');if(x){const id=x.dataset.x;S.items=S.items.filter(i=>i.id!==id);S.sel.delete(id);if(S.cur===id)S.cur=S.items[0]?S.items[0].id:null;renderStrip();select(S.cur,true);return;}
@@ -594,8 +596,24 @@ $('#bExportAll').onclick=async()=>{
 /* =====================================================================
    Divers : avant/après, rognage, annuler, glisser-déposer, clavier
    ===================================================================== */
-function toggleCrop(on){S.cropMode=on==null?!S.cropMode:on;$('#bCrop').classList.toggle('on',S.cropMode);$('#stage').classList.toggle('cropping',S.cropMode);$('#bCrop').textContent=S.cropMode?'✓ Terminer le rognage':'✂ Rogner';if(S.cropMode)$('#dGeo').open=true;schedule();if(!S.cropMode){const it=cur();if(it){refreshThumb(it);renderPresets();}}}
+function toggleCrop(on){S.cropMode=on==null?!S.cropMode:on;$('#gCropBtn').classList.toggle('on',S.cropMode);$('#gCropBtn').textContent=S.cropMode?'✓ Terminer le rognage':'✂ Rogner';$('#bCrop').classList.toggle('on',S.cropMode);$('#stage').classList.toggle('cropping',S.cropMode);$('#bCrop').textContent=S.cropMode?'✓ Terminer le rognage':'✂ Rogner';if(S.cropMode)$('#dGeo').open=true;schedule();if(!S.cropMode){const it=cur();if(it){refreshThumb(it);renderPresets();}}}
 $('#bCrop').onclick=()=>toggleCrop();
+$('#gCropBtn').onclick=()=>toggleCrop();
+// double-clic dans la fenêtre de rognage : valider
+$('#stage').addEventListener('dblclick',e=>{if(S.cropMode){e.preventDefault();toggleCrop(false);}});
+/* impression */
+async function printCurrent(){
+  const it=cur();if(!it)return;await busy('Préparation de l’impression…');
+  try{
+    const c=await renderFull(it);const b=await toBlob(c,0.95);const url=URL.createObjectURL(b);const land=c.width>c.height;
+    const f=document.createElement('iframe');f.style.cssText='position:fixed;width:0;height:0;border:0;right:0;bottom:0';document.body.appendChild(f);
+    const d=f.contentDocument;d.open();d.write(`<!doctype html><html><head><title>${it.name}</title><style>@page{size:${land?'landscape':'portrait'};margin:8mm}html,body{margin:0;height:100%}body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%;object-fit:contain}</style></head><body><img src="${url}"></body></html>`);d.close();
+    const img=d.querySelector('img');await new Promise(r=>{if(img.complete)r();else{img.onload=r;img.onerror=r;}});
+    await busy();f.contentWindow.focus();f.contentWindow.print();
+    setTimeout(()=>{f.remove();URL.revokeObjectURL(url);},60000);
+  }catch(e){await busy();alert('Impression impossible : '+(e.message||e));}
+}
+$('#bPrint').onclick=printCurrent;
 const setBefore=v=>{if(S.before===v)return;S.before=v;$('#bBefore').classList.toggle('on',v);schedule();};
 $('#bBefore').addEventListener('mousedown',()=>setBefore(true));window.addEventListener('mouseup',()=>setBefore(false));
 $('#bReset').onclick=()=>{const it=cur();if(!it)return;pushHist(it);const out=it.st.out;it.st=DEF();it.st.out=out;syncPanel();schedule();refreshThumb(it);renderPresets();};
@@ -608,6 +626,7 @@ document.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase(),ctrl=e.ctrlKey||e.metaKey;
   if(ctrl&&k==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}
   if(ctrl&&k==='y'){e.preventDefault();redo();return;}
+  if(ctrl&&k==='p'){e.preventDefault();printCurrent();return;}
   if(ctrl&&k==='s'){e.preventDefault();$('#bExportOne').click();return;}
   if(ctrl&&k==='a'){e.preventDefault();S.items.forEach(i=>S.sel.add(i.id));renderStrip();return;}
   if(ctrl)return;
@@ -631,6 +650,6 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(b)b.
 renderStrip();syncPanel();renderPresets();renderPreview();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "Atelier Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "Atelier Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
 </body>
 </html>
