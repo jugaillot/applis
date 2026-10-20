@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atelier Dossiers</title>
+<link rel="stylesheet" href="../lib/toastui-editor.css">
+<link rel="stylesheet" href="../lib/fonts.css">
+<style>
+:root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#2aa198;--soft:#f7f6f2}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;margin:0 8px 0 0;font-weight:700}
+header h1 a{color:inherit;text-decoration:none}
+header h1 span{color:var(--acc)}
+.sp{flex:1}
+.muted{color:var(--mute);font-size:12px}
+.btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--soft);color:var(--ink);padding:5px 9px;border-radius:7px;font:inherit;cursor:pointer;white-space:nowrap;text-decoration:none}
+.btn:hover{border-color:#c9c5bc}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.accent{background:var(--acc);color:#fff;border-color:var(--acc)}
+.btn.sm{padding:3px 7px;font-size:12px}
+.btn.danger{color:#b3261e}
+#ghState{font-size:12px;color:var(--mute);cursor:pointer;white-space:nowrap}
+#ghState.err{color:#b3261e}
+main{flex:1;display:grid;grid-template-columns:250px 1fr;min-height:0}
+#side{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+#side input[type=search]{width:100%;font:inherit;border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:#fff}
+.sideh{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);font-weight:600;margin:6px 0 2px}
+.cl{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer;color:var(--ink)}
+.cl:hover{background:var(--soft)}
+.cl.on{background:var(--ink);color:#fff}
+.cl.drop{outline:2px dashed var(--acc)}
+.cl b{font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cl i{font-style:normal;font-size:11px;opacity:.6}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:2px 8px;font-size:12px;cursor:pointer;color:var(--ink)}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+#view{min-width:0;min-height:0;display:flex;flex-direction:column}
+/* répertoire */
+#repo{flex:1;overflow:auto;padding:16px 20px 60px}
+#repo h2{margin:0 0 12px;font-size:18px}
+.list{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.row{display:grid;grid-template-columns:1fr 150px 110px 120px;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--line);cursor:pointer;text-decoration:none;color:inherit}
+.row:first-child{border-top:0}
+.row:hover{background:var(--soft)}
+.row .t{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .t small{font-weight:400;color:var(--mute);margin-left:6px}
+.row .c{color:var(--mute);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{display:inline-block;font-size:11px;border-radius:20px;padding:1px 8px;background:var(--soft);border:1px solid var(--line);color:var(--ink);white-space:nowrap}
+.badge.fiche{background:#fff1d6;border-color:#f0c66b}
+.badge.dossier{background:#dff3f1;border-color:#8fd1ca}
+.st-brouillon{color:#77756f}.st-en-cours{color:#c76a00}.st-envoye{color:#2f6fd0}.st-accepte{color:#1f8a4c}.st-refuse{color:#b3261e}.st-archive{color:#999}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#e0a100;margin-left:5px;vertical-align:middle}
+#empty{background:var(--panel);border:1px dashed #c9c5bc;border-radius:12px;padding:30px;text-align:center;color:var(--mute);font-size:14px;line-height:1.6}
+/* édition */
+#ed{flex:1;display:flex;flex-direction:column;min-height:0}
+#edTop{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 14px 8px;display:flex;flex-direction:column;gap:8px}
+#fTitre{font:600 22px/1.2 system-ui,sans-serif;border:0;outline:0;background:transparent;width:100%;color:var(--ink);padding:0}
+#fSous{font:15px system-ui,sans-serif;border:0;outline:0;background:transparent;width:100%;color:var(--mute);padding:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.meta label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--mute)}
+.meta select,.meta input{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px;background:#fff}
+.meta input.w{width:190px}
+.acts{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+#edBox{flex:1;min-height:0;background:#fff}
+#edBox .toastui-editor-defaultUI{border:0;border-radius:0}
+.toastui-editor-contents{font-size:15px}
+#saveInfo{font-size:12px;color:var(--mute);margin-left:auto}
+#pubBox{display:flex;align-items:center;gap:6px;background:#e8f6f4;border:1px solid #8fd1ca;border-radius:7px;padding:3px 8px;font-size:12px}
+#pubBox a{color:inherit;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* dialogues */
+dialog{border:0;border-radius:14px;padding:0;max-width:min(620px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+.dlg{padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.dlg h3{margin:0;font-size:16px}
+.dlg label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
+.dlg input,.dlg select,.dlg textarea{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:#fff}
+.dlg .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dlg .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.dlg ol{margin:0;padding-left:20px;line-height:1.6}
+.dlg .row2{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px}
+#logoPrev{max-height:60px;max-width:200px;display:block;background:var(--soft);border-radius:6px}
+#chartePrev{border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff}
+#busy{position:fixed;inset:0;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-weight:600;z-index:60}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;z-index:70;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+@media (max-width:900px){main{grid-template-columns:1fr}#side{display:none}.row{grid-template-columns:1fr 100px}.row .c:nth-child(3),.row .c:nth-child(4){display:none}}
+</style>
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+<meta name="theme-color" content="#1d1d1f">
+<link rel="icon" href="/icons/icon-192.png">
+<script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}));</script>
+</head>
+<body>
+<header>
+  <h1><a href="../">Atelier</a> <span>Dossiers</span></h1>
+  <a class="btn" href="#" id="bRepo">☰ Répertoire</a>
+  <button class="btn primary" id="bNew">+ Nouveau dossier</button>
+  <button class="btn" id="bNewFiche">+ Fiche action</button>
+  <span class="sp"></span>
+  <span id="ghState" title="Synchronisation avec GitHub (cliquer pour actualiser)">…</span>
+  <button class="btn" id="bCharte">Charte graphique</button>
+  <button class="btn" id="bSetup">Accès GitHub</button>
+</header>
+<main>
+  <nav id="side">
+    <input type="search" id="q" placeholder="Rechercher…">
+    <div>
+      <div class="sideh">Type</div>
+      <div class="chips" id="fType"><span class="chip on" data-v="">Tout</span><span class="chip" data-v="dossier">Dossiers</span><span class="chip" data-v="fiche">Fiches action</span></div>
+    </div>
+    <div>
+      <div class="sideh">Statut</div>
+      <div class="chips" id="fStat"></div>
+    </div>
+    <div>
+      <div class="sideh">Classeurs</div>
+      <div id="tree"></div>
+      <div class="muted" style="margin-top:6px">Glisse un document de la liste sur un classeur pour l’y ranger.</div>
+    </div>
+  </nav>
+  <section id="view">
+    <div id="repo"></div>
+    <div id="ed" hidden>
+      <div id="edTop">
+        <input id="fTitre" placeholder="Titre du document" autocomplete="off">
+        <input id="fSous" placeholder="Sous-titre (facultatif)" autocomplete="off">
+        <div class="meta">
+          <label>Type<select id="fTypeD"><option value="dossier">Dossier</option><option value="fiche">Fiche action</option></select></label>
+          <label>Classeur<input id="fClasseur" class="w" list="dlClasseurs" placeholder="ex. Raffinerie/Ateliers"></label>
+          <label>Statut<select id="fStatut"></select></label>
+          <label>Étiquettes<input id="fTags" class="w" placeholder="séparées par des virgules"></label>
+          <span id="lieBox"></span>
+        </div>
+        <div class="acts">
+          <button class="btn sm" id="bPdf" title="Ouvre l’impression : choisis « Enregistrer en PDF »">PDF / Imprimer</button>
+          <button class="btn sm" id="bWord">Word</button>
+          <button class="btn sm" id="bPublish">Lien public…</button>
+          <span id="pubBox" hidden><span>Public :</span><a id="pubLink" target="_blank" rel="noopener"></a><button class="btn sm" id="bPubCopy">Copier</button></span>
+          <button class="btn sm" id="bAddr" title="Copier l’adresse de ce document dans l’atelier">Copier l’adresse</button>
+          <button class="btn sm" id="bFiche">Créer la fiche action</button>
+          <button class="btn sm" id="bDup">Dupliquer</button>
+          <button class="btn sm" id="bHist" title="Toutes les versions enregistrées de ce document">Versions</button>
+          <button class="btn sm danger" id="bDel">Supprimer</button>
+          <span id="saveInfo"></span>
+        </div>
+      </div>
+      <div id="edBox"></div>
+    </div>
+  </section>
+</main>
+<datalist id="dlClasseurs"></datalist>
+
+<dialog id="dSetup"><form method="dialog" class="dlg">
+  <h3>Accès au dépôt GitHub des dossiers</h3>
+  <div class="muted">Les dossiers sont rangés dans un dépôt GitHub <b>privé</b> : chaque modification est gardée (historique), et Claude peut aussi les créer ou les modifier depuis vos conversations. Cette clé n’est à saisir qu’une fois : elle est ensuite partagée avec tes autres appareils par la synchronisation de l’atelier.</div>
+  <ol class="muted">
+    <li>Sur GitHub, crée un dépôt <b>privé</b> nommé <b>dossiers</b> (sans rien cocher d’autre).</li>
+    <li>Ouvre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Nouveau jeton (fine-grained)</a> : nom « Atelier dossiers », expiration la plus longue possible.</li>
+    <li>« Repository access » → <b>Only select repositories</b> → choisis <b>dossiers</b> et <b>applis</b> (applis sert aux liens publics).</li>
+    <li>« Permissions » → « Repository permissions » → <b>Contents : Read and write</b>.</li>
+    <li>Génère le jeton, copie-le et colle-le ci-dessous.</li>
+  </ol>
+  <div class="g3"><label>Compte GitHub<input id="sOwner" value="jugaillot"></label><label>Dépôt des dossiers<input id="sRepo" value="dossiers"></label><label>Dépôt du site<input id="sSite" value="applis"></label></div>
+  <label>Jeton d’accès<input id="sTok" type="password" placeholder="github_pat_…" autocomplete="off"></label>
+  <div class="muted" id="sMsg"></div>
+  <div class="row2"><button class="btn" value="cancel">Fermer</button><button class="btn primary" id="sSave" value="default">Tester et enregistrer</button></div>
+</form></dialog>
+
+<dialog id="dCharte"><form method="dialog" class="dlg">
+  <h3>Charte graphique</h3>
+  <div class="muted">Elle s’applique à tous les documents : aperçu, PDF, Word et pages publiques.</div>
+  <div class="g2"><label>Nom affiché<input id="cNom"></label><label>Pied de page<input id="cPied" placeholder="adresse, mail, site…"></label></div>
+  <div class="g2"><label>Police des titres<select id="cPT"></select></label><label>Police du texte<select id="cPX"></select></label></div>
+  <div class="g3"><label>Couleur principale<input type="color" id="cC1"></label><label>Couleur secondaire<input type="color" id="cC2"></label><label>Couleur du texte<input type="color" id="cC3"></label></div>
+  <div class="g2"><label>Taille du texte (pt)<input type="number" id="cTaille" min="8" max="14" step="0.5"></label><label>Logo (PNG, JPG ou SVG)<input type="file" id="cLogo" accept="image/png,image/jpeg,image/svg+xml"></label></div>
+  <div class="row2" style="justify-content:flex-start"><img id="logoPrev" alt=""><button class="btn sm" id="cLogoDel" type="button">Retirer le logo</button></div>
+  <div id="chartePrev"></div>
+  <div class="row2"><button class="btn" value="cancel">Fermer</button><button class="btn primary" id="cSave" value="default">Enregistrer la charte</button></div>
+</form></dialog>
+
+<dialog id="dPub"><form method="dialog" class="dlg">
+  <h3>Lien public</h3>
+  <div class="muted">Une page en lecture seule, avec ta charte, accessible sans mot de passe par toute personne qui a le lien. Elle se met à jour toute seule quand tu modifies le document. Compte une minute avant qu’elle soit en ligne.</div>
+  <div class="row2"><button class="btn" value="cancel">Fermer</button><button class="btn danger" id="pOff" type="button">Retirer la page publique</button><button class="btn primary" id="pOn" type="button">Publier</button></div>
+</form></dialog>
+
+<dialog id="dConf"><form method="dialog" class="dlg">
+  <h3>Ce document a été modifié ailleurs</h3>
+  <div class="muted" id="confMsg">Il a changé sur GitHub (sur un autre appareil, ou par Claude) pendant que tu le modifiais ici.</div>
+  <div class="row2"><button class="btn" value="theirs">Prendre l’autre version</button><button class="btn" value="copy">Garder les deux (copie)</button><button class="btn primary" value="mine">Garder la mienne</button></div>
+</form></dialog>
+
+<div id="busy" hidden>…</div>
+<div id="toast" hidden></div>
+
+<script src="../lib/sync.js"></script>
+<script src="../lib/toastui-editor-all.min.js"></script>
+<script src="../lib/docx.iife.js"></script>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const STATUTS=[['brouillon','Brouillon'],['en cours','En cours'],['envoyé','Envoyé'],['accepté','Accepté'],['refusé','Refusé'],['archivé','Archivé']];
+const stClass=s=>'st-'+String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,'-');
+const FONTS=['Fraunces','DM Serif Display','Syne','Space Grotesk','Work Sans','IBM Plex Sans','Inter'];
+const FONTFILE={'Fraunces':'fraunces','DM Serif Display':'dm-serif-display','Syne':'syne','Space Grotesk':'space-grotesk','Work Sans':'work-sans','IBM Plex Sans':'ibm-plex-sans','Inter':'inter'};
+const DEF_CHARTE={nom:'Rdutemps',pied:'',police_titres:'Fraunces',police_texte:'Work Sans',couleur_principale:'#2aa198',couleur_secondaire:'#f2c14e',couleur_texte:'#1d1d1f',taille_texte:10.5,logo:''};
+const S={cfg:null,docs:new Map(),charte:{...DEF_CHARTE},charteSha:null,logoUrl:'',cur:null,filter:{q:'',type:'',stat:'',cl:''},online:navigator.onLine,state:'',editor:null,imgUrl:new Map(),urlPath:new Map()};
+
+/* ===================== petits outils ===================== */
+const busy=m=>{const b=$('#busy');if(m){b.textContent=m;b.hidden=false;}else b.hidden=true;return new Promise(r=>setTimeout(r,20));};
+let toastT=0;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2600);}
+function slugify(s){return String(s||'document').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60)||'document';}
+function nowIso(){const d=new Date(),o=-d.getTimezoneOffset(),p=n=>String(Math.floor(Math.abs(n))).padStart(2,'0');return new Date(d.getTime()+o*60000).toISOString().slice(0,19)+(o>=0?'+':'-')+p(o/60)+':'+p(o%60);}
+function fmtDate(s){if(!s)return '';const d=new Date(s);if(isNaN(d))return s;return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});}
+function b64FromBytes(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);}
+function bytesFromB64(b){const s=atob(b.replace(/\s/g,''));const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;}
+const utf8=s=>new TextEncoder().encode(s),deutf8=u=>new TextDecoder().decode(u);
+const blobToDataURL=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b);});
+
+/* ===================== stockage local (hors connexion) ===================== */
+const idb=(()=>{let db;const open=()=>db?Promise.resolve(db):new Promise((res,rej)=>{const r=indexedDB.open('atelier-dossiers',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>{db=r.result;res(db);};r.onerror=()=>rej(r.error);});
+  const tx=(m,f)=>open().then(d=>new Promise((res,rej)=>{const t=d.transaction('kv',m);const st=t.objectStore('kv');const q=f(st);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);}));
+  return {get:k=>tx('readonly',s=>s.get(k)),set:(k,v)=>tx('readwrite',s=>s.put(v,k)),del:k=>tx('readwrite',s=>s.delete(k)),keys:()=>tx('readonly',s=>s.getAllKeys())};})();
+
+/* ===================== format des fichiers : Markdown + en-tête ===================== */
+const META_ORDER=['titre','sous_titre','type','classeur','statut','etiquettes','cree','modifie','lie','public'];
+function parseDoc(raw){
+  const meta={},m=raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);let body=raw;
+  if(m){body=raw.slice(m[0].length);for(const line of m[1].split(/\r?\n/)){const mm=line.match(/^([A-Za-z_]+):\s*(.*)$/);if(!mm)continue;meta[mm[1]]=parseVal(mm[2].trim());}}
+  if(!meta.titre){const h=body.match(/^#\s+(.+)$/m);meta.titre=h?h[1].trim():'Sans titre';}
+  if(!Array.isArray(meta.etiquettes))meta.etiquettes=meta.etiquettes?String(meta.etiquettes).split(',').map(s=>s.trim()).filter(Boolean):[];
+  meta.type=meta.type==='fiche'?'fiche':'dossier';meta.statut=meta.statut||'brouillon';
+  return {meta,body:body.replace(/^\n+/,'')};
+}
+function parseVal(v){
+  if(v==='')return '';if(v==='true')return true;if(v==='false')return false;
+  if(v[0]==='"'){try{return JSON.parse(v);}catch(e){return v.slice(1,-1);}}
+  if(v[0]==="'")return v.slice(1,-1).replace(/''/g,"'");
+  if(v[0]==='['){const inner=v.slice(1,-1).trim();if(!inner)return [];const out=[];let cur='',q=null;for(const ch of inner){if(q){if(ch===q)q=null;else cur+=ch;}else if(ch==='"'||ch==="'")q=ch;else if(ch===','){out.push(cur.trim());cur='';}else cur+=ch;}out.push(cur.trim());return out.filter(Boolean);}
+  return v;
+}
+function buildDoc(meta,body){
+  const lines=['---'];const keys=META_ORDER.concat(Object.keys(meta).filter(k=>!META_ORDER.includes(k)));
+  for(const k of keys){const v=meta[k];if(v==null||v===''||(Array.isArray(v)&&!v.length&&k!=='etiquettes'))continue;
+    if(Array.isArray(v))lines.push(`${k}: [${v.map(x=>JSON.stringify(String(x))).join(', ')}]`);
+    else if(typeof v==='boolean')lines.push(`${k}: ${v}`);
+    else lines.push(`${k}: ${/^[\w\-.:+]+$/.test(String(v))&&!/^(true|false|\d+)$/.test(String(v))?v:JSON.stringify(String(v))}`);}
+  lines.push('---','');return lines.join('\n')+body.replace(/\s+$/,'')+'\n';
+}
+
+/* ===================== GitHub ===================== */
+async function loadCfg(){
+  let c=null;try{if(window.AtelierSync)c=await AtelierSync.load('reglages.github');}catch(e){}
+  if(!c){try{c=JSON.parse(localStorage.getItem('atelierDossiers.github')||'null');}catch(e){}}
+  S.cfg=c&&c.token?c:null;return S.cfg;
+}
+async function saveCfg(c){S.cfg=c;try{localStorage.setItem('atelierDossiers.github',JSON.stringify(c));}catch(e){}try{if(window.AtelierSync)await AtelierSync.save('reglages','reglages.github','Accès GitHub (dossiers)',c);}catch(e){}}
+async function gh(method,path,body,opt){
+  opt=opt||{};const c=S.cfg;if(!c)throw new Error('Accès GitHub non configuré');
+  const r=await fetch('https://api.github.com'+path,{method,cache:'no-store',headers:Object.assign({Authorization:'Bearer '+c.token,Accept:opt.accept||'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},body?{'Content-Type':'application/json'}:{}),body:body?JSON.stringify(body):undefined});
+  if(opt.raw)return r;
+  if(!r.ok){let j={};try{j=await r.json();}catch(e){}const e=new Error(j.message||('Erreur GitHub '+r.status));e.status=r.status;throw e;}
+  return r.status===204?null:r.json();
+}
+const repoPath=(repo,p)=>`/repos/${S.cfg.owner}/${repo||S.cfg.repo}${p}`;
+const encPath=p=>p.split('/').map(encodeURIComponent).join('/');
+async function putFile(path,bytes,sha,message,repo){
+  const res=await gh('PUT',repoPath(repo,'/contents/'+encPath(path)),{message,content:b64FromBytes(bytes),sha:sha||undefined});
+  return res.content.sha;
+}
+async function delFile(path,sha,message,repo){return gh('DELETE',repoPath(repo,'/contents/'+encPath(path)),{message,sha});}
+async function fileSha(path,repo){try{const j=await gh('GET',repoPath(repo,'/contents/'+encPath(path)));return j.sha;}catch(e){if(e.status===404)return null;throw e;}}
+
+/* ===================== synchronisation ===================== */
+function setState(t,err){S.state=t;const el=$('#ghState');el.textContent=t;el.classList.toggle('err',!!err);}
+async function loadLocal(){
+  for(const k of await idb.keys()){if(!String(k).startsWith('doc:'))continue;const r=await idb.get(k);if(r)S.docs.set(r.slug,r);}
+  const ch=await idb.get('charte');if(ch){S.charte={...DEF_CHARTE,...ch.data};S.charteSha=ch.sha;S.charteDirty=ch.dirty;}
+  const lg=await idb.get('logo');if(lg&&lg.blob){S.logoUrl=URL.createObjectURL(lg.blob);}
+}
+function docRec(slug){return S.docs.get(slug);}
+async function storeRec(r){S.docs.set(r.slug,r);await idb.set('doc:'+r.slug,r);}
+let pulling=false;
+async function pull(){
+  if(!S.cfg){setState('Accès GitHub à configurer',true);return;}
+  if(!navigator.onLine){setState('Hors connexion — modifications gardées ici');return;}
+  if(pulling)return;pulling=true;setState('Actualisation…');
+  try{
+    await pushAll();
+    let tree;try{tree=await gh('GET',repoPath(null,'/git/trees/HEAD?recursive=1'));}catch(e){if(e.status===409||e.status===404){tree={tree:[]};if(e.status===404)throw new Error('Dépôt « '+S.cfg.repo+' » introuvable (ou jeton sans accès)');}else throw e;}
+    const files=new Map(tree.tree.filter(t=>t.type==='blob').map(t=>[t.path,t.sha]));
+    // documents
+    const seen=new Set();
+    for(const [path,sha] of files){
+      const m=path.match(/^docs\/([^/]+)\.md$/);if(!m)continue;const slug=m[1];seen.add(slug);
+      const loc=docRec(slug);if(loc&&loc.sha===sha)continue;
+      if(loc&&loc.dirty){loc.remoteSha=sha;await storeRec(loc);continue;} // conflit traité à l'envoi
+      const blob=await gh('GET',repoPath(null,'/git/blobs/'+sha));const raw=deutf8(bytesFromB64(blob.content));
+      await storeRec({slug,path,sha,raw,dirty:false});
+      if(S.cur===slug&&!loc?.dirty)reopenIfClean(slug);
+    }
+    for(const [slug,r] of [...S.docs]){if(!seen.has(slug)&&r.sha&&!r.dirty){S.docs.delete(slug);await idb.del('doc:'+slug);if(S.cur===slug){S.cur=null;location.hash='';}}}
+    // charte
+    const cs=files.get('charte.json');
+    if(cs&&cs!==S.charteSha&&!S.charteDirty){const b=await gh('GET',repoPath(null,'/git/blobs/'+cs));S.charte={...DEF_CHARTE,...JSON.parse(deutf8(bytesFromB64(b.content)))};S.charteSha=cs;await idb.set('charte',{data:S.charte,sha:cs});
+      if(S.charte.logo&&files.get(S.charte.logo)){const lb=await gh('GET',repoPath(null,'/git/blobs/'+files.get(S.charte.logo)));const mime=/\.svg$/i.test(S.charte.logo)?'image/svg+xml':/\.png$/i.test(S.charte.logo)?'image/png':'image/jpeg';const blob=new Blob([bytesFromB64(lb.content)],{type:mime});await idb.set('logo',{blob});S.logoUrl=URL.createObjectURL(blob);}
+      applyCharteStyle();}
+    S.files=files;
+    setState('✓ À jour · '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){console.error(e);setState('⚠ '+(e.message||e),true);}
+  finally{pulling=false;renderSide();if(!S.cur)renderRepo();}
+}
+function reopenIfClean(slug){if(S.cur===slug)openDoc(slug,true);}
+let pushT=0;function schedulePush(ms){clearTimeout(pushT);pushT=setTimeout(()=>pushAll().then(()=>{renderSide();}),ms==null?4000:ms);}
+let pushing=false;
+async function pushAll(){
+  if(!S.cfg||!navigator.onLine||pushing)return;pushing=true;
+  try{
+    // images en attente
+    for(const k of await idb.keys()){if(!String(k).startsWith('imgpend:'))continue;const r=await idb.get(k);const path=k.slice(8);
+      try{await putFile(path,new Uint8Array(await r.blob.arrayBuffer()),null,'Dossiers : image '+path);}catch(e){if(e.status!==422)throw e;}
+      await idb.set('img:'+path,r.blob);await idb.del(k);}
+    // charte
+    if(S.charteDirty){
+      if(S.logoPending){const lp=S.logoPending;const sha=await fileSha(lp.path);await putFile(lp.path,new Uint8Array(await lp.blob.arrayBuffer()),sha,'Dossiers : logo');S.logoPending=null;}
+      const sha=await fileSha('charte.json');S.charteSha=await putFile('charte.json',utf8(JSON.stringify(S.charte,null,2)+'\n'),sha,'Dossiers : charte graphique');S.charteDirty=false;await idb.set('charte',{data:S.charte,sha:S.charteSha});}
+    // documents
+    for(const r of [...S.docs.values()]){
+      if(!r.dirty)continue;setState('Envoi…');
+      const label=r.deleted?'supprime':r.sha?'modifie':'crée';const title=(parseDoc(r.raw||'').meta.titre)||r.slug;
+      try{
+        if(r.deleted){if(r.sha)await delFile(r.path,r.sha,`Dossiers : supprime « ${title} »`);S.docs.delete(r.slug);await idb.del('doc:'+r.slug);continue;}
+        const sha=await putFile(r.path,utf8(r.raw),r.sha,`Dossiers : ${label} « ${title} »`);
+        const now=docRec(r.slug);const changedMeanwhile=now&&now.raw!==r.raw;
+        await storeRec(Object.assign({},now||r,{sha,dirty:changedMeanwhile,remoteSha:null}));
+        if(S.cur===r.slug)showSaved();
+        const meta=parseDoc(r.raw).meta;if(meta.public)publish(r.slug,true).catch(e=>console.warn(e));
+      }catch(e){
+        if(e.status===409||e.status===422||(e.status===404&&r.sha)){await resolveConflict(r);}
+        else throw e;
+      }
+    }
+    if([...S.docs.values()].some(r=>r.dirty))schedulePush(1500);
+  }catch(e){console.error(e);setState('⚠ Envoi impossible : '+(e.message||e),true);}
+  finally{pushing=false;}
+}
+async function resolveConflict(r){
+  let remote=null,rsha=null;try{const j=await gh('GET',repoPath(null,'/contents/'+encPath(r.path)));rsha=j.sha;remote=deutf8(bytesFromB64(j.content));}catch(e){if(e.status!==404)throw e;}
+  if(remote===r.raw||remote===null){await storeRec(Object.assign({},r,{sha:rsha,dirty:remote===null}));if(remote===null){r.sha=null;}return;}
+  $('#confMsg').textContent=`« ${parseDoc(r.raw).meta.titre} » a changé sur GitHub (sur un autre appareil, ou par Claude) pendant que tu le modifiais ici.`;
+  const d=$('#dConf');d.returnValue='';d.showModal();const choice=await new Promise(res=>d.addEventListener('close',()=>res(d.returnValue),{once:true}));
+  if(choice==='theirs'){await storeRec({slug:r.slug,path:r.path,sha:rsha,raw:remote,dirty:false});if(S.cur===r.slug)openDoc(r.slug,true);}
+  else if(choice==='copy'){const p=parseDoc(r.raw);const slug=uniqueSlug(r.slug+'-copie');p.meta.titre+=' (copie)';p.meta.public='';await storeRec({slug,path:`docs/${slug}.md`,sha:null,raw:buildDoc(p.meta,p.body),dirty:true});
+    await storeRec({slug:r.slug,path:r.path,sha:rsha,raw:remote,dirty:false});if(S.cur===r.slug)location.hash='#'+slug;schedulePush(300);}
+  else{await storeRec(Object.assign({},r,{sha:rsha,dirty:true}));schedulePush(300);}
+}
+function uniqueSlug(base){let s=slugify(base),i=2;const b=s;while(S.docs.has(s))s=b+'-'+(i++);return s;}
+
+/* ===================== images ===================== */
+async function imgUrlFor(path){
+  if(S.imgUrl.has(path))return S.imgUrl.get(path);
+  let b=await idb.get('img:'+path);if(!b){const p=await idb.get('imgpend:'+path);b=p&&p.blob;}
+  if(!b&&S.cfg&&navigator.onLine){try{const r=await gh('GET',repoPath(null,'/contents/'+encPath(path)),null,{raw:true,accept:'application/vnd.github.raw'});if(r.ok){b=await r.blob();await idb.set('img:'+path,b);}}catch(e){}}
+  if(!b)return null;const u=URL.createObjectURL(b);S.imgUrl.set(path,u);S.urlPath.set(u,path);return u;
+}
+async function toEditorMd(md){
+  const paths=[...new Set([...md.matchAll(/\]\((images\/[^)\s]+)\)/g)].map(m=>m[1]))];
+  for(const p of paths){const u=await imgUrlFor(p);if(u)md=md.split(`](${p})`).join(`](${u})`);}
+  return md;
+}
+function fromEditorMd(md){return md.replace(/\]\((blob:[^)\s]+)\)/g,(m,u)=>S.urlPath.has(u)?`](${S.urlPath.get(u)})`:m);}
+async function prepImage(blob){
+  const bmp=await createImageBitmap(blob);const k=Math.min(1,1800/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(bmp,0,0,c.width,c.height);
+  const png=blob.type==='image/png'&&c.width*c.height<1.2e6;return new Promise(r=>c.toBlob(r,png?'image/png':'image/jpeg',0.86));
+}
+
+/* ===================== répertoire ===================== */
+function allDocs(){return [...S.docs.values()].filter(r=>!r.deleted).map(r=>{const p=parseDoc(r.raw||'');return {slug:r.slug,dirty:r.dirty,...p};});}
+function matches(d){const f=S.filter;if(f.type&&d.meta.type!==f.type)return false;if(f.stat&&d.meta.statut!==f.stat)return false;
+  const dc=String(d.meta.classeur||'').trim();
+  if(f.cl==='__none'){if(dc)return false;}else if(f.cl&&!(dc===f.cl||dc.startsWith(f.cl+'/')))return false;
+  if(f.q){const q=f.q.toLowerCase();const hay=(d.meta.titre+' '+(d.meta.sous_titre||'')+' '+(d.meta.classeur||'')+' '+d.meta.etiquettes.join(' ')+' '+d.body).toLowerCase();if(!q.split(/\s+/).every(w=>hay.includes(w)))return false;}
+  return true;}
+function renderSide(){
+  const docs=allDocs();const counts=new Map();
+  for(const d of docs){const c=String(d.meta.classeur||'').trim();if(!c){counts.set('',(counts.get('')||0)+1);continue;}const parts=c.split('/').map(s=>s.trim()).filter(Boolean);for(let i=1;i<=parts.length;i++){const k=parts.slice(0,i).join('/');counts.set(k,(counts.get(k)||0)+1);}}
+  const keys=[...counts.keys()].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr'));
+  $('#tree').innerHTML=`<div class="cl${S.filter.cl===''?' on':''}" data-cl=""><b>Tous les documents</b><i>${docs.length}</i></div>`+keys.map(k=>{const depth=k.split('/').length-1;return `<div class="cl${S.filter.cl===k?' on':''}" data-cl="${esc(k)}" style="padding-left:${6+depth*14}px"><b>${depth?'↳ ':''}${esc(k.split('/').pop())}</b><i>${counts.get(k)}</i></div>`;}).join('')+(counts.get('')?`<div class="cl" data-cl="__none" style="opacity:.7"><b>Sans classeur</b><i>${counts.get('')}</i></div>`:'');
+  $('#dlClasseurs').innerHTML=keys.map(k=>`<option value="${esc(k)}">`).join('');
+  $('#fStat').innerHTML=`<span class="chip${!S.filter.stat?' on':''}" data-v="">Tous</span>`+STATUTS.map(([v,l])=>`<span class="chip${S.filter.stat===v?' on':''}" data-v="${esc(v)}">${l}</span>`).join('');
+}
+function renderRepo(){
+  const el=$('#repo');
+  if(!S.cfg&&!S.docs.size){el.innerHTML=`<div id="empty"><b>Bienvenue dans Dossiers.</b><br>Pour commencer, relie l’outil à ton dépôt GitHub privé : bouton <b>Accès GitHub</b> en haut à droite.<br><span class="muted">Tu peux déjà écrire : les documents sont gardés ici et envoyés dès que l’accès est configuré.</span></div>`;return;}
+  const docs=allDocs().filter(matches);
+  docs.sort((a,b)=>String(b.meta.modifie||'').localeCompare(String(a.meta.modifie||'')));
+  const title=S.filter.cl&&S.filter.cl!=='__none'?S.filter.cl.replace(/\//g,' › '):S.filter.cl==='__none'?'Sans classeur':'Tous les documents';
+  el.innerHTML=`<h2>${esc(title)} <span class="muted">· ${docs.length} document${docs.length>1?'s':''}</span></h2>`+(docs.length?`<div class="list">${docs.map(d=>`<a class="row" href="#${esc(d.slug)}" draggable="true" data-slug="${esc(d.slug)}"><span class="t">${esc(d.meta.titre)}${d.dirty?'<span class="dot" title="Pas encore envoyé sur GitHub"></span>':''}${d.meta.sous_titre?`<small>${esc(d.meta.sous_titre)}</small>`:''}</span><span class="c"><span class="badge ${d.meta.type}">${d.meta.type==='fiche'?'Fiche action':'Dossier'}</span> <span class="${stClass(d.meta.statut)}">${esc(d.meta.statut)}</span></span><span class="c">${esc(d.meta.classeur||'')}</span><span class="c">${fmtDate(d.meta.modifie)}</span></a>`).join('')}</div>`:`<div id="empty">Aucun document ici.<br><span class="muted">« + Nouveau dossier » pour en créer un.</span></div>`);
+}
+$('#q').addEventListener('input',e=>{S.filter.q=e.target.value.trim();if(S.cur)location.hash='';else renderRepo();});
+$('#fType').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;S.filter.type=c.dataset.v;document.querySelectorAll('#fType .chip').forEach(x=>x.classList.toggle('on',x===c));if(S.cur)location.hash='';else renderRepo();});
+$('#fStat').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;S.filter.stat=c.dataset.v;renderSide();if(S.cur)location.hash='';else renderRepo();});
+$('#tree').addEventListener('click',e=>{const c=e.target.closest('.cl');if(!c)return;S.filter.cl=c.dataset.cl;renderSide();if(S.cur)location.hash='';else renderRepo();});
+/* glisser un document sur un classeur */
+$('#repo').addEventListener('dragstart',e=>{const r=e.target.closest('.row');if(r)e.dataTransfer.setData('text/x-dossier',r.dataset.slug);});
+$('#tree').addEventListener('dragover',e=>{const c=e.target.closest('.cl');if(!c||!e.dataTransfer.types.includes('text/x-dossier'))return;e.preventDefault();document.querySelectorAll('.cl.drop').forEach(x=>x.classList.remove('drop'));c.classList.add('drop');});
+$('#tree').addEventListener('dragleave',e=>{const c=e.target.closest('.cl');if(c)c.classList.remove('drop');});
+$('#tree').addEventListener('drop',async e=>{const c=e.target.closest('.cl');if(!c)return;e.preventDefault();c.classList.remove('drop');const slug=e.dataTransfer.getData('text/x-dossier');const r=docRec(slug);if(!r)return;
+  const p=parseDoc(r.raw);p.meta.classeur=c.dataset.cl==='__none'?'':c.dataset.cl;p.meta.modifie=nowIso();await storeRec(Object.assign({},r,{raw:buildDoc(p.meta,p.body),dirty:true}));renderSide();renderRepo();schedulePush(1500);toast('Rangé dans « '+(p.meta.classeur||'sans classeur')+' »');});
+
+/* ===================== édition ===================== */
+let editor=null,suppress=false;
+function makeEditor(){
+  editor=new toastui.Editor({el:$('#edBox'),height:'100%',initialEditType:'wysiwyg',previewStyle:'tab',language:'fr-FR',usageStatistics:false,autofocus:false,
+    placeholder:'Écris ici… (titres, listes, tableaux, images par glisser-déposer ou copier-coller)',
+    hooks:{addImageBlobHook:async(blob,cb)=>{if(!S.cur)return;await busy('Ajout de l’image…');try{const b=await prepImage(blob);const ext=b.type==='image/png'?'png':'jpg';const path=`images/${S.cur}/${Date.now().toString(36)}.${ext}`;await idb.set('imgpend:'+path,{blob:b});const u=URL.createObjectURL(b);S.imgUrl.set(path,u);S.urlPath.set(u,path);cb(u,(blob.name||'image').replace(/\.[^.]+$/,''));schedulePush(800);}finally{await busy();}}}});
+  editor.on('change',()=>{if(!suppress)onEdit();});
+}
+function fillStatutSelect(){$('#fStatut').innerHTML=STATUTS.map(([v,l])=>`<option value="${esc(v)}">${l}</option>`).join('');}
+async function openDoc(slug,keepScroll){
+  const r=docRec(slug);if(!r||r.deleted){toast('Document introuvable');location.hash='';return;}
+  S.cur=slug;$('#repo').hidden=true;$('#ed').hidden=false;if(!editor)makeEditor();
+  const {meta,body}=parseDoc(r.raw);
+  $('#fTitre').value=meta.titre||'';$('#fSous').value=meta.sous_titre||'';$('#fTypeD').value=meta.type;$('#fClasseur').value=meta.classeur||'';$('#fStatut').value=meta.statut;$('#fTags').value=(meta.etiquettes||[]).join(', ');
+  suppress=true;editor.setMarkdown(await toEditorMd(body),false);suppress=false;
+  if(!keepScroll)editor.moveCursorToStart&&editor.moveCursorToStart();
+  document.title=(meta.titre||'Document')+' — Dossiers';
+  renderLie(meta);renderPub(meta);showSaved();
+}
+function renderLie(meta){
+  const box=$('#lieBox');const l=meta.lie&&docRec(meta.lie);
+  box.innerHTML=l?`<a class="btn sm" href="#${esc(meta.lie)}">↪ ${meta.type==='fiche'?'Dossier':'Fiche action'} : ${esc(parseDoc(l.raw).meta.titre)}</a>`:'';
+  $('#bFiche').hidden=meta.type==='fiche'||!!l;
+}
+function renderPub(meta){const on=!!meta.public;$('#pubBox').hidden=!on;if(on){const u=pubUrl(meta.public);$('#pubLink').href=u;$('#pubLink').textContent=u.replace(/^https?:\/\//,'');}}
+const pubUrl=id=>location.origin+'/p/'+id+'/';
+function curParts(){
+  const r=docRec(S.cur);const old=parseDoc(r.raw).meta;
+  const meta=Object.assign({},old,{titre:$('#fTitre').value.trim()||'Sans titre',sous_titre:$('#fSous').value.trim(),type:$('#fTypeD').value,classeur:$('#fClasseur').value.trim().replace(/\s*\/\s*/g,'/').replace(/^\/|\/$/g,''),statut:$('#fStatut').value,etiquettes:$('#fTags').value.split(',').map(s=>s.trim()).filter(Boolean)});
+  const body=fromEditorMd(editor.getMarkdown());return {meta,body};
+}
+let editT=0;
+function onEdit(){$('#saveInfo').textContent='Modifié…';clearTimeout(editT);editT=setTimeout(saveCur,700);}
+async function saveCur(){
+  if(!S.cur)return;const r=docRec(S.cur);if(!r)return;const {meta,body}=curParts();
+  const prev=parseDoc(r.raw);if(JSON.stringify(prev.meta)===JSON.stringify({...meta,modifie:prev.meta.modifie})&&prev.body.replace(/\s+$/,'')===body.replace(/\s+$/,''))return showSaved();
+  meta.modifie=nowIso();await storeRec(Object.assign({},r,{raw:buildDoc(meta,body),dirty:true}));
+  $('#saveInfo').textContent=navigator.onLine?'Enregistré ici · envoi…':'Enregistré sur cet appareil (hors connexion)';document.title=meta.titre+' — Dossiers';renderLie(meta);schedulePush();renderSide();
+}
+function showSaved(){const r=docRec(S.cur);if(!r)return;const m=parseDoc(r.raw).meta;$('#saveInfo').textContent=r.dirty?(navigator.onLine?'Envoi en attente…':'Enregistré sur cet appareil (hors connexion)'):'✓ Enregistré sur GitHub'+(m.modifie?' · '+fmtDate(m.modifie):'');}
+['#fTitre','#fSous','#fClasseur','#fTags'].forEach(id=>$(id).addEventListener('input',onEdit));
+['#fTypeD','#fStatut'].forEach(id=>$(id).addEventListener('change',()=>{onEdit();if(id==='#fTypeD')renderLie(curParts().meta);}));
+$('#fTitre').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#fSous').focus();}});
+$('#fSous').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();editor.focus();}});
+
+async function createDoc(type,o){
+  o=o||{};const titre=o.titre||(type==='fiche'?'Nouvelle fiche action':'Nouveau dossier');const slug=uniqueSlug(o.slugBase||titre+'-'+new Date().toISOString().slice(0,10));
+  const meta={titre,sous_titre:o.sous_titre||'',type,classeur:o.classeur!=null?o.classeur:(S.filter.cl&&S.filter.cl!=='__none'?S.filter.cl:''),statut:'brouillon',etiquettes:o.etiquettes||[],cree:nowIso().slice(0,10),modifie:nowIso(),lie:o.lie||''};
+  await storeRec({slug,path:`docs/${slug}.md`,sha:null,raw:buildDoc(meta,o.body||''),dirty:true});
+  renderSide();location.hash='#'+slug;schedulePush(2500);
+  setTimeout(()=>{if(!o.body){$('#fTitre').focus();$('#fTitre').select();}},150);return slug;
+}
+$('#bNew').onclick=()=>createDoc('dossier');
+$('#bNewFiche').onclick=()=>createDoc('fiche');
+$('#bFiche').onclick=async()=>{
+  await saveCur();const dslug=S.cur;const {meta,body}=curParts();
+  // résumé : pour chaque rubrique (titre de niveau 2), le premier paragraphe
+  const parts=body.split(/^(?=##\s)/m);let intro=parts[0].replace(/^#\s.*$/m,'').trim().split(/\n\s*\n/)[0]||'';const out=[];
+  if(intro)out.push(cut(intro,420));
+  for(const p of parts.slice(1)){const h=p.match(/^##\s+(.+)$/m);const rest=p.replace(/^##\s+.+$/m,'').trim();const para=(rest.split(/\n\s*\n/).find(x=>x.trim()&&!/^!\[/.test(x.trim()))||'').trim();
+    const isBlock=/^\s*([-*+]|\d+\.|\|)\s?/.test(para);out.push(`## ${h[1].trim()}\n\n${isBlock?para.split('\n').slice(0,7).join('\n'):cut(para,320)}`);}
+  if(!out.length)out.push('## En bref\n\n','## Objectifs\n\n','## Public\n\n','## Dates et lieu\n\n','## Contact\n\n'+(S.charte.pied||''));
+  const fslug=await createDoc('fiche',{titre:meta.titre,sous_titre:meta.sous_titre||'Fiche action',classeur:meta.classeur,etiquettes:meta.etiquettes,lie:S.cur,body:out.join('\n\n'),slugBase:'fiche-'+S.cur});
+  // lien retour du dossier vers sa fiche
+  const dr=docRec(dslug);if(dr){const p=parseDoc(dr.raw);p.meta.lie=fslug;p.meta.modifie=nowIso();await storeRec(Object.assign({},dr,{raw:buildDoc(p.meta,p.body),dirty:true}));schedulePush(2500);}
+  toast('Fiche action créée à partir du dossier — à resserrer pour tenir sur une page');
+};
+function cut(s,n){s=s.replace(/\s+/g,' ').trim();if(s.length<=n)return s;const c=s.slice(0,n);return c.slice(0,c.lastIndexOf(' '))+'…';}
+$('#bDup').onclick=async()=>{await saveCur();const {meta,body}=curParts();await createDoc(meta.type,{titre:meta.titre+' (copie)',sous_titre:meta.sous_titre,classeur:meta.classeur,etiquettes:meta.etiquettes,body});};
+$('#bDel').onclick=async()=>{const r=docRec(S.cur);if(!r)return;const t=parseDoc(r.raw).meta;if(!confirm(`Supprimer « ${t.titre} » ?\n\nIl restera récupérable dans l’historique GitHub.`))return;
+  if(t.public){try{await unpublish(S.cur,t.public);}catch(e){}}
+  if(r.sha){await storeRec(Object.assign({},r,{deleted:true,dirty:true}));}else{S.docs.delete(r.slug);await idb.del('doc:'+r.slug);}
+  S.cur=null;location.hash='';schedulePush(300);renderSide();};
+$('#bAddr').onclick=()=>{const u=location.origin+'/dossiers/#'+S.cur;navigator.clipboard.writeText(u).then(()=>toast('Adresse copiée : '+u));};
+$('#bHist').onclick=()=>{if(!S.cfg)return;window.open(`https://github.com/${S.cfg.owner}/${S.cfg.repo}/commits/main/docs/${S.cur}.md`,'_blank');};
+$('#bRepo').onclick=e=>{e.preventDefault();location.hash='';};
+
+/* ===================== charte : styles ===================== */
+function charteCSS(c,scope){
+  scope=scope||'';
+  return `${scope} {--c1:${c.couleur_principale};--c2:${c.couleur_secondaire};--ct:${c.couleur_texte};--ft:'${c.police_titres}',Georgia,serif;--fx:'${c.police_texte}',system-ui,sans-serif}`;
+}
+function applyCharteStyle(){
+  let st=$('#charteStyle');if(!st){st=document.createElement('style');st.id='charteStyle';document.head.appendChild(st);}const c=S.charte;
+  st.textContent=`#edBox .toastui-editor-contents{font-family:'${c.police_texte}',system-ui,sans-serif;color:${c.couleur_texte};font-size:${Math.round(c.taille_texte*1.45)}px;line-height:1.6;max-width:820px;margin:0 auto}
+#edBox .toastui-editor-contents h1,#edBox .toastui-editor-contents h2,#edBox .toastui-editor-contents h3{font-family:'${c.police_titres}',Georgia,serif;color:${c.couleur_principale};border-bottom:0;line-height:1.2}
+#edBox .toastui-editor-contents h1{font-size:2em}#edBox .toastui-editor-contents h2{font-size:1.5em;margin-top:1.4em}#edBox .toastui-editor-contents h3{font-size:1.2em}
+#edBox .toastui-editor-contents blockquote{border-left:4px solid ${c.couleur_secondaire};color:inherit}
+#edBox .toastui-editor-contents a{color:${c.couleur_principale}}
+#fTitre{font-family:'${c.police_titres}',Georgia,serif!important;color:${c.couleur_principale}!important}`;
+}
+
+/* ===================== rendu pour PDF / page publique ===================== */
+let conv=null;
+function mdToHtml(md){
+  if(editor&&S.cur&&!conv){/* on garde un convertisseur séparé pour ne pas toucher à l'éditeur */}
+  if(!conv){const d=document.createElement('div');d.style.cssText='position:fixed;left:-9999px;top:0;width:600px;height:200px';document.body.appendChild(d);conv=new toastui.Editor({el:d,initialEditType:'markdown',previewStyle:'tab',height:'200px',usageStatistics:false});}
+  conv.setMarkdown(md,false);return conv.getHTML().replace(/<p>\s*<br\s*\/?>\s*<\/p>/g,'');
+}
+async function fontFaceCSS(embed){
+  const c=S.charte,fams=[...new Set([c.police_titres,c.police_texte])];let css='';
+  for(const f of fams){const id=FONTFILE[f];if(!id)continue;for(const w of [400,700])for(const st of ['normal','italic']){const file=`/lib/fonts/${id}-latin-${w}-${st}.woff2`;
+    let src=file;if(embed){try{const r=await fetch(file);if(!r.ok)continue;src=await blobToDataURL(await r.blob());}catch(e){continue;}}else{/* vérifié au chargement */}
+    css+=`@font-face{font-family:'${f}';font-style:${st};font-weight:${w};src:url(${src}) format('woff2')}\n`;}}
+  return css;
+}
+async function renderHTML(slug,mode){
+  // mode : 'print' (PDF) ou 'public' (page web autonome)
+  const r=docRec(slug);const {meta,body}=parseDoc(r.raw);const c=S.charte;const pub=mode==='public';
+  let html=mdToHtml(body);
+  // images : chemins du dépôt → adresses utilisables
+  const tmp=document.createElement('div');tmp.innerHTML=html;
+  for(const img of tmp.querySelectorAll('img')){const src=img.getAttribute('src')||'';let path=S.urlPath.get(src)||(src.startsWith('images/')?src:null);if(!path)continue;const u=await imgUrlFor(path);if(!u)continue;
+    img.setAttribute('src',pub?await blobToDataURL(await (await fetch(u)).blob()):u);}
+  html=tmp.innerHTML;
+  let logo='';if(S.logoUrl){logo=pub?await blobToDataURL(await (await fetch(S.logoUrl)).blob()):S.logoUrl;}
+  const fonts=await fontFaceCSS(pub);const fiche=meta.type==='fiche';
+  const T=esc(meta.titre);
+  const css=`${fonts}
+@page{size:A4;margin:${fiche?'12mm 14mm 14mm':'20mm 18mm 22mm'};@bottom-left{content:"${esc(meta.titre).replace(/"/g,'\\"')} — ${esc(c.nom)}";font:8pt '${c.police_texte}',sans-serif;color:#888}@bottom-right{content:counter(page) " / " counter(pages);font:8pt '${c.police_texte}',sans-serif;color:#888}}
+@page:first{@bottom-left{content:none}@bottom-right{content:none}}
+*{box-sizing:border-box}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;font-family:'${c.police_texte}',system-ui,sans-serif;color:${c.couleur_texte};font-size:${c.taille_texte}pt;line-height:1.55;background:#fff}
+h1,h2,h3,h4{font-family:'${c.police_titres}',Georgia,serif;color:${c.couleur_principale};line-height:1.2;break-after:avoid}
+h2{font-size:1.55em;margin:1.4em 0 .5em}h3{font-size:1.2em;margin:1.2em 0 .4em}
+.contents h1{font-size:1.9em}
+p,li{orphans:3;widows:3}
+a{color:${c.couleur_principale}}
+img{max-width:100%;height:auto;break-inside:avoid;border-radius:2px}
+blockquote{margin:1em 0;padding:.2em 1em;border-left:4px solid ${c.couleur_secondaire};background:color-mix(in srgb,${c.couleur_secondaire} 12%,#fff)}
+table{border-collapse:collapse;width:100%;margin:1em 0;font-size:.92em;break-inside:avoid}
+th,td{border:1px solid #ddd;padding:5px 8px;text-align:left;vertical-align:top}
+th{background:color-mix(in srgb,${c.couleur_principale} 14%,#fff)}
+hr{border:0;border-top:2px solid ${c.couleur_secondaire};margin:1.5em 0}
+code{font-size:.9em;background:#f4f4f4;padding:1px 4px;border-radius:3px}
+.cover{height:${pub?'auto':'255mm'};display:flex;flex-direction:column;break-after:page;${pub?'padding:40px 0 30px':''}}
+.cover .logo{max-height:${pub?'70px':'26mm'};max-width:70mm;object-fit:contain;align-self:flex-start}
+.cover .band{height:${pub?'10px':'14mm'};background:${c.couleur_principale};margin:${pub?'30px 0':'auto 0 12mm'};border-radius:2px;position:relative}
+.cover .band::after{content:"";position:absolute;right:0;top:0;bottom:0;width:30%;background:${c.couleur_secondaire}}
+.cover h1{font-size:${pub?'2.6em':'34pt'};margin:0 0 .3em}
+.cover .sous{font-size:1.3em;color:${c.couleur_texte};opacity:.8;margin:0}
+.cover .info{margin-top:${pub?'20px':'auto'};font-size:.9em;opacity:.75;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.fhead{display:flex;align-items:center;gap:14px;background:${c.couleur_principale};color:#fff;padding:12px 16px;border-radius:4px;margin-bottom:12px}
+.fhead .logo{max-height:16mm;max-width:40mm;object-fit:contain;background:#fff;padding:4px;border-radius:3px}
+.fhead h1{color:#fff;margin:0;font-size:22pt}
+.fhead .sous{margin:2px 0 0;opacity:.9}
+.fiche .contents{column-count:2;column-gap:8mm}
+.fiche .contents h2{font-size:1.2em;margin:.2em 0 .3em;break-after:avoid;border-top:3px solid ${c.couleur_secondaire};padding-top:4px}
+.fiche .contents h2+p,.fiche .contents h2+ul{break-before:avoid}
+.fiche .contents>*{break-inside:avoid}
+.fiche .contents p{margin:0 0 .7em}
+.pied{margin-top:12px;font-size:.85em;opacity:.75;border-top:1px solid #ddd;padding-top:6px}
+${pub?`body{background:#f4f2ee}.page{max-width:820px;margin:0 auto;background:#fff;padding:30px 48px 50px;min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.06)}@media(max-width:700px){.page{padding:20px}.fiche .contents{column-count:1}}@media print{body{background:#fff}.page{box-shadow:none;padding:0;max-width:none}}`:''}`;
+  const date=fmtDate(meta.modifie||meta.cree);
+  const head=fiche?`<div class="fhead">${logo?`<img class="logo" src="${logo}" alt="">`:''}<div><h1>${T}</h1>${meta.sous_titre?`<p class="sous">${esc(meta.sous_titre)}</p>`:''}</div></div>`
+    :`<section class="cover">${logo?`<img class="logo" src="${logo}" alt="">`:`<div style="font:700 20pt '${c.police_titres}',serif;color:${c.couleur_principale}">${esc(c.nom)}</div>`}<div class="band"></div><h1>${T}</h1>${meta.sous_titre?`<p class="sous">${esc(meta.sous_titre)}</p>`:''}<div class="info"><span>${esc(c.nom)}${c.pied?' — '+esc(c.pied):''}</span><span>${date}</span></div></section>`;
+  const foot=fiche&&c.pied?`<div class="pied">${esc(c.nom)} — ${esc(c.pied)}</div>`:'';
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${T} — ${esc(c.nom)}</title><style>${css}</style></head><body class="${fiche?'fiche':'dossier'}"><div class="page">${head}<div class="contents">${html}</div>${foot}</div></body></html>`;
+}
+$('#bPdf').onclick=async()=>{
+  await saveCur();await busy('Mise en page…');
+  try{const html=await renderHTML(S.cur,'print');const f=document.createElement('iframe');f.style.cssText='position:fixed;width:0;height:0;border:0;right:0;bottom:0';document.body.appendChild(f);
+    f.contentDocument.open();f.contentDocument.write(html);f.contentDocument.close();
+    await new Promise(r=>setTimeout(r,200));try{await f.contentDocument.fonts.ready;}catch(e){}
+    await Promise.all([...f.contentDocument.images].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r;})));
+    await busy();f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),60000);
+  }catch(e){await busy();alert('Mise en page impossible : '+(e.message||e));}
+};
+
+/* ===================== Word ===================== */
+$('#bWord').onclick=async()=>{
+  await saveCur();await busy('Création du fichier Word…');
+  try{const blob=await buildDocx(S.cur);const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=S.cur+'.docx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);}
+  catch(e){console.error(e);alert('Export Word impossible : '+(e.message||e));}
+  await busy();
+};
+async function buildDocx(slug){
+  const D=window.docx;const r=docRec(slug);const {meta,body}=parseDoc(r.raw);const c=S.charte;const col=h=>h.replace('#','').toUpperCase();
+  const tmp=document.createElement('div');tmp.innerHTML=mdToHtml(body);
+  const imgData=async src=>{const path=S.urlPath.get(src)||(src.startsWith('images/')?src:null);const u=path?await imgUrlFor(path):src;if(!u)return null;const b=await (await fetch(u)).blob();
+    const bmp=await createImageBitmap(b);const w=Math.min(600,bmp.width),h=Math.round(bmp.height*w/bmp.width);let type=b.type==='image/png'?'png':'jpg',data=new Uint8Array(await b.arrayBuffer());
+    if(b.type==='image/svg+xml'){const cv=document.createElement('canvas');cv.width=bmp.width*2;cv.height=bmp.height*2;cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);data=new Uint8Array(await (await new Promise(r=>cv.toBlob(r,'image/png'))).arrayBuffer());type='png';}
+    return {data,type,w,h};};
+  function runs(node,st){
+    const out=[];
+    for(const n of node.childNodes){
+      if(n.nodeType===3){if(n.textContent)out.push(new D.TextRun({text:n.textContent,bold:st.b,italics:st.i,strike:st.s,font:st.code?'Courier New':undefined}));continue;}
+      if(n.nodeType!==1)continue;const t=n.tagName;
+      if(t==='BR'){out.push(new D.TextRun({text:'',break:1}));continue;}
+      if(t==='A'){out.push(new D.ExternalHyperlink({link:n.getAttribute('href')||'',children:[new D.TextRun({text:n.textContent,style:'Hyperlink',color:col(c.couleur_principale),underline:{}})]}));continue;}
+      out.push(...runs(n,{b:st.b||t==='STRONG'||t==='B',i:st.i||t==='EM'||t==='I',s:st.s||t==='DEL'||t==='S',code:st.code||t==='CODE'}));
+    }
+    return out;
+  }
+  const kids=[];
+  async function block(el,ctx){
+    const t=el.tagName;
+    if(/^H[1-6]$/.test(t)){const lv=+t[1];kids.push(new D.Paragraph({heading:[D.HeadingLevel.HEADING_1,D.HeadingLevel.HEADING_2,D.HeadingLevel.HEADING_3,D.HeadingLevel.HEADING_4,D.HeadingLevel.HEADING_5,D.HeadingLevel.HEADING_6][lv-1],children:runs(el,{})}));return;}
+    if(t==='P'){const imgs=[...el.querySelectorAll('img')];if(imgs.length&&!el.textContent.trim()){for(const im of imgs){const d=await imgData(im.getAttribute('src'));if(d)kids.push(new D.Paragraph({children:[new D.ImageRun({type:d.type,data:d.data,transformation:{width:d.w,height:d.h}})]}));}return;}
+      kids.push(new D.Paragraph({children:runs(el,{}),indent:ctx.quote?{left:500}:undefined,border:ctx.quote?{left:{color:col(c.couleur_secondaire),size:18,style:D.BorderStyle.SINGLE,space:10}}:undefined}));return;}
+    if(t==='UL'||t==='OL'){for(const li of el.children){if(li.tagName!=='LI')continue;const own=document.createElement('span');for(const n of li.childNodes){if(n.nodeType===1&&(n.tagName==='UL'||n.tagName==='OL'))continue;own.appendChild(n.cloneNode(true));}
+        kids.push(new D.Paragraph(Object.assign({children:runs(own,{})},t==='OL'?{numbering:{reference:'num',level:ctx.level||0,instance:ctx.inst}}:{bullet:{level:ctx.level||0}})));
+        for(const sub of li.children)if(sub.tagName==='UL'||sub.tagName==='OL')await block(sub,{...ctx,level:(ctx.level||0)+1,inst:ctx.inst});}return;}
+    if(t==='BLOCKQUOTE'){for(const ch of el.children)await block(ch,{...ctx,quote:true});return;}
+    if(t==='HR'){kids.push(new D.Paragraph({border:{bottom:{color:col(c.couleur_secondaire),size:12,style:D.BorderStyle.SINGLE,space:4}},children:[]}));return;}
+    if(t==='PRE'){for(const line of el.textContent.split('\n'))kids.push(new D.Paragraph({children:[new D.TextRun({text:line,font:'Courier New',size:18})]}));return;}
+    if(t==='TABLE'){const rows=[...el.querySelectorAll('tr')].map(tr=>new D.TableRow({children:[...tr.children].map(td=>new D.TableCell({shading:td.tagName==='TH'?{fill:'EEEEEE'}:undefined,children:[new D.Paragraph({children:runs(td,{b:td.tagName==='TH'})})]}))}));
+      if(rows.length)kids.push(new D.Table({rows,width:{size:100,type:D.WidthType.PERCENTAGE}}));kids.push(new D.Paragraph({children:[]}));return;}
+    if(t==='DIV'){for(const ch of el.children)await block(ch,ctx);return;}
+    if(el.textContent.trim())kids.push(new D.Paragraph({children:runs(el,{})}));
+  }
+  let inst=0;for(const el of tmp.children)await block(el,{inst:(el.tagName==='OL'?++inst:inst)});
+  // en-tête du document
+  const top=[];
+  if(S.logoUrl){try{const d=await imgData(S.logoUrl);if(d){const k=Math.min(1,180/d.w,70/d.h);top.push(new D.Paragraph({children:[new D.ImageRun({type:d.type,data:d.data,transformation:{width:Math.round(d.w*k),height:Math.round(d.h*k)}})]}));}}catch(e){}}
+  else top.push(new D.Paragraph({children:[new D.TextRun({text:c.nom,bold:true,color:col(c.couleur_principale),size:28,font:c.police_titres})]}));
+  top.push(new D.Paragraph({heading:D.HeadingLevel.TITLE,spacing:{before:meta.type==='fiche'?200:2400},children:[new D.TextRun({text:meta.titre})]}));
+  if(meta.sous_titre)top.push(new D.Paragraph({children:[new D.TextRun({text:meta.sous_titre,size:30,color:'666666'})]}));
+  if(meta.type!=='fiche'){top.push(new D.Paragraph({spacing:{before:600},children:[new D.TextRun({text:[c.nom,c.pied].filter(Boolean).join(' — ')+'   ·   '+fmtDate(meta.modifie||meta.cree),color:'777777',size:18})]}));top.push(new D.Paragraph({children:[new D.PageBreak()]}));}
+  const sz=Math.round(c.taille_texte*2);
+  const doc=new D.Document({creator:c.nom,title:meta.titre,
+    styles:{default:{document:{run:{font:c.police_texte,size:sz,color:col(c.couleur_texte)},paragraph:{spacing:{after:120,line:300}}},
+      title:{run:{font:c.police_titres,size:64,bold:true,color:col(c.couleur_principale)}},
+      heading1:{run:{font:c.police_titres,size:Math.round(sz*1.9),bold:true,color:col(c.couleur_principale)},paragraph:{spacing:{before:360,after:160}}},
+      heading2:{run:{font:c.police_titres,size:Math.round(sz*1.55),bold:true,color:col(c.couleur_principale)},paragraph:{spacing:{before:320,after:120}}},
+      heading3:{run:{font:c.police_titres,size:Math.round(sz*1.2),bold:true,color:col(c.couleur_principale)},paragraph:{spacing:{before:240,after:100}}}}},
+    numbering:{config:[{reference:'num',levels:[0,1,2,3].map(l=>({level:l,format:D.LevelFormat.DECIMAL,text:`%${l+1}.`,alignment:D.AlignmentType.START,style:{paragraph:{indent:{left:720*(l+1),hanging:360}}}}))}]},
+    sections:[{properties:{page:{margin:{top:1134,bottom:1134,left:1077,right:1077}}},
+      footers:{default:new D.Footer({children:[new D.Paragraph({alignment:D.AlignmentType.RIGHT,children:[new D.TextRun({text:meta.titre+' — '+c.nom+'   ',size:16,color:'888888'}),new D.TextRun({children:[D.PageNumber.CURRENT],size:16,color:'888888'})]})]})},
+      children:top.concat(kids)}]});
+  return D.Packer.toBlob(doc);
+}
+
+/* ===================== lien public ===================== */
+function randId(){const a='abcdefghijkmnpqrstuvwxyz23456789';let s='';const u=crypto.getRandomValues(new Uint8Array(6));for(const x of u)s+=a[x%a.length];return s;}
+async function publish(slug,silent){
+  const r=docRec(slug);const p=parseDoc(r.raw);let id=p.meta.public;
+  if(!id){id=slug.slice(0,40)+'-'+randId();p.meta.public=id;await storeRec(Object.assign({},r,{raw:buildDoc(p.meta,p.body),dirty:true}));}
+  const html=await renderHTML(slug,'public');const site=S.cfg.site||'applis';
+  // accès sans mot de passe au dossier /p/
+  if(!(await fileSha('p/.htaccess',site)))await putFile('p/.htaccess',utf8('# Pages publiques : pas de mot de passe\nRequire all granted\n'),null,'Pages publiques : accès libre',site);
+  const path=`p/${id}/index.html`;const sha=await fileSha(path,site);await putFile(path,utf8(html),sha,`Page publique : « ${p.meta.titre} »`,site);
+  if(!silent){if(S.cur===slug)renderPub(p.meta);schedulePush(300);}
+  return pubUrl(id);
+}
+async function unpublish(slug,id){const site=S.cfg.site||'applis';const path=`p/${id}/index.html`;const sha=await fileSha(path,site);if(sha)await delFile(path,sha,'Page publique retirée',site);}
+$('#bPublish').onclick=()=>{const m=curParts().meta;$('#pOff').hidden=!m.public;$('#pOn').textContent=m.public?'Mettre à jour la page':'Publier';$('#dPub').showModal();};
+$('#pOn').onclick=async()=>{if(!S.cfg)return alert('Configure d’abord l’accès GitHub.');await saveCur();$('#dPub').close();await busy('Publication…');try{const u=await publish(S.cur);await navigator.clipboard.writeText(u).catch(()=>{});toast('Page publique en ligne d’ici une minute — lien copié');}catch(e){alert('Publication impossible : '+(e.message||e)+'\n\nVérifie que le jeton a bien accès au dépôt « '+(S.cfg.site||'applis')+' ».');}await busy();};
+$('#pOff').onclick=async()=>{$('#dPub').close();await busy('Retrait…');try{const r=docRec(S.cur);const p=parseDoc(r.raw);await unpublish(S.cur,p.meta.public);p.meta.public='';await storeRec(Object.assign({},r,{raw:buildDoc(p.meta,p.body),dirty:true}));renderPub(p.meta);schedulePush(300);toast('Page publique retirée');}catch(e){alert(e.message||e);}await busy();};
+$('#bPubCopy').onclick=()=>navigator.clipboard.writeText($('#pubLink').href).then(()=>toast('Lien public copié'));
+
+/* ===================== réglages ===================== */
+$('#bSetup').onclick=()=>{const c=S.cfg||{};$('#sOwner').value=c.owner||'jugaillot';$('#sRepo').value=c.repo||'dossiers';$('#sSite').value=c.site||'applis';$('#sTok').value=c.token||'';$('#sMsg').textContent='';$('#dSetup').showModal();};
+$('#sSave').onclick=async e=>{e.preventDefault();const c={owner:$('#sOwner').value.trim(),repo:$('#sRepo').value.trim(),site:$('#sSite').value.trim(),token:$('#sTok').value.trim()};if(!c.token)return;$('#sMsg').textContent='Vérification…';
+  const old=S.cfg;S.cfg=c;try{const j=await gh('GET',`/repos/${c.owner}/${c.repo}`);if(!j.private&&!confirm('Attention : le dépôt « '+c.repo+' » est PUBLIC. Tes dossiers seraient lisibles par tout le monde. Continuer quand même ?')){S.cfg=old;return;}
+    if(j.permissions&&!j.permissions.push){$('#sMsg').textContent='Le jeton peut lire mais pas écrire : coche « Contents : Read and write ».';S.cfg=old;return;}
+    await saveCur();await saveCfg(c);$('#dSetup').close();toast('Accès GitHub enregistré');pull();}
+  catch(err){S.cfg=old;$('#sMsg').textContent='✗ '+(err.status===404?'Dépôt introuvable avec ce jeton (vérifie le nom et l’accès du jeton).':err.status===401?'Jeton refusé (copié en entier ?).':err.message);}};
+function fillCharteForm(){const c=S.charte;$('#cNom').value=c.nom;$('#cPied').value=c.pied||'';const opts=FONTS.map(f=>`<option>${f}</option>`).join('');$('#cPT').innerHTML=opts;$('#cPX').innerHTML=opts;$('#cPT').value=c.police_titres;$('#cPX').value=c.police_texte;$('#cC1').value=c.couleur_principale;$('#cC2').value=c.couleur_secondaire;$('#cC3').value=c.couleur_texte;$('#cTaille').value=c.taille_texte;$('#logoPrev').src=S.logoUrl||'';$('#logoPrev').hidden=!S.logoUrl;$('#cLogoDel').hidden=!S.logoUrl;previewCharte();}
+function formCharte(){return {...S.charte,nom:$('#cNom').value.trim()||'Rdutemps',pied:$('#cPied').value.trim(),police_titres:$('#cPT').value,police_texte:$('#cPX').value,couleur_principale:$('#cC1').value,couleur_secondaire:$('#cC2').value,couleur_texte:$('#cC3').value,taille_texte:Math.max(8,Math.min(14,+$('#cTaille').value||10.5))};}
+function previewCharte(){const c=formCharte();const logo=$('#logoPrev').hidden?'':$('#logoPrev').src;$('#chartePrev').innerHTML=`<div style="display:flex;align-items:center;gap:10px">${logo?`<img src="${logo}" style="max-height:34px">`:''}<div style="height:8px;flex:1;background:linear-gradient(90deg,${c.couleur_principale} 70%,${c.couleur_secondaire} 70%)"></div></div><div style="font:700 26px '${c.police_titres}',serif;color:${c.couleur_principale};margin:10px 0 2px">Titre du dossier</div><div style="font:600 17px '${c.police_titres}',serif;color:${c.couleur_principale};margin:10px 0 4px">Une rubrique</div><div style="font:${c.taille_texte*1.45}px/1.55 '${c.police_texte}',sans-serif;color:${c.couleur_texte}">Le texte courant du document, avec un mot en <b>gras</b> et un <a style="color:${c.couleur_principale}">lien</a>.</div><div style="font:11px '${c.police_texte}',sans-serif;color:#888;margin-top:8px;border-top:1px solid #eee;padding-top:4px">${esc(c.nom)}${c.pied?' — '+esc(c.pied):''}</div>`;}
+['#cNom','#cPied','#cPT','#cPX','#cC1','#cC2','#cC3','#cTaille'].forEach(id=>$(id).addEventListener('input',previewCharte));
+let newLogo=null,logoRemoved=false;
+$('#cLogo').onchange=e=>{const f=e.target.files[0];if(!f)return;newLogo=f;logoRemoved=false;$('#logoPrev').src=URL.createObjectURL(f);$('#logoPrev').hidden=false;$('#cLogoDel').hidden=false;previewCharte();};
+$('#cLogoDel').onclick=()=>{newLogo=null;logoRemoved=true;$('#logoPrev').hidden=true;$('#cLogoDel').hidden=true;previewCharte();};
+$('#bCharte').onclick=()=>{newLogo=null;logoRemoved=false;fillCharteForm();$('#dCharte').showModal();};
+$('#cSave').onclick=async e=>{e.preventDefault();const c=formCharte();
+  if(newLogo){const ext=newLogo.type==='image/svg+xml'?'svg':newLogo.type==='image/png'?'png':'jpg';let blob=newLogo;if(ext!=='svg')blob=await prepImage(newLogo);c.logo='charte/logo.'+(ext==='svg'?'svg':blob.type==='image/png'?'png':'jpg');S.logoPending={path:c.logo,blob};await idb.set('logo',{blob});S.logoUrl=URL.createObjectURL(blob);}
+  if(logoRemoved){c.logo='';S.logoUrl='';await idb.del('logo');}
+  S.charte=c;S.charteDirty=true;await idb.set('charte',{data:c,sha:S.charteSha,dirty:true});applyCharteStyle();$('#dCharte').close();schedulePush(500);toast('Charte enregistrée');};
+
+/* ===================== navigation ===================== */
+async function route(){
+  const slug=decodeURIComponent(location.hash.slice(1));
+  if(S.cur&&S.cur!==slug){clearTimeout(editT);await saveCur();}
+  if(slug&&docRec(slug)){await openDoc(slug);}
+  else{if(slug&&!docRec(slug)){if(S.cfg&&navigator.onLine&&!S.triedPull){S.triedPull=true;await pull();S.triedPull=false;if(docRec(slug))return openDoc(slug);}toast('Ce document n’existe pas (ou plus)');history.replaceState(null,'','#');}
+    S.cur=null;$('#ed').hidden=true;$('#repo').hidden=false;document.title='Atelier Dossiers';renderRepo();}
+}
+window.addEventListener('hashchange',route);
+$('#ghState').onclick=()=>pull();
+window.addEventListener('online',()=>{pull();});
+window.addEventListener('offline',()=>setState('Hors connexion — modifications gardées ici'));
+let lastFocusPull=0;window.addEventListener('focus',()=>{if(Date.now()-lastFocusPull>20000){lastFocusPull=Date.now();pull();}});
+window.addEventListener('beforeunload',e=>{if(S.cur){clearTimeout(editT);saveCur();}});
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();clearTimeout(editT);saveCur().then(()=>schedulePush(100));}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'&&S.cur){e.preventDefault();$('#bPdf').click();}});
+
+(async function init(){
+  fillStatutSelect();
+  await loadLocal();applyCharteStyle();await loadCfg();
+  if(!S.cfg)setState('Accès GitHub à configurer',true);
+  renderSide();await route();
+  // la clé GitHub peut arriver par la synchronisation de l'atelier
+  if(!S.cfg&&window.AtelierSync){AtelierSync.onStatus(async()=>{if(!S.cfg&&await loadCfg())pull();});}
+  pull();
+})();
+</script>
+<script src="../lib/help.js"></script>
+<script>AtelierHelp.init({app:"dossiers",title:"Atelier Dossiers",sections:[
+{title:"Documents",keys:[["Ctrl + S","Enregistrer et envoyer tout de suite sur GitHub"],["Ctrl + P","PDF / imprimer"],["Glisser une ligne sur un classeur","Ranger le document"],["Coller ou glisser une image","L’ajouter au document"]]},
+{title:"Comment ça marche",params:[["Adresse","Chaque document a sa propre adresse (bouton « Copier l’adresse ») : atelier…/dossiers/#nom-du-document. Elle ne change pas si tu renommes le document."],["Enregistrement","Tout est gardé sur l’appareil à chaque frappe, puis envoyé sur GitHub quelques secondes après. Hors connexion, l’envoi se fait au retour du réseau."],["Versions","Chaque envoi est une version : le bouton « Versions » ouvre l’historique sur GitHub."],["Claude","Claude peut créer ou modifier des documents depuis une conversation : ils apparaissent ici à l’actualisation (clic sur l’état de synchronisation, ou en revenant sur la fenêtre)."],["Fiche action","« Créer la fiche action » reprend le début de chaque rubrique (titres de niveau 2) du dossier, sur une page A4 en deux colonnes."],["Lien public","Une page en lecture seule, sans mot de passe, mise à jour à chaque modification."],["Charte","Polices, couleurs, logo et pied de page communs à tous les documents."]]}]});</script>
+</body>
+</html>

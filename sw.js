@@ -1,12 +1,14 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Bibliothèques et autres fichiers : copie locale d'abord, mise à jour en arrière-plan. */
-const VERSION = 'atelier-v10';
+const VERSION = 'atelier-v11';
 const PRECACHE = [
-  '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/',
+  '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/',
   '/vecto/potrace-worker.js', '/lib/sync.js', '/lib/help.js',
   '/lib/paper-core.min.js', '/lib/jspdf.umd.min.js', '/lib/svg2pdf.umd.min.js',
   '/lib/pdf.min.js', '/lib/pdf.worker.min.js', '/lib/pdf-lib.min.js',
+  '/lib/toastui-editor-all.min.js', '/lib/toastui-editor.css', '/lib/docx.iife.js', '/lib/fonts.css',
+  '/lib/fonts/dm-serif-display-latin-400-italic.woff2', '/lib/fonts/dm-serif-display-latin-400-normal.woff2', '/lib/fonts/fraunces-latin-400-italic.woff2', '/lib/fonts/fraunces-latin-400-normal.woff2', '/lib/fonts/fraunces-latin-700-italic.woff2', '/lib/fonts/fraunces-latin-700-normal.woff2', '/lib/fonts/ibm-plex-sans-latin-400-italic.woff2', '/lib/fonts/ibm-plex-sans-latin-400-normal.woff2', '/lib/fonts/ibm-plex-sans-latin-700-italic.woff2', '/lib/fonts/ibm-plex-sans-latin-700-normal.woff2', '/lib/fonts/inter-latin-400-italic.woff2', '/lib/fonts/inter-latin-400-normal.woff2', '/lib/fonts/inter-latin-700-italic.woff2', '/lib/fonts/inter-latin-700-normal.woff2', '/lib/fonts/space-grotesk-latin-400-normal.woff2', '/lib/fonts/space-grotesk-latin-700-normal.woff2', '/lib/fonts/syne-latin-400-normal.woff2', '/lib/fonts/syne-latin-700-normal.woff2', '/lib/fonts/work-sans-latin-400-italic.woff2', '/lib/fonts/work-sans-latin-400-normal.woff2', '/lib/fonts/work-sans-latin-700-italic.woff2', '/lib/fonts/work-sans-latin-700-normal.woff2',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'
 ];
 
@@ -43,7 +45,8 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname === '/api.php') return; // la synchronisation passe toujours par le réseau
+  if (url.pathname === '/api.php') return;
+  if (url.pathname.startsWith('/p/')) return; // pages publiques : toujours le réseau // la synchronisation passe toujours par le réseau
   const key = keyFor(req);
   const isPage = req.mode === 'navigate' || req.destination === 'document';
 
