@@ -70,7 +70,10 @@ main{flex:1;display:grid;grid-template-columns:250px 1fr;min-height:0}
 #edBox{flex:1;min-height:0;background:#fff}
 #edBox .toastui-editor-defaultUI{border:0;border-radius:0}
 .toastui-editor-contents{font-size:15px}
-#saveInfo{font-size:12px;color:var(--mute);margin-left:auto}
+#saveInfo{font-size:12px;color:var(--mute);white-space:nowrap}
+.trow{display:flex;align-items:center;gap:10px}
+#edOpts{display:flex;flex-direction:column;gap:8px}
+#edTop{padding:8px 14px 6px!important}
 #pubBox{display:flex;align-items:center;gap:6px;background:#e8f6f4;border:1px solid #8fd1ca;border-radius:7px;padding:3px 8px;font-size:12px}
 #pubBox a{color:inherit;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* dialogues */
@@ -127,8 +130,9 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
     <div id="repo"></div>
     <div id="ed" hidden>
       <div id="edTop">
-        <input id="fTitre" placeholder="Titre du document" autocomplete="off">
+        <div class="trow"><input id="fTitre" placeholder="Titre du document" autocomplete="off"><span id="saveInfo"></span><button class="btn sm" id="bOpts" title="Afficher / masquer les options du document">Options ▾</button></div>
         <input id="fSous" placeholder="Sous-titre (facultatif)" autocomplete="off">
+        <div id="edOpts" hidden>
         <div class="meta">
           <label>Type<select id="fTypeD"><option value="dossier">Dossier</option><option value="fiche">Fiche action</option></select></label>
           <label>Classeur<input id="fClasseur" class="w" list="dlClasseurs" placeholder="ex. Raffinerie/Ateliers"></label>
@@ -146,7 +150,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
           <button class="btn sm" id="bDup">Dupliquer</button>
           <button class="btn sm" id="bHist" title="Toutes les versions enregistrées de ce document">Versions</button>
           <button class="btn sm danger" id="bDel">Supprimer</button>
-          <span id="saveInfo"></span>
+        </div>
         </div>
       </div>
       <div id="edBox"></div>
@@ -490,6 +494,9 @@ $('#bDel').onclick=async()=>{const r=docRec(S.cur);if(!r)return;const t=parseDoc
   S.cur=null;location.hash='';schedulePush(300);renderSide();};
 $('#bAddr').onclick=()=>{const u=location.origin+'/dossiers/#'+S.cur;navigator.clipboard.writeText(u).then(()=>toast('Adresse copiée : '+u));};
 $('#bHist').onclick=()=>{if(!S.cfg)return;window.open(`https://github.com/${S.cfg.owner}/${S.cfg.repo}/commits/main/docs/${S.cur}.md`,'_blank');};
+function setOpts(open){$('#edOpts').hidden=!open;$('#bOpts').textContent=open?'Options ▴':'Options ▾';try{localStorage.setItem('atelierDossiers.options',open?'1':'');}catch(e){}}
+$('#bOpts').onclick=()=>setOpts($('#edOpts').hidden);
+try{setOpts(localStorage.getItem('atelierDossiers.options')==='1');}catch(e){setOpts(false);}
 $('#bRepo').onclick=e=>{e.preventDefault();location.hash='';};
 
 /* ===================== charte : styles ===================== */
