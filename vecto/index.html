@@ -83,7 +83,9 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 #vxSide{padding:12px 16px;display:flex;flex-direction:column;gap:9px;border-right:1px solid var(--line);overflow:auto;max-height:calc(94vh - 110px)}
 #vxSide>*{flex:none}
 #vxView{position:relative;background:#ececea;display:flex;align-items:center;justify-content:center;width:min(62vw,820px);height:min(70vh,700px);overflow:hidden}
-#vxView canvas,#vxView svg{position:absolute;max-width:96%;max-height:96%}
+#vxView canvas,#vxView svg{position:absolute;max-width:96%;max-height:96%;transform-origin:50% 50%}
+#vxView{touch-action:none}
+#vxZoomTip{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:3px 7px;border-radius:10px;pointer-events:none;z-index:2}
 #vxInfo{font-size:12px;color:var(--mute)}
 .rng span{display:flex;justify-content:space-between}
 .rng b{color:var(--ink);font-weight:600}
@@ -982,13 +984,13 @@ function vxDraw(){
   const dw=Math.round(VX.w*k),dh=Math.round(VX.h*k);
   box.style.overflow=full?'auto':'hidden';box.style.alignItems=full?'flex-start':'center';box.style.justifyContent=full?'flex-start':'center';
   const place=el=>{if(full){el.style.position='relative';el.style.maxWidth='none';el.style.maxHeight='none';el.style.flex='none';}box.appendChild(el);};
-  if(VX.show==='orig'){const c=document.createElement('canvas');c.width=dw;c.height=dh;c.getContext('2d').drawImage(VX.img,0,0,dw,dh);place(c);return;}
+  if(VX.show==='orig'){const c=document.createElement('canvas');c.width=dw;c.height=dh;c.getContext('2d').drawImage(VX.img,0,0,dw,dh);place(c);vzApply();return;}
   if(VX.show==='bitmap'||!VX.shapes){
     const c=document.createElement('canvas');c.width=VX.w;c.height=VX.h;c.style.width=dw+'px';c.style.height=dh+'px';
     const x=c.getContext('2d'),id=x.createImageData(VX.w,VX.h),o=id.data;
     const ad=VX.added&&VX.added.length===VX.bits.length?VX.added:null;
     for(let j=0,i=0;j<VX.bits.length;j++,i+=4){if(ad&&ad[j]){o[i]=255;o[i+1]=40;o[i+2]=160;}else{const v=VX.bits[j]?0:255;o[i]=o[i+1]=o[i+2]=v;}o[i+3]=255;}
-    x.putImageData(id,0,0);place(c);if(VX.show==='bitmap'||!VX.shapes)return;
+    x.putImageData(id,0,0);place(c);if(VX.show==='bitmap'||!VX.shapes){vzApply();return;}
   }
   box.innerHTML='';
   const NS='http://www.w3.org/2000/svg';
@@ -1006,6 +1008,7 @@ function vxDraw(){
     const pp=document.createElementNS(NS,'path');pp.setAttribute('d',pts);pp.setAttribute('fill','#ff2d9b');svg.appendChild(pp);
   }
   place(svg);
+  vzApply();
 }
 /* Un dessin vectorisé garde : la clé de son image source, ses réglages, et la matrice
    « pixels de l'image d'origine → page ». Ainsi on peut le revectoriser plus tard, au même endroit. */
@@ -1105,7 +1108,7 @@ async function vxOpenFile(f){
   const img=new Image();
   await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(new Error('image illisible'));img.src=url;}).catch(e=>{alert('Image illisible : '+e.message);});
   if(!img.naturalWidth)return;
-  VX.img=img;VX.name=f.name.replace(/\.[^.]+$/,'');VX.shapes=null;VX.origW=img.naturalWidth;VX.edit=null;VX.srcKey=await storeSrc(f);
+  VZ.s=1;VZ.x=VZ.y=0;VX.img=img;VX.name=f.name.replace(/\.[^.]+$/,'');VX.shapes=null;VX.origW=img.naturalWidth;VX.edit=null;VX.srcKey=await storeSrc(f);
   $('#vxInfo').textContent=f.name+' — '+img.naturalWidth+' × '+img.naturalHeight+' px';
   vxRun();
 }
@@ -1316,6 +1319,31 @@ $('#phOk').onclick=async()=>{
   }catch(e){await busy();alert('Recadrage impossible : '+(e.message||e));}
 };
 $('#phFile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)phLoad(f);};
+
+
+/* ---------- zoom de l'aperçu de vectorisation : 2 doigts, molette, double-tap ---------- */
+const VZ={s:1,x:0,y:0,pts:new Map(),last:null,tap:0};
+function vzApply(){
+  const box=$('#vxView');if($('#vxZoom').checked){VZ.s=1;VZ.x=VZ.y=0;}
+  box.querySelectorAll(':scope>canvas,:scope>svg').forEach(el=>{el.style.transform=VZ.s===1&&!VZ.x&&!VZ.y?'':`translate(${VZ.x}px,${VZ.y}px) scale(${VZ.s})`;});
+  let tip=$('#vxZoomTip');if(!tip){tip=document.createElement('div');tip.id='vxZoomTip';}
+  box.appendChild(tip);tip.textContent=VZ.s>1.01?'× '+VZ.s.toFixed(1)+' · double-tap : revenir':'Pincer pour zoomer';
+}
+function vzZoom(f,mx,my){const s=Math.max(1,Math.min(30,VZ.s*f));f=s/VZ.s;VZ.x=mx-(mx-VZ.x)*f;VZ.y=my-(my-VZ.y)*f;VZ.s=s;if(s===1){VZ.x=VZ.y=0;}vzApply();}
+function vzRel(e){const r=$('#vxView').getBoundingClientRect();return [e.clientX-r.left-r.width/2,e.clientY-r.top-r.height/2];}
+(function(){
+  const box=$('#vxView');
+  box.addEventListener('pointerdown',e=>{if($('#vxZoom').checked)return;box.setPointerCapture(e.pointerId);VZ.pts.set(e.pointerId,vzRel(e));VZ.last=null;
+    if(VZ.pts.size===1){const now=Date.now();if(now-VZ.tap<300){VZ.s=1;VZ.x=VZ.y=0;vzApply();VZ.tap=0;}else VZ.tap=now;}});
+  box.addEventListener('pointermove',e=>{if(!VZ.pts.has(e.pointerId))return;const prev=VZ.pts.get(e.pointerId),cur=vzRel(e);VZ.pts.set(e.pointerId,cur);
+    if(VZ.pts.size>=2){const [a,b]=[...VZ.pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]),m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+      if(VZ.last){VZ.x+=m[0]-VZ.last.m[0];VZ.y+=m[1]-VZ.last.m[1];if(VZ.last.d>0)vzZoom(d/VZ.last.d,m[0],m[1]);else vzApply();}
+      VZ.last={d,m};}
+    else if(VZ.s>1){VZ.x+=cur[0]-prev[0];VZ.y+=cur[1]-prev[1];vzApply();}});
+  const up=e=>{VZ.pts.delete(e.pointerId);VZ.last=null;};
+  box.addEventListener('pointerup',up);box.addEventListener('pointercancel',up);
+  box.addEventListener('wheel',e=>{if($('#vxZoom').checked)return;e.preventDefault();const [mx,my]=vzRel(e);vzZoom(e.deltaY<0?1.15:1/1.15,mx,my);},{passive:false});
+})();
 
 /* calques */
 const LY=$('#layers');
