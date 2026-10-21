@@ -97,6 +97,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   main{grid-template-columns:44px 1fr;grid-template-rows:1fr 40vh}
   aside{grid-column:1 / -1;border-left:0;border-top:1px solid var(--line)}
   #vxBody{grid-template-columns:1fr}
+  #hint{display:none}
   #vxView{width:96vw;height:38vh;order:-1}
   #vxSide{max-height:calc(94vh - 38vh - 110px);border-right:0;border-top:1px solid var(--line)}
 }
@@ -1044,12 +1045,12 @@ async function vxPlace(){
   if(VX.edit){
     const old=VX.edit.item;
     const cols=old.parent?vxColors(old):{};
-    const g=buildVx(VX.shapes,VX.whites||[],{name:old.name,scale:VX.scale,mode:VX.mode,blanc:p.blanc,params:p,src:VX.edit.src,black:cols.black||S.fill||'#000000',white:cols.white||'#ffffff'});
+    const g=buildVx(VX.shapes,VX.whites||[],{name:old.name,scale:VX.scale,mode:VX.mode,blanc:p.blanc,params:p,src:VX.edit.src,black:traitColor(cols.black||S.fill),white:cols.white||'#ffffff'});
     xf(g,new P.Matrix(VX.edit.m));
     if(old.parent){g.insertAbove(old);old.remove();}
     VX.edit=null;setTool('select');setSel([g]);commit();return;
   }
-  const g=buildVx(VX.shapes,VX.whites||[],{name:VX.name,scale:VX.scale,mode:VX.mode,blanc:p.blanc,params:p,src:VX.srcKey,black:S.fill||'#000000'});
+  const g=buildVx(VX.shapes,VX.whites||[],{name:VX.name,scale:VX.scale,mode:VX.mode,blanc:p.blanc,params:p,src:VX.srcKey,black:traitColor(S.fill)});
   // pixels d'origine → mm
   let k;
   if(VX.place==='dpi'){k=25.4/(+$('#vxDpi').value||300);}
@@ -1058,6 +1059,8 @@ async function vxPlace(){
   moveIt(g,new P.Point(S.page.w/2,S.page.h/2).subtract(g.position));
   setTool('select');setSel([g]);commit();
 }
+/* les traits d'un dessin vectorisé ne sont jamais blancs (sinon invisibles sur la page) */
+function traitColor(c){return c&&String(c).toLowerCase()!=='#ffffff'?c:'#000000';}
 async function storeSrc(blob){const key='vxsrc.'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);const ok=await IDB.set(key,blob);if(ok&&window.AtelierSync)AtelierSync.saveBlob(key,blob);return ok?key:null;}
 async function blobToImage(blob){const url=URL.createObjectURL(blob);const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(new Error('image illisible'));img.src=url;});return img;}
 function setVxParams(p){
