@@ -133,6 +133,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 <main>
   <nav id="tools">
     <button class="tool" data-tool="select" title="Sélection (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor"/></svg></button>
+    <button class="tool" data-tool="lasso" title="Lasso — entourer des formes, même à l’intérieur d’un dessin (Q)"><svg viewBox="0 0 24 24"><path d="M12 4c5 0 8 2.2 8 5s-3.6 5-8 5-8-2.2-8-5 3-5 8-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 2"/><path d="M7 13c-1 2 0 4 2 4s2 2 1 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
     <button class="tool" data-tool="direct" title="Sélection directe — points (A)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
     <div class="tsep"></div>
     <button class="tool" data-tool="pen" title="Plume (P)"><svg viewBox="0 0 24 24"><path d="M12 3l5 9-5 9-5-9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg></button>
@@ -181,6 +182,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
         <button class="btn sm" data-cmd="del" title="Suppr">Supprimer</button>
         <button class="btn sm" data-cmd="front" title="Premier plan">Devant</button>
         <button class="btn sm" data-cmd="back" title="Arrière-plan">Derrière</button>
+        <button class="btn sm" id="bDetach" title="La sélection sort de son dessin et devient un objet à part (groupé), au même endroit">Détacher en objet</button>
         <button class="btn sm" id="bCopy" title="Ctrl+C — se colle aussi dans Paysage insulaire">Copier</button>
       </div>
       <div class="muted" style="margin-top:8px">Aligner <select id="alignTo" style="width:auto;padding:1px 4px;font-size:12px"><option value="sel">sur la sélection</option><option value="page">sur la page</option></select></div>
@@ -421,7 +423,7 @@ function drawUI(){
   uiLayer.removeChildren();uiLayer.activate();
   handles=[];
   const tool=S.tool;
-  if(sel.length&&(tool==='select')){
+  if(sel.length&&(tool==='select'||tool==='lasso')){
     const b=selBounds();
     const frame=new P.Path.Rectangle({rectangle:b,strokeColor:'#1e88ff',strokeWidth:px(1),dashArray:[px(4),px(3)]});
     frame.data.ui=true;
@@ -547,6 +549,7 @@ function renderLayers(){
 /* ---------- outils ---------- */
 const HINTS={
   select:'Clic : sélectionner · Ctrl+clic : sélectionner une forme à l’intérieur d’un groupe · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : dupliquer · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
+  lasso:'Entoure à main levée les formes à prendre (même à l’intérieur d’un dessin) · Maj : ajouter · glisser ensuite une forme prise pour tout déplacer · « Détacher en objet » pour en faire un objet à part',
   direct:'Clic sur un tracé : voir ses points · glisser un point ou une poignée · Maj : ajouter des points · double-clic sur un point : angle ↔ courbe · Suppr : effacer les points',
   pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer',
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
@@ -562,7 +565,7 @@ function setTool(t){
   S.tool=t;
   document.querySelectorAll('.tool[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
   $('#hint').textContent=HINTS[t]||'';
-  cv.style.cursor=t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?'cell':'crosshair';
+  cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?'cell':'crosshair';
   drawUI();
 }
 
@@ -581,6 +584,8 @@ tool.onMouseDown=function(e){
   const now=Date.now(),dbl=now-lastDown.t<350&&lastDown.p&&lastDown.p.getDistance(e.point)<px(6);lastDown={t:now,p:e.point};
   if(S.tool==='hand'||e.event.button===1||spaceDown){drag={mode:'pan',start:e.event.clientX,sy:e.event.clientY,c:view.center};cv.style.cursor='grabbing';return;}
   if(S.tool==='select')return selDown(e,dbl);
+  if(S.tool==='lasso'&&sel.length&&handleAt(e.point))return selDown(e,dbl);
+  if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
   if(S.tool==='direct')return dirDown(e,dbl);
   if(S.tool==='pen')return penDown(e);
   if(S.tool==='bucket')return bucketDown(e);
@@ -591,7 +596,8 @@ tool.onMouseDown=function(e){
 };
 tool.onMouseDrag=function(e){
   if(drag&&drag.mode==='pan'){const z=view.zoom;view.center=drag.c.subtract(new P.Point(e.event.clientX-drag.start,e.event.clientY-drag.sy).divide(z));afterView();return;}
-  if(S.tool==='select')return selDrag(e);
+  if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selDrag(e);
+  if(S.tool==='lasso')return lassoDrag(e);
   if(S.tool==='direct')return dirDrag(e);
   if(S.tool==='pen')return penDragFn(e);
   if(S.tool==='pencil'&&pencilPath){pencilPath.add(e.point);return;}
@@ -608,7 +614,8 @@ tool.onMouseDrag=function(e){
 };
 tool.onMouseUp=function(e){
   if(drag&&drag.mode==='pan'){drag=null;cv.style.cursor=S.tool==='hand'?'grab':'default';return;}
-  if(S.tool==='select')return selUp(e);
+  if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selUp(e);
+  if(S.tool==='lasso')return lassoUp(e);
   if(S.tool==='direct')return dirUp(e);
   if(S.tool==='pen')return penUp(e);
   if(S.tool==='pencil'&&pencilPath){
@@ -635,6 +642,7 @@ function selDown(e,dbl){
     drag={mode:h==='rot'?'rot':'scale',h,b,start:e.point,center:b.center,psx:1,psy:1,pa:0};
     return;
   }
+  {const lf=hitLeaf(e.point);if(lf&&!sel.includes(topOf(lf))&&inSel(lf)&&!e.modifiers.shift&&!(e.modifiers.control||e.modifiers.meta)&&!dbl){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}}
   let hit=hitTop(e.point);
   if(hit&&(e.modifiers.control||e.modifiers.meta)){const lf=hitLeaf(e.point);if(lf)hit=lf;}
   else if(dbl&&hit instanceof P.Group){
@@ -1425,6 +1433,57 @@ $('#vxPreUpd').onclick=()=>{const i=+$('#vxPre').value;const p=vxPresets[i];if(!
 $('#vxPreDel').onclick=()=>{const i=+$('#vxPre').value;const p=vxPresets[i];if(!p)return;if(!confirm('Supprimer « '+p.name+' » ?'))return;vxPresets.splice(i,1);vxPreSave();vxPreRender('');};
 vxPreLoad();
 
+
+/* ---------- lasso : sélectionner des formes à l'intérieur des dessins ---------- */
+let lassoPath=null;
+function leafShapes(){
+  const out=[];
+  userLayers().forEach(l=>{if(!l.visible||l.locked)return;l.getItems({match:it=>((it instanceof P.CompoundPath)||(it instanceof P.Path&&!(it.parent instanceof P.CompoundPath)))&&selectable(it)}).forEach(it=>out.push(it));});
+  return out;
+}
+function lassoDown(e){uiLayer.activate();lassoPath=new P.Path({segments:[e.point],strokeColor:'#1e88ff',strokeWidth:px(1),dashArray:[px(4),px(3)],fillColor:new P.Color(0.12,0.53,1,0.07)});ensureLayer();drag={mode:'lasso',add:e.modifiers.shift};}
+function lassoDrag(e){if(lassoPath){lassoPath.add(e.point);}}
+function lassoUp(e){
+  if(!lassoPath)return;const L=lassoPath;lassoPath=null;drag=null;
+  if(L.segments.length<3||L.bounds.width<px(3)){L.remove();if(!e.modifiers.shift)setSel([]);return;}
+  L.closed=true;const lb=L.bounds;
+  const found=[];
+  for(const it of leafShapes()){
+    const b=it.bounds;if(!b.intersects(lb))continue;
+    if(lb.contains(b)&&L.contains(b.topLeft)&&L.contains(b.bottomRight)&&L.contains(b.center)){found.push(it);continue;}
+    // la forme est prise si la plupart de ses points sont dans le lasso
+    const paths=it instanceof P.CompoundPath?it.children:[it];let n=0,inn=0;
+    for(const p of paths){const segs=p.segments,st=Math.max(1,Math.floor(segs.length/16));for(let i=0;i<segs.length;i+=st){n++;if(L.contains(segs[i].point))inn++;}}
+    if(n&&inn/n>=0.6)found.push(it);
+  }
+  L.remove();
+  const prev=drag&&drag.add?sel:[];
+  setSel(e.modifiers.shift?Array.from(new Set(sel.concat(found))):found);
+  $('#hint').textContent=found.length?found.length+' forme'+(found.length>1?'s':'')+' sélectionnée'+(found.length>1?'s':'')+' — glisser pour déplacer · « Détacher en objet » pour en faire un objet à part':'Aucune forme entièrement dans le lasso';
+}
+function inSel(it){while(it){if(sel.includes(it))return true;it=it.parent;}return false;}
+/* détacher : la sélection sort de son dessin et devient un objet groupé à part, au même endroit */
+function detachSel(){
+  if(!sel.length)return;
+  const byLayer=new Map();
+  sel.slice().sort((a,b)=>a.isAbove(b)?1:-1).forEach(it=>{const l=it.layer;if(!byLayer.has(l))byLayer.set(l,[]);byLayer.get(l).push(it);});
+  const out=[];
+  for(const [l,items] of byLayer){
+    const parents=new Set(items.map(i=>i.parent));
+    const g=new P.Group({name:'Morceau'});
+    const top=items[items.length-1];
+    let anchor=top;while(anchor.parent&&anchor.parent!==l)anchor=anchor.parent;
+    g.insertAbove(anchor);
+    items.forEach(i=>g.addChild(i));
+    // nettoyage : groupes devenus vides
+    parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&q!==g&&!q.children.length){const up=q.parent;q.remove();q=up;}});
+    out.push(g);
+  }
+  setTool('select');setSel(out);commit();
+  $('#hint').textContent='Détaché : '+out.length+' nouvel objet'+(out.length>1?'s':'')+' (renommé « Morceau »)';
+}
+
+$('#bDetach').onclick=detachSel;
 /* calques */
 const LY=$('#layers');
 const layerOf=el=>{const r=el.closest('[data-l]');return r?P.project.layers[+r.dataset.l]:null;};
@@ -1474,7 +1533,7 @@ document.addEventListener('keydown',e=>{
   }
   if(k==='+'||k==='='){zoomAt(1.25);return;}
   if(k==='-'){zoomAt(0.8);return;}
-  const map={v:'select',a:'direct',p:'pen',n:'pencil',m:'rect',l:'ellipse',h:'hand',k:'bucket',i:'eyedrop'};
+  const map={q:'lasso',v:'select',a:'direct',p:'pen',n:'pencil',m:'rect',l:'ellipse',h:'hand',k:'bucket',i:'eyedrop'};
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
@@ -1502,7 +1561,7 @@ cv.addEventListener('contextmenu',e=>{
   const r=cv.getBoundingClientRect(),pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));
   const hit=hitTop(pt);if(hit&&!sel.includes(hit)){setTool('select');setSel([hit]);}
   const has=sel.length>0;
-  const items=[['copy','Copier (vectoriel)',has],['cut','Couper',has],['paste','Coller',true],['dup','Dupliquer',has],['del','Supprimer',has],['all','Tout sélectionner',true]];
+  const items=[['copy','Copier (vectoriel)',has],['cut','Couper',has],['paste','Coller',true],['detach','Détacher en objet',has],['dup','Dupliquer',has],['del','Supprimer',has],['all','Tout sélectionner',true]];
   ctxMenu.innerHTML=items.map(([k,l,on])=>`<button data-k="${k}"${on?'':' disabled'}>${l}</button>`).join('');
   ctxMenu.hidden=false;const w=ctxMenu.offsetWidth,h=ctxMenu.offsetHeight;
   ctxMenu.style.left=Math.min(e.clientX,innerWidth-w-4)+'px';ctxMenu.style.top=Math.min(e.clientY,innerHeight-h-4)+'px';
@@ -1511,7 +1570,7 @@ ctxMenu.addEventListener('click',async e=>{const b=e.target.closest('button');if
   if(k==='copy'){await clipWrite(sel);}
   else if(k==='cut'){await clipWrite(sel);cmd('del');}
   else if(k==='paste'){let done=false;try{const t=(await navigator.clipboard.readText()).trim();if(/^(<\?xml[\s\S]*?)?<svg[\s>]/i.test(t)&&t!==lastSvgCopy.trim()){importSVGText(t,'Collé');done=true;}}catch(err){}if(!done)pasteClip();}
-  else if(k==='dup')cmd('dup');else if(k==='del')cmd('del');else if(k==='all'){setTool('select');setSel(allTop());}});
+  else if(k==='detach')detachSel();else if(k==='dup')cmd('dup');else if(k==='del')cmd('del');else if(k==='all'){setTool('select');setSel(allTop());}});
 document.addEventListener('pointerdown',e=>{if(!ctxMenu.hidden&&!ctxMenu.contains(e.target))hideCtx();},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideCtx();});
 window.addEventListener('resize',()=>{resizeView();});
@@ -1531,6 +1590,6 @@ window.addEventListener('storage',e=>{if(e.key==='atelierRiso.inks')renderSwatch
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + C / X / V", "Copier / couper / coller (la copie se colle aussi en vectoriel dans Illustrator, Inkscape, Affinity)"], ["Clic droit", "Menu : copier en vectoriel, coller, dupliquer, supprimer"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Ctrl + molette", "Zoom"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Boucher les liserés fins", "Remplit les fines lignes blanches enfermées dans un aplat noir (bord du feutre plus foncé que l’intérieur, reflet…), jusqu’à la largeur indiquée. Les vrais trous, plus larges, restent."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + C / X / V", "Copier / couper / coller (la copie se colle aussi en vectoriel dans Illustrator, Inkscape, Affinity)"], ["Clic droit", "Menu : copier en vectoriel, coller, dupliquer, supprimer"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Ctrl + molette", "Zoom"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Boucher les liserés fins", "Remplit les fines lignes blanches enfermées dans un aplat noir (bord du feutre plus foncé que l’intérieur, reflet…), jusqu’à la largeur indiquée. Les vrais trous, plus larges, restent."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
 </body>
 </html>

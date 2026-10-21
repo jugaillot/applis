@@ -121,6 +121,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 <main>
   <nav id="tools">
     <button class="tool" data-tool="select" title="Sélection (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor"/></svg></button>
+    <button class="tool" data-tool="lasso" title="Lasso — entourer des formes, même à l’intérieur d’un dessin (Q)"><svg viewBox="0 0 24 24"><path d="M12 4c5 0 8 2.2 8 5s-3.6 5-8 5-8-2.2-8-5 3-5 8-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 2"/><path d="M7 13c-1 2 0 4 2 4s2 2 1 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
     <button class="tool" data-tool="direct" title="Sélection directe — points (A)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
     <div class="tsep"></div>
     <button class="tool" data-tool="pen" title="Plume (P)"><svg viewBox="0 0 24 24"><path d="M12 3l5 9-5 9-5-9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg></button>
@@ -169,6 +170,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
         <button class="btn sm" data-cmd="del" title="Suppr">Supprimer</button>
         <button class="btn sm" data-cmd="front" title="Premier plan">Devant</button>
         <button class="btn sm" data-cmd="back" title="Arrière-plan">Derrière</button>
+        <button class="btn sm" id="bDetach" title="La sélection sort de son dessin et devient un objet à part (groupé), au même endroit">Détacher en objet</button>
       </div>
       <div class="muted" style="margin-top:8px">Aligner <select id="alignTo" style="width:auto;padding:1px 4px;font-size:12px"><option value="sel">sur la sélection</option><option value="page">sur la page</option></select></div>
       <div class="row" style="margin-top:4px">
@@ -433,7 +435,7 @@ function drawUI(){
   uiLayer.removeChildren();uiLayer.activate();
   handles=[];
   const tool=S.tool;
-  if(sel.length&&(tool==='select')){
+  if(sel.length&&(tool==='select'||tool==='lasso')){
     const b=selBounds();
     const frame=new P.Path.Rectangle({rectangle:b,strokeColor:'#1e88ff',strokeWidth:px(1),dashArray:[px(4),px(3)]});
     frame.data.ui=true;
@@ -563,6 +565,7 @@ function renderLayers(){
 /* ---------- outils ---------- */
 const HINTS={
   select:'Clic : sélectionner · Ctrl+clic : sélectionner une forme à l’intérieur d’un groupe · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : dupliquer · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
+  lasso:'Entoure à main levée les formes à prendre (même à l’intérieur d’un dessin) · Maj : ajouter · glisser ensuite une forme prise pour tout déplacer · « Détacher en objet » pour en faire un objet à part',
   direct:'Clic sur un tracé : voir ses points · glisser un point ou une poignée · Maj : ajouter des points · double-clic sur un point : angle ↔ courbe · Suppr : effacer les points',
   pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer',
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
@@ -578,7 +581,7 @@ function setTool(t){
   S.tool=t;
   document.querySelectorAll('.tool[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
   $('#hint').textContent=HINTS[t]||'';
-  cv.style.cursor=t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?'cell':'crosshair';
+  cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?'cell':'crosshair';
   drawUI();
 }
 
@@ -597,6 +600,8 @@ tool.onMouseDown=function(e){
   const now=Date.now(),dbl=now-lastDown.t<350&&lastDown.p&&lastDown.p.getDistance(e.point)<px(6);lastDown={t:now,p:e.point};
   if(S.tool==='hand'||e.event.button===1||spaceDown){drag={mode:'pan',start:e.event.clientX,sy:e.event.clientY,c:view.center};cv.style.cursor='grabbing';return;}
   if(S.tool==='select')return selDown(e,dbl);
+  if(S.tool==='lasso'&&sel.length&&handleAt(e.point))return selDown(e,dbl);
+  if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
   if(S.tool==='direct')return dirDown(e,dbl);
   if(S.tool==='pen')return penDown(e);
   if(S.tool==='bucket')return bucketDown(e);
@@ -607,7 +612,8 @@ tool.onMouseDown=function(e){
 };
 tool.onMouseDrag=function(e){
   if(drag&&drag.mode==='pan'){const z=view.zoom;view.center=drag.c.subtract(new P.Point(e.event.clientX-drag.start,e.event.clientY-drag.sy).divide(z));afterView();return;}
-  if(S.tool==='select')return selDrag(e);
+  if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selDrag(e);
+  if(S.tool==='lasso')return lassoDrag(e);
   if(S.tool==='direct')return dirDrag(e);
   if(S.tool==='pen')return penDragFn(e);
   if(S.tool==='pencil'&&pencilPath){pencilPath.add(e.point);return;}
@@ -624,7 +630,8 @@ tool.onMouseDrag=function(e){
 };
 tool.onMouseUp=function(e){
   if(drag&&drag.mode==='pan'){drag=null;cv.style.cursor=S.tool==='hand'?'grab':'default';return;}
-  if(S.tool==='select')return selUp(e);
+  if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selUp(e);
+  if(S.tool==='lasso')return lassoUp(e);
   if(S.tool==='direct')return dirUp(e);
   if(S.tool==='pen')return penUp(e);
   if(S.tool==='pencil'&&pencilPath){
@@ -651,6 +658,7 @@ function selDown(e,dbl){
     drag={mode:h==='rot'?'rot':'scale',h,b,start:e.point,center:b.center,psx:1,psy:1,pa:0};
     return;
   }
+  {const lf=hitLeaf(e.point);if(lf&&!sel.includes(topOf(lf))&&inSel(lf)&&!e.modifiers.shift&&!(e.modifiers.control||e.modifiers.meta)&&!dbl){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}}
   let hit=hitTop(e.point);
   if(hit&&(e.modifiers.control||e.modifiers.meta)){const lf=hitLeaf(e.point);if(lf)hit=lf;}
   else if(dbl&&hit instanceof P.Group){
@@ -1257,6 +1265,57 @@ $('#bSvg').onclick=()=>download(new Blob([buildSVG()],{type:'image/svg+xml'}),`$
 $('#bPdf').onclick=()=>$('#pdfDlg').showModal();
 $('#bPts').onclick=()=>{showPts=!showPts;$('#bPts').classList.toggle('on',showPts);drawPts();};
 
+
+/* ---------- lasso : sélectionner des formes à l'intérieur des dessins ---------- */
+let lassoPath=null;
+function leafShapes(){
+  const out=[];
+  userLayers().forEach(l=>{if(!l.visible||l.locked)return;l.getItems({match:it=>((it instanceof P.CompoundPath)||(it instanceof P.Path&&!(it.parent instanceof P.CompoundPath)))&&selectable(it)}).forEach(it=>out.push(it));});
+  return out;
+}
+function lassoDown(e){uiLayer.activate();lassoPath=new P.Path({segments:[e.point],strokeColor:'#1e88ff',strokeWidth:px(1),dashArray:[px(4),px(3)],fillColor:new P.Color(0.12,0.53,1,0.07)});ensureLayer();drag={mode:'lasso',add:e.modifiers.shift};}
+function lassoDrag(e){if(lassoPath){lassoPath.add(e.point);}}
+function lassoUp(e){
+  if(!lassoPath)return;const L=lassoPath;lassoPath=null;drag=null;
+  if(L.segments.length<3||L.bounds.width<px(3)){L.remove();if(!e.modifiers.shift)setSel([]);return;}
+  L.closed=true;const lb=L.bounds;
+  const found=[];
+  for(const it of leafShapes()){
+    const b=it.bounds;if(!b.intersects(lb))continue;
+    if(lb.contains(b)&&L.contains(b.topLeft)&&L.contains(b.bottomRight)&&L.contains(b.center)){found.push(it);continue;}
+    // la forme est prise si la plupart de ses points sont dans le lasso
+    const paths=it instanceof P.CompoundPath?it.children:[it];let n=0,inn=0;
+    for(const p of paths){const segs=p.segments,st=Math.max(1,Math.floor(segs.length/16));for(let i=0;i<segs.length;i+=st){n++;if(L.contains(segs[i].point))inn++;}}
+    if(n&&inn/n>=0.6)found.push(it);
+  }
+  L.remove();
+  const prev=drag&&drag.add?sel:[];
+  setSel(e.modifiers.shift?Array.from(new Set(sel.concat(found))):found);
+  $('#hint').textContent=found.length?found.length+' forme'+(found.length>1?'s':'')+' sélectionnée'+(found.length>1?'s':'')+' — glisser pour déplacer · « Détacher en objet » pour en faire un objet à part':'Aucune forme entièrement dans le lasso';
+}
+function inSel(it){while(it){if(sel.includes(it))return true;it=it.parent;}return false;}
+/* détacher : la sélection sort de son dessin et devient un objet groupé à part, au même endroit */
+function detachSel(){
+  if(!sel.length)return;
+  const byLayer=new Map();
+  sel.slice().sort((a,b)=>a.isAbove(b)?1:-1).forEach(it=>{const l=it.layer;if(!byLayer.has(l))byLayer.set(l,[]);byLayer.get(l).push(it);});
+  const out=[];
+  for(const [l,items] of byLayer){
+    const parents=new Set(items.map(i=>i.parent));
+    const g=new P.Group({name:'Morceau'});
+    const top=items[items.length-1];
+    let anchor=top;while(anchor.parent&&anchor.parent!==l)anchor=anchor.parent;
+    g.insertAbove(anchor);
+    items.forEach(i=>g.addChild(i));
+    // nettoyage : groupes devenus vides
+    parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&q!==g&&!q.children.length){const up=q.parent;q.remove();q=up;}});
+    out.push(g);
+  }
+  setTool('select');setSel(out);commit();
+  $('#hint').textContent='Détaché : '+out.length+' nouvel objet'+(out.length>1?'s':'')+' (renommé « Morceau »)';
+}
+
+$('#bDetach').onclick=detachSel;
 /* calques */
 const LY=$('#layers');
 const layerOf=el=>{const r=el.closest('[data-l]');return r?P.project.layers[+r.dataset.l]:null;};
@@ -1305,7 +1364,7 @@ document.addEventListener('keydown',e=>{
   }
   if(k==='+'||k==='='){zoomAt(1.25);return;}
   if(k==='-'){zoomAt(0.8);return;}
-  const map={v:'select',a:'direct',p:'pen',n:'pencil',m:'rect',l:'ellipse',h:'hand',k:'bucket',i:'eyedrop'};
+  const map={q:'lasso',v:'select',a:'direct',p:'pen',n:'pencil',m:'rect',l:'ellipse',h:'hand',k:'bucket',i:'eyedrop'};
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
@@ -1685,6 +1744,6 @@ $('#impOk').onclick=impRun;
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc, au-dessus de tout."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc, au-dessus de tout."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
 </body>
 </html>
