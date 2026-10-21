@@ -412,7 +412,7 @@ function moveIt(it,d){xf(it,new P.Matrix().translate(d));}
 let sel=[];
 function topOf(item){while(item&&item.parent&&!(item.parent instanceof P.Layer))item=item.parent;return item;}
 function selectable(item){if(S.aquaEdit)return !!item&&item===aquaRaster;if(item&&item.data&&item.data.sys)return false;const l=item&&item.layer;return l&&!isSys(l)&&l.visible&&!l.locked;}
-function setSel(items){sel=items.filter(i=>i&&i.parent);syncPanel();drawUI();}
+function setSel(items){sel=items.filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();}
 function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
 function selBounds(){if(!sel.length)return null;let b=sel[0].bounds.clone();for(let i=1;i<sel.length;i++)b=b.unite(sel[i].bounds);return b;}
 function allTop(){if(S.aquaEdit)return aquaRaster?[aquaRaster]:[];const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children.filter(c=>!(c.data&&c.data.sys)));});return out;}
@@ -749,7 +749,7 @@ function dirDown(e,dbl){
   if(r){
     const p=r.item;
     if(!e.modifiers.shift)clearDirect();
-    p.selected=true;
+    p.selected=true;followLayer([p]);
     if(r.type==='stroke'&&dbl&&r.location){p.divideAt(r.location);commit();}
     drag={mode:'pathmove',last:e.point,moved:false,path:p};
     return;
@@ -1316,6 +1316,32 @@ function detachSel(){
 }
 
 $('#bDetach').onclick=detachSel;
+
+/* ---------- calque de la sélection : suivi et déplacement ---------- */
+function followLayer(items){
+  const ls=new Set(items.filter(i=>i&&i.layer).map(i=>i.layer));
+  if(ls.size===1){const l=[...ls][0];if(l&&!isSys(l)&&l!==activeLayer){activeLayer=l;renderLayers();}}
+}
+function movableSelection(){
+  let items;
+  if(S.tool==='direct'){items=P.project.getItems({class:P.Path,match:p=>p.selected&&selectable(p)}).map(p=>p.parent instanceof P.CompoundPath?p.parent:p);items=[...new Set(items)];}
+  else items=sel.slice();
+  return items.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
+}
+function moveToLayer(items,l){
+  if(l.locked){alert('Le calque « '+l.name+' » est verrouillé : déverrouille-le pour y déplacer la sélection.');return false;}
+  l.visible=true;
+  const parents=new Set(items.map(i=>i.parent));
+  items.sort((a,b)=>a.isAbove(b)?1:-1).forEach(i=>l.addChild(i));
+  parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!q.children.length){const up=q.parent;q.remove();q=up;}});
+  if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.layer===l)aquaRaster.bringToFront();
+  activeLayer=l;
+  if(S.tool==='direct'){items.forEach(i=>{i.selected=true;});}else setSel(items);
+  commit();renderLayers();
+  $('#hint').textContent=items.length+' objet'+(items.length>1?'s':'')+' déplacé'+(items.length>1?'s':'')+' dans « '+l.name+' »';
+  return true;
+}
+
 /* calques */
 const LY=$('#layers');
 const layerOf=el=>{const r=el.closest('[data-l]');return r?P.project.layers[+r.dataset.l]:null;};
@@ -1327,6 +1353,7 @@ LY.addEventListener('click',e=>{
   if(act==='adj'){S.aquaEdit?exitAquaEdit():enterAquaEdit();return;}
   if(act==='col'||act==='img')return;
   if(e.target.closest('label'))return;
+  {const mv=movableSelection();if(mv.length&&!mv.every(it=>it.layer===l)){moveToLayer(mv,l);return;}}
   setActive(l);ensureLayer();renderLayers();
 });
 LY.addEventListener('input',e=>{if(e.target.dataset.la==='col'){S.color=e.target.value;enforceColors();P.view.update();renderSwatches();clearTimeout(colT);colT=setTimeout(()=>commit(),400);}});
