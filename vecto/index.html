@@ -112,6 +112,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   <button class="btn" id="bSave" title="Enregistrer (Ctrl+S) — sur cet appareil et sur le serveur">Enregistrer</button>
   <button class="btn" id="bSvg">Export SVG</button>
   <button class="btn" id="bPdf">Export PDF</button>
+  <button class="btn" id="bToPaysage" title="Copie la sélection (ou tout le dessin) et l’ouvre dans Paysage insulaire">Copier vers Paysage →</button>
   <button class="btn accent" id="bRiso">Envoyer vers Riso →</button>
 </header>
 <main>
@@ -165,6 +166,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
         <button class="btn sm" data-cmd="del" title="Suppr">Supprimer</button>
         <button class="btn sm" data-cmd="front" title="Premier plan">Devant</button>
         <button class="btn sm" data-cmd="back" title="Arrière-plan">Derrière</button>
+        <button class="btn sm" id="bCopy" title="Ctrl+C — se colle aussi dans Paysage insulaire">Copier</button>
       </div>
       <div class="muted" style="margin-top:8px">Aligner <select id="alignTo" style="width:auto;padding:1px 4px;font-size:12px"><option value="sel">sur la sélection</option><option value="page">sur la page</option></select></div>
       <div class="row" style="margin-top:4px">
@@ -1120,7 +1122,7 @@ function buildSVG(){
     body+=g.replace(/^<g\b/,`<g data-name="${nm}" inkscape:label="${nm}" inkscape:groupmode="layer"`);
   });
   setSel(prevSel);
-  body=body.replace(/ (font-family|font-weight|font-size|text-anchor|stroke-linejoin|stroke-linecap|stroke-miterlimit)="(none|)"/g,'').replace(/ stroke-dasharray=""/g,'').replace(/ style="mix-blend-mode: normal"/g,'');
+  body=body.replace(/ (font-family|font-weight|font-size|text-anchor|stroke-linejoin|stroke-linecap|stroke-miterlimit|stroke-width)="(none|)"/g,'').replace(/ stroke-dasharray=""/g,'').replace(/ style="mix-blend-mode: normal"/g,'');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">${body}</svg>`;
 }
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
@@ -1205,6 +1207,19 @@ $('#bSvg').onclick=()=>download(new Blob([buildSVG()],{type:'image/svg+xml'}),`v
 $('#bPdf').onclick=exportPDF;
 $('#bPts').onclick=()=>{showPts=!showPts;$('#bPts').classList.toggle('on',showPts);drawPts();};
 $('#bRiso').onclick=sendToRiso;
+/* presse-papiers partagé avec Paysage insulaire */
+async function clipWrite(items){const data={app:'vecto',t:Date.now(),items:items.map(s=>s.exportJSON({asString:true}))};S.clip=data;await IDB.set('pressepapier',data);$('#hint').textContent=items.length+' objet'+(items.length>1?'s':'')+' copié'+(items.length>1?'s':'')+' — Ctrl+V pour coller, ici ou dans Paysage insulaire';}
+let lastPaste=0;
+async function pasteClip(){
+  const d=(await IDB.get('pressepapier'))||S.clip;if(!d||!d.items||!d.items.length)return;
+  ensureLayer(true);const items=d.items.map(j=>activeLayer.importJSON(j));
+  if(d.app==='vecto'){items.forEach(it=>moveIt(it,new P.Point(5,5)));}
+  else{let b=items[0].bounds.clone();items.forEach(i=>b=b.unite(i.bounds));items.forEach(i=>moveIt(i,view.center.subtract(b.center)));}
+  lastPaste=d.t;d.items=items.map(s=>s.exportJSON({asString:true}));S.clip=d;setTool('select');setSel(items);commit();
+}
+function copyTargets(){return sel.length?sel:allTop();}
+$('#bCopy').onclick=()=>{if(sel.length)clipWrite(sel);};
+$('#bToPaysage').onclick=async()=>{const t=copyTargets();if(!t.length)return alert('Le dessin est vide.');await clipWrite(t);await IDB.set('vecto.autosave',Object.assign({},projectData(),{doc:S.doc}));location.href='../paysage/?coller=1';};
 
 /* calques */
 const LY=$('#layers');
@@ -1239,9 +1254,9 @@ document.addEventListener('keydown',e=>{
   if(ctrl&&(k==='d'||k==='D')){e.preventDefault();cmd('dup');return;}
   if(ctrl&&(k==='g'||k==='G')){e.preventDefault();cmd(e.shiftKey?'ungroup':'group');return;}
   if(ctrl&&(k==='a'||k==='A')){e.preventDefault();setTool('select');setSel(allTop());return;}
-  if(ctrl&&(k==='c'||k==='C')){if(sel.length){S.clip=sel.map(s=>s.exportJSON({asString:true}));}return;}
-  if(ctrl&&(k==='x'||k==='X')){if(sel.length){S.clip=sel.map(s=>s.exportJSON({asString:true}));cmd('del');}return;}
-  if(ctrl&&(k==='v'||k==='V')){if(S.clip){ensureLayer(true);const items=S.clip.map(j=>{const it=activeLayer.importJSON(j);moveIt(it,new P.Point(5,5));return it;});S.clip=items.map(s=>s.exportJSON({asString:true}));setTool('select');setSel(items);commit();}e.preventDefault();return;}
+  if(ctrl&&(k==='c'||k==='C')){if(sel.length)clipWrite(sel);return;}
+  if(ctrl&&(k==='x'||k==='X')){if(sel.length){clipWrite(sel);cmd('del');}return;}
+  if(ctrl&&(k==='v'||k==='V')){e.preventDefault();pasteClip();return;}
   if(ctrl&&k==='0'){e.preventDefault();fitView();return;}
   if(ctrl&&(k==='s'||k==='S')){e.preventDefault();$('#bSave').click();return;}
   if(ctrl)return;

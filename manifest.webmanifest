@@ -19,6 +19,7 @@
     {"name": "Compil", "url": "/compil/"},
     {"name": "Plan", "url": "/plan/"},
     {"name": "Photo", "url": "/photo/"},
-    {"name": "Dossiers", "url": "/dossiers/"}
+    {"name": "Dossiers", "url": "/dossiers/"},
+    {"name": "Paysage insulaire", "url": "/paysage/"}
   ]
 }
