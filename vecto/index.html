@@ -233,6 +233,11 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   <div class="dh" id="vxTitle">Vectoriser un dessin</div>
   <div id="vxBody">
     <div id="vxSide">
+      <div id="vxPreBox">
+        <div class="muted" style="margin-bottom:3px">Paramètres pré-enregistrés</div>
+        <div style="display:flex;gap:4px"><select id="vxPre" style="flex:1;min-width:0"></select></div>
+        <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap"><button class="btn sm" id="vxPreNew" title="Enregistrer les réglages actuels sous un nouveau nom">Enregistrer…</button><button class="btn sm" id="vxPreUpd" title="Remplacer le préréglage choisi par les réglages actuels">Mettre à jour</button><button class="btn sm" id="vxPreDel" title="Supprimer le préréglage choisi">Supprimer</button></div>
+      </div>
       <label class="btn" style="justify-content:center">Choisir une image…<input type="file" id="vxFile" accept="image/*" hidden></label>
       <div id="vxInfo">Scan ou photo d'un dessin au trait noir.</div>
       <label class="rng"><span>Seuil (noir / blanc)<b id="vSeuil">50 %</b></span><input type="range" id="vxSeuil" min="1" max="99" value="50"></label>
@@ -1116,7 +1121,7 @@ async function vxOpenFile(f){
   $('#vxInfo').textContent=f.name+' — '+img.naturalWidth+' × '+img.naturalHeight+' px';
   vxRun();
 }
-function openVx(){if(VX.edit){VX.edit=null;VX.img=null;VX.shapes=null;$('#vxInfo').textContent='Scan ou photo d’un dessin au trait noir.';}vxDialogMode(false);$('#vxDlg').showModal();if(!VX.img)setTimeout(()=>$('#vxFile').click(),50);else vxDraw();}
+function openVx(){vxPreLoad();if(VX.edit){VX.edit=null;VX.img=null;VX.shapes=null;$('#vxInfo').textContent='Scan ou photo d’un dessin au trait noir.';}vxDialogMode(false);$('#vxDlg').showModal();if(!VX.img)setTimeout(()=>$('#vxFile').click(),50);else vxDraw();}
 
 /* ---------- import SVG ---------- */
 function parseLen(s){if(!s)return 0;const m=String(s).trim().match(/^([\d.]+)\s*(mm|cm|in|pt|pc|px)?$/);if(!m)return 0;const v=parseFloat(m[1]);return{mm:v,cm:v*10,in:v*25.4,pt:v*25.4/72,pc:v*25.4/6}[m[2]]??v*25.4/96;}
@@ -1350,6 +1355,33 @@ function vzRel(e){const r=$('#vxView').getBoundingClientRect();return [e.clientX
   box.addEventListener('wheel',e=>{if($('#vxZoom').checked)return;e.preventDefault();const [mx,my]=vzRel(e);vzZoom(e.deltaY<0?1.15:1/1.15,mx,my);},{passive:false});
 })();
 
+
+/* ---------- paramètres de vectorisation pré-enregistrés (partagés entre appareils) ---------- */
+let vxPresets=[];
+async function vxPreLoad(){
+  let l=null;try{if(window.AtelierSync)l=await AtelierSync.load('reglages.vecto');}catch(e){}
+  if(!Array.isArray(l)){try{l=JSON.parse(localStorage.getItem('atelierVecto.presets')||'[]');}catch(e){l=[];}}
+  vxPresets=Array.isArray(l)?l:[];vxPreRender();
+}
+function vxPreSave(){try{localStorage.setItem('atelierVecto.presets',JSON.stringify(vxPresets));}catch(e){}if(window.AtelierSync)AtelierSync.save('reglages','reglages.vecto','Préréglages de vectorisation',vxPresets);}
+function vxPreRender(keep){
+  const cur=keep!=null?keep:$('#vxPre').value;
+  $('#vxPre').innerHTML='<option value="">— choisir —</option>'+vxPresets.map((p,i)=>`<option value="${i}">${p.name.replace(/</g,'&lt;')}</option>`).join('');
+  if(cur!==''&&vxPresets[+cur])$('#vxPre').value=cur;
+  const has=$('#vxPre').value!=='';$('#vxPreUpd').disabled=$('#vxPreDel').disabled=!has;
+}
+function vxCurrent(){return Object.assign({},vxParams(),{mode:VX.mode});}
+$('#vxPre').onchange=()=>{const p=vxPresets[+$('#vxPre').value];vxPreRender();if(!p)return;
+  setVxParams(p.params);if(p.params.mode){VX.mode=p.params.mode;$('#vxMode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.v===VX.mode));}
+  vxLabels();if(VX.img)vxSchedule();};
+$('#vxPreNew').onclick=()=>{const n=prompt('Nom de ces réglages (ex. « Crayon fin », « Feutre épais ») :');if(!n||!n.trim())return;
+  const i=vxPresets.findIndex(p=>p.name===n.trim());if(i>=0&&!confirm('« '+n.trim()+' » existe déjà. Le remplacer ?'))return;
+  if(i>=0)vxPresets[i].params=vxCurrent();else vxPresets.push({name:n.trim(),params:vxCurrent()});
+  vxPresets.sort((a,b)=>a.name.localeCompare(b.name,'fr'));vxPreSave();vxPreRender(String(vxPresets.findIndex(p=>p.name===n.trim())));};
+$('#vxPreUpd').onclick=()=>{const i=+$('#vxPre').value;const p=vxPresets[i];if(!p)return;if(!confirm('Remplacer « '+p.name+' » par les réglages actuels ?'))return;p.params=vxCurrent();vxPreSave();};
+$('#vxPreDel').onclick=()=>{const i=+$('#vxPre').value;const p=vxPresets[i];if(!p)return;if(!confirm('Supprimer « '+p.name+' » ?'))return;vxPresets.splice(i,1);vxPreSave();vxPreRender('');};
+vxPreLoad();
+
 /* calques */
 const LY=$('#layers');
 const layerOf=el=>{const r=el.closest('[data-l]');return r?P.project.layers[+r.dataset.l]:null;};
@@ -1426,6 +1458,6 @@ window.addEventListener('storage',e=>{if(e.key==='atelierRiso.inks')renderSwatch
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + C / X / V", "Copier / couper / coller"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Ctrl + molette", "Zoom"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + C / X / V", "Copier / couper / coller"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Ctrl + molette", "Zoom"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
 </body>
 </html>
