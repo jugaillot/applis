@@ -246,6 +246,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
       <div class="muted" style="margin-top:-4px">Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué. Les raccords apparaissent en rose dans l’aperçu « Noir et blanc ».</div>
       <label class="chk"><input type="checkbox" id="vxFin"> Relier aussi un bout de trait au trait le plus proche (plus fort : peut prolonger nervures et hachures)</label>
       <label class="rng"><span>Ignorer les taches de moins de<b id="vTache">4 px</b></span><input type="range" id="vxTache" min="0" max="200" value="4"></label>
+      <label class="rng" title="Remplit les fines lignes blanches enfermées dans les aplats noirs (bord de feutre plus foncé que l’intérieur…), sans toucher aux vrais trous"><span>Boucher les liserés fins<b id="vLiser">non</b></span><input type="range" id="vxLiser" min="0" max="12" step="1" value="0"></label>
       <label class="rng"><span>Angles ↔ courbes<b id="vLisse">1.0</b></span><input type="range" id="vxLisse" min="0" max="1.33" step="0.01" value="1"></label>
       <label class="rng"><span>Précision des courbes<b id="vPrec">0.20</b></span><input type="range" id="vxPrec" min="0.05" max="1.5" step="0.05" value="0.2"></label>
       <label class="rng"><span>Définition de calcul<b id="vDef">12 Mpx</b></span><input type="range" id="vxDef" min="1" max="30" step="1" value="12"></label>
@@ -939,8 +940,24 @@ function setGeo(k,v){
 /* ---------- vectorisation ---------- */
 const VX={img:null,bits:null,w:0,h:0,shapes:null,id:0,worker:null,place:'fit',mode:'sep',show:'trace',origW:0,timer:0};
 function worker(){if(!VX.worker){VX.worker=new Worker('potrace-worker.js');}return VX.worker;}
-function vxParams(){return{seuil:+$('#vxSeuil').value,flou:+$('#vxFlou').value,tache:+$('#vxTache').value,lisse:+$('#vxLisse').value,ferme:+$('#vxFerme').value,lignes:$('#vxFin').checked,blanc:$('#vxBlanc').checked,prec:+$('#vxPrec').value,def:+$('#vxDef').value,inv:$('#vxInv').checked};}
-function vxLabels(){const p=vxParams();$('#vSeuil').textContent=p.seuil+' %';$('#vFlou').textContent=p.flou;$('#vTache').textContent=p.tache+' px';$('#vLisse').textContent=p.lisse.toFixed(2);$('#vFerme').textContent=p.ferme+' px';$('#vPrec').textContent=p.prec.toFixed(2);$('#vDef').textContent=p.def+' Mpx'+(VX.img&&VX.img.naturalWidth*VX.img.naturalHeight<p.def*1e6?' (image : '+(VX.img.naturalWidth*VX.img.naturalHeight/1e6).toFixed(1)+' Mpx, max atteint)':'');}
+/* liserés : zones blanches fermées, très fines (largeur ≈ 2 × surface / pixels de bord), remplies en noir */
+function fillThinHoles(bits,w,h,maxW){
+  const n=w*h,lab=new Int32Array(n),stack=new Int32Array(n);const area=[0],edge=[0],border=[0];let id=0;
+  for(let s=0;s<n;s++){
+    if(bits[s]||lab[s])continue;id++;let sp=0,a=0,e=0,b=0;stack[sp++]=s;lab[s]=id;
+    while(sp){const p=stack[--sp];a++;const x=p%w,y=(p-x)/w;if(x===0||y===0||x===w-1||y===h-1)b=1;let near=0;
+      if(x>0){const q=p-1;if(bits[q])near=1;else if(!lab[q]){lab[q]=id;stack[sp++]=q;}}
+      if(x<w-1){const q=p+1;if(bits[q])near=1;else if(!lab[q]){lab[q]=id;stack[sp++]=q;}}
+      if(y>0){const q=p-w;if(bits[q])near=1;else if(!lab[q]){lab[q]=id;stack[sp++]=q;}}
+      if(y<h-1){const q=p+w;if(bits[q])near=1;else if(!lab[q]){lab[q]=id;stack[sp++]=q;}}
+      e+=near;}
+    area.push(a);edge.push(e);border.push(b);
+  }
+  const fill=new Uint8Array(id+1);for(let i=1;i<=id;i++)fill[i]=!border[i]&&edge[i]>0&&(2*area[i]/edge[i])<=maxW?1:0;
+  for(let p=0;p<n;p++)if(lab[p]&&fill[lab[p]])bits[p]=1;
+}
+function vxParams(){return{seuil:+$('#vxSeuil').value,flou:+$('#vxFlou').value,tache:+$('#vxTache').value,liser:+$('#vxLiser').value,lisse:+$('#vxLisse').value,ferme:+$('#vxFerme').value,lignes:$('#vxFin').checked,blanc:$('#vxBlanc').checked,prec:+$('#vxPrec').value,def:+$('#vxDef').value,inv:$('#vxInv').checked};}
+function vxLabels(){const p=vxParams();$('#vSeuil').textContent=p.seuil+' %';$('#vFlou').textContent=p.flou;$('#vTache').textContent=p.tache+' px';$('#vLiser').textContent=p.liser?'jusqu’à '+p.liser+' px':'non';$('#vLisse').textContent=p.lisse.toFixed(2);$('#vFerme').textContent=p.ferme+' px';$('#vPrec').textContent=p.prec.toFixed(2);$('#vDef').textContent=p.def+' Mpx'+(VX.img&&VX.img.naturalWidth*VX.img.naturalHeight<p.def*1e6?' (image : '+(VX.img.naturalWidth*VX.img.naturalHeight/1e6).toFixed(1)+' Mpx, max atteint)':'');}
 function vxBitmap(){
   const p=vxParams(),img=VX.img;
   const W0=img.naturalWidth,H0=img.naturalHeight;
@@ -953,6 +970,7 @@ function vxBitmap(){
   x.drawImage(img,0,0,w,h);x.filter='none';
   const d=x.getImageData(0,0,w,h).data,bits=new Int8Array(w*h),t=p.seuil/100*255;
   for(let i=0,j=0;j<bits.length;i+=4,j++){const a=d[i+3]/255;const l=(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])*a+255*(1-a);let on=l<t;if(p.inv)on=!on;bits[j]=on?1:0;}
+  if(p.liser>0)fillThinHoles(bits,w,h,p.liser);
   VX.bits=bits;VX.w=w;VX.h=h;VX.scale=k;
   return{w,h,bits};
 }
@@ -1071,7 +1089,7 @@ async function storeSrc(blob){const key='vxsrc.'+Date.now().toString(36)+Math.ra
 async function blobToImage(blob){const url=URL.createObjectURL(blob);const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(new Error('image illisible'));img.src=url;});return img;}
 function setVxParams(p){
   const set=(id,v)=>{if(v!=null)$('#'+id).value=v;};
-  set('vxSeuil',p.seuil);set('vxFlou',p.flou);set('vxFerme',p.ferme);set('vxTache',p.tache);set('vxLisse',p.lisse);set('vxPrec',p.prec);set('vxDef',p.def);
+  set('vxSeuil',p.seuil);set('vxFlou',p.flou);set('vxFerme',p.ferme);set('vxTache',p.tache);set('vxLiser',p.liser||0);set('vxLisse',p.lisse);set('vxPrec',p.prec);set('vxDef',p.def);
   if(p.inv!=null)$('#vxInv').checked=p.inv;if(p.lignes!=null)$('#vxFin').checked=p.lignes;if(p.blanc!=null)$('#vxBlanc').checked=p.blanc;
 }
 function vxDialogMode(edit){
@@ -1219,7 +1237,7 @@ $('#zIn').onclick=()=>zoomAt(1.25);$('#zOut').onclick=()=>zoomAt(0.8);$('#zFit')
 $('#bDoc').onclick=openDoc;
 $('#bVecto').onclick=openVx;
 $('#vxFile').onchange=e=>{const f=e.target.files[0];e.target.value='';vxOpenFile(f);};
-['vxSeuil','vxFlou','vxFerme','vxTache','vxLisse','vxPrec','vxDef'].forEach(id=>$('#'+id).addEventListener('input',vxSchedule));
+['vxSeuil','vxFlou','vxFerme','vxTache','vxLiser','vxLisse','vxPrec','vxDef'].forEach(id=>$('#'+id).addEventListener('input',vxSchedule));
 $('#vxInv').onchange=vxSchedule;$('#vxBlanc').onchange=()=>{vxLabels();vxDraw();};$('#vxPts').onchange=vxDraw;$('#vxZoom').onchange=vxDraw;$('#vxFin').onchange=vxSchedule;
 function segBind(id,key,cb){$('#'+id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;VX[key]=b.dataset.v;$('#'+id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));cb&&cb();});}
 segBind('vxPlace','place',()=>{$('#vxDpiBox').hidden=VX.place!=='dpi';});
@@ -1458,6 +1476,6 @@ window.addEventListener('storage',e=>{if(e.key==='atelierRiso.inks')renderSwatch
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + C / X / V", "Copier / couper / coller"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Ctrl + molette", "Zoom"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + C / X / V", "Copier / couper / coller"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Ctrl + molette", "Zoom"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Boucher les liserés fins", "Remplit les fines lignes blanches enfermées dans un aplat noir (bord du feutre plus foncé que l’intérieur, reflet…), jusqu’à la largeur indiquée. Les vrais trous, plus larges, restent."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
 </body>
 </html>
