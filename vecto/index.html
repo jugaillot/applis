@@ -1004,9 +1004,10 @@ function vxDraw(){
   path.setAttribute('d',VX.shapes.map(s=>s.d).join(''));path.setAttribute('fill-rule','evenodd');path.setAttribute('fill','#000');
   svg.appendChild(path);
   if($('#vxPts').checked){
-    const rad=Math.max(0.6,2.2/k);let pts='';
-    VX.shapes.forEach(s=>{const e=endpoints(s.d);for(let i=0;i<e.length;i+=2)pts+=`M${e[i]-rad} ${e[i+1]}a${rad} ${rad} 0 1 0 ${2*rad} 0a${rad} ${rad} 0 1 0 ${-2*rad} 0`;});
-    const pp=document.createElementNS(NS,'path');pp.setAttribute('d',pts);pp.setAttribute('fill','#ff2d9b');svg.appendChild(pp);
+    // points de taille fixe à l'écran, quel que soit le zoom
+    let pts='';
+    VX.shapes.forEach(s=>{const e=endpoints(s.d);for(let i=0;i<e.length;i+=2)pts+=`M${e[i]} ${e[i+1]}h0`;});
+    const pp=document.createElementNS(NS,'path');pp.setAttribute('d',pts);pp.setAttribute('fill','none');pp.setAttribute('stroke','#ff2d9b');pp.setAttribute('stroke-width','2.5');pp.dataset.pts='1';pp.setAttribute('stroke-linecap','round');pp.setAttribute('vector-effect','non-scaling-stroke');svg.appendChild(pp);
   }
   place(svg);
   vzApply();
@@ -1329,6 +1330,7 @@ const VZ={s:1,x:0,y:0,pts:new Map(),last:null,tap:0};
 function vzApply(){
   const box=$('#vxView');if($('#vxZoom').checked){VZ.s=1;VZ.x=VZ.y=0;}
   box.querySelectorAll(':scope>canvas,:scope>svg').forEach(el=>{el.style.transform=VZ.s===1&&!VZ.x&&!VZ.y?'':`translate(${VZ.x}px,${VZ.y}px) scale(${VZ.s})`;});
+  box.querySelectorAll('path[data-pts]').forEach(pp=>pp.setAttribute('stroke-width',String(2.5/VZ.s)));
   let tip=$('#vxZoomTip');if(!tip){tip=document.createElement('div');tip.id='vxZoomTip';}
   box.appendChild(tip);tip.textContent=VZ.s>1.01?'× '+VZ.s.toFixed(1)+' · double-tap : revenir':'Pincer pour zoomer';
 }
