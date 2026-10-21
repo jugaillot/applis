@@ -11,7 +11,9 @@ $sess = atelier_session();
 if (!$sess) {
   $mode = isset($_SERVER['HTTP_SEC_FETCH_MODE']) ? $_SERVER['HTTP_SEC_FETCH_MODE'] : '';
   $accept = isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : '';
-  $isPage = $mode === 'navigate' || ($mode === '' && strpos($accept, 'text/html') !== false);
+  $dest = isset($_SERVER['HTTP_SEC_FETCH_DEST']) ? $_SERVER['HTTP_SEC_FETCH_DEST'] : '';
+  // une page (y compris rechargée par l'appli hors connexion, qui ne dit pas « navigate »)
+  $isPage = $mode === 'navigate' || $dest === 'document' || strpos($accept, 'text/html') !== false;
   if ($isPage && $_SERVER['REQUEST_METHOD'] === 'GET') {
     header('Cache-Control: no-store');
     header('Location: ' . $base . '/login.php?r=' . rawurlencode($_SERVER['REQUEST_URI']), true, 302);
