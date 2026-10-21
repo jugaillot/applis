@@ -1,4 +1,19 @@
-AuthType Basic
-AuthName "Atelier"
-AuthUserFile "/home/rdutemps/.htpasswd-applis"
-Require valid-user
+# Atelier — accès protégé par la page de connexion (login.php) et un cookie de longue durée.
+Options -Indexes
+DirectoryIndex index.html
+
+# Sécurité : sans réécriture d'adresses, on ferme tout plutôt que d'ouvrir l'atelier.
+<IfModule !mod_rewrite.c>
+  Require all denied
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # pages de connexion et porte d'entrée
+  RewriteRule ^(login|gate)\.php$ - [L]
+  # pages publiques des dossiers, icônes
+  RewriteRule ^p/ - [L]
+  RewriteRule ^icons/ - [L]
+  # tout le reste passe par la porte (vérification de la connexion)
+  RewriteRule ^ gate.php [L,QSA]
+</IfModule>

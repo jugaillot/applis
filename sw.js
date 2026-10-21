@@ -1,7 +1,7 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Bibliothèques et autres fichiers : copie locale d'abord, mise à jour en arrière-plan. */
-const VERSION = 'atelier-v12';
+const VERSION = 'atelier-v13';
 const PRECACHE = [
   '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/',
   '/vecto/potrace-worker.js', '/lib/sync.js', '/lib/help.js',
@@ -45,8 +45,8 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname === '/api.php') return;
-  if (url.pathname.startsWith('/p/')) return; // pages publiques : toujours le réseau // la synchronisation passe toujours par le réseau
+  if (url.pathname === '/api.php') return; // la synchronisation passe toujours par le réseau
+  if (url.pathname.startsWith('/p/') || url.pathname === '/login.php') return; // pages publiques et connexion : toujours le réseau
   const key = keyFor(req);
   const isPage = req.mode === 'navigate' || req.destination === 'document';
 
@@ -58,7 +58,7 @@ self.addEventListener('fetch', event => {
         const t = setTimeout(() => ctrl.abort(), 4000);
         const res = await fetch(req, { signal: ctrl.signal });
         clearTimeout(t);
-        if (res.ok) cache.put(key, res.clone());
+        if (res.ok && !res.redirected) cache.put(key, res.clone());
         return res;
       } catch (e) {
         const hit = await cache.match(key) || await cache.match(key + '/');
@@ -71,7 +71,7 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     const cache = await caches.open(VERSION);
     const hit = await cache.match(key);
-    const update = fetch(req).then(res => { if (res.ok) cache.put(key, res.clone()); return res; }).catch(() => null);
+    const update = fetch(req).then(res => { if (res.ok && !res.redirected) cache.put(key, res.clone()); return res; }).catch(() => null);
     if (hit) { event.waitUntil(update); return hit; }
     const res = await update;
     return res || new Response('', { status: 504 });
