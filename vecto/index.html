@@ -1276,21 +1276,34 @@ $('#bRiso').onclick=sendToRiso;
 function selectionSVG(items){
   let b=items[0].strokeBounds.clone();items.forEach(i=>b=b.unite(i.strokeBounds));
   const prevSel=sel;sel=[];drawUI();clearDirect();
-  let body=items.map(it=>it.exportSVG({asString:true,precision:3})).join('');
+  let body=items.map(it=>it.exportSVG({asString:true,precision:3})).join('').replace(/ xmlns="http:\/\/www\.w3\.org\/2000\/svg"/g,'');
   sel=prevSel;drawUI();
   body=body.replace(/ (font-family|font-weight|font-size|text-anchor|stroke-linejoin|stroke-linecap|stroke-miterlimit|stroke-width)="(none|)"/g,'').replace(/ stroke-dasharray=""/g,'').replace(/ style="mix-blend-mode: normal"/g,'');
   const r=v=>Math.round(v*1000)/1000;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${r(b.width)}mm" height="${r(b.height)}mm" viewBox="${r(b.x)} ${r(b.y)} ${r(b.width)} ${r(b.height)}">${body}</svg>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="${r(b.width)}mm" height="${r(b.height)}mm" viewBox="${r(b.x)} ${r(b.y)} ${r(b.width)} ${r(b.height)}">${body}</svg>`;
 }
 let lastSvgCopy='';
 async function systemCopy(items){
   const svg=selectionSVG(items);lastSvgCopy=svg;
+  // texte SVG seul : c'est ce qu'Illustrator, Inkscape et Affinity savent coller en vectoriel
+  try{await navigator.clipboard.writeText(svg);return true;}catch(e){return false;}
+}
+/* copie en image haute définition (InDesign, mail, traitement de texte…) */
+async function copyAsImage(items){
+  await busy('Copie en image…');
   try{
-    if(window.ClipboardItem&&ClipboardItem.supports&&ClipboardItem.supports('image/svg+xml'))
-      await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([svg],{type:'text/plain'}),'image/svg+xml':new Blob([svg],{type:'image/svg+xml'})})]);
-    else await navigator.clipboard.writeText(svg);
-    return true;
-  }catch(e){try{await navigator.clipboard.writeText(svg);return true;}catch(e2){return false;}}
+    const prevSel=sel;sel=[];drawUI();
+    let b=items[0].strokeBounds.clone();items.forEach(i=>b=b.unite(i.strokeBounds));
+    const g=new P.Group({children:items.map(i=>i.clone({insert:false})),insert:false});
+    const dpi=Math.min(600,Math.sqrt(30e6/((b.width/25.4)*(b.height/25.4))));
+    const ras=g.rasterize({resolution:dpi*72/25.4,insert:false});
+    sel=prevSel;drawUI();
+    const c=document.createElement('canvas');c.width=ras.width;c.height=ras.height;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(ras.canvas,0,0);
+    const png=await new Promise(r=>c.toBlob(r,'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);
+    $('#hint').textContent='Copié en image ('+c.width+' × '+c.height+' px, '+Math.round(dpi)+' dpi) — colle-la dans InDesign, un mail…';
+  }catch(e){alert('Copie impossible : '+(e.message||e));}
+  await busy();
 }
 async function clipWrite(items){const data={app:'vecto',t:Date.now(),items:items.map(s=>s.exportJSON({asString:true}))};S.clip=data;await IDB.set('pressepapier',data);systemCopy(items);$('#hint').textContent=items.length+' objet'+(items.length>1?'s':'')+' copié'+(items.length>1?'s':'')+' — Ctrl+V pour coller ici, dans Paysage insulaire, ou en vectoriel dans Illustrator / Inkscape';}
 let lastPaste=0;
@@ -1596,7 +1609,7 @@ cv.addEventListener('contextmenu',e=>{
   const r=cv.getBoundingClientRect(),pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));
   const hit=hitTop(pt);if(hit&&!sel.includes(hit)){setTool('select');setSel([hit]);}
   const has=sel.length>0;
-  const items=[['copy','Copier (vectoriel)',has],['cut','Couper',has],['paste','Coller',true],['detach','Détacher en objet',has],['dup','Dupliquer',has],['del','Supprimer',has],['all','Tout sélectionner',true]];
+  const items=[['copy','Copier en vectoriel (Illustrator, Inkscape…)',has],['copyimg','Copier en image (InDesign, mail…)',has],['cut','Couper',has],['paste','Coller',true],['detach','Détacher en objet',has],['dup','Dupliquer',has],['del','Supprimer',has],['all','Tout sélectionner',true]];
   ctxMenu.innerHTML=items.map(([k,l,on])=>`<button data-k="${k}"${on?'':' disabled'}>${l}</button>`).join('');
   ctxMenu.hidden=false;const w=ctxMenu.offsetWidth,h=ctxMenu.offsetHeight;
   ctxMenu.style.left=Math.min(e.clientX,innerWidth-w-4)+'px';ctxMenu.style.top=Math.min(e.clientY,innerHeight-h-4)+'px';
@@ -1604,7 +1617,13 @@ cv.addEventListener('contextmenu',e=>{
 ctxMenu.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||b.disabled)return;hideCtx();const k=b.dataset.k;
   if(k==='copy'){await clipWrite(sel);}
   else if(k==='cut'){await clipWrite(sel);cmd('del');}
-  else if(k==='paste'){let done=false;try{const t=(await navigator.clipboard.readText()).trim();if(/^(<\?xml[\s\S]*?)?<svg[\s>]/i.test(t)&&t!==lastSvgCopy.trim()){importSVGText(t,'Collé');done=true;}}catch(err){}if(!done)pasteClip();}
+  else if(k==='copyimg')copyAsImage(sel);
+  else if(k==='paste'){let done=false;
+    try{const its=await navigator.clipboard.read();
+      for(const it of its){const ty=it.types.find(t=>/^image\/(png|jpeg|jpg|webp|gif|bmp)$/.test(t));if(ty){const bl=await it.getType(ty);const file=new File([bl],'image-collee.'+(ty.split('/')[1].replace('jpeg','jpg')),{type:ty});VX.edit=null;vxDialogMode(false);$('#vxDlg').showModal();vxOpenFile(file);done=true;break;}}
+    }catch(err){}
+    if(!done){try{const t=(await navigator.clipboard.readText()).trim();if(/^(<\?xml[\s\S]*?)?<svg[\s>]/i.test(t)&&t!==lastSvgCopy.trim()){importSVGText(t,'Collé');done=true;}}catch(err){}}
+    if(!done)pasteClip();}
   else if(k==='detach')detachSel();else if(k==='dup')cmd('dup');else if(k==='del')cmd('del');else if(k==='all'){setTool('select');setSel(allTop());}});
 document.addEventListener('pointerdown',e=>{if(!ctxMenu.hidden&&!ctxMenu.contains(e.target))hideCtx();},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideCtx();});
