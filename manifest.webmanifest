@@ -16,7 +16,7 @@
   "shortcuts": [
     {"name": "Riso", "url": "/riso/"},
     {"name": "Vecto", "url": "/vecto/"},
-    {"name": "Compil", "url": "/compil/"},
+    {"name": "PDF", "url": "/compil/"},
     {"name": "Plan", "url": "/plan/"},
     {"name": "Photo", "url": "/photo/"},
     {"name": "Dossiers", "url": "/dossiers/"},

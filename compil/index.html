@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Atelier Compil</title>
+<title>Atelier PDF</title>
 <script src="../lib/pdf.min.js"></script>
 <script src="../lib/pdf-lib.min.js"></script>
 <style>
@@ -66,7 +66,7 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
 </head>
 <body>
 <header>
-  <h1><a href="../">Atelier</a> <span>Compil</span></h1>
+  <h1><a href="../">Atelier</a> <span>PDF</span></h1>
   <label class="btn primary">Ajouter des fichiers…<input type="file" id="fIn" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bClear">Tout vider</button>
@@ -417,7 +417,7 @@ async function buildPDF(){
       if(e.kind==='page')pg.drawPage(e.obj,opts);else pg.drawImage(e.obj,opts);
     }
   }
-  out.setTitle('Compilation');out.setProducer('Atelier Compil');
+  out.setTitle('Compilation');out.setProducer("Atelier PDF");
   return await out.save();
 }
 const stamp=()=>new Date().toISOString().slice(0,10);
@@ -586,6 +586,6 @@ $('#oFmt').onchange=e=>{S.opt.fmt=e.target.value;$('#customBox').hidden=S.opt.fm
 renderPages();renderSheets();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "Atelier Compil", "sections": [{"title": "Pages", "keys": [["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "Atelier PDF", "sections": [{"title": "Pages", "keys": [["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
 </body>
 </html>
