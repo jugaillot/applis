@@ -1505,7 +1505,7 @@ function detachSel(){
     g.insertAbove(anchor);
     items.forEach(i=>g.addChild(i));
     // nettoyage : groupes devenus vides
-    parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&q!==g&&!q.children.length){const up=q.parent;q.remove();q=up;}});
+    parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!(q instanceof P.Layer)&&q!==g&&!q.children.length){const up=q.parent;q.remove();q=up;}});
     out.push(g);
   }
   setTool('select');setSel(out);commit();
@@ -1530,7 +1530,7 @@ function moveToLayer(items,l){
   l.visible=true;
   const parents=new Set(items.map(i=>i.parent));
   items.sort((a,b)=>a.isAbove(b)?1:-1).forEach(i=>l.addChild(i));
-  parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!q.children.length){const up=q.parent;q.remove();q=up;}});
+  parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!(q instanceof P.Layer)&&!q.children.length){const up=q.parent;q.remove();q=up;}});
   if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.layer===l)aquaRaster.bringToFront();
   activeLayer=l;
   if(S.tool==='direct'){items.forEach(i=>{i.selected=true;});}else setSel(items);

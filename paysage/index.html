@@ -1331,7 +1331,7 @@ function detachSel(){
     g.insertAbove(anchor);
     items.forEach(i=>g.addChild(i));
     // nettoyage : groupes devenus vides
-    parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&q!==g&&!q.children.length){const up=q.parent;q.remove();q=up;}});
+    parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!(q instanceof P.Layer)&&q!==g&&!q.children.length){const up=q.parent;q.remove();q=up;}});
     out.push(g);
   }
   if(out.length>1){const link=newLink();out.forEach(g=>g.data.link=link);}
@@ -1382,8 +1382,18 @@ function moveToLayer(items,l){
   if(l.locked){alert('Le calque « '+l.name+' » est verrouillé : déverrouille-le pour y déplacer la sélection.');return false;}
   l.visible=true;
   const parents=new Set(items.map(i=>i.parent));
-  items.sort((a,b)=>a.isAbove(b)?1:-1).forEach(i=>l.addChild(i));
-  parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!q.children.length){const up=q.parent;q.remove();q=up;}});
+  // un élément pris dans un objet reste dans cet objet : il rejoint la partie de l'objet qui est dans ce calque
+  const tops=new Map(items.map(i=>[i,topOf(i)]));
+  items.sort((a,b)=>a.isAbove(b)?1:-1).forEach(i=>{
+    const top=tops.get(i);
+    if(top&&top!==i&&top.parent instanceof P.Layer){
+      if(!top.data.link)top.data.link=newLink();
+      let part=l.children.find(c=>c.data&&c.data.link===top.data.link);
+      if(!part){part=new P.Group({name:top.name||'Objet'});part.data.link=top.data.link;l.addChild(part);}
+      part.addChild(i);
+    }else l.addChild(i);
+  });
+  parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!(q instanceof P.Layer)&&!q.children.length){const up=q.parent;q.remove();q=up;}});
   if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.layer===l)aquaRaster.bringToFront();
   activeLayer=l;
   if(S.tool==='direct'){items.forEach(i=>{i.selected=true;});}else setSel(items);
