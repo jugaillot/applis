@@ -136,7 +136,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
     <button class="tool" data-tool="direct" title="Sélection directe — points (A)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
     <button class="tool" data-tool="lasso" title="Lasso — entourer des formes, même à l’intérieur d’un dessin (Q)"><svg viewBox="0 0 24 24"><path d="M12 4c5 0 8 2.2 8 5s-3.6 5-8 5-8-2.2-8-5 3-5 8-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 2"/><path d="M7 13c-1 2 0 4 2 4s2 2 1 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
     <div class="tsep"></div>
-    <button class="tool" data-tool="pen" title="Plume (P)"><svg viewBox="0 0 24 24"><path d="M12 3l5 9-5 9-5-9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg></button>
+    <button class="tool" data-tool="pen" title="Plume (P)"><svg viewBox="0 0 24 24"><path d="M3 3l10 3.5 5.5 5.5-6.5 6.5-5.5-5.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 3l7.2 7.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11.3" cy="11.3" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M15.2 21.2l6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     <button class="tool" data-tool="pencil" title="Crayon (N)"><svg viewBox="0 0 24 24"><path d="M4 20c3-1 4-5 7-6s4 2 7-1 1-7 1-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     <button class="tool" data-tool="rect" title="Rectangle (M)"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <button class="tool" data-tool="ellipse" title="Ellipse (L)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
@@ -555,7 +555,7 @@ const HINTS={
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
   rect:'Glisser pour dessiner · Maj : carré · Alt : depuis le centre',
   ellipse:'Glisser pour dessiner · Maj : cercle · Alt : depuis le centre',
-  bucket:'Clic dans une zone : la remplit avec la couleur de fond choisie (zone délimitée par des traits, ou forme existante) · Alt+clic : remplit aussi si la forme cliquée est un trait',
+  bucket:'Clic dans une zone : la remplit avec la couleur de fond choisie (zone délimitée par des traits, même mal fermée : l’ouverture est refermée automatiquement, ou forme existante) · Alt+clic : remplit aussi si la forme cliquée est un trait',
   eyedrop:'Clic sur un objet : reprend sa couleur et son style · si des objets sont sélectionnés, ils reçoivent ce style',
   hand:'Glisser pour déplacer la vue · molette : défiler · Ctrl+molette : zoom'
 };
@@ -820,6 +820,16 @@ async function bucketDown(e){
   // 2. sinon : on cherche la zone délimitée par les traits autour du clic (comme un remplissage de peinture)
   await fillRegion(e.point,col);
 }
+/* distance (en pixels) au plus proche pixel « marqué » : chanfrein 3-4, deux passes */
+function chamfer(src,w,h){
+  const n=w*h,d=new Float32Array(n),INF=1e9,a=1,b=1.4142;
+  for(let i=0;i<n;i++)d[i]=src[i]?0:INF;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;let v=d[i];if(!v)continue;
+    if(x>0&&d[i-1]+a<v)v=d[i-1]+a;if(y>0){if(d[i-w]+a<v)v=d[i-w]+a;if(x>0&&d[i-w-1]+b<v)v=d[i-w-1]+b;if(x<w-1&&d[i-w+1]+b<v)v=d[i-w+1]+b;}d[i]=v;}
+  for(let y=h-1;y>=0;y--)for(let x=w-1;x>=0;x--){const i=y*w+x;let v=d[i];if(!v)continue;
+    if(x<w-1&&d[i+1]+a<v)v=d[i+1]+a;if(y<h-1){if(d[i+w]+a<v)v=d[i+w]+a;if(x<w-1&&d[i+w+1]+b<v)v=d[i+w+1]+b;if(x>0&&d[i+w-1]+b<v)v=d[i+w-1]+b;}d[i]=v;}
+  return d;
+}
 async function fillRegion(pt,col){
   const W=S.page.w,H=S.page.h;
   if(pt.x<0||pt.y<0||pt.x>W||pt.y>H){$('#hint').textContent='Clique à l’intérieur de la page.';return;}
@@ -838,14 +848,52 @@ async function fillRegion(pt,col){
     const ref=[d[idx],d[idx+1],d[idx+2]];
     const tol=60,same=i=>Math.abs(d[i]-ref[0])+Math.abs(d[i+1]-ref[1])+Math.abs(d[i+2]-ref[2])<=tol;
     if(!same(idx)){await busy();return;}
-    const n=cw*ch,mask=new Int8Array(n),stack=new Int32Array(n);let sp=0,touches=false,count=0;
-    mask[sy*cw+sx]=1;stack[sp++]=sy*cw+sx;
-    while(sp){const p=stack[--sp];count++;const px_=p%cw,py_=(p-px_)/cw;if(px_===0||py_===0||px_===cw-1||py_===ch-1)touches=true;
-      const nb=[px_>0?p-1:-1,px_<cw-1?p+1:-1,py_>0?p-cw:-1,py_<ch-1?p+cw:-1];
-      for(const q of nb){if(q<0||mask[q])continue;if(same(q*4)){mask[q]=1;stack[sp++]=q;}}}
-    if(touches||count>n*0.6){await busy();alert('Cette zone n’est pas fermée : le remplissage déborderait sur toute la page.\nFerme-la (plume, crayon, ou « Fermer les lignes » en revectorisant), puis recommence.');return;}
+    const n=cw*ch;
+    // 1. zone fermée : remplissage classique
+    const bar=new Uint8Array(n);for(let i=0;i<n;i++)bar[i]=same(i*4)?0:1;
+    const flood=(ok,seed)=>{const mask=new Int8Array(n),stack=new Int32Array(n);let sp=0,touches=false,count=0;mask[seed]=1;stack[sp++]=seed;
+      while(sp){const p=stack[--sp];count++;const px_=p%cw,py_=(p-px_)/cw;if(px_===0||py_===0||px_===cw-1||py_===ch-1)touches=true;
+        if(px_>0&&!mask[p-1]&&ok(p-1)){mask[p-1]=1;stack[sp++]=p-1;}if(px_<cw-1&&!mask[p+1]&&ok(p+1)){mask[p+1]=1;stack[sp++]=p+1;}
+        if(py_>0&&!mask[p-cw]&&ok(p-cw)){mask[p-cw]=1;stack[sp++]=p-cw;}if(py_<ch-1&&!mask[p+cw]&&ok(p+cw)){mask[p+cw]=1;stack[sp++]=p+cw;}}
+      return {mask,leak:touches||count>n*0.6};};
+    const seed0=sy*cw+sx;let reg=flood(p=>!bar[p],seed0),gapR=0;
+    // 2. zone ouverte : on referme virtuellement les ouvertures (traits épaissis), en cherchant le plus petit épaississement qui suffit
+    let dist=null;
+    if(reg.leak){
+      await busy('Zone ouverte : recherche de la fermeture…');
+      dist=chamfer(bar,cw,ch);
+      const rMax=Math.min(Math.round(25*ppm),Math.round(Math.min(cw,ch)/4));
+      const tryR=r=>{let s=seed0;if(dist[s]<=r){// le clic est trop près d'un trait : on cherche le point libre le plus proche
+          let best=-1,bd=1e9;const R=Math.ceil(r)+3;for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const x=sx+dx,y=sy+dy;if(x<0||y<0||x>=cw||y>=ch)continue;const q=y*cw+x;if(dist[q]>r&&dx*dx+dy*dy<bd){bd=dx*dx+dy*dy;best=q;}}if(best<0)return null;s=best;}
+        return flood(p=>dist[p]>r,s);};
+      let lo=0,hi=rMax,found=null;
+      const top=tryR(hi);if(!top||top.leak){await busy();alert('Cette zone est trop ouverte pour être remplie (ouverture de plus de '+Math.round(rMax*2/ppm)+' mm).\nRapproche les bords ou ferme-la avec la plume ou le crayon, puis recommence.');return;}
+      found=top;
+      while(hi-lo>1){const mid=(lo+hi)>>1;const t=tryR(mid);if(t&&!t.leak){hi=mid;found=t;}else lo=mid;}
+      reg=found;gapR=hi;
+    }
+    const mask=reg.mask;
+    let grow;
+    if(gapR>0){
+      // la zone retrouve l'épaisseur retirée ; ce qui dépasse par l'ouverture est coupé en ligne droite
+      // (enveloppe des bords du dessin autour de la zone)
+      const dz=chamfer(mask,cw,ch);const g0=new Uint8Array(n);for(let p=0;p<n;p++)g0[p]=dz[p]<=gapR+1.5?1:0;
+      let pts=[];for(let p=0;p<n;p++){if(!bar[p])continue;const x=p%cw;if((x>0&&g0[p-1])||(x<cw-1&&g0[p+1])||(p>=cw&&g0[p-cw])||(p<n-cw&&g0[p+cw]))pts.push([x,(p-x)/cw]);}
+      if(pts.length>3){
+        pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+        const lo=[],up=[];for(const q of pts){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop();lo.push(q);}
+        for(let i=pts.length-1;i>=0;i--){const q=pts[i];while(up.length>1&&cr(up[up.length-2],up[up.length-1],q)<=0)up.pop();up.push(q);}
+        const hull=lo.slice(0,-1).concat(up.slice(0,-1));
+        const hc=document.createElement('canvas');hc.width=cw;hc.height=ch;const hx=hc.getContext('2d');hx.fillStyle='#000';hx.strokeStyle='#000';hx.lineWidth=3;
+        hx.beginPath();hull.forEach((q,i)=>i?hx.lineTo(q[0]+.5,q[1]+.5):hx.moveTo(q[0]+.5,q[1]+.5));hx.closePath();hx.fill();hx.stroke();
+        const hd=hx.getImageData(0,0,cw,ch).data;for(let p=0;p<n;p++)if(g0[p]&&hd[p*4+3]<128)g0[p]=0;
+      }
+      grow=new Int8Array(g0);
+      $('#hint').textContent='Zone ouverte remplie : l’ouverture (environ '+(Math.round(gapR*2/ppm*10)/10)+' mm) a été refermée automatiquement';
+    }else{
     // on élargit d'un pixel pour passer sous les traits
-    const grow=new Int8Array(mask);for(let p=0;p<n;p++){if(!mask[p])continue;const px_=p%cw;if(px_>0)grow[p-1]=1;if(px_<cw-1)grow[p+1]=1;if(p>=cw)grow[p-cw]=1;if(p<n-cw)grow[p+cw]=1;}
+    grow=new Int8Array(mask);for(let p=0;p<n;p++){if(!mask[p])continue;const px_=p%cw;if(px_>0)grow[p-1]=1;if(px_<cw-1)grow[p+1]=1;if(p>=cw)grow[p-cw]=1;if(p<n-cw)grow[p+cw]=1;}
+    }
     if(!bucketWorker)bucketWorker=new Worker('potrace-worker.js');
     const id=++bucketId;
     const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1,opttolerance:0.2,optcurve:true,close:0}},[grow.buffer]);});
