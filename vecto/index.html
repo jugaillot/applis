@@ -627,6 +627,17 @@ function setTool(t){
   drawUI();
 }
 
+/* position d'un événement souris ou doigt (sur mobile, le doigt n'a pas de clientX direct) */
+function evXY(ev){const t=(ev.touches&&ev.touches[0])||(ev.changedTouches&&ev.changedTouches[0])||ev;return [t.clientX,t.clientY];}
+/* deux doigts : déplacer et zoomer la vue, quel que soit l'outil */
+let pinch=null;
+cv.addEventListener('touchstart',e=>{if(e.touches.length===2){const [a,b]=[e.touches[0],e.touches[1]];pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),mx:(a.clientX+b.clientX)/2,my:(a.clientY+b.clientY)/2,c:view.center,z:view.zoom};drag=null;e.preventDefault();}},{passive:false});
+cv.addEventListener('touchmove',e=>{if(!pinch||e.touches.length!==2)return;e.preventDefault();const [a,b]=[e.touches[0],e.touches[1]];
+  const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),mx=(a.clientX+b.clientX)/2,my=(a.clientY+b.clientY)/2;
+  const z=Math.min(200,Math.max(0.05,pinch.z*d/Math.max(1,pinch.d)));const r=cv.getBoundingClientRect();
+  view.zoom=pinch.z;view.center=pinch.c;const p0=view.viewToProject(new P.Point(pinch.mx-r.left,pinch.my-r.top));
+  view.zoom=z;const p1=view.viewToProject(new P.Point(mx-r.left,my-r.top));view.center=view.center.add(p0.subtract(p1));afterView();},{passive:false});
+cv.addEventListener('touchend',e=>{if(pinch&&e.touches.length<2)pinch=null;});
 const tool=new P.Tool();
 tool.minDistance=0;
 let drag=null,penPath=null,penDrag=null,marquee=null,pencilPath=null,shapePath=null,lastDown={t:0,p:null};
@@ -640,7 +651,7 @@ function endMarquee(){if(marquee){marquee.remove();marquee=null;}}
 
 tool.onMouseDown=function(e){
   const now=Date.now(),dbl=now-lastDown.t<350&&lastDown.p&&lastDown.p.getDistance(e.point)<px(6);lastDown={t:now,p:e.point};
-  if(S.tool==='hand'||e.event.button===1||spaceDown){drag={mode:'pan',start:e.event.clientX,sy:e.event.clientY,c:view.center};cv.style.cursor='grabbing';return;}
+  if(S.tool==='hand'||e.event.button===1||spaceDown){{const [cx,cy]=evXY(e.event);drag={mode:'pan',start:cx,sy:cy,c:view.center};}cv.style.cursor='grabbing';return;}
   if(S.tool==='select')return selDown(e,dbl);
   if(S.tool==='lasso'&&sel.length&&handleAt(e.point))return selDown(e,dbl);
   if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
@@ -653,7 +664,7 @@ tool.onMouseDown=function(e){
   if(S.tool==='rect'||S.tool==='ellipse'){drag={mode:'shape',from:e.point};return;}
 };
 tool.onMouseDrag=function(e){
-  if(drag&&drag.mode==='pan'){const z=view.zoom;view.center=drag.c.subtract(new P.Point(e.event.clientX-drag.start,e.event.clientY-drag.sy).divide(z));afterView();return;}
+  if(drag&&drag.mode==='pan'){const z=view.zoom,[cx,cy]=evXY(e.event);if(!isFinite(cx)||!isFinite(cy))return;view.center=drag.c.subtract(new P.Point(cx-drag.start,cy-drag.sy).divide(z));afterView();return;}
   if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selDrag(e);
   if(S.tool==='lasso')return lassoDrag(e);
   if(S.tool==='direct')return dirDrag(e);
