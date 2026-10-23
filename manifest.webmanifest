@@ -17,7 +17,7 @@
     {"name": "Riso", "url": "/riso/"},
     {"name": "Vecto", "url": "/vecto/"},
     {"name": "PDF", "url": "/compil/"},
-    {"name": "Plan", "url": "/plan/"},
+    {"name": "CAD", "url": "/plan/"},
     {"name": "Photo", "url": "/photo/"},
     {"name": "Dossiers", "url": "/dossiers/"},
     {"name": "Paysage insulaire", "url": "/paysage/"}

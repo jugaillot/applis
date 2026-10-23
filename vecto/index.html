@@ -389,7 +389,7 @@ const view=P.view;
 const pageLayer=P.project.activeLayer;pageLayer.name='__page';
 let pageRect=null;
 const uiLayer=new P.Layer({name:'__ui'});
-function isSys(l){return l===pageLayer||l===uiLayer;}
+function isSys(l){return l===pageLayer||l===uiLayer||(!!l&&l.name==='__prev');}
 function userLayers(){return P.project.layers.filter(l=>!isSys(l));}
 let activeLayer=null;
 function newLayer(name){const l=new P.Layer({name:name||('Calque '+(userLayers().length+1))});l.insertBelow(uiLayer);activeLayer=l;return l;}
@@ -437,7 +437,8 @@ function moveIt(it,d){xf(it,new P.Matrix().translate(d));}
 let sel=[];
 function topOf(item){while(item&&item.parent&&!(item.parent instanceof P.Layer))item=item.parent;return item;}
 function selectable(item){const l=item&&item.layer;return l&&!isSys(l)&&l.visible&&!l.locked;}
-function setSel(items){if(!items||!items.length)fillCache=null;sel=items.filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();}
+function setSel(items){if(window.BK&&BK.pending&&!BK.lock){const a=new Set(BK.pending.scope);const same=items&&items.length===a.size&&items.every(i=>a.has(i));if(!same)bkValidate();}
+  if(!items||!items.length){if(!(window.BK&&BK.lock))fillCache=null;}sel=items.filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();if(S.tool==='bucket')bkWarm();}
 function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
 function selBounds(){if(!sel.length)return null;let b=sel[0].bounds.clone();for(let i=1;i<sel.length;i++)b=b.unite(sel[i].bounds);return b;}
 function allTop(){const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children);});return out;}
@@ -586,17 +587,19 @@ function renderLayers(){
 
 /* ---------- outils ---------- */
 /* ---------- barre des réglages de l'outil (en haut de la feuille) ---------- */
+var BK={pending:null,lock:false,timer:0,warm:0};
 const OPT_KEY='atelier.outils'+location.pathname;
 S.opt=Object.assign({gap:20,smooth:2.5},(()=>{try{return JSON.parse(localStorage.getItem(OPT_KEY))||{};}catch(e){return{};}})());
 function saveOpt(){try{localStorage.setItem(OPT_KEY,JSON.stringify(S.opt));}catch(e){}}
 const gapLabel=v=>v>=61?'sans limite':v<=0?'aucune (zones fermées seulement)':'jusqu’à '+v+' mm';
 function renderToolBar(t){
   const tb=$('#toolBar');if(!tb)return;let h='';
-  if(t==='bucket')h=`<b>Pot de peinture</b><label title="Largeur maximale d’une ouverture que le pot referme tout seul (en ligne droite). Plus c’est grand, plus il ferme les zones ouvertes, mais plus il risque de déborder.">Fermeture des ouvertures <input type="range" min="0" max="61" step="1" data-opt="gap" value="${S.opt.gap}"><span data-optv="gap">${gapLabel(S.opt.gap)}</span></label>`;
+  if(t==='bucket')h=`<b>Pot de peinture</b><label title="Largeur maximale d’une ouverture que le pot referme tout seul (en ligne droite). Plus c’est grand, plus il ferme les zones ouvertes, mais plus il risque de déborder.">Fermeture des ouvertures <input type="range" min="0" max="61" step="1" data-opt="gap" value="${S.opt.gap}"><span data-optv="gap">${gapLabel(S.opt.gap)}</span></label>`+(BK.pending?`<button class="btn sm on" data-bk="ok" title="Entrée">✓ Valider</button><button class="btn sm" data-bk="cancel" title="Échap">Annuler</button>`:`<button class="btn sm" data-bk="all" title="Aperçu de toutes les zones encore blanches de la sélection, avec ce réglage">Remplir toutes les zones</button>`);
   if(t==='pencil')h=`<b>Crayon</b><label title="0 : le trait suit exactement la main ; plus c’est grand, plus il est lissé (moins de points)">Lissage <input type="range" min="0" max="10" step="0.5" data-opt="smooth" value="${S.opt.smooth}"><span data-optv="smooth">${S.opt.smooth}</span></label>`;
   tb.innerHTML=h;tb.hidden=!h;
 }
-$('#toolBar').addEventListener('input',e=>{const k=e.target.dataset.opt;if(!k)return;S.opt[k]=+e.target.value;const v=$('#toolBar [data-optv="'+k+'"]');if(v)v.textContent=k==='gap'?gapLabel(S.opt.gap):S.opt[k];saveOpt();});
+$('#toolBar').addEventListener('input',e=>{const k=e.target.dataset.opt;if(!k)return;S.opt[k]=+e.target.value;const v=$('#toolBar [data-optv="'+k+'"]');if(v)v.textContent=k==='gap'?gapLabel(S.opt.gap):S.opt[k];saveOpt();if(k==='gap')bkSchedule();});
+$('#toolBar').addEventListener('click',e=>{const b=e.target.closest('[data-bk]');if(!b)return;const a=b.dataset.bk;if(a==='ok')bkValidate();else if(a==='cancel')bkCancel();else if(a==='all')bkStart('all',null);});
 $('#toolBar').addEventListener('change',e=>{if(e.target.dataset.opt)e.target.blur();});
 
 const HINTS={
@@ -612,6 +615,7 @@ const HINTS={
   hand:'Glisser pour déplacer la vue · molette : zoom · clic molette + glisser : déplacer la vue · Ctrl+molette : horizontal · Maj+molette : vertical'
 };
 function setTool(t){
+  if(typeof BK!=='undefined'&&BK.pending&&t!=='bucket')bkValidate();
   if(S.tool==='pen'&&t!=='pen')finishPen();
   if(S.tool==='direct'&&t!=='direct')clearDirect();
   S.tool=t;
@@ -619,6 +623,7 @@ function setTool(t){
   $('#hint').textContent=HINTS[t]||'';
   cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?bucketCursor():'crosshair';
   renderToolBar(t);
+  if(t==='bucket')bkWarm();
   drawUI();
 }
 
@@ -862,6 +867,7 @@ function eyedropDown(e){
 let bucketWorker=null,bucketId=0;
 function isClosedFill(it){if(!it)return false;if(it instanceof P.CompoundPath)return true;return it instanceof P.Path&&it.closed;}
 async function bucketDown(e){
+  if(BK.pending)bkValidate();
   if(S.pickFill)S.fill=S.pickFill;
   const col=S.fill||S.lastFill;// la zone sélectionnée peut n'avoir que des traits : on garde la dernière couleur de fond choisie
   if(!col){alert('Choisis d’abord une couleur de fond (pas « aucune »).');return;}
@@ -874,8 +880,8 @@ async function bucketDown(e){
   const isBlack=it&&it.fillColor&&colorHex(it.fillColor)==='#000000';
   if(it&&isClosedFill(it)&&it.fillColor&&(!isBlack||e.modifiers.alt)){it.fillColor=new P.Color(col);commit();return;}
   if(it&&isBlack){$('#hint').textContent='C’est un trait : clique dans la zone à côté, ou Alt+clic pour recolorer le trait lui-même.';return;}
-  // 2. sinon : la zone délimitée par les traits (de la sélection, ou de tout le visible)
-  await fillRegion(e.point,col,scope);
+  // 2. sinon : aperçu provisoire de la zone (le précédent est validé)
+  await bkStart('one',e.point);
 }
 /* distance (en pixels) au plus proche pixel « marqué » : chanfrein 3-4, deux passes */
 function chamfer(src,w,h){
@@ -914,50 +920,62 @@ function hullMask(pts,cw,ch){
   x.beginPath();hull.forEach((q,i)=>i?x.lineTo(q[0]+.5,q[1]+.5):x.moveTo(q[0]+.5,q[1]+.5));x.closePath();x.fill();x.stroke();
   const d=x.getImageData(0,0,cw,ch).data,n=cw*ch,m=new Uint8Array(n);for(let p=0;p<n;p++)m[p]=d[p*4+3]>=128?1:0;return m;
 }
-async function fillRegion(pt,col,scope){
-  const solo=scope&&scope.length>0;
-  const W=S.page.w,H=S.page.h;
-  await busy('Recherche de la zone…');
+/* ---------- pot : contours mémorisés, aperçu provisoire, « Remplir toutes les zones » ---------- */
+let prevLayer=null;
+function bkLayer(){if(!prevLayer||!prevLayer.parent){prevLayer=new P.Layer({name:'__prev'});prevLayer.insertBelow(uiLayer);if(activeLayer)activeLayer.activate();}return prevLayer;}
+function bkClearPreview(){if(prevLayer)prevLayer.removeChildren();}
+function bkGap(){return S.opt.gap>=61?Infinity:Math.max(0,S.opt.gap);}
+/* rendu de la sélection en pixels (traits = tout ce qui n'est pas le fond blanc), gardé tant que l'objet reste sélectionné */
+async function bkPrepare(scope){
+  const key=scopeKey(scope);
+  if(fillCache&&fillCache.key===key)return fillCache;
+  BK.lock=true;
   try{
-    const key=solo?scopeKey(scope):null;
-    let C=fillCache&&key&&fillCache.key===key?fillCache:null;
-    if(!C){
+    const W=S.page.w,H=S.page.h,solo=true;
       // zone de travail : la sélection (ou tout le dessin) et un peu autour
       let A=new P.Rectangle(0,0,W,H);
-      if(solo){A=null;scope.forEach(c=>{A=A?A.unite(c.strokeBounds):c.strokeBounds.clone();});}
-      else userLayers().forEach(l=>{if(!l.visible)return;l.children.forEach(c=>{if(c.data&&c.data.sys)return;A=A.unite(c.strokeBounds);});});
+      {A=null;scope.forEach(c=>{A=A?A.unite(c.strokeBounds):c.strokeBounds.clone();});}
       A=A.expand(40);
       const ox=A.x,oy=A.y,AW=A.width,AH=A.height;
       const ppm=Math.min(10,Math.sqrt(5e6/(AW*AH)));
       const cw=Math.round(AW*ppm),ch=Math.round(AH*ppm),n=cw*ch;
       const prevSel=sel;sel=[];drawUI();
-      const restore=solo?soloScope(scope):null;let svg0;try{svg0=buildSVG();}finally{if(restore)restore();}
-      const svg=svg0.replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;
+      const restore=soloScope(scope);let svg0;try{svg0=buildSVG();}finally{if(restore)restore();}
+      const svg=svg0.replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;syncPanel();drawUI();
       const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
       const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d',{willReadFrequently:true});
       x.fillStyle='#fff';x.fillRect(0,0,cw,ch);x.drawImage(img,0,0,cw,ch);
       const d=x.getImageData(0,0,cw,ch).data;
       // les traits : tout ce qui n'est pas le fond blanc
       const bar=new Uint8Array(n);for(let i=0;i<n;i++){const j=i*4;bar[i]=(765-d[j]-d[j+1]-d[j+2])>60?1:0;}
-      C={key,ox,oy,ppm,cw,ch,n,bar,dist:null};
-      if(key)fillCache=C;
-    }
+      const C={key,ox,oy,ppm,cw,ch,n,bar,dist:null};
+      fillCache=C;
+
+    return C;
+  }finally{BK.lock=false;}
+}
+function bkFloodFn(C){const {n,cw,ch}=C;return (ok,seed)=>{const mask=new Uint8Array(n),stack=new Int32Array(n);let sp=0,touches=false,count=0;mask[seed]=1;stack[sp++]=seed;
+      while(sp){const p=stack[--sp];count++;const px_=p%cw,py_=(p-px_)/cw;if(px_===0||py_===0||px_===cw-1||py_===ch-1)touches=true;
+        if(px_>0&&!mask[p-1]&&ok(p-1)){mask[p-1]=1;stack[sp++]=p-1;}if(px_<cw-1&&!mask[p+1]&&ok(p+1)){mask[p+1]=1;stack[sp++]=p+1;}
+        if(py_>0&&!mask[p-cw]&&ok(p-cw)){mask[p-cw]=1;stack[sp++]=p-cw;}if(py_<ch-1&&!mask[p+cw]&&ok(p+cw)){mask[p+cw]=1;stack[sp++]=p+cw;}}
+      return {mask,leak:touches,count};};}
+/* la zone autour d'un clic → {mask,how} ou {msg}/{hint} */
+function bkOne(C,pt){
+  const gapMax=bkGap();
     const {ox,oy,ppm,cw,ch,n,bar}=C;
     const sx=Math.floor((pt.x-ox)*ppm),sy=Math.floor((pt.y-oy)*ppm);
-    if(sx<1||sy<1||sx>=cw-1||sy>=ch-1){await busy();alert('Clique à l’intérieur de l’objet sélectionné.');return;}
+    if(sx<1||sy<1||sx>=cw-1||sy>=ch-1)return {msg:'Clique à l’intérieur de l’objet sélectionné.'};
     const seed0=sy*cw+sx;
-    if(bar[seed0]){await busy();$('#hint').textContent='C’est un trait : clique dans la zone à côté.';return;}
-    const flood=(ok,seed)=>{const mask=new Uint8Array(n),stack=new Int32Array(n);let sp=0,touches=false,count=0;mask[seed]=1;stack[sp++]=seed;
+    if(bar[seed0])return {hint:'C’est un trait : clique dans la zone à côté.'};
+    const flood=bkFloodFn(C);const _unused=(ok,seed)=>{const mask=new Uint8Array(n),stack=new Int32Array(n);let sp=0,touches=false,count=0;mask[seed]=1;stack[sp++]=seed;
       while(sp){const p=stack[--sp];count++;const px_=p%cw,py_=(p-px_)/cw;if(px_===0||py_===0||px_===cw-1||py_===ch-1)touches=true;
         if(px_>0&&!mask[p-1]&&ok(p-1)){mask[p-1]=1;stack[sp++]=p-1;}if(px_<cw-1&&!mask[p+1]&&ok(p+1)){mask[p+1]=1;stack[sp++]=p+1;}
         if(py_>0&&!mask[p-cw]&&ok(p-cw)){mask[p-cw]=1;stack[sp++]=p-cw;}if(py_<ch-1&&!mask[p+cw]&&ok(p+cw)){mask[p+cw]=1;stack[sp++]=p+cw;}}
       return {mask,leak:touches,count};};
     // 1. zone fermée : remplissage classique
     let reg=flood(p=>!bar[p],seed0),how='';
-    const gapMax=S.opt.gap>=61?Infinity:Math.max(0,S.opt.gap);// mm : réglage « Fermeture des ouvertures »
     const cands=[];
     if(reg.leak){
-      await busy('Zone ouverte : recherche de la fermeture…');
       // 2a. petites ouvertures : on épaissit les traits juste assez pour isoler la zone, puis elle reprend sa taille sans passer par-dessus les traits
       if(!C.dist)C.dist=chamfer(bar,cw,ch);
       const dist=C.dist;
@@ -1013,34 +1031,125 @@ async function fillRegion(pt,col,scope){
       // la plus petite zone qui entoure le clic
       cands.sort((a,b)=>a.count-b.count);
       if(cands.length){reg={mask:cands[0].mask};how=cands[0].how;}
-      else if(isFinite(gapMax)){await busy();alert(gapMax>0?'Cette zone a une ouverture de plus de '+gapMax+' mm.\nAugmente « Fermeture des ouvertures » dans la barre du haut, ou ferme-la avec la plume ou le crayon.':'Cette zone n’est pas fermée.\nAugmente « Fermeture des ouvertures » dans la barre du haut pour que le pot la ferme tout seul.');return;}
+      else if(isFinite(gapMax))return {msg:gapMax>0?'Cette zone a une ouverture de plus de '+gapMax+' mm.\nAugmente « Fermeture des ouvertures » dans la barre du haut, ou ferme-la avec la plume ou le crayon.':'Cette zone n’est pas fermée.\nAugmente « Fermeture des ouvertures » dans la barre du haut pour que le pot la ferme tout seul.'};
       else{
         // 2c. sans limite : jusqu'au contour extérieur de la sélection
         const oh=outsideHull(bar,cw,ch);
-        if(!oh||oh[seed0]){await busy();alert('Ce point est en dehors de l’objet sélectionné : il n’y a rien autour pour délimiter la zone.');return;}
+        if(!oh||oh[seed0])return {msg:'Ce point est en dehors de l’objet sélectionné : il n’y a rien autour pour délimiter la zone.'};
         reg=flood(p=>!bar[p]&&!oh[p],seed0);how='zone très ouverte : remplie jusqu’au contour extérieur de la sélection';
       }
     }
-    const mask=reg.mask;
-    // on élargit d'un pixel pour passer sous les traits
-    const grow=new Int8Array(n);for(let p=0;p<n;p++){if(!mask[p])continue;grow[p]=1;const px_=p%cw;if(px_>0)grow[p-1]=1;if(px_<cw-1)grow[p+1]=1;if(p>=cw)grow[p-cw]=1;if(p<n-cw)grow[p+cw]=1;}
-    if(how)$('#hint').textContent='Zone ouverte remplie : '+how;
-    if(!bucketWorker)bucketWorker=new Worker('potrace-worker.js');
-    const id=++bucketId;
-    const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1,opttolerance:0.2,optcurve:true,close:0}},[grow.buffer]);});
-    if(res.error)throw new Error(res.error);
-    if(!res.shapes.length){await busy();return;}
-    ensureLayer(true);
-    const fill=new P.CompoundPath({pathData:res.shapes.map(s=>s.d).join(''),fillRule:'evenodd',fillColor:new P.Color(col)});
-    fill.transform(new P.Matrix().translate(ox,oy).scale(1/ppm));
-    fill.name='Remplissage';
-    placeFill(fill,pt,scope);
-    if(fillCache&&solo)fillCache.key=scopeKey(sel.length?sel:scope);// l'objet a reçu le remplissage : la mémoire reste valable
-    commit();
-  }catch(err){console.error(err);alert('Remplissage impossible : '+(err.message||err));}
+
+  return {mask:reg.mask,how};
+}
+/* toutes les zones encore blanches de la sélection : zones fermées, et zones dont les ouvertures sont plus petites que le réglage
+   (les ouvertures sont refermées, puis chaque zone et l'extérieur se partagent le vide : la limite passe au milieu de l'ouverture) */
+function bkAll(C){
+  const {cw,ch,n,bar,ppm}=C;const gapMax=bkGap();
+  const R=gapMax>0?Math.min(Math.round((isFinite(gapMax)?gapMax:50)/2*ppm),Math.round(Math.min(cw,ch)/4)):0;
+  // plusieurs échelles : zones fermées, puis zones isolées en refermant des ouvertures de plus en plus larges (jusqu'au réglage)
+  const scales=[0];if(R>0){for(let r=Math.max(1,Math.round(0.4*ppm));r<R;r=Math.max(r+1,Math.round(r*1.6)))scales.push(r);scales.push(R);}
+  if(R>0&&!C.dist)C.dist=chamfer(bar,cw,ch);
+  const lab=new Int32Array(n),q=new Int32Array(n);let L=1;// 1 = l'extérieur
+  const minA=Math.max(4,Math.round(0.8*ppm*ppm));
+  scales.forEach((r,si)=>{
+    let free;
+    if(r>0){const far=new Uint8Array(n);for(let p=0;p<n;p++)far[p]=C.dist[p]>r?1:0;const d2=chamfer(far,cw,ch);free=new Uint8Array(n);for(let p=0;p<n;p++)free[p]=(!bar[p]&&d2[p]<=r)?1:0;}
+    else{free=new Uint8Array(n);for(let p=0;p<n;p++)free[p]=bar[p]?0:1;}
+    const seen=new Uint8Array(n),last=si===scales.length-1;
+    for(let s=0;s<n;s++){if(!free[s]||seen[s])continue;let qh=0,qt=0,touch=false,taken=false;seen[s]=1;q[qt++]=s;
+      while(qh<qt){const p=q[qh++];if(lab[p])taken=true;const x=p%cw,y=(p-x)/cw;if(x===0||y===0||x===cw-1||y===ch-1)touch=true;
+        if(x>0&&free[p-1]&&!seen[p-1]){seen[p-1]=1;q[qt++]=p-1;}if(x<cw-1&&free[p+1]&&!seen[p+1]){seen[p+1]=1;q[qt++]=p+1;}
+        if(y>0&&free[p-cw]&&!seen[p-cw]){seen[p-cw]=1;q[qt++]=p-cw;}if(y<ch-1&&free[p+cw]&&!seen[p+cw]){seen[p+cw]=1;q[qt++]=p+cw;}}
+      if(touch){if(last)for(let i=0;i<qt;i++)if(!lab[q[i]])lab[q[i]]=1;continue;}
+      if(taken||qt<minA)continue;
+      L++;for(let i=0;i<qt;i++)lab[q[i]]=L;
+    }
+  });
+  // le vide restant (pointes, ouvertures) va à la zone la plus proche, en contournant les traits
+  {let qh=0,qt=0;for(let p=0;p<n;p++)if(lab[p])q[qt++]=p;
+    while(qh<qt){const p=q[qh++];const l=lab[p],x=p%cw;
+      if(x>0&&!bar[p-1]&&!lab[p-1]){lab[p-1]=l;q[qt++]=p-1;}if(x<cw-1&&!bar[p+1]&&!lab[p+1]){lab[p+1]=l;q[qt++]=p+1;}
+      if(p>=cw&&!bar[p-cw]&&!lab[p-cw]){lab[p-cw]=l;q[qt++]=p-cw;}if(p<n-cw&&!bar[p+cw]&&!lab[p+cw]){lab[p+cw]=l;q[qt++]=p+cw;}}}
+  const mask=new Uint8Array(n);let cnt=0;for(let p=0;p<n;p++)if(lab[p]>1){mask[p]=1;cnt++;}
+  return {mask,zones:L-1,count:cnt};
+}
+/* masque → forme vectorielle (dans le document), un pixel plus large pour passer sous les traits */
+async function bkTrace(C,mask){
+  const {ox,oy,ppm,cw,ch,n}=C;
+  const grow=new Int8Array(n);for(let p=0;p<n;p++){if(!mask[p])continue;grow[p]=1;const px_=p%cw;if(px_>0)grow[p-1]=1;if(px_<cw-1)grow[p+1]=1;if(p>=cw)grow[p-cw]=1;if(p<n-cw)grow[p+cw]=1;}
+  if(!bucketWorker)bucketWorker=new Worker('potrace-worker.js');
+  const id=++bucketId;
+  const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1,opttolerance:0.2,optcurve:true,close:0}},[grow.buffer]);});
+  if(res.error)throw new Error(res.error);
+  if(!res.shapes.length)return null;
+  const cp=new P.CompoundPath({insert:false,pathData:res.shapes.map(s=>s.d).join(''),fillRule:'evenodd'});
+  cp.transform(new P.Matrix().translate(ox,oy).scale(1/ppm));
+  return cp;
+}
+/* une forme par zone : chaque contour extérieur avec ses trous */
+function bkSplit(cp){
+  const kids=(cp instanceof P.CompoundPath?cp.children:[cp]).filter(k=>k.segments&&k.segments.length>2).map(k=>k.clone({insert:false}));
+  const inside=(c,o)=>o!==c&&o.bounds.contains(c.bounds)&&o.contains(c.interiorPoint);
+  const depth=kids.map(k=>kids.filter(o=>inside(k,o)).length);
+  const outs=kids.map((k,i)=>({k,i})).filter(o=>depth[o.i]%2===0).map(o=>({path:o.k,d:depth[o.i],holes:[]}));
+  kids.forEach((k,i)=>{if(depth[i]%2===0)return;const par=outs.filter(o=>o.d===depth[i]-1&&inside(k,o.path)).sort((a,b)=>Math.abs(a.path.area)-Math.abs(b.path.area))[0];if(par)par.holes.push(k);});
+  return outs.map(o=>new P.CompoundPath({insert:false,children:[o.path,...o.holes],fillRule:'evenodd'}));
+}
+function bkColor(){
+  if(S.pickFill)S.fill=S.pickFill;const c=S.fill||S.lastFill;if(!c)alert('Choisis d’abord une couleur de fond (pas « aucune »).');return c;
+}
+/* aperçu provisoire */
+async function bkShow(){
+  const pd=BK.pending;if(!pd)return;
+  const C=pd.C;let res;
+  if(pd.mode==='one'){res=bkOne(C,pd.pt);if(!res.mask){bkCancel();if(res.msg)alert(res.msg);else if(res.hint)$('#hint').textContent=res.hint;return;}}
+  else{res=bkAll(C);if(!res.zones){bkCancel();alert('Aucune zone à remplir avec ce réglage.\nAugmente « Fermeture des ouvertures » si des zones sont ouvertes.');return;}}
+  const cp=await bkTrace(C,res.mask);
+  if(BK.pending!==pd)return;
+  bkClearPreview();
+  if(!cp){bkCancel();return;}
+  pd.mask=res.mask;pd.shape=cp;
+  const pv=cp.clone({insert:false});pv.fillColor=new P.Color(pd.col);pv.opacity=0.6;pv.strokeColor=new P.Color(pd.col);pv.strokeWidth=px(1);pv.dashArray=[px(4),px(3)];pv.data.sys=true;
+  bkLayer().addChild(pv);
+  $('#hint').textContent=(pd.mode==='all'?res.zones+' zone'+(res.zones>1?'s':'')+' en aperçu':'Aperçu'+(res.how?' ('+res.how+')':''))+' · règle « Fermeture des ouvertures », puis Valider (Entrée) · Échap : annuler';
+  renderToolBar(S.tool);P.view.update();
+}
+async function bkStart(mode,pt){
+  const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
+  if(!scope.length){alert('Sélectionne d’abord l’objet ou l’élément qui entoure la zone à remplir.');return;}
+  const col=bkColor();if(!col)return;
+  if(BK.pending)bkValidate();
+  await busy(mode==='all'?'Recherche de toutes les zones…':'Recherche de la zone…');
+  try{
+    const C=await bkPrepare(scope);
+    BK.pending={mode,pt,scope:sel.slice(),C,col};
+    await bkShow();
+  }catch(err){console.error(err);bkCancel();alert('Remplissage impossible : '+(err.message||err));}
   await busy();
 }
-
+function bkSchedule(){if(!BK.pending)return;clearTimeout(BK.timer);BK.timer=setTimeout(async()=>{await busy('Nouvel aperçu…');try{await bkShow();}catch(e){console.error(e);}await busy();},200);}
+function bkCancel(){BK.pending=null;bkClearPreview();renderToolBar(S.tool);P.view.update();}
+function bkValidate(){
+  const pd=BK.pending;if(!pd)return;
+  BK.pending=null;bkClearPreview();
+  if(!pd.shape){renderToolBar(S.tool);return;}
+  ensureLayer(true);
+  const shapes=pd.mode==='all'?bkSplit(pd.shape):[pd.shape];
+  setSel(pd.scope);
+  shapes.forEach(f=>{f.fillColor=new P.Color(pd.col);f.strokeColor=null;f.name='Remplissage';
+    placeFill(f,pd.pt||f.interiorPoint,pd.scope);});
+  // les zones remplies comptent désormais comme des traits (pour « toutes les zones » et les clics suivants)
+  const C=pd.C;for(let p=0;p<C.n;p++)if(pd.mask[p])C.bar[p]=1;C.dist=null;
+  if(fillCache===C)fillCache.key=scopeKey(sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys)));
+  commit();renderToolBar(S.tool);
+  $('#hint').textContent=shapes.length>1?shapes.length+' zones remplies':'Zone remplie';
+}
+/* dès qu'un objet est sélectionné avec le pot : on mémorise ses contours */
+function bkWarm(){if(S.tool!=='bucket'||BK.lock||!sel.length)return;clearTimeout(BK.warm);BK.warm=setTimeout(async()=>{
+  const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));if(!scope.length||BK.pending)return;
+  if(fillCache&&fillCache.key===scopeKey(scope))return;
+  await busy('Mémorisation des contours de l’objet…');try{await bkPrepare(scope);}catch(e){console.error(e);}await busy();},120);}
 /* ---------- pot de peinture : zone limitée à la sélection ---------- */
 function bucketCursor(){return 'url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22%3E%3Cg transform=%22translate%281.5 -1.2%29 rotate%28-38 12 13%29 scale%281.08%29 translate%28-1 -1%29%22%3E%3Cpath fill=%22%23fff%22 stroke=%22%23fff%22 stroke-linejoin=%22round%22 stroke-width=%224%22 d=%22M6 8.5h12l-1.4 11a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z%22/%3E%3Cpath fill=%22%23fff%22 stroke=%22%23fff%22 stroke-linejoin=%22round%22 stroke-width=%222.4%22 d=%22M6.8 14.2h10.4l-.65 5.3a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z%22/%3E%3Cpath fill=%22%23fff%22 stroke=%22%23fff%22 stroke-linejoin=%22round%22 stroke-width=%223.8%22 d=%22M8.3 8.5a3.7 3.7 0 017.4 0%22/%3E%3C/g%3E%3Cpath fill=%22%23fff%22 stroke=%22%23fff%22 stroke-linejoin=%22round%22 stroke-width=%222.4%22 d=%22M6.6 9.2C4.6 9.6 3.3 11 3 12.8c-.3 2 .1 5 .7 8.4.5-2.9 1.3-5.5 2.6-7.3.6-.8.7-1.5.6-2.2z%22/%3E%3Cg transform=%22translate%281.5 -1.2%29 rotate%28-38 12 13%29 scale%281.08%29 translate%28-1 -1%29%22%3E%3Cpath d=%22M6 8.5h12l-1.4 11a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.6%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M6.8 14.2h10.4l-.65 5.3a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z%22 fill=%22%23000%22/%3E%3Cpath d=%22M8.3 8.5a3.7 3.7 0 017.4 0%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.4%22/%3E%3C/g%3E%3Cpath d=%22M6.6 9.2C4.6 9.6 3.3 11 3 12.8c-.3 2 .1 5 .7 8.4.5-2.9 1.3-5.5 2.6-7.3.6-.8.7-1.5.6-2.2z%22 fill=%22%23000%22/%3E%3C/svg%3E") 5 28, crosshair';}
 /* cache tout sauf la sélection le temps du rendu ; renvoie de quoi tout réafficher */
@@ -1879,6 +1988,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&e
 let spaceDown=false;
 document.addEventListener('keydown',e=>{
   if($('#vxDlg').open||$('#docDlg').open||$('#phDlg').open||$('#ungDlg').open)return;
+  if(BK.pending&&(e.key==='Enter'||e.key==='Escape')){e.preventDefault();e.key==='Enter'?bkValidate():bkCancel();return;}
   const tag=document.activeElement&&document.activeElement.tagName;
   if(/INPUT|SELECT|TEXTAREA/.test(tag))return;
   const k=e.key,ctrl=e.ctrlKey||e.metaKey;
