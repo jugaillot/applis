@@ -85,6 +85,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 #busy{position:fixed;inset:0;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-weight:600;z-index:60}
 #busy[hidden]{display:none}
 dialog{border:1px solid var(--line);border-radius:12px;padding:0;max-width:96vw;max-height:94vh}
+html.wait-busy,html.wait-busy *,html.wait-vx,html.wait-vx *{cursor:wait!important}
 dialog::backdrop{background:rgba(0,0,0,.35)}
 #phDlg{width:min(980px,98vw);height:min(94vh,900px)}
 #phDlg[open]{display:flex;flex-direction:column}
@@ -403,7 +404,8 @@ const S={
   clip:null,
   doc:{id:null,name:''}
 };
-const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;return new Promise(r=>setTimeout(r,30));};
+/* pendant un calcul : message et curseur sablier */
+const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;document.documentElement.classList.toggle('wait-busy',!!msg);return new Promise(r=>setTimeout(r,30));};
 const f1=v=>Math.round(v*10)/10;
 
 /* ---------- paper ---------- */
@@ -1319,17 +1321,18 @@ function vxRun(){
   VX.added=null;
   vxDraw();
   const id=++VX.id;
-  $('#vxStat').textContent='Calcul…';$('#vxOk').disabled=true;
+  $('#vxStat').textContent='Calcul…';$('#vxOk').disabled=true;document.documentElement.classList.add('wait-vx');
   const wk=worker();
   wk.onmessage=ev=>{
     if(ev.data.id!==VX.id)return;
+    document.documentElement.classList.remove('wait-vx');
     if(ev.data.error){$('#vxStat').textContent='Erreur : '+ev.data.error;return;}
     VX.shapes=ev.data.shapes;VX.whites=ev.data.whites||[];VX.added=ev.data.added||null;
     $('#vxStat').textContent=VX.shapes.length+' forme'+(VX.shapes.length>1?'s':'')+' noires'+(vxParams().blanc?' · '+VX.whites.length+' zone'+(VX.whites.length>1?'s':'')+' blanche'+(VX.whites.length>1?'s':''):'')+' · '+countPts(VX.shapes).toLocaleString('fr-FR')+' points · '+w+' × '+h+' px'+(ev.data.addedCount?' · '+ev.data.addedCount.toLocaleString('fr-FR')+' px de raccord':'');
     $('#vxOk').disabled=!VX.shapes.length;
     vxDraw();
   };
-  wk.onerror=err=>{$('#vxStat').textContent='Erreur de calcul ('+(err.message||'worker')+')';};
+  wk.onerror=err=>{document.documentElement.classList.remove('wait-vx');$('#vxStat').textContent='Erreur de calcul ('+(err.message||'worker')+')';};
   const copy=bits.slice();
   wk.postMessage({id,w,h,data:copy,params:{turdsize:p.tache,alphamax:p.lisse,opttolerance:p.prec,optcurve:true,close:p.ferme,closeLines:p.lignes}},[copy.buffer]);
 }
