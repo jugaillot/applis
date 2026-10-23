@@ -430,7 +430,7 @@ function moveIt(it,d){xf(it,new P.Matrix().translate(d));}
 let sel=[];
 function topOf(item){while(item&&item.parent&&!(item.parent instanceof P.Layer))item=item.parent;return item;}
 function selectable(item){const l=item&&item.layer;return l&&!isSys(l)&&l.visible&&!l.locked;}
-function setSel(items){sel=items.filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();}
+function setSel(items){if(!items||!items.length)fillCache=null;sel=items.filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();}
 function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
 function selBounds(){if(!sel.length)return null;let b=sel[0].bounds.clone();for(let i=1;i<sel.length;i++)b=b.unite(sel[i].bounds);return b;}
 function allTop(){const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children);});return out;}
@@ -533,7 +533,7 @@ function currentStyleFromSel(){
   if(leaf.strokeCap)S.cap=leaf.strokeCap;
 }
 function setColor(hex){
-  if(S.target==='fill'){S.fill=hex;if(applyStyle(p=>p.fillColor=hex?new P.Color(hex):null))commit();}
+  if(S.target==='fill'){S.fill=hex;if(hex)S.pickFill=hex;if(S.tool!=='bucket'&&applyStyle(p=>p.fillColor=hex?new P.Color(hex):null))commit();}
   else{S.stroke=hex;if(applyStyle(p=>{p.strokeColor=hex?new P.Color(hex):null;if(hex&&!p.strokeWidth)p.strokeWidth=S.strokeW;}))commit();}
   syncChips();
 }
@@ -561,7 +561,7 @@ function syncPanel(){
   document.querySelectorAll('#secSel .btn,[data-cmd],#bDetach').forEach(x=>x.disabled=!sel.length);
   $('#bUndo').disabled=!S.undo.length;$('#bRedo').disabled=!S.redo.length;
   $('#bUndo').style.opacity=S.undo.length?1:.35;$('#bRedo').style.opacity=S.redo.length?1:.35;
-  if(sel.length){currentStyleFromSel();}
+  if(sel.length&&S.tool!=='bucket'){currentStyleFromSel();}// avec le pot, la couleur choisie ne change pas en sélectionnant
   syncChips();
 }
 function renderLayers(){
@@ -840,6 +840,7 @@ function eyedropDown(e){
 let bucketWorker=null,bucketId=0;
 function isClosedFill(it){if(!it)return false;if(it instanceof P.CompoundPath)return true;return it instanceof P.Path&&it.closed;}
 async function bucketDown(e){
+  if(S.pickFill)S.fill=S.pickFill;
   const col=S.fill||S.lastFill;// la zone sélectionnée peut n'avoir que des traits : on garde la dernière couleur de fond choisie
   if(!col){alert('Choisis d’abord une couleur de fond (pas « aucune »).');return;}
   const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
@@ -877,85 +878,123 @@ function outsideHull(bar,cw,ch){
   x.beginPath();hull.forEach((q,i)=>i?x.lineTo(q[0]+.5,q[1]+.5):x.moveTo(q[0]+.5,q[1]+.5));x.closePath();x.fill();
   const d=x.getImageData(0,0,cw,ch).data,out=new Uint8Array(cw*ch);for(let p=0;p<cw*ch;p++)out[p]=d[p*4+3]<128?1:0;return out;
 }
+/* mémoire du rendu de la sélection : les remplissages suivants dans le même objet sont immédiats ; oubliée quand on désélectionne */
+var fillCache=null;
+function scopeKey(scope){return scope.map(c=>c.id+':'+[c.strokeBounds.x,c.strokeBounds.y,c.strokeBounds.width,c.strokeBounds.height].map(v=>Math.round(v*100)).join(',')).join('|');}
+/* enveloppe convexe de points [x,y] → masque (1 = dedans) */
+function hullMask(pts,cw,ch){
+  if(pts.length<3)return null;
+  pts=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[],up=[];for(const q of pts){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop();lo.push(q);}
+  for(let i=pts.length-1;i>=0;i--){const q=pts[i];while(up.length>1&&cr(up[up.length-2],up[up.length-1],q)<=0)up.pop();up.push(q);}
+  const hull=lo.slice(0,-1).concat(up.slice(0,-1));if(hull.length<3)return null;
+  const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d');x.fillStyle='#000';x.strokeStyle='#000';x.lineWidth=2;
+  x.beginPath();hull.forEach((q,i)=>i?x.lineTo(q[0]+.5,q[1]+.5):x.moveTo(q[0]+.5,q[1]+.5));x.closePath();x.fill();x.stroke();
+  const d=x.getImageData(0,0,cw,ch).data,n=cw*ch,m=new Uint8Array(n);for(let p=0;p<n;p++)m[p]=d[p*4+3]>=128?1:0;return m;
+}
 async function fillRegion(pt,col,scope){
   const solo=scope&&scope.length>0;
   const W=S.page.w,H=S.page.h;
   await busy('Recherche de la zone…');
   try{
-    // zone de travail : la page et tout ce qui est posé autour (on peut remplir hors de la page)
-    let A=new P.Rectangle(0,0,W,H);
-    if(solo){A=null;scope.forEach(c=>{A=A?A.unite(c.strokeBounds):c.strokeBounds.clone();});}
-    else userLayers().forEach(l=>{if(!l.visible)return;l.children.forEach(c=>{if(c.data&&c.data.sys)return;A=A.unite(c.strokeBounds);});});
-    A=A.expand(40).unite(new P.Rectangle(pt.subtract(new P.Point(5,5)),pt.add(new P.Point(5,5))));
-    const ox=A.x,oy=A.y,AW=A.width,AH=A.height;
-    const ppm=Math.min(10,Math.sqrt(14e6/(AW*AH)));
-    const cw=Math.round(AW*ppm),ch=Math.round(AH*ppm);
-    const prevSel=sel;sel=[];drawUI();
-    const restore=solo?soloScope(scope):null;let svg0;try{svg0=buildSVG();}finally{if(restore)restore();}
-    const svg=svg0.replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;
-    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
-    const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d',{willReadFrequently:true});
-    x.fillStyle='#fff';x.fillRect(0,0,cw,ch);x.drawImage(img,0,0,cw,ch);
-    const d=x.getImageData(0,0,cw,ch).data;
-    const sx=Math.min(cw-1,Math.max(0,Math.floor((pt.x-ox)*ppm))),sy=Math.min(ch-1,Math.max(0,Math.floor((pt.y-oy)*ppm)));
-    const idx=(sy*cw+sx)*4;
-    const ref=[d[idx],d[idx+1],d[idx+2]];
-    const tol=60,same=i=>Math.abs(d[i]-ref[0])+Math.abs(d[i+1]-ref[1])+Math.abs(d[i+2]-ref[2])<=tol;
-    if(!same(idx)){await busy();return;}
-    const n=cw*ch;
-    // 1. zone fermée : remplissage classique
-    const bar=new Uint8Array(n);for(let i=0;i<n;i++)bar[i]=same(i*4)?0:1;
-    const flood=(ok,seed)=>{const mask=new Int8Array(n),stack=new Int32Array(n);let sp=0,touches=false,count=0;mask[seed]=1;stack[sp++]=seed;
+    const key=solo?scopeKey(scope):null;
+    let C=fillCache&&key&&fillCache.key===key?fillCache:null;
+    if(!C){
+      // zone de travail : la sélection (ou tout le dessin) et un peu autour
+      let A=new P.Rectangle(0,0,W,H);
+      if(solo){A=null;scope.forEach(c=>{A=A?A.unite(c.strokeBounds):c.strokeBounds.clone();});}
+      else userLayers().forEach(l=>{if(!l.visible)return;l.children.forEach(c=>{if(c.data&&c.data.sys)return;A=A.unite(c.strokeBounds);});});
+      A=A.expand(40);
+      const ox=A.x,oy=A.y,AW=A.width,AH=A.height;
+      const ppm=Math.min(10,Math.sqrt(5e6/(AW*AH)));
+      const cw=Math.round(AW*ppm),ch=Math.round(AH*ppm),n=cw*ch;
+      const prevSel=sel;sel=[];drawUI();
+      const restore=solo?soloScope(scope):null;let svg0;try{svg0=buildSVG();}finally{if(restore)restore();}
+      const svg=svg0.replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;
+      const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
+      const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d',{willReadFrequently:true});
+      x.fillStyle='#fff';x.fillRect(0,0,cw,ch);x.drawImage(img,0,0,cw,ch);
+      const d=x.getImageData(0,0,cw,ch).data;
+      // les traits : tout ce qui n'est pas le fond blanc
+      const bar=new Uint8Array(n);for(let i=0;i<n;i++){const j=i*4;bar[i]=(765-d[j]-d[j+1]-d[j+2])>60?1:0;}
+      C={key,ox,oy,ppm,cw,ch,n,bar,dist:null};
+      if(key)fillCache=C;
+    }
+    const {ox,oy,ppm,cw,ch,n,bar}=C;
+    const sx=Math.floor((pt.x-ox)*ppm),sy=Math.floor((pt.y-oy)*ppm);
+    if(sx<1||sy<1||sx>=cw-1||sy>=ch-1){await busy();alert('Clique à l’intérieur de l’objet sélectionné.');return;}
+    const seed0=sy*cw+sx;
+    if(bar[seed0]){await busy();$('#hint').textContent='C’est un trait : clique dans la zone à côté.';return;}
+    const flood=(ok,seed)=>{const mask=new Uint8Array(n),stack=new Int32Array(n);let sp=0,touches=false,count=0;mask[seed]=1;stack[sp++]=seed;
       while(sp){const p=stack[--sp];count++;const px_=p%cw,py_=(p-px_)/cw;if(px_===0||py_===0||px_===cw-1||py_===ch-1)touches=true;
         if(px_>0&&!mask[p-1]&&ok(p-1)){mask[p-1]=1;stack[sp++]=p-1;}if(px_<cw-1&&!mask[p+1]&&ok(p+1)){mask[p+1]=1;stack[sp++]=p+1;}
         if(py_>0&&!mask[p-cw]&&ok(p-cw)){mask[p-cw]=1;stack[sp++]=p-cw;}if(py_<ch-1&&!mask[p+cw]&&ok(p+cw)){mask[p+cw]=1;stack[sp++]=p+cw;}}
-      return {mask,leak:touches||count>n*0.6};};
-    const seed0=sy*cw+sx;let reg=flood(p=>!bar[p],seed0),gapR=0,wide=false;
-    // 2. zone ouverte : on referme virtuellement les ouvertures (traits épaissis), en cherchant le plus petit épaississement qui suffit
-    let dist=null;
+      return {mask,leak:touches||count>n*0.6,count};};
+    // 1. zone fermée : remplissage classique
+    let reg=flood(p=>!bar[p],seed0),how='';
     if(reg.leak){
       await busy('Zone ouverte : recherche de la fermeture…');
-      dist=chamfer(bar,cw,ch);
+      const cands=[];
+      // 2a. petites ouvertures : on épaissit les traits juste assez pour isoler la zone, puis elle reprend sa taille sans passer par-dessus les traits
+      if(!C.dist)C.dist=chamfer(bar,cw,ch);
+      const dist=C.dist;
       const rMax=Math.min(Math.round(25*ppm),Math.round(Math.min(cw,ch)/4));
-      const tryR=r=>{let s=seed0;if(dist[s]<=r){// le clic est trop près d'un trait : on cherche le point libre le plus proche
-          let best=-1,bd=1e9;const R=Math.ceil(r)+3;for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const x=sx+dx,y=sy+dy;if(x<0||y<0||x>=cw||y>=ch)continue;const q=y*cw+x;if(dist[q]>r&&dx*dx+dy*dy<bd){bd=dx*dx+dy*dy;best=q;}}if(best<0)return null;s=best;}
+      const tryR=r=>{let s=seed0;if(dist[s]<=r){let best=-1,bd=1e9;const R=Math.ceil(r)+3;for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const x=sx+dx,y=sy+dy;if(x<0||y<0||x>=cw||y>=ch)continue;const q=y*cw+x;if(dist[q]>r&&dx*dx+dy*dy<bd){bd=dx*dx+dy*dy;best=q;}}if(best<0)return null;s=best;}
         return flood(p=>dist[p]>r,s);};
-      let lo=0,hi=rMax,found=null;
-      const top=tryR(hi);
-      if(!top||top.leak){
-        // zone trop ouverte : on la remplit quand même, jusqu'au contour extérieur du dessin (ou de la sélection)
+      for(let r=1;r<=rMax;r=Math.max(r+1,Math.round(r*1.25))){
+        const t=tryR(r);if(!t)break;// la zone elle-même disparaît : l'ouverture est plus large qu'elle
+        if(!t.leak){
+          // regonfle la zone de r pixels, uniquement à travers le vide (jamais par-dessus un trait)
+          const g=new Uint8Array(t.mask),q=new Int32Array(n),dd=new Uint16Array(n);let qh=0,qt=0;
+          for(let p=0;p<n;p++)if(g[p])q[qt++]=p;
+          const lim=r+2;
+          while(qh<qt){const p=q[qh++];const dp=dd[p];if(dp>=lim)continue;const x=p%cw;
+            const nb=[x>0?p-1:-1,x<cw-1?p+1:-1,p>=cw?p-cw:-1,p<n-cw?p+cw:-1];
+            for(const k of nb){if(k<0||g[k]||bar[k])continue;g[k]=1;dd[k]=dp+1;q[qt++]=k;}}
+          // ce qui sort par l'ouverture est coupé en ligne droite (enveloppe des traits qui bordent la zone)
+          // (enveloppe des traits proches du cœur de la zone : pas ceux qu'on atteint en sortant par l'ouverture)
+          const pts=[];{const seen=new Uint8Array(t.mask),qq=new Int32Array(n),d2=new Uint16Array(n);let h=0,e=0;for(let p=0;p<n;p++)if(seen[p])qq[e++]=p;
+            const L2=r+3;while(h<e){const p=qq[h++];if(d2[p]>=L2)continue;const x=p%cw;const nb=[x>0?p-1:-1,x<cw-1?p+1:-1,p>=cw?p-cw:-1,p<n-cw?p+cw:-1];
+              for(const k of nb){if(k<0||seen[k])continue;seen[k]=1;d2[k]=d2[p]+1;if(bar[k])pts.push([k%cw,(k-k%cw)/cw]);qq[e++]=k;}}}
+          const hm=hullMask(pts,cw,ch);if(hm)for(let p=0;p<n;p++)if(g[p]&&!hm[p])g[p]=0;
+          let cnt=0;for(let p=0;p<n;p++)cnt+=g[p];
+          cands.push({mask:g,count:cnt,how:'l’ouverture (environ '+(Math.round(r*2/ppm*10)/10)+' mm) a été refermée'});
+          break;
+        }
+      }
+      // 2b. grandes ouvertures (feuille ouverte…) : on regarde autour du clic ; l'ouverture est fermée en ligne droite entre ses bords
+      {
+        const K=720,L=Math.hypot(cw,ch),D=new Float32Array(K).fill(Infinity),HX=new Int32Array(K),HY=new Int32Array(K);
+        for(let k=0;k<K;k++){const a=k*2*Math.PI/K,dx=Math.cos(a),dy=Math.sin(a);let x=sx+.5,y=sy+.5;
+          for(let t=1;t<L;t++){x+=dx;y+=dy;const xi=x|0,yi=y|0;if(xi<0||yi<0||xi>=cw||yi>=ch)break;if(bar[yi*cw+xi]){D[k]=t;HX[k]=xi;HY[k]=yi;break;}}}
+        // les rayons qui filent par l'ouverture : la distance saute brusquement au bord de l'ouverture, puis retombe de l'autre côté
+        let k0=0;for(let k=1;k<K;k++)if(D[k]<D[k0])k0=k;
+        const far=new Uint8Array(K);let inFar=false,ref=D[k0];
+        for(let m=1;m<=K;m++){const k=(k0+m)%K,prev=(k0+m-1)%K;
+          if(!inFar){if(D[k]>D[prev]*1.5+2){inFar=true;ref=D[prev];far[k]=1;}}
+          else{if(D[k]<=ref*1.5+2)inFar=false;else far[k]=1;}}
+        const okD=[];for(let k=0;k<K;k++)if(!far[k]&&isFinite(D[k]))okD.push(D[k]);
+        if(okD.length>=K*0.4){
+          okD.sort((a,b)=>a-b);const med=okD[okD.length>>1];
+          const keep=[];for(let k=0;k<K;k++)if(!far[k]&&D[k]<=med*3)keep.push([HX[k],HY[k]]);
+          const hm=hullMask(keep,cw,ch);
+          if(hm&&hm[seed0]){const t=flood(p=>!bar[p]&&hm[p],seed0);if(!t.leak)cands.push({mask:t.mask,count:t.count,how:'l’ouverture a été fermée en ligne droite'});}
+        }
+      }
+      // la plus petite zone qui entoure le clic
+      cands.sort((a,b)=>a.count-b.count);
+      if(cands.length){reg={mask:cands[0].mask};how=cands[0].how;}
+      else{
+        // 2c. en dernier recours : jusqu'au contour extérieur de la sélection
         const oh=outsideHull(bar,cw,ch);
-        if(!oh||oh[seed0]){await busy();alert('Ce point est en dehors du dessin : il n’y a rien autour pour délimiter la zone.\nClique à l’intérieur du dessin, ou sélectionne d’abord l’objet qui entoure la zone.');return;}
-        reg=flood(p=>!bar[p]&&!oh[p],seed0);wide=true;
-      }else{
-        found=top;
-        while(hi-lo>1){const mid=(lo+hi)>>1;const t=tryR(mid);if(t&&!t.leak){hi=mid;found=t;}else lo=mid;}
-        reg=found;gapR=hi;
+        if(!oh||oh[seed0]){await busy();alert('Ce point est en dehors de l’objet sélectionné : il n’y a rien autour pour délimiter la zone.');return;}
+        reg=flood(p=>!bar[p]&&!oh[p],seed0);how='zone très ouverte : remplie jusqu’au contour extérieur de la sélection';
       }
     }
     const mask=reg.mask;
-    let grow;
-    if(gapR>0){
-      // la zone retrouve l'épaisseur retirée ; ce qui dépasse par l'ouverture est coupé en ligne droite
-      // (enveloppe des bords du dessin autour de la zone)
-      const dz=chamfer(mask,cw,ch);const g0=new Uint8Array(n);for(let p=0;p<n;p++)g0[p]=dz[p]<=gapR+1.5?1:0;
-      let pts=[];for(let p=0;p<n;p++){if(!bar[p])continue;const x=p%cw;if((x>0&&g0[p-1])||(x<cw-1&&g0[p+1])||(p>=cw&&g0[p-cw])||(p<n-cw&&g0[p+cw]))pts.push([x,(p-x)/cw]);}
-      if(pts.length>3){
-        pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
-        const lo=[],up=[];for(const q of pts){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop();lo.push(q);}
-        for(let i=pts.length-1;i>=0;i--){const q=pts[i];while(up.length>1&&cr(up[up.length-2],up[up.length-1],q)<=0)up.pop();up.push(q);}
-        const hull=lo.slice(0,-1).concat(up.slice(0,-1));
-        const hc=document.createElement('canvas');hc.width=cw;hc.height=ch;const hx=hc.getContext('2d');hx.fillStyle='#000';hx.strokeStyle='#000';hx.lineWidth=3;
-        hx.beginPath();hull.forEach((q,i)=>i?hx.lineTo(q[0]+.5,q[1]+.5):hx.moveTo(q[0]+.5,q[1]+.5));hx.closePath();hx.fill();hx.stroke();
-        const hd=hx.getImageData(0,0,cw,ch).data;for(let p=0;p<n;p++)if(g0[p]&&hd[p*4+3]<128)g0[p]=0;
-      }
-      grow=new Int8Array(g0);
-      $('#hint').textContent='Zone ouverte remplie : l’ouverture (environ '+(Math.round(gapR*2/ppm*10)/10)+' mm) a été refermée automatiquement';
-    }else{
     // on élargit d'un pixel pour passer sous les traits
-    if(wide)$('#hint').textContent=scope&&scope.length?'Zone très ouverte : remplie jusqu’au contour extérieur de la sélection':'Zone très ouverte : remplie jusqu’au contour extérieur du dessin (sélectionne d’abord un objet pour limiter la zone)';
-    grow=new Int8Array(mask);for(let p=0;p<n;p++){if(!mask[p])continue;const px_=p%cw;if(px_>0)grow[p-1]=1;if(px_<cw-1)grow[p+1]=1;if(p>=cw)grow[p-cw]=1;if(p<n-cw)grow[p+cw]=1;}
-    }
+    const grow=new Int8Array(n);for(let p=0;p<n;p++){if(!mask[p])continue;grow[p]=1;const px_=p%cw;if(px_>0)grow[p-1]=1;if(px_<cw-1)grow[p+1]=1;if(p>=cw)grow[p-cw]=1;if(p<n-cw)grow[p+cw]=1;}
+    if(how)$('#hint').textContent='Zone ouverte remplie : '+how;
     if(!bucketWorker)bucketWorker=new Worker('potrace-worker.js');
     const id=++bucketId;
     const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1,opttolerance:0.2,optcurve:true,close:0}},[grow.buffer]);});
@@ -965,7 +1004,9 @@ async function fillRegion(pt,col,scope){
     const fill=new P.CompoundPath({pathData:res.shapes.map(s=>s.d).join(''),fillRule:'evenodd',fillColor:new P.Color(col)});
     fill.transform(new P.Matrix().translate(ox,oy).scale(1/ppm));
     fill.name='Remplissage';
-    placeFill(fill,pt,scope);commit();
+    placeFill(fill,pt,scope);
+    if(fillCache&&solo)fillCache.key=scopeKey(sel.length?sel:scope);// l'objet a reçu le remplissage : la mémoire reste valable
+    commit();
   }catch(err){console.error(err);alert('Remplissage impossible : '+(err.message||err));}
   await busy();
 }
@@ -998,7 +1039,10 @@ function placeFill(fill,pt,scope){
   if(!part)activeLayer.insertChild(0,fill);
   else{
     if(!(part instanceof P.Group)){const g=new P.Group({name:'Objet'});g.insertAbove(part);if(part.data&&part.data.link){g.data.link=part.data.link;delete part.data.link;}g.addChild(part);newSel=newSel.map(s=>s===part?g:s);part=g;}
-    part.insertChild(0,fill);
+    // au-dessus des zones blanches de l'objet (sinon elles le cacheraient), sous les traits
+    const isW=c=>{const lv=leafPaths(c);return lv.length&&lv.every(p=>p.fillColor&&colorHex(p.fillColor)==='#ffffff'&&!(p.strokeColor&&colorHex(p.strokeColor)!=='#ffffff'));};
+    let idx=0;part.children.forEach((c,i)=>{if(c!==fill&&isW(c)&&c.bounds.intersects(fill.bounds))idx=i+1;});
+    part.insertChild(idx,fill);
   }
   if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.parent)aquaRaster.bringToFront();
   setSel(newSel);
