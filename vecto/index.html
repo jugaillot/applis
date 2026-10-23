@@ -1017,7 +1017,7 @@ $('#ungCancel').onclick=()=>$('#ungDlg').close();
 
 /* ---------- commandes ---------- */
 function cmd(name){
-  if(!sel.length&&!['selall'].includes(name))return;
+  if(!sel.length&&!['selall','front','back'].includes(name))return;
   const b=selBounds();
   switch(name){
     case'del':{const par=new Set(sel.map(x=>x.parent));sel.forEach(s=>s.remove());cleanEmpty(par);setSel([]);break;}
@@ -1027,8 +1027,9 @@ function cmd(name){
     case'rotN':{const a=parseFloat($('#rotVal').value)||0;sel.forEach(s=>xf(s,new P.Matrix().rotate(a,b.center)));break;}
     case'flipH':sel.forEach(s=>xf(s,new P.Matrix().scale(-1,1,b.center)));break;
     case'flipV':sel.forEach(s=>xf(s,new P.Matrix().scale(1,-1,b.center)));break;
-    case'front':sel.forEach(s=>s.bringToFront());break;
-    case'back':sel.slice().reverse().forEach(s=>s.sendToBack());break;
+    // un objet passe devant/derrière les autres objets du calque ; un élément pris dans un objet, devant/derrière les autres éléments de cet objet
+    case'front':case'back':{const its=stackItems();if(!its.length)return;if(name==='front')its.forEach(s=>s.bringToFront());else its.reverse().forEach(s=>s.sendToBack());
+      if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.parent)aquaRaster.bringToFront();if(S.tool==='direct')its.forEach(i=>{i.selected=true;});break;}
     case'group':{const g=new P.Group();g.insertAbove(sel[sel.length-1]);g.addChildren(sel.slice().sort((a,b)=>a.index-b.index));setSel([g]);break;}
     case'ungroup':openUngroup();return;
     case'ung:layer':case'ung:sub':case'ung:leaf':doUngroup(name.slice(4));break;
@@ -1689,6 +1690,8 @@ function followLayer(items){
   const ls=new Set(items.filter(i=>i&&i.layer).map(i=>i.layer));
   if(ls.size===1){const l=[...ls][0];if(l&&!isSys(l)&&l!==activeLayer){activeLayer=l;renderLayers();}}
 }
+function stackItems(){// du plus bas au plus haut, sans doublon parent/enfant
+  const its=movableSelection();return its.filter(i=>!its.some(o=>o!==i&&o.isAncestor(i))).sort((a,b)=>a.isAbove(b)?1:-1);}
 function movableSelection(){
   let items;
   if(S.tool==='direct'){items=P.project.getItems({class:P.Path,match:p=>p.selected&&selectable(p)}).map(p=>p.parent instanceof P.CompoundPath?p.parent:p);items=[...new Set(items)];}
