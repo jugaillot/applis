@@ -417,7 +417,7 @@ function moveIt(it,d){xf(it,new P.Matrix().translate(d));}
 let sel=[];
 function topOf(item){while(item&&item.parent&&!(item.parent instanceof P.Layer))item=item.parent;return item;}
 function selectable(item){if(S.aquaEdit)return !!item&&item===aquaRaster;if(item&&item.data&&item.data.sys)return false;const l=item&&item.layer;return l&&!isSys(l)&&l.visible&&!l.locked;}
-function setSel(items){sel=items.filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();}
+function setSel(items){sel=(typeof expandLinks==='function'?expandLinks(items):items).filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();}
 function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
 function selBounds(){if(!sel.length)return null;let b=sel[0].bounds.clone();for(let i=1;i<sel.length;i++)b=b.unite(sel[i].bounds);return b;}
 function allTop(){if(S.aquaEdit)return aquaRaster?[aquaRaster]:[];const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children.filter(c=>!(c.data&&c.data.sys)));});return out;}
@@ -606,7 +606,7 @@ tool.onMouseDown=function(e){
   if(S.tool==='hand'||e.event.button===1||spaceDown){drag={mode:'pan',start:e.event.clientX,sy:e.event.clientY,c:view.center};cv.style.cursor='grabbing';return;}
   if(S.tool==='select')return selDown(e,dbl);
   if(S.tool==='lasso'&&sel.length&&handleAt(e.point))return selDown(e,dbl);
-  if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
+  if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=relink(sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;}));setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
   if(S.tool==='direct')return dirDown(e,dbl);
   if(S.tool==='pen')return penDown(e);
   if(S.tool==='bucket')return bucketDown(e);
@@ -663,7 +663,7 @@ function selDown(e,dbl){
     drag={mode:h==='rot'?'rot':'scale',h,b,start:e.point,center:b.center,psx:1,psy:1,pa:0};
     return;
   }
-  {const lf=hitLeaf(e.point);if(lf&&!sel.includes(topOf(lf))&&inSel(lf)&&!e.modifiers.shift&&!(e.modifiers.control||e.modifiers.meta)&&!dbl){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}}
+  {const lf=hitLeaf(e.point);if(lf&&!sel.includes(topOf(lf))&&inSel(lf)&&!e.modifiers.shift&&!(e.modifiers.control||e.modifiers.meta)&&!dbl){if(e.modifiers.alt){const copies=relink(sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;}));setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}}
   let hit=hitTop(e.point);
   if(hit&&(e.modifiers.control||e.modifiers.meta)){const lf=hitLeaf(e.point);if(lf)hit=lf;}
   else if(dbl&&hit instanceof P.Group){
@@ -674,7 +674,7 @@ function selDown(e,dbl){
     if(!sel.includes(hit)){
       if(e.modifiers.shift)setSel(sel.concat([hit]));else setSel([hit]);
     }else if(e.modifiers.shift){setSel(sel.filter(s=>s!==hit));return;}
-    if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}
+    if(e.modifiers.alt){const copies=relink(sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;}));setSel(copies);}
     drag={mode:'move',start:e.point,last:e.point,moved:false};
   }else{
     if(!e.modifiers.shift)setSel([]);
@@ -891,7 +891,7 @@ function cmd(name){
   const b=selBounds();
   switch(name){
     case'del':sel.forEach(s=>s.remove());setSel([]);break;
-    case'dup':{const c=sel.map(s=>{const x=s.clone();moveIt(x,new P.Point(5,5));return x;});setSel(c);break;}
+    case'dup':{const c=relink(sel.map(s=>{const x=s.clone();moveIt(x,new P.Point(5,5));return x;}));setSel(c);break;}
     case'rotL':sel.forEach(s=>xf(s,new P.Matrix().rotate(-90,b.center)));break;
     case'rotR':sel.forEach(s=>xf(s,new P.Matrix().rotate(90,b.center)));break;
     case'rotN':{const a=parseFloat($('#rotVal').value)||0;sel.forEach(s=>xf(s,new P.Matrix().rotate(a,b.center)));break;}
@@ -899,8 +899,9 @@ function cmd(name){
     case'flipV':sel.forEach(s=>xf(s,new P.Matrix().scale(1,-1,b.center)));break;
     case'front':sel.forEach(s=>s.bringToFront());break;
     case'back':sel.slice().reverse().forEach(s=>s.sendToBack());break;
-    case'group':{const g=new P.Group();g.insertAbove(sel[sel.length-1]);g.addChildren(sel.slice().sort((a,b)=>a.index-b.index));setSel([g]);break;}
-    case'ungroup':{const out=[];sel.forEach(s=>{if(s instanceof P.Group){const ch=s.removeChildren();ch.forEach(c=>{c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
+    case'group':{const ls=new Set(sel.map(x=>x.layer));if(ls.size>1){const link=newLink();const out=[];ls.forEach(l=>{const its=sel.filter(x=>x.layer===l).sort((a,b)=>a.isAbove(b)?1:-1);let g;if(its.length===1&&its[0].parent===l){g=its[0];}else{g=new P.Group({name:'Objet'});g.insertAbove(its[its.length-1].parent===l?its[its.length-1]:topOf(its[its.length-1]));its.forEach(x=>g.addChild(x));}g.data.link=link;out.push(g);});setSel(out);break;}
+      const g=new P.Group();g.insertAbove(sel[sel.length-1]);g.addChildren(sel.slice().sort((a,b)=>a.index-b.index));setSel([g]);break;}
+    case'ungroup':{const out=[];sel.forEach(s=>{if(s.data&&s.data.link)delete s.data.link;if(s instanceof P.Group){const ch=s.removeChildren();ch.forEach(c=>{c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
     case'release':{const out=[];sel.forEach(s=>{if(s instanceof P.CompoundPath){const st={fillColor:s.fillColor,strokeColor:s.strokeColor,strokeWidth:s.strokeWidth};const ch=s.removeChildren();ch.forEach(c=>{c.style=st;c.fillColor=st.fillColor;c.strokeColor=st.strokeColor;c.strokeWidth=st.strokeWidth;c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
     case'compound':{const paths=sel.flatMap(leafPaths).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath);if(paths.length<2){alert('Sélectionne au moins deux tracés.');return;}const first=paths[0];const st={fillColor:first.fillColor,strokeColor:first.strokeColor,strokeWidth:first.strokeWidth};const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];const cp=new P.CompoundPath({fillRule:'evenodd'});cp.insertAbove(top);paths.forEach(p=>{if(p instanceof P.CompoundPath){cp.addChildren(p.removeChildren());p.remove();}else cp.addChild(p);});cp.fillColor=st.fillColor;cp.strokeColor=st.strokeColor;cp.strokeWidth=st.strokeWidth;sel.forEach(s=>{if(s!==cp&&s.parent&&s instanceof P.Group&&!s.children.length)s.remove();});setSel([cp]);break;}
     case'unite':case'subtract':case'intersect':case'exclude':{
@@ -1185,9 +1186,10 @@ function importSVGText(text,name,opts){
   const page=new P.Rectangle(0,0,S.page.w,S.page.h);
   if(opts.center){let c=view.center;if(!page.contains(c))c=page.center;item.position=c;}
   else if(item.bounds.right<0||item.bounds.bottom<0||item.bounds.left>S.page.w||item.bounds.top>S.page.h)item.position=new P.Point(S.page.w/2,S.page.h/2);
-  if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.layer===activeLayer)aquaRaster.bringToFront();
-  setTool('select');setSel([item]);commit();
-  return item;
+  const parts=splitByWhite(item,name||'Import');
+  if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.parent)aquaRaster.bringToFront();
+  setTool('select');setSel(parts);commit();
+  return parts[0];
 }
 
 /* ---------- export ---------- */
@@ -1332,11 +1334,38 @@ function detachSel(){
     parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&q!==g&&!q.children.length){const up=q.parent;q.remove();q=up;}});
     out.push(g);
   }
+  if(out.length>1){const link=newLink();out.forEach(g=>g.data.link=link);}
   setTool('select');setSel(out);commit();
   $('#hint').textContent='Détaché : '+out.length+' nouvel objet'+(out.length>1?'s':'')+' (renommé « Morceau »)';
 }
 
 $('#bDetach').onclick=detachSel;
+
+
+/* ---------- objets liés : un objet peut avoir des parties dans plusieurs calques ---------- */
+const newLink=()=>'o'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function linkedTops(link){const out=[];userLayers().forEach(l=>l.children.forEach(c=>{if(c.data&&c.data.link===link)out.push(c);}));return out;}
+function expandLinks(items){
+  const out=new Set(items);
+  items.forEach(it=>{if(it&&it.parent instanceof P.Layer&&it.data&&it.data.link)linkedTops(it.data.link).forEach(x=>out.add(x));});
+  return [...out];
+}
+/* les copies reçoivent un nouveau lien (sinon elles resteraient attachées à l'original) */
+function relink(items){const map={};items.forEach(it=>{if(it&&it.data&&it.data.link){const o=it.data.link;if(!map[o])map[o]=newLink();it.data.link=map[o];}});return items;}
+/* répartit un objet : les parties blanches dans « Blanc », le reste dans « Couleur », liés en un seul objet */
+function splitByWhite(item,name){
+  const Lb=layerByRole('blanc'),Lc=layerByRole('couleur');
+  const isW=p=>{const f=p.fillColor?colorHex(p.fillColor):null,st=p.strokeColor?colorHex(p.strokeColor):null;return f?f==='#ffffff':st==='#ffffff';};
+  const leaves=item.getItems?item.getItems({match:it=>((it instanceof P.CompoundPath)||(it instanceof P.Path&&!(it.parent instanceof P.CompoundPath)))}):[];
+  if(!leaves.length&&(item instanceof P.Path||item instanceof P.CompoundPath))leaves.push(item);
+  const whites=leaves.filter(isW),others=leaves.filter(p=>!isW(p));
+  const link=newLink();const out=[];
+  const pack=(arr,L)=>{if(!arr.length)return;const g=new P.Group({name:name||item.name||'Objet'});L.addChild(g);arr.forEach(x=>g.addChild(x));g.data.link=link;out.push(g);};
+  pack(others,Lc);pack(whites,Lb);
+  if(item.parent)item.remove();
+  if(out.length===1)delete out[0].data.link;
+  return out;
+}
 
 /* ---------- calque de la sélection : suivi et déplacement ---------- */
 function followLayer(items){
@@ -1458,7 +1487,7 @@ async function copyAsImage(items){
 
 const isSvgText=t=>/^(<\?xml[\s\S]*?)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE[^>]*>\s*)?<svg[\s>]/i.test(t)||/^<svg/i.test(t);
 function pasteImageFile(f0){const t=new Date();const file=new File([f0],'image-collee-'+String(t.getHours()).padStart(2,'0')+'h'+String(t.getMinutes()).padStart(2,'0')+'.'+((f0.type.split('/')[1]||'png').replace('jpeg','jpg')),{type:f0.type});VX.edit=null;vxDialogMode(false);if(!$('#vxDlg').open)$('#vxDlg').showModal();vxOpenFile(file);}
-function pasteSvgText(t){if(S.aquaEdit)exitAquaEdit();try{importSVGText(t,'Collé',{center:true});$('#hint').textContent='Dessin collé depuis un autre logiciel, dans le calque « '+activeLayer.name+' »';return true;}catch(err){alert('Collage impossible : '+err.message);return false;}}
+function pasteSvgText(t){if(S.aquaEdit)exitAquaEdit();try{importSVGText(t,'Collé',{center:true});$('#hint').textContent='Dessin collé : parties blanches dans « Blanc », le reste dans « Couleur » (un seul objet)';return true;}catch(err){alert('Collage impossible : '+err.message);return false;}}
 document.addEventListener('paste',e=>{
   if($('#docDlg').open||$('#impDlg').open||$('#pdfDlg').open)return;
   const tag=document.activeElement&&document.activeElement.tagName;if(/INPUT|SELECT|TEXTAREA/.test(tag)&&document.activeElement.type!=='range')return;
@@ -1569,7 +1598,7 @@ function exitAquaEdit(){if(!S.aquaEdit)return;S.aquaEdit=false;if(aquaRaster)S.a
 
 /* ---------- presse-papiers partagé avec Vecto ---------- */
 async function clipWrite(items){
-  const data={app:APP,t:Date.now(),items:items.map(s=>s.exportJSON({asString:true}))};
+  const data={app:APP,t:Date.now(),items:items.map(s=>s.exportJSON({asString:true})),roles:items.map(s=>roleOf(s.layer))};
   S.clip=data;await IDB.set('pressepapier',data);systemCopy(items);
   $('#hint').textContent=items.length+' objet'+(items.length>1?'s':'')+' copié'+(items.length>1?'s':'')+' — Ctrl+V pour coller ici, dans Vecto, ou en vectoriel dans Illustrator / Inkscape';
 }
@@ -1579,7 +1608,8 @@ async function pasteClip(){
   const d=await IDB.get('pressepapier');
   if(!d||!d.items||!d.items.length){alert('Rien à coller.\n\nDans Vecto : sélectionne ton dessin et clique « Copier » (ou Ctrl+C), puis reviens ici.');return;}
   ensureLayer(true);
-  const items=d.items.map(j=>activeLayer.importJSON(j));
+  const items=d.items.map((j,i)=>{const L=(d.app===APP&&d.roles&&d.roles[i]&&layerByRole(d.roles[i]))||activeLayer;return L.importJSON(j);});
+  if(d.app===APP)relink(items);
   if(d.app!==APP){
     // depuis Vecto : les zones blanches non coloriées ne servent pas ici
     items.forEach(it=>leafPaths(it).forEach(p=>{if(p.fillColor&&colorHex(p.fillColor)==='#ffffff'&&!p.strokeColor)p.remove();}));
@@ -1593,8 +1623,11 @@ async function pasteClip(){
   else{let c=view.center;if(!page.contains(c))c=page.center;live.forEach(i=>moveIt(i,c.subtract(b.center)));}
   lastPaste=d.t;
   if(roleOf(activeLayer)==='aqua'&&aquaRaster)aquaRaster.bringToFront();
-  setTool('select');setSel(live);commit();
-  $('#hint').textContent='Collé dans le calque « '+activeLayer.name+' »';
+  let placed=live;
+  if(d.app!==APP){placed=[];live.forEach(it=>placed.push(...splitByWhite(it)));}
+  if(aquaRaster&&aquaRaster.parent)aquaRaster.bringToFront();
+  setTool('select');setSel(placed);commit();
+  $('#hint').textContent=d.app===APP?'Collé':'Collé : parties blanches dans « Blanc », le reste dans « Couleur »';
 }
 $('#bPaste').onclick=pasteClip;
 
@@ -1869,6 +1902,6 @@ $('#impOk').onclick=impRun;
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc, au-dessus de tout."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets sur plusieurs calques", "Un dessin collé ou importé est réparti : le blanc dans « Blanc », le reste dans « Couleur », mais reste un seul objet (un clic le sélectionne en entier). « Grouper » des éléments de calques différents les lie de la même façon ; « Dissocier » les sépare."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc, au-dessus de tout."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
 </body>
 </html>
