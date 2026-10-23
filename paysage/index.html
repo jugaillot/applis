@@ -533,7 +533,7 @@ let sel=[];
 function topOf(item){while(item&&item.parent&&!(item.parent instanceof P.Layer))item=item.parent;return item;}
 function selectable(item){if(S.aquaEdit)return !!item&&item===aquaRaster;if(item&&item.data&&item.data.sys)return false;const l=item&&item.layer;if(!(l&&!isSys(l)&&l.visible&&!l.locked))return false;if(roleOf(l)!=='dessin')return true;const lv=shapeLeaves(item);return !lv.length||lv.some(p=>{const r=roleUp(p)||'couleur';return roleVisible(r)&&!roleLocked(r);});}
 function setSel(items){if(window.BK&&BK.pending&&!BK.lock){const a=new Set(BK.pending.scope);const same=items&&items.length===a.size&&items.every(i=>a.has(i));if(!same)bkValidate();}
-  if(!items||!items.length){if(!(window.BK&&BK.lock))fillCache=null;}sel=(typeof expandLinks==='function'?expandLinks(items):items).filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();if(S.tool==='bucket')bkWarm();}
+  if(!items||!items.length){if(!(window.BK&&BK.lock))fillCache=null;}sel=(typeof expandLinks==='function'?expandLinks(items):items).filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();if(S.tool==='bucket'&&!(window.BK&&(BK.lock||BK.prep)))bkWarm();}
 function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
 function selBounds(){if(!sel.length)return null;let b=sel[0].bounds.clone();for(let i=1;i<sel.length;i++)b=b.unite(sel[i].bounds);return b;}
 function allTop(){if(S.aquaEdit)return aquaRaster?[aquaRaster]:[];const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children.filter(c=>!(c.data&&c.data.sys)&&selectable(c)));});return out;}
@@ -1039,6 +1039,11 @@ function bkGap(){return S.opt.gap>=61?Infinity:Math.max(0,S.opt.gap);}
 async function bkPrepare(scope){
   const key=scopeKey(scope);
   if(fillCache&&fillCache.key===key)return fillCache;
+  if(BK.prep&&BK.prep.key===key)return BK.prep.p;
+  const p=bkPrepare2(scope,key);BK.prep={key,p};
+  try{return await p;}finally{if(BK.prep&&BK.prep.p===p)BK.prep=null;}
+}
+async function bkPrepare2(scope,key){
   BK.lock=true;
   try{
     const W=S.page.w,H=S.page.h,solo=true;
@@ -1047,14 +1052,14 @@ async function bkPrepare(scope){
       {A=null;scope.forEach(c=>{A=A?A.unite(c.strokeBounds):c.strokeBounds.clone();});}
       A=A.expand(40);
       const ox=A.x,oy=A.y,AW=A.width,AH=A.height;
-      const ppm=Math.min(10,Math.sqrt(5e6/(AW*AH)));
+      const ppm=Math.min(10,Math.sqrt((matchMedia('(pointer:coarse)').matches?2e6:5e6)/(AW*AH)));
       const cw=Math.round(AW*ppm),ch=Math.round(AH*ppm),n=cw*ch;
       const prevSel=sel;sel=[];drawUI();
       const restore=soloScope(scope);let svg0;try{svg0=buildSVG();}finally{if(restore)restore();}
       // une zone déjà remplie, même en blanc (calque Blanc), compte comme remplie
       svg0=svg0.replace(/(fill|stroke)="(#ffffff|#fff|white)"/gi,'$1="#000000"');
       const svg=svg0.replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;syncPanel();drawUI();
-      const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
+      const img=await new Promise((res,rej)=>{setTimeout(()=>rej(new Error('le rendu prend trop de temps')),30000);const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
       const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d',{willReadFrequently:true});
       x.fillStyle='#fff';x.fillRect(0,0,cw,ch);x.drawImage(img,0,0,cw,ch);
       const d=x.getImageData(0,0,cw,ch).data;
@@ -1259,7 +1264,8 @@ function bkValidate(){
   $('#hint').textContent=shapes.length>1?shapes.length+' zones remplies':'Zone remplie';
 }
 /* dès qu'un objet est sélectionné avec le pot : on mémorise ses contours */
-function bkWarm(){if(S.tool!=='bucket'||BK.lock||!sel.length)return;clearTimeout(BK.warm);BK.warm=setTimeout(async()=>{
+function bkWarm(){if(S.tool!=='bucket'||BK.lock||BK.prep||!sel.length)return;clearTimeout(BK.warm);BK.warm=setTimeout(async()=>{
+  if(BK.lock||BK.prep||S.tool!=='bucket')return;
   const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));if(!scope.length||BK.pending)return;
   if(fillCache&&fillCache.key===scopeKey(scope))return;
   await busy('Mémorisation des contours de l’objet…');try{await bkPrepare(scope);}catch(e){console.error(e);}await busy();},120);}
