@@ -41,6 +41,17 @@ main{flex:1;display:grid;grid-template-columns:48px 1fr 290px;min-height:0}
 #zoomBox span{min-width:44px;text-align:center;color:var(--mute);font-size:12px}
 aside{overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:0 12px 40px}
 section h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:14px 0 7px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+section{border-bottom:1px solid var(--line);padding-bottom:10px}
+section h2{cursor:pointer;user-select:none;-webkit-user-select:none}
+section h2 .ttl{display:flex;align-items:center;gap:5px}
+section h2 .tw{display:inline-block;font-size:8px;transition:transform .15s}
+section.closed{padding-bottom:0}
+section.closed h2 .tw{transform:rotate(-90deg)}
+section.closed>:not(h2){display:none!important}
+.grp{font-size:11px;color:var(--mute);margin:8px 0 4px}
+.grp:first-of-type{margin-top:0}
+.ungOpt{flex-direction:column;align-items:flex-start;white-space:normal;text-align:left;padding:8px 11px;gap:2px;width:100%}
+.ungOpt[hidden]{display:none}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
@@ -141,7 +152,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
     <button class="tool" data-tool="rect" title="Rectangle (M)"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <button class="tool" data-tool="ellipse" title="Ellipse (L)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <div class="tsep"></div>
-    <button class="tool" data-tool="bucket" title="Pot de peinture — remplir une zone (K)"><svg viewBox="0 0 24 24"><path d="M4 11l7-7 8 8-7 7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 11h15" stroke="currentColor" stroke-width="1.8"/><path d="M20 15c0 0 2 2.5 2 3.6a2 2 0 01-4 0c0-1.1 2-3.6 2-3.6z" fill="currentColor"/></svg></button>
+    <button class="tool" data-tool="bucket" title="Pot de peinture — remplir une zone (K)"><svg viewBox="0 0 24 24"><g transform="translate(1.5 -1.2) rotate(-38 12 13) scale(1.08) translate(-1 -1)"><path d="M6 8.5h12l-1.4 11a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6.8 14.2h10.4l-.65 5.3a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z" fill="currentColor"/><path d="M8.3 8.5a3.7 3.7 0 017.4 0" fill="none" stroke="currentColor" stroke-width="1.4"/></g><path d="M6.6 9.2C4.6 9.6 3.3 11 3 12.8c-.3 2 .1 5 .7 8.4.5-2.9 1.3-5.5 2.6-7.3.6-.8.7-1.5.6-2.2z" fill="currentColor"/></svg></button>
     <button class="tool" data-tool="eyedrop" title="Pipette — reprendre la couleur et le style d’un objet (I)"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-2 2-6-6zM12 6l6 6-8 8H6v-4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
     <div class="tsep"></div>
     <button class="tool" data-tool="hand" title="Main — déplacer la vue (H ou Espace)"><svg viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 013 0v5V4.5a1.5 1.5 0 013 0V11V5.5a1.5 1.5 0 013 0V14c0 4-2.5 7-6 7s-5-2-6.5-4.5L3 13a1.5 1.5 0 012.4-1.6L8 14z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
@@ -156,12 +167,17 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
     <div id="zoomBox"><button class="btn sm ic" id="zOut">−</button><span id="zLab">100 %</span><button class="btn sm ic" id="zIn">+</button><button class="btn sm" id="zFit">Page</button><button class="btn sm" id="bPts" title="Afficher les points des tracés (P pour la plume, ici bouton)">Points</button></div>
   </div>
   <aside>
-    <section>
-      <h2>Document <button class="btn sm" id="bDoc">Modifier</button></h2>
+    <section data-sec="doc">
+      <h2><span class="ttl"><span class="tw">▼</span>Document</span> <button class="btn sm" id="bDoc">Modifier</button></h2>
       <div class="muted" id="docInfo"></div>
     </section>
-    <section id="secSel">
-      <h2>Sélection <span class="muted" id="selCount"></span></h2>
+    <section data-sec="layers">
+      <h2><span class="ttl"><span class="tw">▼</span>Calques</span> <span class="row"><button class="btn sm" id="bLayerAdd">+ Calque</button><button class="btn sm" id="bToLayer" title="Déplacer la sélection dans le calque actif">Sélection ici</button></span></h2>
+      <div id="layers"></div>
+      <div class="muted">Donne aux calques le nom d'une encre (« Jaune », « Bleu roi »…) : le module Riso les reconnaîtra.</div>
+    </section>
+    <section id="secSel" data-sec="sel">
+      <h2><span class="ttl"><span class="tw">▼</span>Sélection</span> <span class="muted" id="selCount"></span></h2>
       <div class="g4">
         <label>X<input type="number" step="0.5" data-geo="x"></label>
         <label>Y<input type="number" step="0.5" data-geo="y"></label>
@@ -182,7 +198,6 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
         <button class="btn sm" data-cmd="del" title="Suppr">Supprimer</button>
         <button class="btn sm" data-cmd="front" title="Premier plan">Devant</button>
         <button class="btn sm" data-cmd="back" title="Arrière-plan">Derrière</button>
-        <button class="btn sm" id="bDetach" title="La sélection sort de son dessin et devient un objet à part (groupé), au même endroit">Détacher en objet</button>
         <button class="btn sm" id="bCopy" title="Ctrl+C — se colle aussi dans Paysage insulaire">Copier</button>
       </div>
       <div class="muted" style="margin-top:8px">Aligner <select id="alignTo" style="width:auto;padding:1px 4px;font-size:12px"><option value="sel">sur la sélection</option><option value="page">sur la page</option></select></div>
@@ -195,8 +210,8 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
         <button class="btn sm ic" data-align="bottom" title="En bas">⤓</button>
       </div>
     </section>
-    <section>
-      <h2>Couleurs</h2>
+    <section data-sec="fill">
+      <h2><span class="ttl"><span class="tw">▼</span>Remplissage et contour</span></h2>
       <div class="target">
         <button id="tFill" class="on"><span class="chip" id="chipFill"></span>Fond</button>
         <button id="tStroke"><span class="chip stroke" id="chipStroke"></span>Contour</button>
@@ -207,31 +222,34 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
         <label>Extrémités<select id="strokeCap"><option value="round">Rondes</option><option value="butt">Nettes</option><option value="square">Carrées</option></select></label>
       </div>
     </section>
-    <section>
-      <h2>Tracés</h2>
+    <section data-sec="paths">
+      <h2><span class="ttl"><span class="tw">▼</span>Tracés</span></h2>
+      <div class="grp">Objets</div>
       <div class="row">
         <button class="btn sm" data-cmd="group" title="Ctrl+G">Grouper</button>
-        <button class="btn sm" data-cmd="ungroup" title="Ctrl+Maj+G">Dissocier</button>
-        <button class="btn sm" data-cmd="release" title="Sépare un tracé composé en tracés indépendants (les trous deviennent des formes)">Décomposer</button>
-        <button class="btn sm" data-cmd="compound" title="Réunit plusieurs tracés en un seul tracé composé (les superpositions font des trous)">Composer</button>
+        <button class="btn sm" data-cmd="ungroup" title="Ctrl+Maj+G — par calque, par sous-objet ou par élément">Dissocier…</button>
+        <button class="btn sm" id="bDetach" title="La sélection sort de son dessin et devient un objet à part (groupé), au même endroit">Détacher en objet</button>
       </div>
-      <div class="row" style="margin-top:6px">
-        <button class="btn sm" data-cmd="unite" title="Fusionner les formes sélectionnées">Fusionner</button>
+      <div class="grp">Tracés composés</div>
+      <div class="row">
+        <button class="btn sm" data-cmd="compound" title="Réunit plusieurs tracés en un seul tracé composé (les superpositions font des trous)">Composer</button>
+        <button class="btn sm" data-cmd="release" title="Sépare un tracé composé en tracés indépendants (les trous deviennent des formes)">Décomposer</button>
+      </div>
+      <div class="grp">Combiner les formes</div>
+      <div class="row">
+        <button class="btn sm" data-cmd="unite" title="Réunit les formes sélectionnées en une seule">Réunion</button>
         <button class="btn sm" data-cmd="subtract" title="Retirer les formes du dessus à celle du dessous">Soustraire</button>
         <button class="btn sm" data-cmd="intersect" title="Garder la partie commune">Intersection</button>
         <button class="btn sm" data-cmd="exclude" title="Garder les parties non communes">Exclusion</button>
+        <button class="btn sm" data-cmd="merge" title="Comme dans Illustrator : supprime les parties cachées et réunit les formes de même couleur qui se touchent (les contours sont retirés)">Fusion</button>
       </div>
-      <div class="row" style="margin-top:6px">
+      <div class="grp">Retoucher</div>
+      <div class="row">
         <button class="btn sm" data-cmd="simplify" title="Réduit le nombre de points">Simplifier</button>
         <button class="btn sm" data-cmd="smooth" title="Arrondit les angles">Lisser</button>
         <button class="btn sm" data-cmd="outline" title="Transforme le contour en forme pleine (pour la riso)">Contour → forme</button>
         <button class="btn sm" id="bRevec" title="Reprendre les réglages de vectorisation du dessin sélectionné">Revectoriser…</button>
       </div>
-    </section>
-    <section>
-      <h2>Calques <span class="row"><button class="btn sm" id="bLayerAdd">+ Calque</button><button class="btn sm" id="bToLayer" title="Déplacer la sélection dans le calque actif">Sélection ici</button></span></h2>
-      <div id="layers"></div>
-      <div class="muted">Donne aux calques le nom d'une encre (« Jaune », « Bleu roi »…) : le module Riso les reconnaîtra.</div>
     </section>
   </aside>
 </main>
@@ -274,6 +292,15 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   <div class="df"><span class="muted" id="vxStat" style="margin-right:auto"></span><button class="btn" id="vxCancel">Annuler</button><button class="btn primary" id="vxOk" disabled>Placer dans le document</button></div>
 </dialog>
 
+<dialog id="ungDlg">
+  <div class="dh">Dissocier</div>
+  <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;width:min(380px,88vw)">
+    <button class="btn ungOpt" data-ung="layer"><b>Par calque</b><span class="muted">La partie de chaque calque devient un objet à part</span></button>
+    <button class="btn ungOpt" data-ung="sub"><b>Par sous-objet</b><span class="muted">L’objet se sépare en ses sous-objets (un niveau), qui restent entiers</span></button>
+    <button class="btn ungOpt" data-ung="leaf"><b>Par élément</b><span class="muted">Chaque tracé devient indépendant</span></button>
+  </div>
+  <div class="df"><button class="btn" id="ungCancel">Annuler</button></div>
+</dialog>
 <dialog id="phDlg">
   <div class="dh">Recadrer la zone à vectoriser</div>
   <div class="muted" style="padding:6px 16px">Place les 4 coins sur les bords du dessin (ou de la feuille) : l’image est redressée même si la photo est prise de biais.</div>
@@ -508,6 +535,7 @@ function setColor(hex){
   syncChips();
 }
 function syncChips(){
+  if(S.fill)S.lastFill=S.fill;
   const cf=$('#chipFill'),cs=$('#chipStroke');
   cf.className='chip'+(S.fill?'':' none');cf.style.background=S.fill||'#fff';
   cs.className='chip stroke'+(S.stroke?'':' none');cs.style.borderColor=S.stroke||'#ccc';
@@ -527,7 +555,7 @@ function syncPanel(){
   const b=selBounds();
   $('#selCount').textContent=sel.length?(sel.length+' objet'+(sel.length>1?'s':'')):'';
   document.querySelectorAll('[data-geo]').forEach(i=>{if(document.activeElement===i)return;i.value=b?f1({x:b.x,y:b.y,w:b.width,h:b.height}[i.dataset.geo]):'';i.disabled=!b;});
-  document.querySelectorAll('#secSel .btn,[data-cmd]').forEach(x=>x.disabled=!sel.length);
+  document.querySelectorAll('#secSel .btn,[data-cmd],#bDetach').forEach(x=>x.disabled=!sel.length);
   $('#bUndo').disabled=!S.undo.length;$('#bRedo').disabled=!S.redo.length;
   $('#bUndo').style.opacity=S.undo.length?1:.35;$('#bRedo').style.opacity=S.redo.length?1:.35;
   if(sel.length){currentStyleFromSel();}
@@ -555,7 +583,7 @@ const HINTS={
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
   rect:'Glisser pour dessiner · Maj : carré · Alt : depuis le centre',
   ellipse:'Glisser pour dessiner · Maj : cercle · Alt : depuis le centre',
-  bucket:'Clic dans une zone : la remplit avec la couleur de fond choisie (zone délimitée par des traits, même mal fermée : l’ouverture est refermée automatiquement, ou forme existante) · Alt+clic : remplit aussi si la forme cliquée est un trait',
+  bucket:'Sélectionne d’abord l’objet ou l’élément qui délimite la zone (sans sélection, tout le visible compte), puis clique dans la zone : elle se remplit avec la couleur de fond, dans le calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic : recolore aussi un trait',
   eyedrop:'Clic sur un objet : reprend sa couleur et son style · si des objets sont sélectionnés, ils reçoivent ce style',
   hand:'Glisser pour déplacer la vue · molette : défiler · Ctrl+molette : zoom'
 };
@@ -565,7 +593,7 @@ function setTool(t){
   S.tool=t;
   document.querySelectorAll('.tool[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
   $('#hint').textContent=HINTS[t]||'';
-  cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?'cell':'crosshair';
+  cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?bucketCursor():'crosshair';
   drawUI();
 }
 
@@ -809,16 +837,18 @@ function eyedropDown(e){
 let bucketWorker=null,bucketId=0;
 function isClosedFill(it){if(!it)return false;if(it instanceof P.CompoundPath)return true;return it instanceof P.Path&&it.closed;}
 async function bucketDown(e){
-  const col=S.fill;
+  const col=S.fill||S.lastFill;// la zone sélectionnée peut n'avoir que des traits : on garde la dernière couleur de fond choisie
   if(!col){alert('Choisis d’abord une couleur de fond (pas « aucune »).');return;}
+  const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
+  const inScope=it=>!scope.length||scope.some(s=>s===it||s.isAncestor(it));
   // 1. on clique sur une forme fermée (zone blanche, forme pleine) : on la colore directement
-  const hitR=P.project.hitTest(e.point,{fill:true,stroke:false,tolerance:0,match:h=>selectable(h.item)});
+  const hitR=P.project.hitTest(e.point,{fill:true,stroke:false,tolerance:0,match:h=>selectable(h.item)&&inScope(h.item)});
   let it=hitR&&hitR.item;if(it&&it.parent instanceof P.CompoundPath)it=it.parent;
   const isBlack=it&&it.fillColor&&colorHex(it.fillColor)==='#000000';
-  if(it&&isClosedFill(it)&&it.fillColor&&(!isBlack||e.modifiers.alt)){it.fillColor=new P.Color(col);sel=[it];commit();return;}
+  if(it&&isClosedFill(it)&&it.fillColor&&(!isBlack||e.modifiers.alt)){it.fillColor=new P.Color(col);commit();return;}
   if(it&&isBlack){$('#hint').textContent='C’est un trait : clique dans la zone à côté, ou Alt+clic pour recolorer le trait lui-même.';return;}
-  // 2. sinon : on cherche la zone délimitée par les traits autour du clic (comme un remplissage de peinture)
-  await fillRegion(e.point,col);
+  // 2. sinon : la zone délimitée par les traits (de la sélection, ou de tout le visible)
+  await fillRegion(e.point,col,scope);
 }
 /* distance (en pixels) au plus proche pixel « marqué » : chanfrein 3-4, deux passes */
 function chamfer(src,w,h){
@@ -830,19 +860,22 @@ function chamfer(src,w,h){
     if(x<w-1&&d[i+1]+a<v)v=d[i+1]+a;if(y<h-1){if(d[i+w]+a<v)v=d[i+w]+a;if(x<w-1&&d[i+w+1]+b<v)v=d[i+w+1]+b;if(x>0&&d[i+w-1]+b<v)v=d[i+w-1]+b;}d[i]=v;}
   return d;
 }
-async function fillRegion(pt,col){
+async function fillRegion(pt,col,scope){
+  const solo=scope&&scope.length>0;
   const W=S.page.w,H=S.page.h;
   await busy('Recherche de la zone…');
   try{
     // zone de travail : la page et tout ce qui est posé autour (on peut remplir hors de la page)
     let A=new P.Rectangle(0,0,W,H);
-    userLayers().forEach(l=>{if(!l.visible)return;l.children.forEach(c=>{if(c.data&&c.data.sys)return;A=A.unite(c.strokeBounds);});});
+    if(solo){A=null;scope.forEach(c=>{A=A?A.unite(c.strokeBounds):c.strokeBounds.clone();});}
+    else userLayers().forEach(l=>{if(!l.visible)return;l.children.forEach(c=>{if(c.data&&c.data.sys)return;A=A.unite(c.strokeBounds);});});
     A=A.expand(40).unite(new P.Rectangle(pt.subtract(new P.Point(5,5)),pt.add(new P.Point(5,5))));
     const ox=A.x,oy=A.y,AW=A.width,AH=A.height;
     const ppm=Math.min(10,Math.sqrt(14e6/(AW*AH)));
     const cw=Math.round(AW*ppm),ch=Math.round(AH*ppm);
     const prevSel=sel;sel=[];drawUI();
-    const svg=buildSVG().replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;
+    const restore=solo?soloScope(scope):null;let svg0;try{svg0=buildSVG();}finally{if(restore)restore();}
+    const svg=svg0.replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;
     const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
     const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d',{willReadFrequently:true});
     x.fillStyle='#fff';x.fillRect(0,0,cw,ch);x.drawImage(img,0,0,cw,ch);
@@ -907,14 +940,80 @@ async function fillRegion(pt,col){
     const fill=new P.CompoundPath({pathData:res.shapes.map(s=>s.d).join(''),fillRule:'evenodd',fillColor:new P.Color(col)});
     fill.transform(new P.Matrix().translate(ox,oy).scale(1/ppm));
     fill.name='Remplissage';
-    // sous les traits : on le place sous l'objet cliqué s'il y en a un dans ce calque, sinon tout en bas du calque
-    const under=P.project.hitTest(pt,{fill:true,stroke:true,tolerance:px(40),match:h=>selectable(h.item)&&h.item.layer===activeLayer});
-    const top=under?topOf(under.item):null;
-    if(top&&top!==fill)fill.insertBelow(top);else activeLayer.insertChild(0,fill);
-    setSel([fill]);commit();
+    placeFill(fill,pt,scope);commit();
   }catch(err){console.error(err);alert('Remplissage impossible : '+(err.message||err));}
   await busy();
 }
+
+/* ---------- pot de peinture : zone limitée à la sélection ---------- */
+function bucketCursor(){return 'url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22%3E%3Cg transform=%22translate%281.5 -1.2%29 rotate%28-38 12 13%29 scale%281.08%29 translate%28-1 -1%29%22%3E%3Cpath fill=%22%23fff%22 stroke=%22%23fff%22 stroke-linejoin=%22round%22 stroke-width=%224%22 d=%22M6 8.5h12l-1.4 11a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z%22/%3E%3Cpath fill=%22%23fff%22 stroke=%22%23fff%22 stroke-linejoin=%22round%22 stroke-width=%222.4%22 d=%22M6.8 14.2h10.4l-.65 5.3a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z%22/%3E%3Cpath fill=%22%23fff%22 stroke=%22%23fff%22 stroke-linejoin=%22round%22 stroke-width=%223.8%22 d=%22M8.3 8.5a3.7 3.7 0 017.4 0%22/%3E%3C/g%3E%3Cpath fill=%22%23fff%22 stroke=%22%23fff%22 stroke-linejoin=%22round%22 stroke-width=%222.4%22 d=%22M6.6 9.2C4.6 9.6 3.3 11 3 12.8c-.3 2 .1 5 .7 8.4.5-2.9 1.3-5.5 2.6-7.3.6-.8.7-1.5.6-2.2z%22/%3E%3Cg transform=%22translate%281.5 -1.2%29 rotate%28-38 12 13%29 scale%281.08%29 translate%28-1 -1%29%22%3E%3Cpath d=%22M6 8.5h12l-1.4 11a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.6%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M6.8 14.2h10.4l-.65 5.3a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z%22 fill=%22%23000%22/%3E%3Cpath d=%22M8.3 8.5a3.7 3.7 0 017.4 0%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.4%22/%3E%3C/g%3E%3Cpath d=%22M6.6 9.2C4.6 9.6 3.3 11 3 12.8c-.3 2 .1 5 .7 8.4.5-2.9 1.3-5.5 2.6-7.3.6-.8.7-1.5.6-2.2z%22 fill=%22%23000%22/%3E%3C/svg%3E") 5 28, crosshair';}
+/* cache tout sauf la sélection le temps du rendu ; renvoie de quoi tout réafficher */
+function soloScope(scope){
+  const keep=new Set(scope),hidden=[];
+  const walk=c=>{if(keep.has(c))return;if(c.children&&scope.some(s=>c.isAncestor(s))){c.children.forEach(walk);return;}if(c.visible){c.visible=false;hidden.push(c);}};
+  userLayers().forEach(l=>l.children.forEach(walk));
+  return ()=>hidden.forEach(c=>{c.visible=true;});
+}
+/* place le remplissage : dans l'objet sélectionné (partie du calque actif), sous ses traits */
+function placeFill(fill,pt,scope){
+  if(!scope||!scope.length){
+    const under=P.project.hitTest(pt,{fill:true,stroke:true,tolerance:px(40),match:h=>selectable(h.item)&&h.item.layer===activeLayer&&h.item!==fill});
+    const top=under?topOf(under.item):null;
+    if(top&&top!==fill)fill.insertBelow(top);else activeLayer.insertChild(0,fill);
+    setSel([]);return;
+  }
+  const obj=topOf(scope[0]);const linked=typeof linkedTops==='function';
+  let part=null,newSel=scope.slice();
+  if(obj&&obj.layer===activeLayer)part=obj;
+  else if(obj&&linked){
+    if(!obj.data.link)obj.data.link=newLink();
+    part=linkedTops(obj.data.link).find(x=>x.layer===activeLayer)||null;
+    if(!part){part=new P.Group({name:obj.name||'Objet'});part.data.link=obj.data.link;activeLayer.addChild(part);}
+  }
+  if(!part)activeLayer.insertChild(0,fill);
+  else{
+    if(!(part instanceof P.Group)){const g=new P.Group({name:'Objet'});g.insertAbove(part);if(part.data&&part.data.link){g.data.link=part.data.link;delete part.data.link;}g.addChild(part);newSel=newSel.map(s=>s===part?g:s);part=g;}
+    part.insertChild(0,fill);
+  }
+  if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.parent)aquaRaster.bringToFront();
+  setSel(newSel);
+}
+
+/* ---------- dissocier : par calque, par sous-objet, par élément ---------- */
+function ungTops(){const tops=[...new Set(sel.map(s=>topOf(s)).filter(t=>t&&t.parent))];return typeof expandLinks==='function'?expandLinks(tops):tops;}
+function openUngroup(){
+  const tops=ungTops();if(!tops.length)return;
+  const linked=tops.some(t=>t.data&&t.data.link),grp=tops.some(t=>t instanceof P.Group);
+  $('#ungDlg [data-ung="layer"]').disabled=!linked;
+  $('#ungDlg [data-ung="sub"]').disabled=!grp;
+  $('#ungDlg [data-ung="leaf"]').disabled=!grp;
+  $('#ungDlg [data-ung="layer"]').hidden=typeof linkedTops!=='function';
+  $('#ungDlg').showModal();
+}
+function doUngroup(mode){
+  const tops=ungTops(),out=[];
+  tops.forEach(t=>{
+    if(t.data&&t.data.link)delete t.data.link;
+    if(mode==='layer'||!(t instanceof P.Group)){out.push(t);return;}
+    if(mode==='sub'){const ch=t.removeChildren();ch.forEach(c=>{c.insertBelow(t);out.push(c);});t.remove();return;}
+    const leaves=t.getItems({match:x=>!(x instanceof P.Group)&&!(x.parent instanceof P.CompoundPath)});
+    leaves.forEach(x=>{if(x.data&&x.data.link)delete x.data.link;x.insertBelow(t);out.push(x);});t.remove();
+  });
+  setSel(out);
+}
+document.querySelectorAll('#ungDlg [data-ung]').forEach(b=>b.onclick=()=>{$('#ungDlg').close();cmd('ung:'+b.dataset.ung);});
+$('#ungCancel').onclick=()=>$('#ungDlg').close();
+
+/* ---------- panneau de droite : rubriques dépliables (état retenu) ---------- */
+(function(){
+  const KEY='atelier.rubriques'+location.pathname;let st={};try{st=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){}
+  const DEF={doc:false,layers:true,sel:true,fill:true,paths:false};
+  document.querySelectorAll('aside section[data-sec]').forEach(s=>{
+    const k=s.dataset.sec;s.classList.toggle('closed',!(k in st?st[k]:DEF[k]));
+    s.querySelector('h2').addEventListener('click',e=>{if(e.target.closest('button,input,select,label'))return;
+      s.classList.toggle('closed');st[k]=!s.classList.contains('closed');try{localStorage.setItem(KEY,JSON.stringify(st));}catch(err){}});
+  });
+})();
 
 /* ---------- commandes ---------- */
 function cmd(name){
@@ -931,9 +1030,26 @@ function cmd(name){
     case'front':sel.forEach(s=>s.bringToFront());break;
     case'back':sel.slice().reverse().forEach(s=>s.sendToBack());break;
     case'group':{const g=new P.Group();g.insertAbove(sel[sel.length-1]);g.addChildren(sel.slice().sort((a,b)=>a.index-b.index));setSel([g]);break;}
-    case'ungroup':{const out=[];sel.forEach(s=>{if(s instanceof P.Group){const ch=s.removeChildren();ch.forEach(c=>{c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
+    case'ungroup':openUngroup();return;
+    case'ung:layer':case'ung:sub':case'ung:leaf':doUngroup(name.slice(4));break;
     case'release':{const out=[];sel.forEach(s=>{if(s instanceof P.CompoundPath){const st={fillColor:s.fillColor,strokeColor:s.strokeColor,strokeWidth:s.strokeWidth};const ch=s.removeChildren();ch.forEach(c=>{c.style=st;c.fillColor=st.fillColor;c.strokeColor=st.strokeColor;c.strokeWidth=st.strokeWidth;c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
     case'compound':{const paths=sel.flatMap(leafPaths).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath);if(paths.length<2){alert('Sélectionne au moins deux tracés.');return;}const first=paths[0];const st={fillColor:first.fillColor,strokeColor:first.strokeColor,strokeWidth:first.strokeWidth};const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];const cp=new P.CompoundPath({fillRule:'evenodd'});cp.insertAbove(top);paths.forEach(p=>{if(p instanceof P.CompoundPath){cp.addChildren(p.removeChildren());p.remove();}else cp.addChild(p);});cp.fillColor=st.fillColor;cp.strokeColor=st.strokeColor;cp.strokeWidth=st.strokeWidth;sel.forEach(s=>{if(s!==cp&&s.parent&&s instanceof P.Group&&!s.children.length)s.remove();});setSel([cp]);break;}
+    case'merge':{// comme « Fusion » d'Illustrator : on garde les parties visibles, et les formes de même couleur qui se touchent n'en font qu'une
+      const shapes=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&p.fillColor).sort((a,b)=>a.isAbove(b)?1:-1);
+      if(shapes.length<2){alert('Sélectionne au moins deux formes pleines.');return;}
+      const byLayer=new Map();shapes.forEach(p=>{if(!byLayer.has(p.layer))byLayer.set(p.layer,[]);byLayer.get(p.layer).push(p);});
+      const out=[],par=new Set(shapes.map(p=>p.parent));
+      for(const arr of byLayer.values()){
+        const groups=new Map();
+        arr.forEach((p,i)=>{let v=p.clone({insert:false});for(let j=i+1;j<arr.length;j++){const r=v.subtract(arr[j],{insert:false});v=r;}
+          if(!v||(v.isEmpty&&v.isEmpty())||Math.abs(v.area)<1e-4)return;const k=colorHex(p.fillColor);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(v);});
+        const top=arr[arr.length-1];
+        for(const [k,vs] of groups){let u=vs[0];for(let i=1;i<vs.length;i++)u=u.unite(vs[i],{insert:false});
+          if(u instanceof P.CompoundPath&&u.children.length===1)u=u.children[0].clone({insert:false});
+          u.fillColor=new P.Color(k);u.strokeColor=null;u.name='Fusion';u.insertAbove(top);out.push(u);}
+      }
+      shapes.forEach(p=>p.remove());cleanEmpty(par);setSel(out.filter(x=>x.parent));break;
+    }
     case'unite':case'subtract':case'intersect':case'exclude':{
       const shapes=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath).sort((a,b)=>a.isAbove(b)?1:-1);
       if(shapes.length<2){alert('Sélectionne au moins deux formes.');return;}
@@ -1145,7 +1261,7 @@ async function vxPlace(){
   if(VX.place==='dpi'){k=25.4/(+$('#vxDpi').value||300);}
   else{const m=10;k=Math.min((S.page.w-2*m)/VX.img.naturalWidth,(S.page.h-2*m)/VX.img.naturalHeight);}
   xf(g,new P.Matrix().scale(k,new P.Point(0,0)));
-  moveIt(g,new P.Point(S.page.w/2,S.page.h/2).subtract(g.position));
+  moveIt(g,(VX.at||new P.Point(S.page.w/2,S.page.h/2)).subtract(g.position));VX.at=null;
   setTool('select');setSel([g]);commit();
 }
 /* les traits d'un dessin vectorisé ne sont jamais blancs (sinon invisibles sur la page) */
@@ -1195,6 +1311,7 @@ async function openRevec(){
   await busy();
 }
 async function vxOpenFile(f){
+  VX.at=/^image-collee/.test(f&&f.name||'')?pastePoint():null;
   if(!f)return;
   const url=URL.createObjectURL(f);
   const img=new Image();
@@ -1235,7 +1352,7 @@ function importSVGText(text,name,opts){
   item.name=name||'Import';
   if(item.bounds.width>S.page.w||item.bounds.height>S.page.h){const k=Math.min((S.page.w-20)/item.bounds.width,(S.page.h-20)/item.bounds.height);item.scale(k);}
   const page=new P.Rectangle(0,0,S.page.w,S.page.h);
-  if(opts.center){let c=view.center;if(!page.contains(c))c=page.center;item.position=c;}
+  if(opts.center){item.position=pastePoint();}
   else if(item.bounds.right<0||item.bounds.bottom<0||item.bounds.left>S.page.w||item.bounds.top>S.page.h)item.position=new P.Point(S.page.w/2,S.page.h/2);
   if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.layer===activeLayer)aquaRaster.bringToFront();
   setTool('select');setSel([item]);commit();
@@ -1378,8 +1495,9 @@ let lastPaste=0;
 async function pasteClip(){
   const d=(await IDB.get('pressepapier'))||S.clip;if(!d||!d.items||!d.items.length)return;
   ensureLayer(true);const items=d.items.map(j=>activeLayer.importJSON(j));
-  if(d.app==='vecto'){items.forEach(it=>moveIt(it,new P.Point(5,5)));}
-  else{let b=items[0].bounds.clone();items.forEach(i=>b=b.unite(i.bounds));items.forEach(i=>moveIt(i,view.center.subtract(b.center)));}
+  const at=pastePoint(true);
+  if(d.app==='vecto'&&!at){items.forEach(it=>moveIt(it,new P.Point(5,5)));}
+  else{let b=items[0].bounds.clone();items.forEach(i=>b=b.unite(i.bounds));const c=at||pastePoint();items.forEach(i=>moveIt(i,c.subtract(b.center)));}
   lastPaste=d.t;d.items=items.map(s=>s.exportJSON({asString:true}));S.clip=d;setTool('select');setSel(items);commit();
 }
 function copyTargets(){return sel.length?sel:allTop();}
@@ -1434,7 +1552,7 @@ $('#phCv').addEventListener('pointerup',()=>{PH.drag=-1;});
 $('#phRotL').onclick=()=>phRotate(-1);$('#phRotR').onclick=()=>phRotate(1);
 $('#phAll').onclick=()=>{phReset(0);phDraw();};
 $('#phCancel').onclick=()=>$('#phDlg').close();
-window.addEventListener('resize',()=>{if($('#phDlg').open)phDraw();});
+window.addEventListener('resize',()=>{if($('#phDlg').open||$('#ungDlg').open)phDraw();});
 /* redressement : le quadrilatère choisi devient un rectangle */
 function phWarp(){
   const [p0,p1,p2,p3]=PH.q,dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -1610,7 +1728,7 @@ LY.addEventListener('click',e=>{
   if(act==='down'){const below=l.previousSibling;if(below&&!isSys(below)){l.insertBelow(below);commit();}return;}
   if(act==='del'){if(userLayers().length<=1)return alert('Il faut au moins un calque.');if(l.children.length&&!confirm('Supprimer « '+l.name+' » et son contenu ?'))return;l.remove();if(activeLayer===l)activeLayer=null;ensureLayer();setSel(sel.filter(s=>s.parent));commit();return;}
   if(act==='name')return;
-  {const mv=movableSelection();if(mv.length&&!mv.every(it=>it.layer===l)){moveToLayer(mv,l);return;}}
+  if(S.tool!=='bucket'){const mv=movableSelection();if(mv.length&&!mv.every(it=>it.layer===l)){moveToLayer(mv,l);return;}}
   setActive(l);ensureLayer();renderLayers();
 });
 LY.addEventListener('change',e=>{if(e.target.dataset.la==='name'){const l=layerOf(e.target);if(l){l.name=e.target.value.trim()||l.name;commit();}}});
@@ -1622,7 +1740,7 @@ $('#bToLayer').onclick=()=>{if(!sel.length)return;ensureLayer();sel.forEach(s=>a
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&e.detail>0)b.blur();},true);
 let spaceDown=false;
 document.addEventListener('keydown',e=>{
-  if($('#vxDlg').open||$('#docDlg').open||$('#phDlg').open)return;
+  if($('#vxDlg').open||$('#docDlg').open||$('#phDlg').open||$('#ungDlg').open)return;
   const tag=document.activeElement&&document.activeElement.tagName;
   if(/INPUT|SELECT|TEXTAREA/.test(tag))return;
   const k=e.key,ctrl=e.ctrlKey||e.metaKey;
@@ -1661,13 +1779,13 @@ cv.addEventListener('dblclick',e=>e.preventDefault());
 document.addEventListener('paste',e=>{
   // une image copiée (capture, image d'une page web, dessin…) : on l'ouvre dans la vectorisation
   const imgItem=[...((e.clipboardData&&e.clipboardData.items)||[])].find(i=>i.kind==='file'&&/^image\//.test(i.type));
-  if(imgItem&&!$('#docDlg').open&&!$('#phDlg').open){
+  if(imgItem&&!$('#docDlg').open&&!$('#phDlg').open||$('#ungDlg').open){
     const tag0=document.activeElement&&document.activeElement.tagName;if(/INPUT|TEXTAREA/.test(tag0)&&document.activeElement.type==='text')return;
     e.preventDefault();const f0=imgItem.getAsFile();const t=new Date();
     const file=new File([f0],'image-collee-'+String(t.getHours()).padStart(2,'0')+'h'+String(t.getMinutes()).padStart(2,'0')+'.'+((f0.type.split('/')[1]||'png').replace('jpeg','jpg')),{type:f0.type});
     VX.edit=null;vxDialogMode(false);if(!$('#vxDlg').open)$('#vxDlg').showModal();vxOpenFile(file);return;
   }
-  if($('#vxDlg').open||$('#docDlg').open||$('#phDlg').open)return;
+  if($('#vxDlg').open||$('#docDlg').open||$('#phDlg').open||$('#ungDlg').open)return;
   const tag=document.activeElement&&document.activeElement.tagName;if(/INPUT|SELECT|TEXTAREA/.test(tag))return;
   e.preventDefault();
   const txt=(e.clipboardData&&e.clipboardData.getData('text/plain')||'').trim();
@@ -1676,15 +1794,26 @@ document.addEventListener('paste',e=>{
   pasteClip();
 });
 /* clic droit : menu de l'atelier (copie vectorielle) au lieu de « copier l'image » du navigateur */
+/* ---------- où coller : à la flèche de la souris, sinon au centre de la vue ---------- */
+let mouseAt=null,pasteAt=null;
+cv.addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;const r=cv.getBoundingClientRect();mouseAt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));});
+cv.addEventListener('pointerleave',()=>{mouseAt=null;});
+function pastePoint(strict){
+  if(pasteAt&&Date.now()-pasteAt.t<5000)return pasteAt.p;
+  if(mouseAt)return mouseAt;
+  if(strict)return null;
+  const page=new P.Rectangle(0,0,S.page.w,S.page.h);let c=view.center;if(!page.contains(c))c=page.center;return c;
+}
+let ctxPt=null;
 const ctxMenu=document.createElement('div');ctxMenu.id='ctxMenu';ctxMenu.hidden=true;document.body.appendChild(ctxMenu);
 function hideCtx(){ctxMenu.hidden=true;}
 cv.addEventListener('contextmenu',e=>{
   e.preventDefault();
   if(S.tool==='pen'&&penPath){finishPen();return;}
-  const r=cv.getBoundingClientRect(),pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));
+  const r=cv.getBoundingClientRect(),pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));ctxPt=pt;
   const hit=hitTop(pt);if(hit&&!sel.includes(hit)){setTool('select');setSel([hit]);}
   const has=sel.length>0;
-  const items=[['copy','Copier en vectoriel (Illustrator, Inkscape…)',has],['copyimg','Copier en image (InDesign, mail…)',has],['cut','Couper',has],['paste','Coller',true],['detach','Détacher en objet',has],['dup','Dupliquer',has],['del','Supprimer',has],['all','Tout sélectionner',true]];
+  const items=[['copy','Copier en vectoriel (Illustrator, Inkscape…)',has],['copyimg','Copier en image (InDesign, mail…)',has],['cut','Couper',has],['paste','Coller',true],['group','Grouper',has&&sel.length>1],['ungroup','Dissocier…',has],['detach','Détacher en objet',has],['dup','Dupliquer',has],['del','Supprimer',has],['all','Tout sélectionner',true]];
   ctxMenu.innerHTML=items.map(([k,l,on])=>`<button data-k="${k}"${on?'':' disabled'}>${l}</button>`).join('');
   ctxMenu.hidden=false;const w=ctxMenu.offsetWidth,h=ctxMenu.offsetHeight;
   ctxMenu.style.left=Math.min(e.clientX,innerWidth-w-4)+'px';ctxMenu.style.top=Math.min(e.clientY,innerHeight-h-4)+'px';
@@ -1693,13 +1822,13 @@ ctxMenu.addEventListener('click',async e=>{const b=e.target.closest('button');if
   if(k==='copy'){await clipWrite(sel);}
   else if(k==='cut'){await clipWrite(sel);cmd('del');}
   else if(k==='copyimg')copyAsImage(sel);
-  else if(k==='paste'){let done=false;
+  else if(k==='paste'){if(ctxPt)pasteAt={p:ctxPt,t:Date.now()};let done=false;
     try{const its=await navigator.clipboard.read();
       for(const it of its){const ty=it.types.find(t=>/^image\/(png|jpeg|jpg|webp|gif|bmp)$/.test(t));if(ty){const bl=await it.getType(ty);const file=new File([bl],'image-collee.'+(ty.split('/')[1].replace('jpeg','jpg')),{type:ty});VX.edit=null;vxDialogMode(false);$('#vxDlg').showModal();vxOpenFile(file);done=true;break;}}
     }catch(err){}
     if(!done){try{const t=(await navigator.clipboard.readText()).trim();if(/^(<\?xml[\s\S]*?)?<svg[\s>]/i.test(t)&&t!==lastSvgCopy.trim()){importSVGText(t,'Collé',{center:true});done=true;}}catch(err){}}
     if(!done)pasteClip();}
-  else if(k==='detach')detachSel();else if(k==='dup')cmd('dup');else if(k==='del')cmd('del');else if(k==='all'){setTool('select');setSel(allTop());}});
+  else if(k==='group')cmd('group');else if(k==='ungroup')cmd('ungroup');else if(k==='detach')detachSel();else if(k==='dup')cmd('dup');else if(k==='del')cmd('del');else if(k==='all'){setTool('select');setSel(allTop());}});
 document.addEventListener('pointerdown',e=>{if(!ctxMenu.hidden&&!ctxMenu.contains(e.target))hideCtx();},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideCtx();});
 window.addEventListener('resize',()=>{resizeView();});
