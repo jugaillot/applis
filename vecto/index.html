@@ -221,6 +221,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
         <label>Épaisseur contour (mm)<input type="number" id="strokeW" min="0" step="0.1" value="0.5"></label>
         <label>Extrémités<select id="strokeCap"><option value="round">Rondes</option><option value="butt">Nettes</option><option value="square">Carrées</option></select></label>
       </div>
+      <button class="btn sm" data-cmd="objOutline" style="margin-top:8px" title="Ajoute un trait sur le seul bord extérieur de l’objet sélectionné (sans les trous ni les traits intérieurs), avec l’épaisseur ci-dessus">Contour de l’objet</button>
     </section>
     <section data-sec="paths">
       <h2><span class="ttl"><span class="tw">▼</span>Tracés</span></h2>
@@ -585,7 +586,7 @@ const HINTS={
   ellipse:'Glisser pour dessiner · Maj : cercle · Alt : depuis le centre',
   bucket:'Sélectionne d’abord l’objet ou l’élément qui entoure la zone, puis clique dans la zone : elle se remplit avec la couleur de fond, dans le calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic : recolore aussi un trait',
   eyedrop:'Clic sur un objet : reprend sa couleur et son style · si des objets sont sélectionnés, ils reçoivent ce style',
-  hand:'Glisser pour déplacer la vue · molette : défiler · Alt+molette : zoom · Ctrl+molette : horizontal · Maj+molette : vertical'
+  hand:'Glisser pour déplacer la vue · molette : zoom · clic molette + glisser : déplacer la vue · Ctrl+molette : horizontal · Maj+molette : vertical'
 };
 function setTool(t){
   if(S.tool==='pen'&&t!=='pen')finishPen();
@@ -1037,6 +1038,40 @@ $('#ungCancel').onclick=()=>$('#ungDlg').close();
   });
 })();
 
+/* contour de l'objet : un trait sur le seul bord extérieur (sans les trous ni le dedans) */
+async function objectOutline(){
+  const tops=[...new Set(sel.map(s=>topOf(s)).filter(Boolean))];if(!tops.length)return;
+  await busy('Contour de l’objet…');
+  try{
+    let u=null;
+    tops.forEach(t=>leafPaths(t).forEach(p=>{
+      if(!(p instanceof P.Path||p instanceof P.CompoundPath))return;
+      let sh=null;
+      if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))sh=p.clone({insert:false});
+      else if(p.strokeColor){sh=strokeToShape(p);if(sh&&sh.parent)sh.remove();}
+      if(!sh)return;
+      u=u?u.unite(sh,{insert:false}):sh;
+    }));
+    if(!u){await busy();alert('Rien à entourer dans la sélection.');return;}
+    const parts=(u instanceof P.CompoundPath?u.children.slice():[u]).filter(c=>c.segments&&c.segments.length>2);
+    const inside=(c,o)=>o!==c&&o.bounds.contains(c.bounds)&&o.contains(c.interiorPoint);
+    const outer=parts.filter(c=>!parts.some(o=>inside(c,o)));
+    if(!outer.length){await busy();return;}
+    const res=new P.CompoundPath({insert:false,children:outer.map(c=>c.clone({insert:false}))});
+    const pay=typeof setRole==='function';
+    const role=pay?(activeRole==='blanc'?'blanc':'couleur'):null;
+    res.fillColor=null;res.strokeColor=new P.Color(pay?roleColor(role):(S.stroke||'#000000'));
+    res.strokeWidth=Math.max(0.05,+S.strokeW||0.5);res.strokeJoin='round';res.strokeCap='round';res.name='Contour';
+    if(role)res.data.role=role;
+    const top=tops.sort((a,b)=>a.isAbove(b)?-1:1)[0];
+    if(tops.length===1&&top instanceof P.Group&&!(top instanceof P.Layer))top.addChild(res);else res.insertAbove(top);
+    if(pay&&res.layer&&roleOf(res.layer)==='aqua')layerByRole('dessin').addChild(res);
+    setSel(tops.length===1?[top]:[res]);commit();
+    $('#hint').textContent='Contour ajouté sur le bord extérieur (épaisseur : '+res.strokeWidth+' mm, réglable dans « Épaisseur contour »)';
+  }catch(e){console.error(e);alert('Contour impossible : '+(e.message||e));}
+  await busy();
+}
+
 /* ---------- commandes ---------- */
 function cmd(name){
   if(!sel.length&&!['selall','front','back'].includes(name))return;
@@ -1057,6 +1092,7 @@ function cmd(name){
     case'ung:layer':case'ung:sub':case'ung:leaf':doUngroup(name.slice(4));break;
     case'release':{const out=[];sel.forEach(s=>{if(s instanceof P.CompoundPath){const st={fillColor:s.fillColor,strokeColor:s.strokeColor,strokeWidth:s.strokeWidth};const ch=s.removeChildren();ch.forEach(c=>{c.style=st;c.fillColor=st.fillColor;c.strokeColor=st.strokeColor;c.strokeWidth=st.strokeWidth;c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
     case'compound':{const paths=sel.flatMap(leafPaths).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath);if(paths.length<2){alert('Sélectionne au moins deux tracés.');return;}const first=paths[0];const st={fillColor:first.fillColor,strokeColor:first.strokeColor,strokeWidth:first.strokeWidth};const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];const cp=new P.CompoundPath({fillRule:'evenodd'});cp.insertAbove(top);paths.forEach(p=>{if(p instanceof P.CompoundPath){cp.addChildren(p.removeChildren());p.remove();}else cp.addChild(p);});cp.fillColor=st.fillColor;cp.strokeColor=st.strokeColor;cp.strokeWidth=st.strokeWidth;sel.forEach(s=>{if(s!==cp&&s.parent&&s instanceof P.Group&&!s.children.length)s.remove();});setSel([cp]);break;}
+    case'objOutline':objectOutline();return;
     case'merge':{// comme « Fusion » d'Illustrator : on garde les parties visibles, et les formes de même couleur qui se touchent n'en font qu'une
       const shapes=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&p.fillColor).sort((a,b)=>a.isAbove(b)?1:-1);
       if(shapes.length<2){alert('Sélectionne au moins deux formes pleines.');return;}
@@ -1795,7 +1831,7 @@ document.addEventListener('keydown',e=>{
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
-/* molette comme dans Illustrator : Alt = zoom, Ctrl = horizontal, Maj = vertical (le pincement du pavé tactile zoome toujours) */
+/* molette : seule ou avec Alt = zoom, Ctrl = horizontal, Maj = vertical ; clic molette + glisser = main */
 let ctrlHeld=false;
 addEventListener('keydown',e=>{if(e.key==='Control'||e.key==='Meta')ctrlHeld=true;});
 addEventListener('keyup',e=>{if(e.key==='Control'||e.key==='Meta')ctrlHeld=false;});
@@ -1804,11 +1840,10 @@ cv.addEventListener('wheel',e=>{
   e.preventDefault();
   const d=e.deltaY||e.deltaX;
   if(e.altKey||(e.ctrlKey&&!ctrlHeld)){const r=cv.getBoundingClientRect();const pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));zoomAt(d<0?1.1:1/1.1,pt);return;}
-  let v;
-  if(e.ctrlKey||e.metaKey)v=new P.Point(d,0);
-  else if(e.shiftKey)v=new P.Point(0,d);
-  else v=new P.Point(e.deltaX,e.deltaY);
-  view.center=view.center.add(v.divide(view.zoom));afterView();
+  if(e.ctrlKey||e.metaKey||e.shiftKey){const v=e.shiftKey&&!(e.ctrlKey||e.metaKey)?new P.Point(0,d):new P.Point(d,0);view.center=view.center.add(v.divide(view.zoom));afterView();return;}
+  // sans touche : zoom autour de la souris (doux avec un pavé tactile)
+  const r=cv.getBoundingClientRect();const pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));
+  const dd=e.deltaMode===1?d*16:d;zoomAt(Math.pow(1.1,-Math.max(-300,Math.min(300,dd))/60),pt);
 },{passive:false});
 cv.addEventListener('dblclick',e=>e.preventDefault());
 document.addEventListener('paste',e=>{
@@ -1883,6 +1918,6 @@ window.addEventListener('storage',e=>{if(e.key==='atelierRiso.inks')renderSwatch
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + V avec une image copiée", "L’ouvre directement dans la vectorisation"], ["Ctrl + C / X / V", "Copier / couper / coller (la copie se colle aussi en vectoriel dans Illustrator, Inkscape, Affinity)"], ["Clic droit", "Menu : copier en vectoriel, coller, dupliquer, supprimer"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Alt + molette", "Zoom"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Boucher les liserés fins", "Remplit les fines lignes blanches enfermées dans un aplat noir (bord du feutre plus foncé que l’intérieur, reflet…), jusqu’à la largeur indiquée. Les vrais trous, plus larges, restent."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + V avec une image copiée", "L’ouvre directement dans la vectorisation"], ["Ctrl + C / X / V", "Copier / couper / coller (la copie se colle aussi en vectoriel dans Illustrator, Inkscape, Affinity)"], ["Clic droit", "Menu : copier en vectoriel, coller, dupliquer, supprimer"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Molette", "Zoom"], ["Clic molette + glisser", "Déplacer la vue"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Boucher les liserés fins", "Remplit les fines lignes blanches enfermées dans un aplat noir (bord du feutre plus foncé que l’intérieur, reflet…), jusqu’à la largeur indiquée. Les vrais trous, plus larges, restent."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
 </body>
 </html>

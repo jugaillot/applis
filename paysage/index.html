@@ -225,6 +225,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
         <label>Épaisseur contour (mm)<input type="number" id="strokeW" min="0" step="0.1" value="0.5"></label>
         <label>Extrémités<select id="strokeCap"><option value="round">Rondes</option><option value="butt">Nettes</option><option value="square">Carrées</option></select></label>
       </div>
+      <button class="btn sm" data-cmd="objOutline" style="margin-top:8px" title="Ajoute un trait sur le seul bord extérieur de l’objet sélectionné (sans les trous ni les traits intérieurs), avec l’épaisseur ci-dessus">Contour de l’objet</button>
     </section>
     <section data-sec="paths">
       <h2><span class="ttl"><span class="tw">▼</span>Tracés</span></h2>
@@ -675,7 +676,7 @@ const HINTS={
   ellipse:'Glisser pour dessiner · Maj : cercle · Alt : depuis le centre',
   bucket:'Sélectionne d’abord l’objet ou l’élément qui entoure la zone, puis clique dans la zone : elle prend la couleur du calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic sur un trait : le passe dans ce calque',
   eyedrop:'Clic sur un objet : reprend sa couleur et son style · si des objets sont sélectionnés, ils reçoivent ce style',
-  hand:'Glisser pour déplacer la vue · molette : défiler · Alt+molette : zoom · Ctrl+molette : horizontal · Maj+molette : vertical'
+  hand:'Glisser pour déplacer la vue · molette : zoom · clic molette + glisser : déplacer la vue · Ctrl+molette : horizontal · Maj+molette : vertical'
 };
 function setTool(t){
   if(S.tool==='pen'&&t!=='pen')finishPen();
@@ -1133,6 +1134,40 @@ $('#ungCancel').onclick=()=>$('#ungDlg').close();
   });
 })();
 
+/* contour de l'objet : un trait sur le seul bord extérieur (sans les trous ni le dedans) */
+async function objectOutline(){
+  const tops=[...new Set(sel.map(s=>topOf(s)).filter(Boolean))];if(!tops.length)return;
+  await busy('Contour de l’objet…');
+  try{
+    let u=null;
+    tops.forEach(t=>leafPaths(t).forEach(p=>{
+      if(!(p instanceof P.Path||p instanceof P.CompoundPath))return;
+      let sh=null;
+      if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))sh=p.clone({insert:false});
+      else if(p.strokeColor){sh=strokeToShape(p);if(sh&&sh.parent)sh.remove();}
+      if(!sh)return;
+      u=u?u.unite(sh,{insert:false}):sh;
+    }));
+    if(!u){await busy();alert('Rien à entourer dans la sélection.');return;}
+    const parts=(u instanceof P.CompoundPath?u.children.slice():[u]).filter(c=>c.segments&&c.segments.length>2);
+    const inside=(c,o)=>o!==c&&o.bounds.contains(c.bounds)&&o.contains(c.interiorPoint);
+    const outer=parts.filter(c=>!parts.some(o=>inside(c,o)));
+    if(!outer.length){await busy();return;}
+    const res=new P.CompoundPath({insert:false,children:outer.map(c=>c.clone({insert:false}))});
+    const pay=typeof setRole==='function';
+    const role=pay?(activeRole==='blanc'?'blanc':'couleur'):null;
+    res.fillColor=null;res.strokeColor=new P.Color(pay?roleColor(role):(S.stroke||'#000000'));
+    res.strokeWidth=Math.max(0.05,+S.strokeW||0.5);res.strokeJoin='round';res.strokeCap='round';res.name='Contour';
+    if(role)res.data.role=role;
+    const top=tops.sort((a,b)=>a.isAbove(b)?-1:1)[0];
+    if(tops.length===1&&top instanceof P.Group&&!(top instanceof P.Layer))top.addChild(res);else res.insertAbove(top);
+    if(pay&&res.layer&&roleOf(res.layer)==='aqua')layerByRole('dessin').addChild(res);
+    setSel(tops.length===1?[top]:[res]);commit();
+    $('#hint').textContent='Contour ajouté sur le bord extérieur (épaisseur : '+res.strokeWidth+' mm, réglable dans « Épaisseur contour »)';
+  }catch(e){console.error(e);alert('Contour impossible : '+(e.message||e));}
+  await busy();
+}
+
 /* ---------- commandes ---------- */
 function cmd(name){
   if(!sel.length&&!['selall','front','back'].includes(name))return;
@@ -1154,6 +1189,7 @@ function cmd(name){
     case'ung:layer':case'ung:sub':case'ung:leaf':doUngroup(name.slice(4));break;
     case'release':{const out=[];sel.forEach(s=>{if(s instanceof P.CompoundPath){const st={fillColor:s.fillColor,strokeColor:s.strokeColor,strokeWidth:s.strokeWidth};const ch=s.removeChildren();ch.forEach(c=>{if(s.data&&s.data.role)c.data.role=s.data.role;c.style=st;c.fillColor=st.fillColor;c.strokeColor=st.strokeColor;c.strokeWidth=st.strokeWidth;c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
     case'compound':{const paths=sel.flatMap(leafPaths).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath);if(paths.length<2){alert('Sélectionne au moins deux tracés.');return;}const first=paths[0];const st={fillColor:first.fillColor,strokeColor:first.strokeColor,strokeWidth:first.strokeWidth};const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];const cp=new P.CompoundPath({fillRule:'evenodd'});{const r0=roleUp(first);if(r0)cp.data.role=r0;}cp.insertAbove(top);paths.forEach(p=>{if(p instanceof P.CompoundPath){cp.addChildren(p.removeChildren());p.remove();}else cp.addChild(p);});cp.fillColor=st.fillColor;cp.strokeColor=st.strokeColor;cp.strokeWidth=st.strokeWidth;sel.forEach(s=>{if(s!==cp&&s.parent&&s instanceof P.Group&&!s.children.length)s.remove();});setSel([cp]);break;}
+    case'objOutline':objectOutline();return;
     case'merge':{// comme « Fusion » d'Illustrator : on garde les parties visibles, et les formes de même couleur qui se touchent n'en font qu'une
       const shapes=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&p.fillColor).sort((a,b)=>a.isAbove(b)?1:-1);
       if(shapes.length<2){alert('Sélectionne au moins deux formes pleines.');return;}
@@ -1893,7 +1929,7 @@ document.addEventListener('keydown',e=>{
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
-/* molette comme dans Illustrator : Alt = zoom, Ctrl = horizontal, Maj = vertical (le pincement du pavé tactile zoome toujours) */
+/* molette : seule ou avec Alt = zoom, Ctrl = horizontal, Maj = vertical ; clic molette + glisser = main */
 let ctrlHeld=false;
 addEventListener('keydown',e=>{if(e.key==='Control'||e.key==='Meta')ctrlHeld=true;});
 addEventListener('keyup',e=>{if(e.key==='Control'||e.key==='Meta')ctrlHeld=false;});
@@ -1902,11 +1938,10 @@ cv.addEventListener('wheel',e=>{
   e.preventDefault();
   const d=e.deltaY||e.deltaX;
   if(e.altKey||(e.ctrlKey&&!ctrlHeld)){const r=cv.getBoundingClientRect();const pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));zoomAt(d<0?1.1:1/1.1,pt);return;}
-  let v;
-  if(e.ctrlKey||e.metaKey)v=new P.Point(d,0);
-  else if(e.shiftKey)v=new P.Point(0,d);
-  else v=new P.Point(e.deltaX,e.deltaY);
-  view.center=view.center.add(v.divide(view.zoom));afterView();
+  if(e.ctrlKey||e.metaKey||e.shiftKey){const v=e.shiftKey&&!(e.ctrlKey||e.metaKey)?new P.Point(0,d):new P.Point(d,0);view.center=view.center.add(v.divide(view.zoom));afterView();return;}
+  // sans touche : zoom autour de la souris (doux avec un pavé tactile)
+  const r=cv.getBoundingClientRect();const pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));
+  const dd=e.deltaMode===1?d*16:d;zoomAt(Math.pow(1.1,-Math.max(-300,Math.min(300,dd))/60),pt);
 },{passive:false});
 cv.addEventListener('dblclick',e=>e.preventDefault());
 /* SVG de la sélection : se colle en vectoriel dans Illustrator, Inkscape, Affinity… */
@@ -2384,6 +2419,6 @@ $('#impOk').onclick=impRun;
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets blancs et en couleur", "Un dessin collé ou vectorisé garde ses zones blanches (calque Blanc) et ses traits (calque Couleur) dans un seul objet. « Dissocier › par calque » les sépare en deux objets."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"], ["Alt + molette", "Zoom"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc. Ce qui est devant dépend de l’ordre des objets (Devant / Derrière), pas du calque."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets blancs et en couleur", "Un dessin collé ou vectorisé garde ses zones blanches (calque Blanc) et ses traits (calque Couleur) dans un seul objet. « Dissocier › par calque » les sépare en deux objets."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"], ["Molette", "Zoom"], ["Clic molette + glisser", "Déplacer la vue"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc. Ce qui est devant dépend de l’ordre des objets (Devant / Derrière), pas du calque."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
 </body>
 </html>
