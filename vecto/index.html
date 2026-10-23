@@ -117,7 +117,14 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 .seg button.on{background:var(--ink);color:#fff}
 #docDlg .db{padding:14px 16px;display:flex;flex-direction:column;gap:10px;width:320px}
 @media (max-width:900px){
-  main{grid-template-columns:44px 1fr;grid-template-rows:1fr 40vh}
+  main{grid-template-columns:44px 1fr;grid-template-rows:minmax(0,1fr) minmax(0,48%)}
+  /* en-tête sur une ligne qui défile, outils qui défilent : la place va au panneau du bas */
+  header{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  header::-webkit-scrollbar{display:none}
+  header>*{flex-shrink:0}
+  #tools{overflow-y:auto;min-height:0}
+  aside{min-height:0;padding-bottom:60px}
+  aside .btn,aside select,aside input{min-height:34px}
   aside{grid-column:1 / -1;border-left:0;border-top:1px solid var(--line)}
   #vxBody{grid-template-columns:1fr}
   #hint{display:none}
