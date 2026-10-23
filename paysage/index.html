@@ -1032,7 +1032,7 @@ async function bkPrepare(scope){
       const cw=Math.round(AW*ppm),ch=Math.round(AH*ppm),n=cw*ch;
       const prevSel=sel;sel=[];drawUI();
       const restore=soloScope(scope);let svg0;try{svg0=buildSVG();}finally{if(restore)restore();}
-      // le blanc est une couleur du calque Blanc : une zone blanche est déjà remplie
+      // une zone déjà remplie, même en blanc (calque Blanc), compte comme remplie
       svg0=svg0.replace(/(fill|stroke)="(#ffffff|#fff|white)"/gi,'$1="#000000"');
       const svg=svg0.replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;syncPanel();drawUI();
       const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
