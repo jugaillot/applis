@@ -583,9 +583,9 @@ const HINTS={
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
   rect:'Glisser pour dessiner · Maj : carré · Alt : depuis le centre',
   ellipse:'Glisser pour dessiner · Maj : cercle · Alt : depuis le centre',
-  bucket:'Sélectionne d’abord l’objet ou l’élément qui délimite la zone (sans sélection, tout le visible compte), puis clique dans la zone : elle se remplit avec la couleur de fond, dans le calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic : recolore aussi un trait',
+  bucket:'Sélectionne d’abord l’objet ou l’élément qui entoure la zone, puis clique dans la zone : elle se remplit avec la couleur de fond, dans le calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic : recolore aussi un trait',
   eyedrop:'Clic sur un objet : reprend sa couleur et son style · si des objets sont sélectionnés, ils reçoivent ce style',
-  hand:'Glisser pour déplacer la vue · molette : défiler · Ctrl+molette : zoom'
+  hand:'Glisser pour déplacer la vue · molette : défiler · Alt+molette : zoom · Ctrl+molette : horizontal · Maj+molette : vertical'
 };
 function setTool(t){
   if(S.tool==='pen'&&t!=='pen')finishPen();
@@ -840,7 +840,8 @@ async function bucketDown(e){
   const col=S.fill||S.lastFill;// la zone sélectionnée peut n'avoir que des traits : on garde la dernière couleur de fond choisie
   if(!col){alert('Choisis d’abord une couleur de fond (pas « aucune »).');return;}
   const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
-  const inScope=it=>!scope.length||scope.some(s=>s===it||s.isAncestor(it));
+  if(!scope.length){alert('Sélectionne d’abord l’objet ou l’élément qui entoure la zone à remplir, puis clique dans la zone avec le pot.');return;}
+  const inScope=it=>scope.some(s=>s===it||s.isAncestor(it));
   // 1. on clique sur une forme fermée (zone blanche, forme pleine) : on la colore directement
   const hitR=P.project.hitTest(e.point,{fill:true,stroke:false,tolerance:0,match:h=>selectable(h.item)&&inScope(h.item)});
   let it=hitR&&hitR.item;if(it&&it.parent instanceof P.CompoundPath)it=it.parent;
@@ -1794,10 +1795,20 @@ document.addEventListener('keydown',e=>{
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
+/* molette comme dans Illustrator : Alt = zoom, Ctrl = horizontal, Maj = vertical (le pincement du pavé tactile zoome toujours) */
+let ctrlHeld=false;
+addEventListener('keydown',e=>{if(e.key==='Control'||e.key==='Meta')ctrlHeld=true;});
+addEventListener('keyup',e=>{if(e.key==='Control'||e.key==='Meta')ctrlHeld=false;});
+addEventListener('blur',()=>{ctrlHeld=false;});
 cv.addEventListener('wheel',e=>{
   e.preventDefault();
-  if(e.ctrlKey||e.metaKey){const r=cv.getBoundingClientRect();const pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));zoomAt(e.deltaY<0?1.1:1/1.1,pt);}
-  else{view.center=view.center.add(new P.Point(e.shiftKey?e.deltaY:e.deltaX,e.shiftKey?0:e.deltaY).divide(view.zoom));afterView();}
+  const d=e.deltaY||e.deltaX;
+  if(e.altKey||(e.ctrlKey&&!ctrlHeld)){const r=cv.getBoundingClientRect();const pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));zoomAt(d<0?1.1:1/1.1,pt);return;}
+  let v;
+  if(e.ctrlKey||e.metaKey)v=new P.Point(d,0);
+  else if(e.shiftKey)v=new P.Point(0,d);
+  else v=new P.Point(e.deltaX,e.deltaY);
+  view.center=view.center.add(v.divide(view.zoom));afterView();
 },{passive:false});
 cv.addEventListener('dblclick',e=>e.preventDefault());
 document.addEventListener('paste',e=>{
@@ -1872,6 +1883,6 @@ window.addEventListener('storage',e=>{if(e.key==='atelierRiso.inks')renderSwatch
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + V avec une image copiée", "L’ouvre directement dans la vectorisation"], ["Ctrl + C / X / V", "Copier / couper / coller (la copie se colle aussi en vectoriel dans Illustrator, Inkscape, Affinity)"], ["Clic droit", "Menu : copier en vectoriel, coller, dupliquer, supprimer"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Ctrl + molette", "Zoom"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Boucher les liserés fins", "Remplit les fines lignes blanches enfermées dans un aplat noir (bord du feutre plus foncé que l’intérieur, reflet…), jusqu’à la largeur indiquée. Les vrais trous, plus larges, restent."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "Atelier Vecto", "sections": [{"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Rectangle"], ["L", "Ellipse"], ["K", "Pot de peinture"], ["I", "Pipette"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + V avec une image copiée", "L’ouvre directement dans la vectorisation"], ["Ctrl + C / X / V", "Copier / couper / coller (la copie se colle aussi en vectoriel dans Illustrator, Inkscape, Affinity)"], ["Clic droit", "Menu : copier en vectoriel, coller, dupliquer, supprimer"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Alt + molette", "Zoom"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Boucher les liserés fins", "Remplit les fines lignes blanches enfermées dans un aplat noir (bord du feutre plus foncé que l’intérieur, reflet…), jusqu’à la largeur indiquée. Les vrais trous, plus larges, restent."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>
 </body>
 </html>

@@ -178,7 +178,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
       <h2><span class="ttl"><span class="tw">▼</span>Calques</span> <span class="row"><button class="btn sm" id="bToLayer" title="Déplacer la sélection dans le calque actif (elle prend sa couleur)">Sélection ici</button></span></h2>
       <div id="layers"></div>
       <label class="chk" style="margin-top:6px">Couleur du papier <input type="color" id="paperCol" value="#ffffff" style="width:40px;height:22px;padding:0"></label>
-      <div class="muted" style="margin-top:4px">Clique sur un calque pour dessiner ou coller dedans. Le calque Aquarelle montre l’image à travers ses formes ; à l’export il sort en formes noires pour la découpe.</div>
+      <div class="muted" style="margin-top:4px">Les calques Blanc et Couleur ne font que donner la couleur : ce qui est devant dépend de l’ordre des objets (Devant / Derrière). Clique sur un calque pour y dessiner ; avec une sélection, elle prend sa couleur. L’Aquarelle reste au fond et montre l’image à travers ses formes ; à l’export elle sort en formes noires pour la découpe.</div>
     </section>
     <section id="secSel" data-sec="sel">
       <h2><span class="ttl"><span class="tw">▼</span>Transformation</span> <span class="muted" id="selCount"></span></h2>
@@ -416,22 +416,62 @@ function isSys(l){return l===pageLayer||l===uiLayer;}
 function userLayers(){return P.project.layers.filter(l=>!isSys(l));}
 let activeLayer=null;
 function newLayer(name){const l=new P.Layer({name:name||('Calque '+(userLayers().length+1))});l.insertBelow(uiLayer);activeLayer=l;return l;}
-/* les trois calques de la série, du dessous vers le dessus */
+/* calques : « Aquarelle » est un vrai calque, toujours au fond. « Blanc » et « Couleur » ne sont que des couleurs,
+   portées par chaque forme, dans un seul calque « Dessin » : c'est l'ordre des objets qui décide de ce qui est devant. */
 const ROLES=[{id:'aqua',name:'Aquarelle'},{id:'couleur',name:'Couleur'},{id:'blanc',name:'Blanc'}];
+const ROLE_NAME={aqua:'Aquarelle',couleur:'Couleur',blanc:'Blanc'};
+let activeRole='couleur';
 function roleOf(l){return l&&l.data?l.data.role:null;}
-function layerByRole(r){return userLayers().find(l=>roleOf(l)===r);}
+function layerByRole(r){if(!r)return undefined;const id=r==='aqua'?'aqua':'dessin';return userLayers().find(l=>roleOf(l)===id);}
 function roleColor(r){return r==='blanc'?'#ffffff':r==='couleur'?S.color:'#000000';}
+function shapeLeaves(it){if(!it)return[];if(it instanceof P.CompoundPath||it instanceof P.Path)return[it];return it.children?it.children.flatMap(shapeLeaves):[];}
+function roleUp(p){let q=p;while(q){const r=q.data&&q.data.role;if(r==='blanc'||r==='couleur')return r;q=q.parent;}return null;}
+function leafRole(p){if(!p)return null;if(p.layer&&roleOf(p.layer)==='aqua')return 'aqua';return roleUp(p);}
+function itemRoles(it){if(it&&it.layer&&roleOf(it.layer)==='aqua')return['aqua'];return[...new Set(shapeLeaves(it).map(p=>roleUp(p)||'couleur'))];}
+function isWhiteShape(p){const f=p.fillColor?colorHex(p.fillColor):null,st=p.strokeColor?colorHex(p.strokeColor):null;return f?f==='#ffffff':st==='#ffffff';}
+function roleFlags(){const D=layerByRole('dessin');if(!D)return{};if(!D.data.lay)D.data.lay={blanc:{v:true,l:false},couleur:{v:true,l:false}};return D.data.lay;}
+function roleVisible(r){if(r==='aqua'){const L=layerByRole('aqua');return !!L&&L.visible;}const f=roleFlags()[r];return !f||f.v!==false;}
+function roleLocked(r){if(r==='aqua'){const L=layerByRole('aqua');return !!L&&L.locked;}const f=roleFlags()[r];return !!(f&&f.l);}
+function setRoleFlag(r,k,val){if(r==='aqua'){const L=layerByRole('aqua');if(L){if(k==='v')L.visible=val;else L.locked=val;}return;}
+  const f=roleFlags();f[r]=Object.assign({v:true,l:false},f[r]);f[r][k]=val;const D=layerByRole('dessin');if(D)D.data.lay=JSON.parse(JSON.stringify(f));}
+function setRole(r){activeRole=r||'couleur';const l=layerByRole(activeRole);if(l)activeLayer=l;}
+/* anciennes compositions (calques Couleur et Blanc séparés) : les parties d'un même objet sont réunies */
+function mergeParts(target,part){
+  let g=target;
+  if(!(g instanceof P.Group)){g=new P.Group({name:target.name||'Objet'});g.insertAbove(target);if(target.data.link){g.data.link=target.data.link;delete target.data.link;}g.addChild(target);}
+  const kids=part instanceof P.Group?part.children.slice():[part];
+  kids.forEach(ch=>{const k=ch.data&&ch.data.link;const m=k&&ch!==part&&g.children.find(x=>x.data&&x.data.link===k);if(m)mergeParts(m,ch);else g.addChild(ch);});
+  if(part instanceof P.Group&&part.parent&&!part.children.length)part.remove();
+  return g;
+}
 function ensureRoleLayers(){
-  const keep=[];
-  for(const R of ROLES){let l=layerByRole(R.id);if(!l){l=userLayers().find(x=>!roleOf(x)&&x.name===R.name)||new P.Layer({name:R.name});l.data.role=R.id;}l.name=R.name;keep.push(l);}
-  // les calques sans rôle (anciens) vont dans « Couleur »
-  userLayers().forEach(l=>{if(!keep.includes(l)){keep[1].addChildren(l.removeChildren());l.remove();}});
-  keep.forEach(l=>l.insertBelow(uiLayer));
-  keep[0].opacity=0.9999; // calque isolé : l'image n'apparaît qu'à travers ses formes
-  if(!activeLayer||!keep.includes(activeLayer))activeLayer=keep[1];
+  let A=userLayers().find(l=>roleOf(l)==='aqua')||userLayers().find(l=>!roleOf(l)&&l.name==='Aquarelle');
+  if(!A)A=new P.Layer({name:'Aquarelle'});A.data.role='aqua';A.name='Aquarelle';
+  let D=userLayers().find(l=>roleOf(l)==='dessin');
+  if(!D){D=new P.Layer({name:'Dessin'});D.data.role='dessin';}D.name='Dessin';
+  const lay=D.data.lay||{blanc:{v:true,l:false},couleur:{v:true,l:false}};
+  const map=new Map();let migrated=false;
+  for(const r of ['couleur','blanc']){
+    const L=userLayers().find(l=>roleOf(l)===r);if(!L)continue;migrated=true;
+    lay[r]={v:L.visible,l:L.locked};
+    L.children.slice().forEach(c=>{if(c.data&&c.data.sys)return;
+      shapeLeaves(c).forEach(p=>{if(!roleUp(p))p.data.role=r;});
+      const k=c.data&&c.data.link;
+      if(k&&map.has(k))map.set(k,mergeParts(map.get(k),c));
+      else{D.addChild(c);if(k)map.set(k,c);}
+    });
+    L.remove();
+  }
+  D.data.lay=lay;
+  if(migrated){const aqL=new Set(A.getItems({match:x=>x.data&&x.data.link}).map(x=>x.data.link));D.getItems({match:x=>x.data&&x.data.link}).forEach(x=>{if(!aqL.has(x.data.link))delete x.data.link;});}
+  // les calques sans rôle (anciens) vont dans « Dessin »
+  userLayers().forEach(l=>{if(l!==A&&l!==D){D.addChildren(l.removeChildren());l.remove();}});
+  A.insertBelow(uiLayer);D.insertBelow(uiLayer);
+  A.opacity=0.9999; // calque isolé : l'image n'apparaît qu'à travers ses formes
+  setRole(activeRole);
 }
 function setActive(l){activeLayer=l;}
-function ensureLayer(forDraw){if(!activeLayer||!activeLayer.parent||isSys(activeLayer)){ensureRoleLayers();}if(forDraw&&(activeLayer.locked||!activeLayer.visible)){activeLayer.locked=false;activeLayer.visible=true;setTimeout(renderLayers,0);}activeLayer.activate();return activeLayer;}
+function ensureLayer(forDraw){if(!activeLayer||!activeLayer.parent||isSys(activeLayer))ensureRoleLayers();setRole(activeRole);if(forDraw&&(roleLocked(activeRole)||!roleVisible(activeRole))){setRoleFlag(activeRole,'l',false);setRoleFlag(activeRole,'v',true);enforceColors();setTimeout(renderLayers,0);}activeLayer.activate();return activeLayer;}
 
 function drawPage(){
   pageLayer.activate();pageLayer.removeChildren();
@@ -473,11 +513,11 @@ function moveIt(it,d){xf(it,new P.Matrix().translate(d));}
 /* ---------- sélection ---------- */
 let sel=[];
 function topOf(item){while(item&&item.parent&&!(item.parent instanceof P.Layer))item=item.parent;return item;}
-function selectable(item){if(S.aquaEdit)return !!item&&item===aquaRaster;if(item&&item.data&&item.data.sys)return false;const l=item&&item.layer;return l&&!isSys(l)&&l.visible&&!l.locked;}
+function selectable(item){if(S.aquaEdit)return !!item&&item===aquaRaster;if(item&&item.data&&item.data.sys)return false;const l=item&&item.layer;if(!(l&&!isSys(l)&&l.visible&&!l.locked))return false;if(roleOf(l)!=='dessin')return true;const lv=shapeLeaves(item);return !lv.length||lv.some(p=>{const r=roleUp(p)||'couleur';return roleVisible(r)&&!roleLocked(r);});}
 function setSel(items){sel=(typeof expandLinks==='function'?expandLinks(items):items).filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();}
 function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
 function selBounds(){if(!sel.length)return null;let b=sel[0].bounds.clone();for(let i=1;i<sel.length;i++)b=b.unite(sel[i].bounds);return b;}
-function allTop(){if(S.aquaEdit)return aquaRaster?[aquaRaster]:[];const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children.filter(c=>!(c.data&&c.data.sys)));});return out;}
+function allTop(){if(S.aquaEdit)return aquaRaster?[aquaRaster]:[];const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children.filter(c=>!(c.data&&c.data.sys)&&selectable(c)));});return out;}
 function hitLeaf(point){
   const r=P.project.hitTest(point,{fill:true,stroke:true,segments:false,tolerance:px(4),match:h=>selectable(h.item)});
   if(!r)return null;let it=r.item;
@@ -525,9 +565,8 @@ function snapshot(){return withoutRaster(()=>userLayers().map(l=>({name:l.name,r
 function restore(snap){
   userLayers().forEach(l=>l.remove());
   let last=null;
-  const act=roleOf(activeLayer);
   for(const s of snap){const l=new P.Layer({insert:false});l.importJSON(s.json);l.name=s.name;if(s.role)l.data.role=s.role;l.visible=s.visible;l.locked=s.locked;l.insertBelow(uiLayer);last=l;}
-  activeLayer=null;ensureRoleLayers();if(act)activeLayer=layerByRole(act);attachRaster();ensureLayer();
+  activeLayer=null;ensureRoleLayers();setRole(activeRole);attachRaster();ensureLayer();
 }
 let lastSnap=null;
 function commit(){
@@ -592,7 +631,7 @@ function syncChips(){
   $('#strokeW').value=S.strokeW;$('#strokeCap').value=S.cap;
 }
 function renderSwatches(){
-  const c=roleColor(roleOf(activeLayer));
+  const c=roleColor(activeRole);
   $('#swatches').innerHTML=`<button class="sw none" data-col="" title="Aucun"></button><button class="sw" data-col="${c}" title="Couleur du calque" style="background:${c}"></button>`;
 }
 
@@ -608,17 +647,18 @@ function syncPanel(){
   syncChips();
 }
 function renderLayers(){
-  const ls=userLayers().slice().reverse();
-  $('#layers').innerHTML=ls.map(l=>{const i=P.project.layers.indexOf(l),r=roleOf(l);const n=l.children.filter(c=>!(c.data&&c.data.sys)).length;
+  const A=layerByRole('aqua'),D=layerByRole('dessin');
+  const cnt=r=>r==='aqua'?(A?A.children.filter(c=>!(c.data&&c.data.sys)).length:0):(D?shapeLeaves(D).filter(p=>(roleUp(p)||'couleur')===r).length:0);
+  $('#layers').innerHTML=['blanc','couleur','aqua'].map(r=>{const n=cnt(r),vis=roleVisible(r),lk=roleLocked(r);
     const dot=r==='aqua'?'background:linear-gradient(135deg,#e7b04f,#f6dca0)':`background:${roleColor(r)}`;
     let extra='';
     if(r==='couleur')extra=`<div class="lx"><span class="muted">Couleur du dessin</span><input type="color" data-la="col" value="${S.color}"></div>`;
     if(r==='aqua')extra=`<div class="lx"><label class="btn sm">${S.aqua.key?'Changer l’image…':'Choisir l’image (JPG)…'}<input type="file" data-la="img" accept="image/*" hidden></label>${S.aqua.key?`<button class="btn sm${S.aquaEdit?' on':''}" data-la="adj" title="Déplacer, agrandir ou tourner l’aquarelle sous les formes">${S.aquaEdit?'✓ Terminer':'Ajuster l’image'}</button>`:''}</div>`;
-    return`<div class="layer${l===activeLayer?' on':''}" data-l="${i}">
-    <button class="ico${l.visible?'':' off'}" data-la="vis" title="Afficher / masquer">👁</button>
-    <button class="ico${l.locked?'':' off'}" data-la="lock" title="Verrouiller">🔒</button>
+    return`<div class="layer${r===activeRole?' on':''}" data-r="${r}">
+    <button class="ico${vis?'':' off'}" data-la="vis" title="Afficher / masquer">👁</button>
+    <button class="ico${lk?'':' off'}" data-la="lock" title="Verrouiller">🔒</button>
     <span style="width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.2);${dot}"></span>
-    <b style="flex:1;font-weight:500;padding:3px 4px">${l.name}</b>
+    <b style="flex:1;font-weight:500;padding:3px 4px">${ROLE_NAME[r]}</b>
     <span class="cnt">${n}</span>${extra}
   </div>`;}).join('');
   renderSwatches();
@@ -633,9 +673,9 @@ const HINTS={
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
   rect:'Glisser pour dessiner · Maj : carré · Alt : depuis le centre',
   ellipse:'Glisser pour dessiner · Maj : cercle · Alt : depuis le centre',
-  bucket:'Sélectionne d’abord l’objet ou l’élément qui délimite la zone (sans sélection, tout le visible compte), puis clique dans la zone : elle prend la couleur du calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic sur un trait : le passe dans ce calque',
+  bucket:'Sélectionne d’abord l’objet ou l’élément qui entoure la zone, puis clique dans la zone : elle prend la couleur du calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic sur un trait : le passe dans ce calque',
   eyedrop:'Clic sur un objet : reprend sa couleur et son style · si des objets sont sélectionnés, ils reçoivent ce style',
-  hand:'Glisser pour déplacer la vue · molette : défiler · Ctrl+molette : zoom'
+  hand:'Glisser pour déplacer la vue · molette : défiler · Alt+molette : zoom · Ctrl+molette : horizontal · Maj+molette : vertical'
 };
 function setTool(t){
   if(S.tool==='pen'&&t!=='pen')finishPen();
@@ -887,16 +927,17 @@ function eyedropDown(e){
 let bucketWorker=null,bucketId=0;
 function isClosedFill(it){if(!it)return false;if(it instanceof P.CompoundPath)return true;return it instanceof P.Path&&it.closed;}
 async function bucketDown(e){
-  const col='#000000';// la couleur réelle vient du calque actif (appliquée à l'enregistrement)
+  const col=roleColor(activeRole);// la couleur du calque actif
   const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
-  const inScope=it=>!scope.length||scope.some(s=>s===it||s.isAncestor(it));
+  if(!scope.length){alert('Sélectionne d’abord l’objet ou l’élément qui entoure la zone à remplir, puis clique dans la zone avec le pot.');return;}
+  const inScope=it=>scope.some(s=>s===it||s.isAncestor(it));
   ensureLayer(true);
   // 1. on clique dans une forme fermée : elle passe dans le calque actif (et en prend la couleur)
   const hitR=P.project.hitTest(e.point,{fill:true,stroke:false,tolerance:0,match:h=>selectable(h.item)&&inScope(h.item)&&!(aquaRaster&&h.item===aquaRaster)});
   let it=hitR&&hitR.item;if(it&&it.parent instanceof P.CompoundPath)it=it.parent;
   if(it&&isClosedFill(it)){
-    if(it.layer===activeLayer){$('#hint').textContent='Cette forme est déjà dans le calque « '+activeLayer.name+' ».';return;}
-    if(roleOf(it.layer)==='blanc'||e.modifiers.alt){moveToLayer([it],activeLayer);setSel(scope);return;}
+    if(itemRoles(it).every(r=>r===activeRole)){$('#hint').textContent='Cette forme est déjà dans le calque « '+ROLE_NAME[activeRole]+' ».';return;}
+    if(itemRoles(it).includes('blanc')||e.modifiers.alt){moveToRole([it],activeRole);setSel(scope);return;}
     $('#hint').textContent='C’est un trait : clique dans la zone à côté, ou Alt+clic pour le passer dans ce calque.';return;
   }
   // 2. sinon : la zone délimitée par les traits (de la sélection, ou de tout le visible)
@@ -1013,6 +1054,7 @@ async function fillRegion(pt,col,scope){
     const fill=new P.CompoundPath({pathData:res.shapes.map(s=>s.d).join(''),fillRule:'evenodd',fillColor:new P.Color(col)});
     fill.transform(new P.Matrix().translate(ox,oy).scale(1/ppm));
     fill.name='Remplissage';
+    if(activeRole!=='aqua')fill.data.role=activeRole;
     placeFill(fill,pt,scope);commit();
   }catch(err){console.error(err);alert('Remplissage impossible : '+(err.message||err));}
   await busy();
@@ -1056,7 +1098,7 @@ function placeFill(fill,pt,scope){
 function ungTops(){const tops=[...new Set(sel.map(s=>topOf(s)).filter(t=>t&&t.parent))];return typeof expandLinks==='function'?expandLinks(tops):tops;}
 function openUngroup(){
   const tops=ungTops();if(!tops.length)return;
-  const linked=tops.some(t=>t.data&&t.data.link),grp=tops.some(t=>t instanceof P.Group);
+  const linked=tops.some(t=>(t.data&&t.data.link)||(typeof itemRoles==='function'&&itemRoles(t).length>1)),grp=tops.some(t=>t instanceof P.Group);
   $('#ungDlg [data-ung="layer"]').disabled=!linked;
   $('#ungDlg [data-ung="sub"]').disabled=!grp;
   $('#ungDlg [data-ung="leaf"]').disabled=!grp;
@@ -1067,6 +1109,9 @@ function doUngroup(mode){
   const tops=ungTops(),out=[];
   tops.forEach(t=>{
     if(t.data&&t.data.link)delete t.data.link;
+    if(mode==='layer'&&typeof itemRoles==='function'&&t instanceof P.Group&&itemRoles(t).length>1){
+      const gs={};shapeLeaves(t).forEach(p=>{const r=roleUp(p)||'couleur';if(!gs[r]){gs[r]=new P.Group({name:(t.name||'Objet')+' · '+ROLE_NAME[r]});gs[r].insertBelow(t);out.push(gs[r]);}if(!p.data.role)p.data.role=r;gs[r].addChild(p);});
+      t.remove();return;}
     if(mode==='layer'||!(t instanceof P.Group)){out.push(t);return;}
     if(mode==='sub'){const ch=t.removeChildren();ch.forEach(c=>{c.insertBelow(t);out.push(c);});t.remove();return;}
     const leaves=t.getItems({match:x=>!(x instanceof P.Group)&&!(x.parent instanceof P.CompoundPath)});
@@ -1107,12 +1152,12 @@ function cmd(name){
       const g=new P.Group();g.insertAbove(sel[sel.length-1]);g.addChildren(sel.slice().sort((a,b)=>a.index-b.index));setSel([g]);break;}
     case'ungroup':openUngroup();return;
     case'ung:layer':case'ung:sub':case'ung:leaf':doUngroup(name.slice(4));break;
-    case'release':{const out=[];sel.forEach(s=>{if(s instanceof P.CompoundPath){const st={fillColor:s.fillColor,strokeColor:s.strokeColor,strokeWidth:s.strokeWidth};const ch=s.removeChildren();ch.forEach(c=>{c.style=st;c.fillColor=st.fillColor;c.strokeColor=st.strokeColor;c.strokeWidth=st.strokeWidth;c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
-    case'compound':{const paths=sel.flatMap(leafPaths).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath);if(paths.length<2){alert('Sélectionne au moins deux tracés.');return;}const first=paths[0];const st={fillColor:first.fillColor,strokeColor:first.strokeColor,strokeWidth:first.strokeWidth};const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];const cp=new P.CompoundPath({fillRule:'evenodd'});cp.insertAbove(top);paths.forEach(p=>{if(p instanceof P.CompoundPath){cp.addChildren(p.removeChildren());p.remove();}else cp.addChild(p);});cp.fillColor=st.fillColor;cp.strokeColor=st.strokeColor;cp.strokeWidth=st.strokeWidth;sel.forEach(s=>{if(s!==cp&&s.parent&&s instanceof P.Group&&!s.children.length)s.remove();});setSel([cp]);break;}
+    case'release':{const out=[];sel.forEach(s=>{if(s instanceof P.CompoundPath){const st={fillColor:s.fillColor,strokeColor:s.strokeColor,strokeWidth:s.strokeWidth};const ch=s.removeChildren();ch.forEach(c=>{if(s.data&&s.data.role)c.data.role=s.data.role;c.style=st;c.fillColor=st.fillColor;c.strokeColor=st.strokeColor;c.strokeWidth=st.strokeWidth;c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
+    case'compound':{const paths=sel.flatMap(leafPaths).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath);if(paths.length<2){alert('Sélectionne au moins deux tracés.');return;}const first=paths[0];const st={fillColor:first.fillColor,strokeColor:first.strokeColor,strokeWidth:first.strokeWidth};const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];const cp=new P.CompoundPath({fillRule:'evenodd'});{const r0=roleUp(first);if(r0)cp.data.role=r0;}cp.insertAbove(top);paths.forEach(p=>{if(p instanceof P.CompoundPath){cp.addChildren(p.removeChildren());p.remove();}else cp.addChild(p);});cp.fillColor=st.fillColor;cp.strokeColor=st.strokeColor;cp.strokeWidth=st.strokeWidth;sel.forEach(s=>{if(s!==cp&&s.parent&&s instanceof P.Group&&!s.children.length)s.remove();});setSel([cp]);break;}
     case'merge':{// comme « Fusion » d'Illustrator : on garde les parties visibles, et les formes de même couleur qui se touchent n'en font qu'une
       const shapes=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&p.fillColor).sort((a,b)=>a.isAbove(b)?1:-1);
       if(shapes.length<2){alert('Sélectionne au moins deux formes pleines.');return;}
-      const byLayer=new Map();shapes.forEach(p=>{if(!byLayer.has(p.layer))byLayer.set(p.layer,[]);byLayer.get(p.layer).push(p);});
+      const byLayer=new Map();shapes.forEach(p=>{const k=p.layer.id+'|'+(leafRole(p)||'');if(!byLayer.has(k))byLayer.set(k,[]);byLayer.get(k).push(p);});
       const out=[],par=new Set(shapes.map(p=>p.parent));
       for(const arr of byLayer.values()){
         const groups=new Map();
@@ -1121,7 +1166,7 @@ function cmd(name){
         const top=arr[arr.length-1];
         for(const [k,vs] of groups){let u=vs[0];for(let i=1;i<vs.length;i++)u=u.unite(vs[i],{insert:false});
           if(u instanceof P.CompoundPath&&u.children.length===1)u=u.children[0].clone({insert:false});
-          u.fillColor=new P.Color(k);u.strokeColor=null;u.name='Fusion';u.insertAbove(top);out.push(u);}
+          u.fillColor=new P.Color(k);u.strokeColor=null;u.name='Fusion';{const r0=roleUp(arr[0]);if(r0)u.data.role=r0;}u.insertAbove(top);out.push(u);}
       }
       shapes.forEach(p=>p.remove());cleanEmpty(par);setSel(out.filter(x=>x.parent));break;
     }
@@ -1131,14 +1176,14 @@ function cmd(name){
       let res;
       if(name==='subtract'){res=shapes[0];for(let i=1;i<shapes.length;i++){const r=res.subtract(shapes[i],{insert:false});if(res!==shapes[0])res.remove();res=r;}}
       else{res=shapes[0];for(let i=1;i<shapes.length;i++){const r=res[name](shapes[i],{insert:false});if(res!==shapes[0])res.remove();res=r;}}
-      res.style=shapes[0].style;
+      res.style=shapes[0].style;{const r0=roleUp(shapes[0]);if(r0)res.data.role=r0;}
       res.insertAbove(shapes[shapes.length-1]);
       sel.forEach(s=>s.remove());shapes.forEach(s=>s.parent&&s.remove());
       setSel([res]);break;
     }
     case'simplify':sel.flatMap(leafPaths).forEach(p=>{const t=Math.max(0.05,px(1.5));if(p instanceof P.CompoundPath)p.children.forEach(c=>c.simplify(t));else if(p.simplify)p.simplify(t);});break;
     case'smooth':sel.flatMap(leafPaths).forEach(p=>{if(p instanceof P.CompoundPath)p.children.forEach(c=>c.smooth({type:'continuous'}));else if(p.smooth)p.smooth({type:'continuous'});});break;
-    case'outline':{const out=[];sel.forEach(s=>{leafPaths(s).forEach(p=>{const o=strokeToShape(p);if(o){o.insertAbove(p);out.push(o);if(!p.fillColor)p.remove();else p.strokeColor=null;}});});if(out.length)setSel(out);else{alert('Aucun contour à transformer dans la sélection.');return;}break;}
+    case'outline':{const out=[];sel.forEach(s=>{leafPaths(s).forEach(p=>{const o=strokeToShape(p);if(o){{const r0=roleUp(p);if(r0)o.data.role=r0;}o.insertAbove(p);out.push(o);if(!p.fillColor)p.remove();else p.strokeColor=null;}});});if(out.length)setSel(out);else{alert('Aucun contour à transformer dans la sélection.');return;}break;}
     default:return;
   }
   commit();
@@ -1735,32 +1780,20 @@ function expandLinks(items){
 function relink(items){const map={};items.forEach(it=>{if(it&&it.data&&it.data.link){const o=it.data.link;if(!map[o])map[o]=newLink();it.data.link=map[o];}});return items;}
 /* répartit un objet : les parties blanches dans « Blanc », le reste dans « Couleur », liés en un seul objet */
 function splitByWhite(item,name){
-  const Lb=layerByRole('blanc'),Lc=layerByRole('couleur');
-  const isW=p=>{const f=p.fillColor?colorHex(p.fillColor):null,st=p.strokeColor?colorHex(p.strokeColor):null;return f?f==='#ffffff':st==='#ffffff';};
-  const leaves=item.getItems?item.getItems({match:it=>((it instanceof P.CompoundPath)||(it instanceof P.Path&&!(it.parent instanceof P.CompoundPath)))}):[];
-  if(!leaves.length&&(item instanceof P.Path||item instanceof P.CompoundPath))leaves.push(item);
-  const whites=leaves.filter(isW),others=leaves.filter(p=>!isW(p));
-  // le blanc est imprimé par-dessus : on le découpe là où il y a de la couleur (sinon il mange les traits)
-  if(whites.length&&others.length){
-    for(let i=0;i<whites.length;i++){
-      let w=whites[i];const wb=w.bounds;const hit=others.filter(o=>o.bounds.intersects(wb));if(!hit.length)continue;
-      let res=w;
-      for(const o of hit){try{const r=res.subtract(o,{insert:false});if(res!==w)res.remove();res=r;}catch(e){}}
-      if(res!==w){res.fillColor=new P.Color('#ffffff');res.strokeColor=null;res.insertAbove(w);w.remove();whites[i]=res;}
-    }
-  }
-  const link=newLink();const out=[];
-  const pack=(arr,L)=>{if(!arr.length)return;const g=new P.Group({name:name||item.name||'Objet'});L.addChild(g);arr.forEach(x=>g.addChild(x));g.data.link=link;out.push(g);};
-  pack(others,Lc);pack(whites,Lb);
-  if(item.parent)item.remove();
-  if(out.length===1)delete out[0].data.link;
-  return out;
+  const D=layerByRole('dessin');
+  const leaves=shapeLeaves(item);
+  leaves.forEach(p=>{p.data.role=isWhiteShape(p)?'blanc':'couleur';});
+  // dans un même dessin, le blanc ne recouvre jamais les traits : il passe sous ses voisins
+  leaves.filter(p=>p.data.role==='blanc'&&p!==item&&p.parent&&!(p.parent instanceof P.Layer)).forEach(p=>p.sendToBack());
+  if(D&&item.layer!==D)D.addChild(item);
+  if(name&&!(item instanceof P.Path||item instanceof P.CompoundPath))item.name=name;
+  return [item];
 }
 
 /* ---------- calque de la sélection : suivi et déplacement ---------- */
 function followLayer(items){
-  const ls=new Set(items.filter(i=>i&&i.layer).map(i=>i.layer));
-  if(ls.size===1){const l=[...ls][0];if(l&&!isSys(l)&&l!==activeLayer){activeLayer=l;renderLayers();}}
+  const rs=new Set();items.forEach(i=>{if(i&&i.layer&&!isSys(i.layer))itemRoles(i).forEach(r=>rs.add(r));});
+  if(rs.size===1){const r=[...rs][0];if(r!==activeRole){setRole(r);renderLayers();}}
 }
 function stackItems(){// du plus bas au plus haut, sans doublon parent/enfant
   const its=movableSelection();return its.filter(i=>!its.some(o=>o!==i&&o.isAncestor(i))).sort((a,b)=>a.isAbove(b)?1:-1);}
@@ -1770,29 +1803,36 @@ function movableSelection(){
   else items=sel.slice();
   return items.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
 }
-function moveToLayer(items,l){
-  if(l.locked){alert('Le calque « '+l.name+' » est verrouillé : déverrouille-le pour y déplacer la sélection.');return false;}
-  l.visible=true;
-  const parents=new Set(items.map(i=>i.parent));
-  // un élément pris dans un objet reste dans cet objet : il rejoint la partie de l'objet qui est dans ce calque
-  const tops=new Map(items.map(i=>[i,topOf(i)]));
-  items.sort((a,b)=>a.isAbove(b)?1:-1).forEach(i=>{
-    const top=tops.get(i);
-    if(top&&top!==i&&top.parent instanceof P.Layer){
-      if(!top.data.link)top.data.link=newLink();
-      let part=l.children.find(c=>c.data&&c.data.link===top.data.link);
-      if(!part){part=new P.Group({name:top.name||'Objet'});part.data.link=top.data.link;l.addChild(part);}
-      part.addChild(i);
-    }else l.addChild(i);
-  });
-  parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!(q instanceof P.Layer)&&!q.children.length){const up=q.parent;q.remove();q=up;}});
-  if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.layer===l)aquaRaster.bringToFront();
-  activeLayer=l;
+/* changer de calque = changer de couleur ; l'objet reste à sa place (devant / derrière ne bouge pas) */
+function moveToRole(items,r){
+  if(roleLocked(r)){alert('Le calque « '+ROLE_NAME[r]+' » est verrouillé : déverrouille-le pour y déplacer la sélection.');return false;}
+  setRoleFlag(r,'v',true);
+  const l=layerByRole(r);
+  const cross=items.filter(i=>i.layer!==l);
+  if(cross.length){
+    const parents=new Set(cross.map(i=>i.parent));
+    // un élément pris dans un objet reste dans cet objet : il rejoint la partie de l'objet qui est dans ce calque
+    const tops=new Map(cross.map(i=>[i,topOf(i)]));
+    cross.sort((a,b)=>a.isAbove(b)?1:-1).forEach(i=>{
+      const top=tops.get(i);
+      if(top&&top!==i&&top.parent instanceof P.Layer){
+        if(!top.data.link)top.data.link=newLink();
+        let part=l.children.find(c=>c.data&&c.data.link===top.data.link);
+        if(!part){part=new P.Group({name:top.name||'Objet'});part.data.link=top.data.link;l.addChild(part);}
+        part.addChild(i);
+      }else l.addChild(i);
+    });
+    parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!(q instanceof P.Layer)&&!q.children.length){const up=q.parent;q.remove();q=up;}});
+  }
+  if(r!=='aqua')items.forEach(i=>shapeLeaves(i).forEach(p=>{p.data.role=r;}));
+  if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.parent)aquaRaster.bringToFront();
+  setRole(r);
   if(S.tool==='direct'){items.forEach(i=>{i.selected=true;});}else setSel(items);
   commit();renderLayers();
-  $('#hint').textContent=items.length+' objet'+(items.length>1?'s':'')+' déplacé'+(items.length>1?'s':'')+' dans « '+l.name+' »';
+  $('#hint').textContent=items.length+' élément'+(items.length>1?'s':'')+' passé'+(items.length>1?'s':'')+' en « '+ROLE_NAME[r]+' »';
   return true;
 }
+function moveToLayer(items,l){return moveToRole(items,roleOf(l)==='aqua'?'aqua':activeRole);}
 
 /* formes prises à la flèche blanche (sans point sélectionné) : Suppr les efface en entier */
 function cleanEmpty(parents){parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!(q instanceof P.Layer)&&!q.children.length){const up=q.parent;q.remove();q=up;}});}
@@ -1803,22 +1843,21 @@ function deleteDirectPaths(){
 }
 /* calques */
 const LY=$('#layers');
-const layerOf=el=>{const r=el.closest('[data-l]');return r?P.project.layers[+r.dataset.l]:null;};
 LY.addEventListener('click',e=>{
-  const row=e.target.closest('[data-l]');if(!row)return;const l=layerOf(row);if(!l)return;
+  const row=e.target.closest('[data-r]');if(!row)return;const r=row.dataset.r;
   const a=e.target.closest('[data-la]');const act=a&&a.dataset.la;
-  if(act==='vis'){l.visible=!l.visible;setSel(sel.filter(selectable));commit();return;}
-  if(act==='lock'){l.locked=!l.locked;setSel(sel.filter(selectable));commit();return;}
+  if(act==='vis'){setRoleFlag(r,'v',!roleVisible(r));enforceColors();setSel(sel.filter(selectable));commit();return;}
+  if(act==='lock'){setRoleFlag(r,'l',!roleLocked(r));setSel(sel.filter(selectable));commit();return;}
   if(act==='adj'){S.aquaEdit?exitAquaEdit():enterAquaEdit();return;}
   if(act==='col'||act==='img')return;
   if(e.target.closest('label'))return;
-  if(S.tool!=='bucket'){const mv=movableSelection();if(mv.length&&!mv.every(it=>it.layer===l)){moveToLayer(mv,l);return;}}
-  setActive(l);ensureLayer();renderLayers();
+  if(S.tool!=='bucket'&&!S.aquaEdit){const mv=movableSelection();if(mv.length&&!mv.every(it=>itemRoles(it).every(x=>x===r))){moveToRole(mv,r);return;}}
+  setRole(r);ensureLayer();renderLayers();
 });
 LY.addEventListener('input',e=>{if(e.target.dataset.la==='col'){S.color=e.target.value;enforceColors();P.view.update();renderSwatches();clearTimeout(colT);colT=setTimeout(()=>commit(),400);}});
 let colT=0;
 LY.addEventListener('change',e=>{if(e.target.dataset.la==='img'){const f=e.target.files[0];e.target.value='';if(f)setAquaImage(f);}});
-$('#bToLayer').onclick=()=>{if(!sel.length||S.aquaEdit)return;ensureLayer();sel.forEach(s=>{activeLayer.addChild(s);});if(roleOf(activeLayer)==='aqua'&&aquaRaster)aquaRaster.bringToFront();commit();};
+$('#bToLayer').onclick=()=>{if(!sel.length||S.aquaEdit)return;moveToRole(movableSelection(),activeRole);};
 
 /* clavier */
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&e.detail>0)b.blur();},true);
@@ -1854,10 +1893,20 @@ document.addEventListener('keydown',e=>{
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
+/* molette comme dans Illustrator : Alt = zoom, Ctrl = horizontal, Maj = vertical (le pincement du pavé tactile zoome toujours) */
+let ctrlHeld=false;
+addEventListener('keydown',e=>{if(e.key==='Control'||e.key==='Meta')ctrlHeld=true;});
+addEventListener('keyup',e=>{if(e.key==='Control'||e.key==='Meta')ctrlHeld=false;});
+addEventListener('blur',()=>{ctrlHeld=false;});
 cv.addEventListener('wheel',e=>{
   e.preventDefault();
-  if(e.ctrlKey||e.metaKey){const r=cv.getBoundingClientRect();const pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));zoomAt(e.deltaY<0?1.1:1/1.1,pt);}
-  else{view.center=view.center.add(new P.Point(e.shiftKey?e.deltaY:e.deltaX,e.shiftKey?0:e.deltaY).divide(view.zoom));afterView();}
+  const d=e.deltaY||e.deltaX;
+  if(e.altKey||(e.ctrlKey&&!ctrlHeld)){const r=cv.getBoundingClientRect();const pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));zoomAt(d<0?1.1:1/1.1,pt);return;}
+  let v;
+  if(e.ctrlKey||e.metaKey)v=new P.Point(d,0);
+  else if(e.shiftKey)v=new P.Point(0,d);
+  else v=new P.Point(e.deltaX,e.deltaY);
+  view.center=view.center.add(v.divide(view.zoom));afterView();
 },{passive:false});
 cv.addEventListener('dblclick',e=>e.preventDefault());
 /* SVG de la sélection : se colle en vectoriel dans Illustrator, Inkscape, Affinity… */
@@ -1973,12 +2022,15 @@ function styleRaster(){
 /* chaque calque impose sa couleur */
 function enforceColors(){
   if(aquaRaster&&!S.aquaEdit)S.aqua.m=aquaRaster.matrix.values;
-  userLayers().forEach(l=>{
-    const r=roleOf(l);if(!r)return;const col=roleColor(r);
-    l.getItems({match:it=>(it instanceof P.CompoundPath)||(it instanceof P.Path&&!(it.parent instanceof P.CompoundPath))}).forEach(p=>{
-      if(p.fillColor&&colorHex(p.fillColor)!==col)p.fillColor=new P.Color(col);
-      if(p.strokeColor&&colorHex(p.strokeColor)!==col)p.strokeColor=new P.Color(col);
-    });
+  const A=layerByRole('aqua'),D=layerByRole('dessin');
+  const leavesOf=l=>l.getItems({match:it=>(it instanceof P.CompoundPath)||(it instanceof P.Path&&!(it.parent instanceof P.CompoundPath))});
+  const paint=(p,col)=>{if(p.fillColor&&colorHex(p.fillColor)!==col)p.fillColor=new P.Color(col);if(p.strokeColor&&colorHex(p.strokeColor)!==col)p.strokeColor=new P.Color(col);};
+  if(A)leavesOf(A).forEach(p=>paint(p,'#000000'));
+  if(D)leavesOf(D).forEach(p=>{
+    let r=roleUp(p);
+    // forme nouvelle : blanche → Blanc, sinon le calque actif
+    if(!r){r=isWhiteShape(p)?'blanc':(activeRole==='blanc'?'blanc':'couleur');p.data.role=r;}
+    paint(p,roleColor(r));const v=roleVisible(r);if(p.visible!==v)p.visible=v;
   });
 }
 $('#paperCol').addEventListener('input',e=>{S.paper=e.target.value;if(pageRect)pageRect.fillColor=S.paper;P.view.update();scheduleAutosave();});
@@ -2028,7 +2080,8 @@ async function pasteClip(){
   const d=await IDB.get('pressepapier');
   if(!d||!d.items||!d.items.length){alert('Rien à coller.\n\nDans Vecto : sélectionne ton dessin et clique « Copier » (ou Ctrl+C), puis reviens ici.');return;}
   ensureLayer(true);
-  const items=d.items.map((j,i)=>{const L=(d.app===APP&&d.roles&&d.roles[i]&&layerByRole(d.roles[i]))||activeLayer;return L.importJSON(j);});
+  const items=d.items.map((j,i)=>{const r=d.app===APP&&d.roles&&d.roles[i];const L=(r&&layerByRole(r))||activeLayer;const it=L.importJSON(j);
+    if(r==='blanc'||r==='couleur')shapeLeaves(it).forEach(p=>{if(!roleUp(p))p.data.role=r;});return it;});
   if(d.app===APP)relink(items);
   if(d.app!==APP){
 
@@ -2053,12 +2106,21 @@ $('#bPaste').onclick=pasteClip;
 /* ---------- PDF par calque ---------- */
 function svgDoc(body){const W=S.page.w,H=S.page.h;return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">${body}</svg>`;}
 function cleanSVG(g){return g.replace(/ opacity="0\.9999"/g,'').replace(/ visibility="hidden"/g,'').replace(/ style="mix-blend-mode: [^"]*"/g,'').replace(/ (font-family|font-weight|font-size|text-anchor|stroke-linejoin|stroke-linecap|stroke-miterlimit|stroke-width)="(none|)"/g,'').replace(/ stroke-dasharray=""/g,'');}
+/* une copie du dessin réduite à certaines couleurs (formes entières, même cachées par un objet devant) */
+function rolesSVG(roles){
+  const D=layerByRole('dessin');if(!D)return '';
+  const c=D.clone({insert:false});
+  shapeLeaves(c).forEach(p=>{if(!roles.includes(roleUp(p)||'couleur'))p.remove();else p.visible=true;});
+  c.getItems({class:P.Group,match:g=>!g.children.length}).forEach(g=>g.remove());
+  if(!shapeLeaves(c).length)return '';
+  return cleanSVG(c.exportSVG({asString:true,precision:3}));
+}
 function layerBody(role,col){
-  const l=layerByRole(role);if(!l)return '';
-  const items=l.children.filter(c=>!(c.data&&c.data.sys));if(!items.length)return '';
-  let g=cleanSVG(withoutRaster(()=>l.exportSVG({asString:true,precision:3})));
-  if(col)g=g.replace(/(fill|stroke)="(?!none)[^"]*"/g,(m,a)=>`${a}="${col}"`);
-  return g;
+  let g;
+  if(role==='aqua'){const l=layerByRole('aqua');if(!l)return '';const items=l.children.filter(c=>!(c.data&&c.data.sys));if(!items.length)return '';g=cleanSVG(withoutRaster(()=>l.exportSVG({asString:true,precision:3})));}
+  else g=rolesSVG([role]);
+  if(col&&g)g=g.replace(/(fill|stroke)="(?!none)[^"]*"/g,(m,a)=>`${a}="${col}"`);
+  return g||'';
 }
 async function previewBody(){
   const W=S.page.w,H=S.page.h;let body=`<rect x="0" y="0" width="${W}" height="${H}" fill="${S.paper||'#ffffff'}"/>`;
@@ -2075,7 +2137,7 @@ async function previewBody(){
       }
     }else body+=layerBody('aqua','#e7b04f');
   }
-  for(const r of ['couleur','blanc']){const l=layerByRole(r);if(l&&l.visible)body+=layerBody(r,null);}
+  body+=rolesSVG(['couleur','blanc'].filter(roleVisible));
   return body;
 }
 async function exportLayersPDF(){
@@ -2274,15 +2336,16 @@ async function impRun(){
     // couleur dominante du calque Couleur
     const cnt={};shapes.forEach(s=>{if(roleOfShape(s)==='couleur'){const h=(s.fill&&s.fill.hex)||(s.stroke&&s.stroke.hex);if(h)cnt[h]=(cnt[h]||0)+1;}});
     const dom=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];if(dom&&$('#impReplace').checked)S.color=dom[0];
-    const batches={aqua:[],couleur:[],blanc:[]};
+    const batches={aqua:[],couleur:[],blanc:[]},seq=[];
     for(const s of shapes){
       const r=roleOfShape(s);const col=roleColor(r==='couleur'?'couleur':r);
       const it=new P.CompoundPath({pathData:s.d,insert:false});
       if(s.fill){it.fillColor=new P.Color(col);it.fillRule=s.rule||'nonzero';}
       else{it.strokeColor=new P.Color(col);it.strokeWidth=Math.max(0.05,s.lw||0.3);it.fillColor=null;}
-      batches[r].push(it);
+      batches[r].push(it);if(r!=='aqua'){it.data.role=r;seq.push(it);}
     }
-    for(const r in batches)if(batches[r].length){const L=layerByRole(r);L.addChildren(batches[r]);}
+    if(batches.aqua.length)layerByRole('aqua').addChildren(batches.aqua);
+    if(seq.length)layerByRole('dessin').addChildren(seq);
     // l'aquarelle du fichier
     if($('#impAqua').checked){
       const cnt=new Map();
@@ -2321,6 +2384,6 @@ $('#impOk').onclick=impRun;
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets sur plusieurs calques", "Un dessin collé ou importé est réparti : le blanc dans « Blanc », le reste dans « Couleur », mais reste un seul objet (un clic le sélectionne en entier). « Grouper » des éléments de calques différents les lie de la même façon ; « Dissocier » les sépare."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc, au-dessus de tout."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets blancs et en couleur", "Un dessin collé ou vectorisé garde ses zones blanches (calque Blanc) et ses traits (calque Couleur) dans un seul objet. « Dissocier › par calque » les sépare en deux objets."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"], ["Alt + molette", "Zoom"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc. Ce qui est devant dépend de l’ordre des objets (Devant / Derrière), pas du calque."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
 </body>
 </html>
