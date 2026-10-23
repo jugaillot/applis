@@ -75,6 +75,11 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 #busy[hidden]{display:none}
 dialog{border:1px solid var(--line);border-radius:12px;padding:0;max-width:96vw;max-height:94vh}
 dialog::backdrop{background:rgba(0,0,0,.35)}
+#ctxMenu{position:fixed;z-index:90;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px;display:flex;flex-direction:column;min-width:190px}
+#ctxMenu[hidden]{display:none}
+#ctxMenu button{border:0;background:none;text-align:left;padding:7px 10px;border-radius:6px;font:inherit;cursor:pointer;color:var(--ink)}
+#ctxMenu button:hover{background:var(--soft)}
+#ctxMenu button:disabled{opacity:.4;cursor:default}
 .dh{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700}
 .df{padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;align-items:center}
 #vxBody{display:grid;grid-template-columns:270px 1fr;min-height:0}
@@ -1151,22 +1156,38 @@ function openVx(){if(VX.edit){VX.edit=null;VX.img=null;VX.shapes=null;$('#vxInfo
 
 /* ---------- import SVG ---------- */
 function parseLen(s){if(!s)return 0;const m=String(s).trim().match(/^([\d.]+)\s*(mm|cm|in|pt|pc|px)?$/);if(!m)return 0;const v=parseFloat(m[1]);return{mm:v,cm:v*10,in:v*25.4,pt:v*25.4/72,pc:v*25.4/6}[m[2]]??v*25.4/96;}
-function importSVGText(text,name){
+/* styles en classes (SVG d'Illustrator) → attributs, que l'import comprend */
+function inlineSvgClasses(svgEl){
+  const rules={};
+  svgEl.querySelectorAll('style').forEach(st=>{const css=st.textContent.replace(/\/\*[\s\S]*?\*\//g,'');css.replace(/([^{}]+)\{([^}]*)\}/g,(m,sels,body)=>{sels.split(',').forEach(sl=>{const k=sl.trim();if(/^\.[\w-]+$/.test(k))rules[k.slice(1)]=(rules[k.slice(1)]||'')+';'+body;});});st.remove();});
+  if(!Object.keys(rules).length)return;
+  svgEl.querySelectorAll('[class]').forEach(el=>{el.getAttribute('class').split(/\s+/).forEach(c=>{const body=rules[c];if(!body)return;body.split(';').forEach(d=>{const i=d.indexOf(':');if(i<0)return;const p=d.slice(0,i).trim(),v=d.slice(i+1).trim();if(p&&v&&!el.hasAttribute(p))el.setAttribute(p,v);});});});
+}
+function importSVGText(text,name,opts){
+  opts=opts||{};
   const doc=new DOMParser().parseFromString(text,'image/svg+xml');const svg=doc.documentElement;
   if(!svg||svg.nodeName.toLowerCase()!=='svg'||doc.querySelector('parsererror'))throw new Error('SVG illisible');
+  inlineSvgClasses(svg);
   const vb=(svg.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
-  let unit=25.4/96;
-  const wmm=parseLen(svg.getAttribute('width'));
+  // Illustrator écrit ses mesures en points (1/72 de pouce) sous le nom de « px »
+  const fromAI=/Adobe Illustrator/i.test(text)||/xmlns:i="&ns_ai;"|adobe/i.test(text.slice(0,600));
+  let unit=fromAI?25.4/72:25.4/96;
+  const wAttr=svg.getAttribute('width')||'';
+  const wmm=/(mm|cm|in|pt|pc)\s*$/.test(wAttr)||!fromAI?parseLen(wAttr):0;
   if(vb.length===4&&vb[2]>0&&wmm)unit=wmm/vb[2];
   ensureLayer(true);
-  const item=P.project.importSVG(text,{expandShapes:true,insert:false});
+  const item=P.project.importSVG(new XMLSerializer().serializeToString(svg),{expandShapes:true,insert:false});
   item.getItems({match:c=>c.clipMask}).forEach(c=>c.remove());item.clipped=false;
   item.scale(unit,new P.Point(0,0));
   activeLayer.addChild(item);
   item.name=name||'Import';
   if(item.bounds.width>S.page.w||item.bounds.height>S.page.h){const k=Math.min((S.page.w-20)/item.bounds.width,(S.page.h-20)/item.bounds.height);item.scale(k);}
-  if(item.bounds.right<0||item.bounds.bottom<0||item.bounds.left>S.page.w||item.bounds.top>S.page.h)item.position=new P.Point(S.page.w/2,S.page.h/2);
+  const page=new P.Rectangle(0,0,S.page.w,S.page.h);
+  if(opts.center){let c=view.center;if(!page.contains(c))c=page.center;item.position=c;}
+  else if(item.bounds.right<0||item.bounds.bottom<0||item.bounds.left>S.page.w||item.bounds.top>S.page.h)item.position=new P.Point(S.page.w/2,S.page.h/2);
+  if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.layer===activeLayer)aquaRaster.bringToFront();
   setTool('select');setSel([item]);commit();
+  return item;
 }
 
 /* ---------- export ---------- */
@@ -1377,7 +1398,7 @@ document.addEventListener('keydown',e=>{
   if(ctrl&&(k==='a'||k==='A')){e.preventDefault();setTool('select');setSel(allTop());return;}
   if(ctrl&&(k==='c'||k==='C')){if(sel.length&&!S.aquaEdit)clipWrite(sel);return;}
   if(ctrl&&(k==='x'||k==='X')){if(sel.length&&!S.aquaEdit){clipWrite(sel);cmd('del');}return;}
-  if(ctrl&&(k==='v'||k==='V')){e.preventDefault();pasteClip();return;}
+  if(ctrl&&(k==='v'||k==='V')){return;} // géré par l'événement « paste »
   if(ctrl&&k==='0'){e.preventDefault();fitView();return;}
   if(ctrl&&(k==='s'||k==='S')){e.preventDefault();$('#bSave').click();return;}
   if(ctrl)return;
@@ -1401,6 +1422,83 @@ cv.addEventListener('wheel',e=>{
   else{view.center=view.center.add(new P.Point(e.shiftKey?e.deltaY:e.deltaX,e.shiftKey?0:e.deltaY).divide(view.zoom));afterView();}
 },{passive:false});
 cv.addEventListener('dblclick',e=>e.preventDefault());
+/* SVG de la sélection : se colle en vectoriel dans Illustrator, Inkscape, Affinity… */
+function selectionSVG(items){
+  let b=items[0].strokeBounds.clone();items.forEach(i=>b=b.unite(i.strokeBounds));
+  const prevSel=sel;sel=[];drawUI();clearDirect();
+  let body=items.map(it=>it.exportSVG({asString:true,precision:3})).join('').replace(/ xmlns="http:\/\/www\.w3\.org\/2000\/svg"/g,'');
+  sel=prevSel;drawUI();
+  body=body.replace(/ (font-family|font-weight|font-size|text-anchor|stroke-linejoin|stroke-linecap|stroke-miterlimit|stroke-width)="(none|)"/g,'').replace(/ stroke-dasharray=""/g,'').replace(/ style="mix-blend-mode: normal"/g,'');
+  const r=v=>Math.round(v*1000)/1000;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="${r(b.width)}mm" height="${r(b.height)}mm" viewBox="${r(b.x)} ${r(b.y)} ${r(b.width)} ${r(b.height)}">${body}</svg>`;
+}
+let lastSvgCopy='';
+async function systemCopy(items){
+  const svg=selectionSVG(items);lastSvgCopy=svg;
+  // texte SVG seul : c'est ce qu'Illustrator, Inkscape et Affinity savent coller en vectoriel
+  try{await navigator.clipboard.writeText(svg);return true;}catch(e){return false;}
+}
+/* copie en image haute définition (InDesign, mail, traitement de texte…) */
+async function copyAsImage(items){
+  await busy('Copie en image…');
+  try{
+    const prevSel=sel;sel=[];drawUI();
+    let b=items[0].strokeBounds.clone();items.forEach(i=>b=b.unite(i.strokeBounds));
+    const g=new P.Group({children:items.map(i=>i.clone({insert:false})),insert:false});
+    const dpi=Math.min(600,Math.sqrt(30e6/((b.width/25.4)*(b.height/25.4))));
+    const ras=g.rasterize({resolution:dpi*72/25.4,insert:false});
+    sel=prevSel;drawUI();
+    const c=document.createElement('canvas');c.width=ras.width;c.height=ras.height;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(ras.canvas,0,0);
+    const png=await new Promise(r=>c.toBlob(r,'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);
+    $('#hint').textContent='Copié en image ('+c.width+' × '+c.height+' px, '+Math.round(dpi)+' dpi) — colle-la dans InDesign, un mail…';
+  }catch(e){alert('Copie impossible : '+(e.message||e));}
+  await busy();
+}
+
+const isSvgText=t=>/^(<\?xml[\s\S]*?)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE[^>]*>\s*)?<svg[\s>]/i.test(t)||/^<svg/i.test(t);
+function pasteImageFile(f0){const t=new Date();const file=new File([f0],'image-collee-'+String(t.getHours()).padStart(2,'0')+'h'+String(t.getMinutes()).padStart(2,'0')+'.'+((f0.type.split('/')[1]||'png').replace('jpeg','jpg')),{type:f0.type});VX.edit=null;vxDialogMode(false);if(!$('#vxDlg').open)$('#vxDlg').showModal();vxOpenFile(file);}
+function pasteSvgText(t){if(S.aquaEdit)exitAquaEdit();try{importSVGText(t,'Collé',{center:true});$('#hint').textContent='Dessin collé depuis un autre logiciel, dans le calque « '+activeLayer.name+' »';return true;}catch(err){alert('Collage impossible : '+err.message);return false;}}
+document.addEventListener('paste',e=>{
+  if($('#docDlg').open||$('#impDlg').open||$('#pdfDlg').open)return;
+  const tag=document.activeElement&&document.activeElement.tagName;if(/INPUT|SELECT|TEXTAREA/.test(tag)&&document.activeElement.type!=='range')return;
+  const items=[...((e.clipboardData&&e.clipboardData.items)||[])];
+  const txt=(e.clipboardData&&e.clipboardData.getData('text/plain')||'').trim();
+  if($('#vxDlg').open){const im=items.find(i=>i.kind==='file'&&/^image\//.test(i.type));if(im){e.preventDefault();pasteImageFile(im.getAsFile());}return;}
+  e.preventDefault();
+  if(txt&&isSvgText(txt)&&txt!==lastSvgCopy.trim()){pasteSvgText(txt);return;}
+  const im=items.find(i=>i.kind==='file'&&/^image\//.test(i.type));
+  if(im&&!txt){pasteImageFile(im.getAsFile());return;}
+  pasteClip();
+});
+const ctxMenu=document.createElement('div');ctxMenu.id='ctxMenu';ctxMenu.hidden=true;document.body.appendChild(ctxMenu);
+function hideCtx(){ctxMenu.hidden=true;}
+cv.addEventListener('contextmenu',e=>{
+  e.preventDefault();
+  if(S.tool==='pen'&&penPath){finishPen();return;}
+  const r=cv.getBoundingClientRect(),pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));
+  if(!S.aquaEdit){const hit=hitTop(pt);if(hit&&!sel.includes(hit)&&!inSel(hit)){setTool('select');setSel([hit]);}}
+  const has=sel.length>0&&!S.aquaEdit;
+  const items=[['copy','Copier en vectoriel (Illustrator, Inkscape…)',has],['copyimg','Copier en image (InDesign, mail…)',has],['cut','Couper',has],['paste','Coller',true],['detach','Détacher en objet',has],['dup','Dupliquer',has],['del','Supprimer',has],['all','Tout sélectionner',!S.aquaEdit]];
+  ctxMenu.innerHTML=items.map(([k,l,on])=>`<button data-k="${k}"${on?'':' disabled'}>${l}</button>`).join('');
+  ctxMenu.hidden=false;const w=ctxMenu.offsetWidth,h=ctxMenu.offsetHeight;
+  ctxMenu.style.left=Math.min(e.clientX,innerWidth-w-4)+'px';ctxMenu.style.top=Math.min(e.clientY,innerHeight-h-4)+'px';
+});
+ctxMenu.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||b.disabled)return;hideCtx();const k=b.dataset.k;
+  if(k==='copy'){await clipWrite(sel);}
+  else if(k==='copyimg')copyAsImage(sel);
+  else if(k==='cut'){await clipWrite(sel);cmd('del');}
+  else if(k==='paste'){let done=false;
+    try{const t=(await navigator.clipboard.readText()).trim();if(t&&isSvgText(t)&&t!==lastSvgCopy.trim())done=pasteSvgText(t);}catch(err){}
+    if(!done){try{const its=await navigator.clipboard.read();for(const it of its){
+        if(it.types.includes('image/svg+xml')){const t=(await (await it.getType('image/svg+xml')).text()).trim();if(t!==lastSvgCopy.trim()){done=pasteSvgText(t);break;}}
+        const ty=it.types.find(t=>/^image\/(png|jpeg|jpg|webp|gif|bmp)$/.test(t));
+        if(ty&&!it.types.includes('text/plain')){pasteImageFile(await it.getType(ty));done=true;break;}}}catch(err){}}
+    if(!done)pasteClip();}
+  else if(k==='detach')detachSel();else if(k==='dup')cmd('dup');else if(k==='del')cmd('del');else if(k==='all'){setTool('select');setSel(allTop());}});
+document.addEventListener('pointerdown',e=>{if(!ctxMenu.hidden&&!ctxMenu.contains(e.target))hideCtx();},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideCtx();});
+
 window.addEventListener('resize',()=>{resizeView();});
 
 /* =====================================================================
@@ -1472,8 +1570,8 @@ function exitAquaEdit(){if(!S.aquaEdit)return;S.aquaEdit=false;if(aquaRaster)S.a
 /* ---------- presse-papiers partagé avec Vecto ---------- */
 async function clipWrite(items){
   const data={app:APP,t:Date.now(),items:items.map(s=>s.exportJSON({asString:true}))};
-  S.clip=data;await IDB.set('pressepapier',data);
-  $('#hint').textContent=items.length+' objet'+(items.length>1?'s':'')+' copié'+(items.length>1?'s':'')+' — Ctrl+V pour coller (ici ou dans Vecto)';
+  S.clip=data;await IDB.set('pressepapier',data);systemCopy(items);
+  $('#hint').textContent=items.length+' objet'+(items.length>1?'s':'')+' copié'+(items.length>1?'s':'')+' — Ctrl+V pour coller ici, dans Vecto, ou en vectoriel dans Illustrator / Inkscape';
 }
 let lastPaste=0;
 async function pasteClip(){
@@ -1771,6 +1869,6 @@ $('#impOk').onclick=impRun;
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc, au-dessus de tout."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M / L", "Rectangle / ellipse"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc, au-dessus de tout."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
 </body>
 </html>

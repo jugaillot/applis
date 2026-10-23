@@ -1156,22 +1156,38 @@ function openVx(){vxPreLoad();if(VX.edit){VX.edit=null;VX.img=null;VX.shapes=nul
 
 /* ---------- import SVG ---------- */
 function parseLen(s){if(!s)return 0;const m=String(s).trim().match(/^([\d.]+)\s*(mm|cm|in|pt|pc|px)?$/);if(!m)return 0;const v=parseFloat(m[1]);return{mm:v,cm:v*10,in:v*25.4,pt:v*25.4/72,pc:v*25.4/6}[m[2]]??v*25.4/96;}
-function importSVGText(text,name){
+/* styles en classes (SVG d'Illustrator) → attributs, que l'import comprend */
+function inlineSvgClasses(svgEl){
+  const rules={};
+  svgEl.querySelectorAll('style').forEach(st=>{const css=st.textContent.replace(/\/\*[\s\S]*?\*\//g,'');css.replace(/([^{}]+)\{([^}]*)\}/g,(m,sels,body)=>{sels.split(',').forEach(sl=>{const k=sl.trim();if(/^\.[\w-]+$/.test(k))rules[k.slice(1)]=(rules[k.slice(1)]||'')+';'+body;});});st.remove();});
+  if(!Object.keys(rules).length)return;
+  svgEl.querySelectorAll('[class]').forEach(el=>{el.getAttribute('class').split(/\s+/).forEach(c=>{const body=rules[c];if(!body)return;body.split(';').forEach(d=>{const i=d.indexOf(':');if(i<0)return;const p=d.slice(0,i).trim(),v=d.slice(i+1).trim();if(p&&v&&!el.hasAttribute(p))el.setAttribute(p,v);});});});
+}
+function importSVGText(text,name,opts){
+  opts=opts||{};
   const doc=new DOMParser().parseFromString(text,'image/svg+xml');const svg=doc.documentElement;
   if(!svg||svg.nodeName.toLowerCase()!=='svg'||doc.querySelector('parsererror'))throw new Error('SVG illisible');
+  inlineSvgClasses(svg);
   const vb=(svg.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
-  let unit=25.4/96;
-  const wmm=parseLen(svg.getAttribute('width'));
+  // Illustrator écrit ses mesures en points (1/72 de pouce) sous le nom de « px »
+  const fromAI=/Adobe Illustrator/i.test(text)||/xmlns:i="&ns_ai;"|adobe/i.test(text.slice(0,600));
+  let unit=fromAI?25.4/72:25.4/96;
+  const wAttr=svg.getAttribute('width')||'';
+  const wmm=/(mm|cm|in|pt|pc)\s*$/.test(wAttr)||!fromAI?parseLen(wAttr):0;
   if(vb.length===4&&vb[2]>0&&wmm)unit=wmm/vb[2];
   ensureLayer(true);
-  const item=P.project.importSVG(text,{expandShapes:true,insert:false});
+  const item=P.project.importSVG(new XMLSerializer().serializeToString(svg),{expandShapes:true,insert:false});
   item.getItems({match:c=>c.clipMask}).forEach(c=>c.remove());item.clipped=false;
   item.scale(unit,new P.Point(0,0));
   activeLayer.addChild(item);
   item.name=name||'Import';
   if(item.bounds.width>S.page.w||item.bounds.height>S.page.h){const k=Math.min((S.page.w-20)/item.bounds.width,(S.page.h-20)/item.bounds.height);item.scale(k);}
-  if(item.bounds.right<0||item.bounds.bottom<0||item.bounds.left>S.page.w||item.bounds.top>S.page.h)item.position=new P.Point(S.page.w/2,S.page.h/2);
+  const page=new P.Rectangle(0,0,S.page.w,S.page.h);
+  if(opts.center){let c=view.center;if(!page.contains(c))c=page.center;item.position=c;}
+  else if(item.bounds.right<0||item.bounds.bottom<0||item.bounds.left>S.page.w||item.bounds.top>S.page.h)item.position=new P.Point(S.page.w/2,S.page.h/2);
+  if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.layer===activeLayer)aquaRaster.bringToFront();
   setTool('select');setSel([item]);commit();
+  return item;
 }
 
 /* ---------- export ---------- */
@@ -1597,7 +1613,7 @@ document.addEventListener('paste',e=>{
   e.preventDefault();
   const txt=(e.clipboardData&&e.clipboardData.getData('text/plain')||'').trim();
   const isSvg=/^(<\?xml[\s\S]*?)?<svg[\s>]/i.test(txt)||/^<svg/i.test(txt);
-  if(isSvg&&txt!==lastSvgCopy.trim()){try{importSVGText(txt,'Collé');$('#hint').textContent='SVG collé depuis un autre logiciel';}catch(err){alert('Collage impossible : '+err.message);}return;}
+  if(isSvg&&txt!==lastSvgCopy.trim()){try{importSVGText(txt,'Collé',{center:true});$('#hint').textContent='SVG collé depuis un autre logiciel';}catch(err){alert('Collage impossible : '+err.message);}return;}
   pasteClip();
 });
 /* clic droit : menu de l'atelier (copie vectorielle) au lieu de « copier l'image » du navigateur */
@@ -1622,7 +1638,7 @@ ctxMenu.addEventListener('click',async e=>{const b=e.target.closest('button');if
     try{const its=await navigator.clipboard.read();
       for(const it of its){const ty=it.types.find(t=>/^image\/(png|jpeg|jpg|webp|gif|bmp)$/.test(t));if(ty){const bl=await it.getType(ty);const file=new File([bl],'image-collee.'+(ty.split('/')[1].replace('jpeg','jpg')),{type:ty});VX.edit=null;vxDialogMode(false);$('#vxDlg').showModal();vxOpenFile(file);done=true;break;}}
     }catch(err){}
-    if(!done){try{const t=(await navigator.clipboard.readText()).trim();if(/^(<\?xml[\s\S]*?)?<svg[\s>]/i.test(t)&&t!==lastSvgCopy.trim()){importSVGText(t,'Collé');done=true;}}catch(err){}}
+    if(!done){try{const t=(await navigator.clipboard.readText()).trim();if(/^(<\?xml[\s\S]*?)?<svg[\s>]/i.test(t)&&t!==lastSvgCopy.trim()){importSVGText(t,'Collé',{center:true});done=true;}}catch(err){}}
     if(!done)pasteClip();}
   else if(k==='detach')detachSel();else if(k==='dup')cmd('dup');else if(k==='del')cmd('del');else if(k==='all'){setTool('select');setSel(allTop());}});
 document.addEventListener('pointerdown',e=>{if(!ctxMenu.hidden&&!ctxMenu.contains(e.target))hideCtx();},true);
