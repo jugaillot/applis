@@ -869,7 +869,7 @@ function cmd(name){
   if(!sel.length&&!['selall'].includes(name))return;
   const b=selBounds();
   switch(name){
-    case'del':sel.forEach(s=>s.remove());setSel([]);break;
+    case'del':{const par=new Set(sel.map(x=>x.parent));sel.forEach(s=>s.remove());cleanEmpty(par);setSel([]);break;}
     case'dup':{const c=sel.map(s=>{const x=s.clone();moveIt(x,new P.Point(5,5));return x;});setSel(c);break;}
     case'rotL':sel.forEach(s=>xf(s,new P.Matrix().rotate(-90,b.center)));break;
     case'rotR':sel.forEach(s=>xf(s,new P.Matrix().rotate(90,b.center)));break;
@@ -1539,6 +1539,13 @@ function moveToLayer(items,l){
   return true;
 }
 
+/* formes prises à la flèche blanche (sans point sélectionné) : Suppr les efface en entier */
+function cleanEmpty(parents){parents.forEach(p=>{let q=p;while(q&&q instanceof P.Group&&!(q instanceof P.Layer)&&!q.children.length){const up=q.parent;q.remove();q=up;}});}
+function deleteDirectPaths(){
+  const paths=P.project.getItems({class:P.Path,match:p=>p.selected&&selectable(p)});if(!paths.length)return false;
+  const items=[...new Set(paths.map(p=>p.parent instanceof P.CompoundPath?p.parent:p))];
+  const par=new Set(items.map(i=>i.parent));items.forEach(i=>i.remove());cleanEmpty(par);commit();return true;
+}
 /* calques */
 const LY=$('#layers');
 const layerOf=el=>{const r=el.closest('[data-l]');return r?P.project.layers[+r.dataset.l]:null;};
@@ -1581,7 +1588,7 @@ document.addEventListener('keydown',e=>{
   if(ctrl)return;
   if(k==='Escape'){if(S.tool==='pen'&&penPath){finishPen();return;}setSel([]);clearDirect();return;}
   if(k==='Enter'&&S.tool==='pen'){finishPen();return;}
-  if(k==='Delete'||k==='Backspace'){e.preventDefault();if(S.tool==='direct'&&deleteSegs())return;cmd('del');return;}
+  if(k==='Delete'||k==='Backspace'){e.preventDefault();if(S.tool==='direct'){if(deleteSegs())return;if(deleteDirectPaths())return;}cmd('del');return;}
   if(k.startsWith('Arrow')&&(sel.length||S.tool==='direct')){
     e.preventDefault();const s=e.shiftKey?10:1;const d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[k];const v=new P.Point(d);
     if(S.tool==='direct'){const segs=selectedSegs();if(segs.length){segs.forEach(x=>x.point=x.point.add(v));commit();return;}}
