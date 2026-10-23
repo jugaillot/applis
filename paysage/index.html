@@ -1407,6 +1407,15 @@ function splitByWhite(item,name){
   const leaves=item.getItems?item.getItems({match:it=>((it instanceof P.CompoundPath)||(it instanceof P.Path&&!(it.parent instanceof P.CompoundPath)))}):[];
   if(!leaves.length&&(item instanceof P.Path||item instanceof P.CompoundPath))leaves.push(item);
   const whites=leaves.filter(isW),others=leaves.filter(p=>!isW(p));
+  // le blanc est imprimé par-dessus : on le découpe là où il y a de la couleur (sinon il mange les traits)
+  if(whites.length&&others.length){
+    for(let i=0;i<whites.length;i++){
+      let w=whites[i];const wb=w.bounds;const hit=others.filter(o=>o.bounds.intersects(wb));if(!hit.length)continue;
+      let res=w;
+      for(const o of hit){try{const r=res.subtract(o,{insert:false});if(res!==w)res.remove();res=r;}catch(e){}}
+      if(res!==w){res.fillColor=new P.Color('#ffffff');res.strokeColor=null;res.insertAbove(w);w.remove();whites[i]=res;}
+    }
+  }
   const link=newLink();const out=[];
   const pack=(arr,L)=>{if(!arr.length)return;const g=new P.Group({name:name||item.name||'Objet'});L.addChild(g);arr.forEach(x=>g.addChild(x));g.data.link=link;out.push(g);};
   pack(others,Lc);pack(whites,Lb);
@@ -1676,9 +1685,7 @@ async function pasteClip(){
   const items=d.items.map((j,i)=>{const L=(d.app===APP&&d.roles&&d.roles[i]&&layerByRole(d.roles[i]))||activeLayer;return L.importJSON(j);});
   if(d.app===APP)relink(items);
   if(d.app!==APP){
-    // depuis Vecto : les zones blanches non coloriées ne servent pas ici
-    items.forEach(it=>leafPaths(it).forEach(p=>{if(p.fillColor&&colorHex(p.fillColor)==='#ffffff'&&!p.strokeColor)p.remove();}));
-    items.forEach(it=>{if(it.getItems)it.getItems({class:P.Group,match:g=>!g.children.length}).forEach(g=>g.remove());});
+
   }
   const live=items.filter(i=>i.parent&&!(i instanceof P.Group&&!i.children.length));
   if(!live.length){items.forEach(i=>i.remove());alert('Le dessin copié ne contient que des zones blanches.');return;}
