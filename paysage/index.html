@@ -853,18 +853,22 @@ function chamfer(src,w,h){
 }
 async function fillRegion(pt,col){
   const W=S.page.w,H=S.page.h;
-  if(pt.x<0||pt.y<0||pt.x>W||pt.y>H){$('#hint').textContent='Clique à l’intérieur de la page.';return;}
   await busy('Recherche de la zone…');
   try{
-    const ppm=Math.min(10,Math.sqrt(14e6/(W*H)));
-    const cw=Math.round(W*ppm),ch=Math.round(H*ppm);
+    // zone de travail : la page et tout ce qui est posé autour (on peut remplir hors de la page)
+    let A=new P.Rectangle(0,0,W,H);
+    userLayers().forEach(l=>{if(!l.visible)return;l.children.forEach(c=>{if(c.data&&c.data.sys)return;A=A.unite(c.strokeBounds);});});
+    A=A.expand(40).unite(new P.Rectangle(pt.subtract(new P.Point(5,5)),pt.add(new P.Point(5,5))));
+    const ox=A.x,oy=A.y,AW=A.width,AH=A.height;
+    const ppm=Math.min(10,Math.sqrt(14e6/(AW*AH)));
+    const cw=Math.round(AW*ppm),ch=Math.round(AH*ppm);
     const prevSel=sel;sel=[];drawUI();
-    const svg=buildSVG();sel=prevSel;
+    const svg=buildSVG().replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;
     const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
     const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d',{willReadFrequently:true});
     x.fillStyle='#fff';x.fillRect(0,0,cw,ch);x.drawImage(img,0,0,cw,ch);
     const d=x.getImageData(0,0,cw,ch).data;
-    const sx=Math.min(cw-1,Math.max(0,Math.floor(pt.x*ppm))),sy=Math.min(ch-1,Math.max(0,Math.floor(pt.y*ppm)));
+    const sx=Math.min(cw-1,Math.max(0,Math.floor((pt.x-ox)*ppm))),sy=Math.min(ch-1,Math.max(0,Math.floor((pt.y-oy)*ppm)));
     const idx=(sy*cw+sx)*4;
     const ref=[d[idx],d[idx+1],d[idx+2]];
     const tol=60,same=i=>Math.abs(d[i]-ref[0])+Math.abs(d[i+1]-ref[1])+Math.abs(d[i+2]-ref[2])<=tol;
@@ -922,7 +926,7 @@ async function fillRegion(pt,col){
     if(!res.shapes.length){await busy();return;}
     ensureLayer(true);
     const fill=new P.CompoundPath({pathData:res.shapes.map(s=>s.d).join(''),fillRule:'evenodd',fillColor:new P.Color(col)});
-    fill.transform(new P.Matrix().scale(1/ppm,new P.Point(0,0)));
+    fill.transform(new P.Matrix().translate(ox,oy).scale(1/ppm));
     fill.name='Remplissage';
     // sous les traits : on le place sous l'objet cliqué s'il y en a un dans ce calque, sinon tout en bas du calque
     const under=P.project.hitTest(pt,{fill:true,stroke:true,tolerance:px(40),match:h=>selectable(h.item)&&h.item.layer===activeLayer});
