@@ -909,7 +909,11 @@ function rectHits(it,r){
 /* --- sélection directe --- */
 let dirPath=null;
 function dirDown(e,dbl){
-  const r=P.project.hitTest(e.point,{segments:true,handles:true,fill:true,stroke:true,tolerance:px(6),match:h=>selectable(h.item)&&(h.item instanceof P.Path)});
+  const r=P.project.hitTest(e.point,{segments:true,handles:true,fill:true,stroke:true,tolerance:px(6),match:h=>selectable(h.item)&&(h.item instanceof P.Path||h.item instanceof P.CompoundPath)});
+  // forme composée (remplissage, dessin vectorisé) : on prend le contour qui entoure le clic
+  if(r&&r.item instanceof P.CompoundPath){const cp=r.item;let c=r.location&&r.location.path;
+    if(!c){const inn=cp.children.filter(k=>k.contains(e.point)).sort((a,b)=>Math.abs(a.area)-Math.abs(b.area));c=inn[0]||cp.children.slice().sort((a,b)=>a.getNearestPoint(e.point).getDistance(e.point)-b.getNearestPoint(e.point).getDistance(e.point))[0];}
+    if(c){r.item=c;if(r.segment&&r.segment.path!==c)r.type='fill';}}
   if(r&&(r.type==='segment'||r.type==='handle-in'||r.type==='handle-out')&&r.item.selected){
     const seg=r.segment;
     if(dbl&&r.type==='segment'){
@@ -926,7 +930,7 @@ function dirDown(e,dbl){
   if(r){
     const p=r.item;
     if(!e.modifiers.shift)clearDirect();
-    p.selected=true;followLayer([p]);
+    p.selected=true;followLayer([p]);syncPanel();drawUI();
     if(r.type==='stroke'&&dbl&&r.location){p.divideAt(r.location);commit();}
     drag={mode:'pathmove',last:e.point,moved:false,path:p};
     return;
@@ -954,6 +958,7 @@ function dirUp(e){
     if(r.width>px(2)||r.height>px(2)){
       P.project.getItems({class:P.Path,match:p=>selectable(p)&&p.bounds.intersects(r)}).forEach(p=>{let any=false;p.segments.forEach(s=>{if(r.contains(s.point)){any=true;}});if(any){p.selected=true;p.segments.forEach(s=>s.selected=r.contains(s.point));}});
     }
+    syncPanel();drawUI();
   }else if(drag.moved)commit();
   drag=null;
 }
