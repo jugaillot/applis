@@ -86,8 +86,9 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .chip{width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,0,0,.2);flex:none;position:relative;background:#fff}
 .chip.none::after{content:"";position:absolute;left:-1px;right:-1px;top:50%;height:2px;background:#d33;transform:rotate(-45deg)}
 .chip.stroke{background:#fff!important;border-width:4px}
-.layer .lx{display:flex;align-items:center;gap:6px;width:100%;flex-wrap:nowrap;padding:2px 2px 4px 8px}
+.layer .lx{display:flex;align-items:center;gap:6px;width:100%;flex-wrap:wrap;padding:2px 2px 4px 8px}
 .layer .lx label.btn{display:inline-flex;flex-direction:row;width:auto;color:var(--ink);font-size:inherit}
+.layer .aqTr{display:inline-flex;align-items:center;gap:4px}
 .layer .lx input[type=color]{width:34px;height:22px;padding:0;border:1px solid var(--line);border-radius:5px}
 .layer{flex-wrap:wrap;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:7px;padding:3px 4px;margin-bottom:4px;background:#fff}
 .layer.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
@@ -679,6 +680,7 @@ function restore(snap){
   let last=null;
   for(const s of snap){const l=new P.Layer({insert:false});l.importJSON(s.json);l.name=s.name;if(s.role)l.data.role=s.role;l.visible=s.visible;l.locked=s.locked;l.insertBelow(uiLayer);last=l;}
   activeLayer=null;ensureRoleLayers();setRole(activeRole);attachRaster();ensureLayer();
+  if(S.aqua&&S.aqua.trace)enforceColors();
 }
 let lastSnap=null;
 function commit(){
@@ -772,7 +774,7 @@ function renderLayers(){
     const dot=r==='aqua'?'background:linear-gradient(135deg,#e7b04f,#f6dca0)':`background:${roleColor(r)}`;
     let extra='';
     if(r==='couleur')extra=`<div class="lx"><span class="muted">Couleur du dessin</span><input type="color" data-la="col" value="${S.color}"></div>`;
-    if(r==='aqua')extra=`<div class="lx"><label class="btn sm">${S.aqua.key?'Changer l’image…':'Choisir l’image (JPG)…'}<input type="file" data-la="img" accept="image/*" hidden></label>${S.aqua.key?`<button class="btn sm${S.aquaEdit?' on':''}" data-la="adj" title="Déplacer, agrandir ou tourner l’aquarelle sous les formes">${S.aquaEdit?'✓ Terminer':'Ajuster l’image'}</button>`:''}</div>`;
+    if(r==='aqua')extra=`<div class="lx"><label class="btn sm">${S.aqua.key?'Changer l’image…':'Choisir l’image (JPG)…'}<input type="file" data-la="img" accept="image/*" hidden></label>${S.aqua.key?`<button class="btn sm${S.aquaEdit?' on':''}" data-la="adj" title="Déplacer, agrandir ou tourner l’aquarelle sous les formes">${S.aquaEdit?'✓ Terminer':'Ajuster l’image'}</button>`:''}<span class="aqTr"><button class="btn sm${S.aqua.trace?' on':''}" data-la="trace" title="Voir toutes les zones de l’aquarelle en aplat uni (l’image est masquée) — n’entre pas dans les exports">Tracé</button><input type="color" data-la="tcol" value="${S.aqua.tcol||'#e7b04f'}" title="Couleur du tracé"></span></div>`;
     return`<div class="layer${r===activeRole?' on':''}" data-r="${r}">
     <button class="ico${vis?'':' off'}" data-la="vis" title="Afficher / masquer">👁</button>
     <button class="ico${lk?'':' off'}" data-la="lock" title="Verrouiller">🔒</button>
@@ -2815,12 +2817,13 @@ LY.addEventListener('click',e=>{
   if(act==='vis'){setRoleFlag(r,'v',!roleVisible(r));enforceColors();setSel(sel.filter(selectable));commit();return;}
   if(act==='lock'){setRoleFlag(r,'l',!roleLocked(r));setSel(sel.filter(selectable));commit();return;}
   if(act==='adj'){S.aquaEdit?exitAquaEdit():enterAquaEdit();return;}
-  if(act==='col'||act==='img')return;
+  if(act==='trace'){S.aqua.trace=!S.aqua.trace;styleRaster();enforceColors();renderLayers();P.view.update();scheduleAutosave();return;}
+  if(act==='col'||act==='img'||act==='tcol')return;
   if(e.target.closest('label'))return;
   if(S.tool!=='bucket'&&!S.aquaEdit){const mv=movableSelection();if(mv.length&&!mv.every(it=>itemRoles(it).every(x=>x===r))){moveToRole(mv,r);return;}}
   setRole(r);ensureLayer();renderLayers();if(S.tool==='bucket')bkLayerChanged();
 });
-LY.addEventListener('input',e=>{if(e.target.dataset.la==='col'){S.color=e.target.value;enforceColors();P.view.update();renderSwatches();clearTimeout(colT);colT=setTimeout(()=>commit(),400);}});
+LY.addEventListener('input',e=>{if(e.target.dataset.la==='tcol'){S.aqua.tcol=e.target.value;if(!S.aqua.trace){S.aqua.trace=true;styleRaster();const b=LY.querySelector('[data-la=trace]');if(b)b.classList.add('on');}enforceColors();P.view.update();scheduleAutosave();return;}if(e.target.dataset.la==='col'){S.color=e.target.value;enforceColors();P.view.update();renderSwatches();clearTimeout(colT);colT=setTimeout(()=>commit(),400);}});
 let colT=0;
 LY.addEventListener('change',e=>{if(e.target.dataset.la==='img'){const f=e.target.files[0];e.target.value='';if(f)setAquaImage(f);}});
 $('#bToLayer').onclick=()=>{if(!sel.length||S.aquaEdit)return;moveToRole(movableSelection(),activeRole);};
@@ -2975,17 +2978,24 @@ const APP='paysage';
 let aquaRaster=null;
 const fileBase=()=>(S.doc.name?S.doc.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w-]+/g,'-').replace(/^-|-$/g,'').toLowerCase():'paysage-'+stamp());
 
+/* aquarelle en « tracé » : les zones se voient en aplat de couleur (l'image est masquée) ; à l'export et dans l'historique elles restent noires */
+function aquaShapeCol(){return S.aqua&&S.aqua.trace?(S.aqua.tcol||'#e7b04f'):'#000000';}
+function aquaBlack(fn){const A=layerByRole('aqua');if(!A||!(S.aqua&&S.aqua.trace))return fn();
+  const ps=A.getItems({match:it=>(it instanceof P.CompoundPath)||(it instanceof P.Path&&!(it.parent instanceof P.CompoundPath))}).filter(p=>!(p.data&&p.data.sys));
+  const old=ps.map(p=>[p,p.fillColor,p.strokeColor]);ps.forEach(p=>{if(p.fillColor)p.fillColor=new P.Color('#000000');if(p.strokeColor)p.strokeColor=new P.Color('#000000');});
+  try{return fn();}finally{old.forEach(([p,f,st])=>{p.fillColor=f;p.strokeColor=st;});}}
 /* l'image d'aquarelle n'entre ni dans l'historique, ni dans les exports vectoriels */
 function withoutRaster(fn){
-  if(!aquaRaster||!aquaRaster.parent)return fn();
+  if(!aquaRaster||!aquaRaster.parent)return aquaBlack(fn);
   const parent=aquaRaster.parent;aquaRaster.remove();
-  try{return fn();}finally{parent.addChild(aquaRaster);}
+  try{return aquaBlack(fn);}finally{parent.addChild(aquaRaster);}
 }
 function attachRaster(){const L=layerByRole('aqua');if(aquaRaster&&L){L.addChild(aquaRaster);styleRaster();}}
 function styleRaster(){
   if(!aquaRaster)return;
   if(S.aquaEdit){aquaRaster.blendMode='normal';aquaRaster.opacity=0.55;aquaRaster.locked=false;}
   else{aquaRaster.blendMode='source-atop';aquaRaster.opacity=1;aquaRaster.locked=true;}
+  aquaRaster.visible=!(S.aqua&&S.aqua.trace&&!S.aquaEdit);
 }
 /* chaque calque impose sa couleur */
 function enforceColors(){
@@ -2993,7 +3003,7 @@ function enforceColors(){
   const A=layerByRole('aqua'),D=layerByRole('dessin');
   const leavesOf=l=>l.getItems({match:it=>(it instanceof P.CompoundPath)||(it instanceof P.Path&&!(it.parent instanceof P.CompoundPath))});
   const paint=(p,col)=>{if(p.fillColor&&colorHex(p.fillColor)!==col)p.fillColor=new P.Color(col);if(p.strokeColor&&colorHex(p.strokeColor)!==col)p.strokeColor=new P.Color(col);};
-  if(A)leavesOf(A).forEach(p=>paint(p,'#000000'));
+  if(A)leavesOf(A).forEach(p=>paint(p,aquaShapeCol()));
   if(D)leavesOf(D).forEach(p=>{
     let r=roleUp(p);
     // forme nouvelle : blanche → Blanc, sinon le calque actif
@@ -3031,7 +3041,7 @@ async function setAquaImage(file){
 async function useAquaBlob(blob,m,name){
   const key='aqua.'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
   await IDB.set(key,blob);if(window.AtelierSync)AtelierSync.saveBlob(key,blob);
-  exitAquaEdit();S.aqua={key,m:m||null,name:name||''};await loadAqua();scheduleAutosave();
+  exitAquaEdit();S.aqua={key,m:m||null,name:name||'',trace:!!(S.aqua&&S.aqua.trace),tcol:S.aqua&&S.aqua.tcol};await loadAqua();scheduleAutosave();
 }
 function enterAquaEdit(){if(!aquaRaster)return;const L=layerByRole('aqua');if(L&&!L.visible)L.visible=true;S.aquaEdit=true;styleRaster();setTool('select');setSel([aquaRaster]);renderLayers();$('#hint').textContent='Aquarelle : glisse pour déplacer, poignées pour agrandir ou tourner · Échap ou « Terminer » pour revenir aux formes';}
 function exitAquaEdit(){if(!S.aquaEdit)return;S.aquaEdit=false;if(aquaRaster)S.aqua.m=aquaRaster.matrix.values;styleRaster();setSel([]);renderLayers();setTool('select');scheduleAutosave();}
