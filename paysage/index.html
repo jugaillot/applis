@@ -645,7 +645,7 @@ function drawUI(){
   uiLayer.removeChildren();uiLayer.activate();
   handles=[];
   const tool=S.tool;
-  if(sel.length&&(tool==='select'||tool==='lasso')){
+  if((sel.length&&(tool==='select'||tool==='lasso'))||(tool==='direct'&&dirHandlesOn())){
     const b=selBounds();
     const frame=new P.Path.Rectangle({rectangle:b,strokeColor:'#1e88ff',strokeWidth:px(1),dashArray:[px(4),px(3)]});
     frame.data.ui=true;
@@ -668,7 +668,7 @@ function drawUI(){
 }
 function handleAt(point){for(const h of handles){if(h.contains(point)||h.bounds.expand(px(4)).contains(point))return h.data.handle;}
   // juste à l'extérieur d'un coin : rotation (comme Illustrator)
-  if(handles.length&&sel.length){const b=selBounds();if(b&&!b.expand(px(3)).contains(point))for(const c of [b.topLeft,b.topRight,b.bottomLeft,b.bottomRight]){if(point.getDistance(c)<=px(24))return 'rot';}}
+  if(handles.length){const b=selBounds();if(b&&!b.expand(px(3)).contains(point))for(const c of [b.topLeft,b.topRight,b.bottomLeft,b.bottomRight]){if(point.getDistance(c)<=px(24))return 'rot';}}
   return null;}
 const ROT_CUR='url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14a7 7 0 0 1 12-7" stroke="#fff" stroke-width="4"/><path d="M14 4.5l3.2 2.6-3.6 2" stroke="#fff" stroke-width="4"/><path d="M19 10a7 7 0 0 1-12 7" stroke="#fff" stroke-width="4"/><path d="M10 19.5l-3.2-2.6 3.6-2" stroke="#fff" stroke-width="4"/><path d="M5 14a7 7 0 0 1 12-7" stroke="#000" stroke-width="1.6"/><path d="M14 4.5l3.2 2.6-3.6 2" stroke="#000" stroke-width="1.6"/><path d="M19 10a7 7 0 0 1-12 7" stroke="#000" stroke-width="1.6"/><path d="M10 19.5l-3.2-2.6 3.6-2" stroke="#000" stroke-width="1.6"/></g></svg>')+'") 12 12, alias';
 
@@ -878,6 +878,7 @@ tool.onMouseDrag=function(e){
   if(drag&&drag.mode==='pan'){const z=view.zoom,[cx,cy]=evXY(e.event);if(!isFinite(cx)||!isFinite(cy))return;view.center=drag.c.subtract(new P.Point(cx-drag.start,cy-drag.sy).divide(z));afterView();return;}
   if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selDrag(e);
   if(S.tool==='lasso')return lassoDrag(e);
+  if(S.tool==='direct'&&drag&&drag.items)return selDrag(e);
   if(S.tool==='direct')return dirDrag(e);
   if(S.tool==='pen')return penDragFn(e);
   if((S.tool==='pencil'||S.tool==='blob')&&pencilPath){pencilPath.add(e.point);return;}
@@ -899,6 +900,7 @@ tool.onMouseUp=function(e){
   if(drag&&drag.mode==='pan'){drag=null;cv.style.cursor=S.tool==='hand'?'grab':'default';return;}
   if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selUp(e);
   if(S.tool==='lasso')return lassoUp(e);
+  if(S.tool==='direct'&&drag&&drag.items){const T=drag.items;selUp(e);T.forEach(i=>{if(i.parent)i.selected=true;});drawUI();return;}
   if(S.tool==='direct')return dirUp(e);
   if(S.tool==='pen')return penUp(e);
   if(S.tool==='bucket'&&BK.limDraw){const d=BK.limDraw;BK.limDraw=null;BK.drawLimit=false;d.remove();if(d.segments.length<3||d.bounds.width<px(5)){renderToolBar(S.tool);return;}const lim=new P.Path({segments:d.segments.map(s=>s.point),closed:true,insert:false});lim.simplify(px(1));bkSetLimit(lim);return;}
@@ -929,7 +931,7 @@ document.addEventListener('keyup',e=>{if(e.key==='Alt'&&altCur!=null){cv.style.c
 addEventListener('blur',()=>{if(altCur!=null){cv.style.cursor=altCur;altCur=null;}});
 tool.onMouseMove=function(e){
   if(e.modifiers.alt&&altCopyReady()){cv.style.cursor='copy';return;}
-  if(S.tool==='select'&&sel.length){const h=handleAt(e.point);cv.style.cursor=h?(h==='rot'?ROT_CUR:({tl:'nwse-resize',br:'nwse-resize',tr:'nesw-resize',bl:'nesw-resize',tc:'ns-resize',bc:'ns-resize',lc:'ew-resize',rc:'ew-resize'})[h]):'default';}
+  if((S.tool==='select'||S.tool==='lasso'||S.tool==='direct')&&handles.length){const h=handleAt(e.point);cv.style.cursor=h?(h==='rot'?ROT_CUR:({tl:'nwse-resize',br:'nwse-resize',tr:'nesw-resize',bl:'nesw-resize',tc:'ns-resize',bc:'ns-resize',lc:'ew-resize',rc:'ew-resize'})[h]):(S.tool==='lasso'?'crosshair':'default');}
   if(S.tool==='pen'&&penPath&&penPath.segments.length&&!penDrag){
     if(penPreview)penPreview.remove();
     uiLayer.activate();penPreview=new P.Path({segments:[penPath.lastSegment.clone(),new P.Segment(e.point)],strokeColor:'#1e88ff',strokeWidth:px(1),dashArray:[px(3),px(3)]});ensureLayer();
@@ -985,7 +987,7 @@ function selDrag(e){
     const fx=sx/drag.psx,fy=sy/drag.psy;drag.psx=sx;drag.psy=sy;
     if(drag.pfrom&&!drag.pfrom.equals(from)){/* bascule Alt : on repart proprement */}
     drag.pfrom=from;
-    sel.forEach(s=>xf(s,new P.Matrix().scale(fx,fy,from)));
+    (drag.items||sel).forEach(s=>xf(s,new P.Matrix().scale(fx,fy,from)));
     drag.moved=true;drawUI();syncPanel();return;
   }
   if(drag.mode==='rot'){
@@ -993,7 +995,7 @@ function selDrag(e){
     let a=e.point.subtract(c).angle-drag.start.subtract(c).angle;
     if(e.modifiers.shift)a=Math.round(a/15)*15;
     const da=a-drag.pa;drag.pa=a;
-    sel.forEach(s=>xf(s,new P.Matrix().rotate(da,c)));
+    (drag.items||sel).forEach(s=>xf(s,new P.Matrix().rotate(da,c)));
     drag.moved=true;drawUI();syncPanel();
   }
 }
@@ -1018,7 +1020,10 @@ function rectHits(it,r){
 
 /* --- sélection directe --- */
 let dirPath=null;
+/* flèche blanche : poignées (taille / rotation) autour des éléments pris entiers, quand aucun point n'est pris */
+function dirHandlesOn(){return S.tool==='direct'&&!drag&&movableSelection().length>0&&!selectedSegs().length||(S.tool==='direct'&&drag&&drag.items);}
 function dirDown(e,dbl){
+  if(dirHandlesOn()&&handles.length){const h=handleAt(e.point);if(h){const T=movableSelection(),b=selBounds();drag={mode:h==='rot'?'rot':'scale',h,b,start:e.point,center:b.center,psx:1,psy:1,pa:0,items:T};return;}}
   const r=P.project.hitTest(e.point,{segments:true,handles:true,fill:true,stroke:true,tolerance:px(6),match:h=>selectable(h.item)&&(h.item instanceof P.Path||h.item instanceof P.CompoundPath)});
   // forme composée (remplissage, dessin vectorisé) : on prend le contour qui entoure le clic
   if(r&&r.item instanceof P.CompoundPath){const cp=r.item;let c=r.location&&r.location.path;
