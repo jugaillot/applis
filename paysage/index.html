@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Atelier Paysage insulaire</title>
 <script src="../lib/paper-core.min.js"></script>
+<script src="../lib/clipper.js"></script>
 <script src="../lib/jspdf.umd.min.js"></script>
 <script src="../lib/svg2pdf.umd.min.js"></script>
 <script src="../lib/sync.js"></script>
@@ -1741,13 +1742,53 @@ function ctSig(ol,lv){const o=ol.data.outline;const inOwner=ol.parent&&ctOwner(o
   let b=null;lv.forEach(p=>{b=b?b.unite(p.bounds):p.bounds.clone();});if(!b)return '';
   const rx=inOwner?b.x:0,ry=inOwner?b.y:0;
   return lv.length+'#'+lv.map(p=>[p.bounds.x-rx,p.bounds.y-ry,p.bounds.width,p.bounds.height].map(v=>Math.round(v*50)).join(',')+':'+(p.children?p.children.length:p.segments.length)+(p.strokeWidth||0)).join('|');}
+/* contours rapides : calcul en polygones (ClipperLib), précis au centième de mm */
+const CPK=1000;
+function cpPts(c){const q=c.clone({insert:false});q.flatten(0.03);const pts=q.segments.map(s=>({X:Math.round(s.point.x*CPK),Y:Math.round(s.point.y*CPK)}));return pts;}
+function cpLeaf(p){const kids=p instanceof P.CompoundPath?p.children:[p],closed=[],open=[];
+  kids.forEach(c=>{if(!c.segments||c.segments.length<2)return;const pts=cpPts(c);if(pts.length<2)return;(c.closed||p instanceof P.CompoundPath?closed:open).push(pts);});return{closed,open};}
+function cpOff(paths,d,join,et){if(!paths.length||!(d>0))return[];const C=ClipperLib;const co=new C.ClipperOffset(4,10);
+  const jt=join==='miter'?C.JoinType.jtMiter:join==='bevel'?C.JoinType.jtSquare:C.JoinType.jtRound;co.AddPaths(paths,jt,et);const s=new C.Paths();co.Execute(s,d*CPK);return s;}
+function cpEnd(cap){const E=ClipperLib.EndType;return cap==='butt'?E.etOpenButt:cap==='square'?E.etOpenSquare:E.etOpenRound;}
+function cpBool(type,a,b){const C=ClipperLib;const c=new C.Clipper();c.AddPaths(a,C.PolyType.ptSubject,true);if(b)c.AddPaths(b,C.PolyType.ptClip,true);const s=new C.Paths();c.Execute(type,s,C.PolyFillType.pftNonZero,C.PolyFillType.pftNonZero);return s;}
+function cpRegion(rings,evenodd){return ClipperLib.Clipper.SimplifyPolygons(rings,evenodd?ClipperLib.PolyFillType.pftEvenOdd:ClipperLib.PolyFillType.pftNonZero);}
+/* bande du contour autour de traits fermés (rings, avec la zone pleine region) et ouverts (open) */
+function cpBand(rings,region,open,o){
+  const C=ClipperLib,w=Math.max(0.01,+o.w||0);let out=[];
+  if(rings.length){
+    if(o.pos==='center'||!region)out=out.concat(cpOff(rings,w/2,o.join,C.EndType.etClosedLine));
+    else{const big=cpOff(rings,w,o.join,C.EndType.etClosedLine);out=out.concat(cpBool(o.pos==='inside'?C.ClipType.ctIntersection:C.ClipType.ctDifference,big,region));}
+  }
+  if(open.length)out=out.concat(cpOff(open,w/2,o.join,cpEnd(o.cap)));
+  return out;
+}
+function cpToPaper(paths){paths=ClipperLib.Clipper.CleanPolygons(paths,4).filter(r=>r.length>2);if(!paths.length)return null;
+  return new P.CompoundPath({insert:false,fillRule:'nonzero',children:paths.map(r=>new P.Path({segments:r.map(q=>[q.X/CPK,q.Y/CPK]),closed:true,insert:false}))});}
+function cpShape(lv,o){
+  const C=ClipperLib;let all=[];
+  if(o.type==='ext'){
+    let reg=[];
+    lv.forEach(p=>{const L=cpLeaf(p);const isFill=(p.closed||p instanceof P.CompoundPath)&&(p.fillColor||!(p.strokeColor&&p.strokeWidth));
+      if(isFill&&L.closed.length)reg=reg.concat(cpRegion(L.closed,p.fillRule==='evenodd'));
+      else if(p.strokeColor&&p.strokeWidth){reg=reg.concat(cpOff(L.closed,p.strokeWidth/2,p.strokeJoin,C.EndType.etClosedLine),cpOff(L.open,p.strokeWidth/2,p.strokeJoin,cpEnd(p.strokeCap)));}});
+    if(!reg.length)return null;
+    const c=new C.Clipper();c.AddPaths(reg,C.PolyType.ptSubject,true);const tree=new C.PolyTree();c.Execute(C.ClipType.ctUnion,tree,C.PolyFillType.pftNonZero,C.PolyFillType.pftNonZero);
+    const outers=tree.Childs().map(n=>n.Contour()).filter(r=>r.length>2);if(!outers.length)return null;
+    all=cpBand(outers,outers,[],o);
+  }else{
+    lv.forEach(p=>{const L=cpLeaf(p);const region=L.closed.length?cpRegion(L.closed,p.fillRule==='evenodd'):null;all=all.concat(cpBand(L.closed,region,L.open,o));});
+    if(all.length>1)all=cpBool(C.ClipType.ctUnion,all,null);
+  }
+  return cpToPaper(all);
+}
 function ctRebuild(ol){
   const o=ol.data.outline;
   if(!o.type){o.type='ext';o.pos='center';o.cap='round';o.join=o.join||'round';}// ancien « contour de l'objet »
   const lv=ctSources(ol);if(!lv||!(+o.w>0)){ol.remove();return;}
   if(!lv.length){ol.removeChildren();o.sig='';return;}// calque masqué : le contour revient quand on le réaffiche
   let shape=null;
-  if(o.type==='ext'){const outer=ctOuter(lv);if(outer)shape=ctBand(outer,o);}
+  if(window.ClipperLib){try{shape=cpShape(lv,o);}catch(e){console.error(e);}}
+  else if(o.type==='ext'){const outer=ctOuter(lv);if(outer)shape=ctBand(outer,o);}
   else lv.forEach(p=>{const b=ctBand(p,o);if(!b)return;try{shape=shape?shape.unite(b,{insert:false}):b;}catch(e){}});
   if(!shape){ol.removeChildren();o.sig=ctSig(ol,lv);return;}
   shape.translate(new P.Point(+o.dx||0,+o.dy||0));

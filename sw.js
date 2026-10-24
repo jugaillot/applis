@@ -1,11 +1,11 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Scripts de l'atelier : réseau d'abord aussi. Grosses bibliothèques et polices : copie locale d'abord. */
-const VERSION = 'atelier-v102';
+const VERSION = 'atelier-v103';
 const PRECACHE = [
   '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/', '/paysage/',
   '/vecto/potrace-worker.js', '/lib/sync.js','/lib/tabs.js', '/lib/help.js',
-  '/lib/paper-core.min.js', '/lib/jspdf.umd.min.js', '/lib/svg2pdf.umd.min.js',
+  '/lib/paper-core.min.js', '/lib/clipper.js', '/lib/jspdf.umd.min.js', '/lib/svg2pdf.umd.min.js',
   '/lib/pdf.min.js', '/lib/pdf.worker.min.js', '/lib/pdf-lib.min.js',
   '/lib/toastui-editor-all.min.js', '/lib/toastui-editor.css', '/lib/docx.iife.js', '/lib/fonts.css',
   '/lib/fonts/dm-serif-display-latin-400-italic.woff2', '/lib/fonts/dm-serif-display-latin-400-normal.woff2', '/lib/fonts/fraunces-latin-400-italic.woff2', '/lib/fonts/fraunces-latin-400-normal.woff2', '/lib/fonts/fraunces-latin-700-italic.woff2', '/lib/fonts/fraunces-latin-700-normal.woff2', '/lib/fonts/ibm-plex-sans-latin-400-italic.woff2', '/lib/fonts/ibm-plex-sans-latin-400-normal.woff2', '/lib/fonts/ibm-plex-sans-latin-700-italic.woff2', '/lib/fonts/ibm-plex-sans-latin-700-normal.woff2', '/lib/fonts/inter-latin-400-italic.woff2', '/lib/fonts/inter-latin-400-normal.woff2', '/lib/fonts/inter-latin-700-italic.woff2', '/lib/fonts/inter-latin-700-normal.woff2', '/lib/fonts/space-grotesk-latin-400-normal.woff2', '/lib/fonts/space-grotesk-latin-700-normal.woff2', '/lib/fonts/syne-latin-400-normal.woff2', '/lib/fonts/syne-latin-700-normal.woff2', '/lib/fonts/work-sans-latin-400-italic.woff2', '/lib/fonts/work-sans-latin-400-normal.woff2', '/lib/fonts/work-sans-latin-700-italic.woff2', '/lib/fonts/work-sans-latin-700-normal.woff2',
@@ -67,7 +67,7 @@ self.addEventListener('fetch', event => {
   }
 
   // grosses bibliothèques et polices (elles ne changent pas) : copie locale d'abord
-  const stable = /\/lib\/fonts\/|\.min\.(js|css)$|\/lib\/(pdf\.worker\.min|docx\.iife)\.js$|\.woff2$|\/icons\//.test(url.pathname);
+  const stable = /\/lib\/fonts\/|\.min\.(js|css)$|\/lib\/(pdf\.worker\.min|docx\.iife|clipper)\.js$|\.woff2$|\/icons\//.test(url.pathname);
   if (stable) {
     event.respondWith((async () => {
       const cache = await caches.open(VERSION);
