@@ -384,6 +384,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <label class="rng"><span>Définition de calcul<b id="vDef">12 Mpx</b></span><input type="range" id="vxDef" min="1" max="30" step="1" value="12"></label>
       <label class="chk"><input type="checkbox" id="vxInv"> Inverser (dessin clair sur fond sombre)</label>
       <label class="chk"><input type="checkbox" id="vxBlanc" checked> Remplir en blanc les formes fermées (elles vont dans le calque Blanc)</label>
+      <label class="rng" title="Comme le pot de peinture : les zones presque fermées (ouverture plus petite que ce réglage) sont aussi remplies en blanc au placement"><span>Zones ouvertes : remplir si l’ouverture fait moins de<b id="vOuv">non</b></span><input type="range" id="vxOuv" min="0" max="30" step="1" value="0"></label>
       <div class="muted" style="margin-top:4px" id="vxPlaceLab">Placement</div>
       <div class="seg" id="vxPlace"><button data-v="fit" class="on">Ajuster à la page</button><button data-v="dpi">Taille réelle</button></div>
       <label id="vxDpiBox" hidden>Résolution du scan (dpi)<input type="number" id="vxDpi" value="300" min="30" max="2400"></label>
@@ -1507,7 +1508,7 @@ async function bkExact(cp,pd,mask,tok){
 async function bkShow(){
   const pd=BK.pending;if(!pd)return;const tok=ABORT.n;await stepCheck(tok);
   const C=pd.C;let res;const first=!pd.shown;
-  const fail=(msg)=>{if(first){bkCancel();if(msg)alert(msg);return;}
+  const fail=(msg)=>{if(first){bkCancel();if(msg&&!BK.silent)alert(msg);return;}
     // en réglant la sensibilité : on reste dans l'aperçu, même s'il n'y a rien pour ce réglage
     bkClearPreview();pd.shape=null;pd.mask=null;$('#hint').textContent='Aucune zone avec ce réglage · bouge « Fermeture des ouvertures » · Échap : annuler';P.view.update();};
   if(pd.mode==='one'){res=bkOne(C,pd.pt);if(!res.mask){if(!first||res.msg)return fail(res.msg);bkCancel();if(res.hint)$('#hint').textContent=res.hint;return;}}
@@ -1679,11 +1680,11 @@ function setPreview(on){
     const prevAct=P.project.activeLayer;const L=new P.Layer({name:'__pvmask'});L.bringToFront();uiLayer.bringToFront();if(prevAct&&prevAct!==L)prevAct.activate();
     const big=new P.Path.Rectangle({rectangle:new P.Rectangle(-1e5,-1e5,2e5,2e5),insert:false}),pg=new P.Path.Rectangle({rectangle:new P.Rectangle(0,0,S.page.w,S.page.h),insert:false});
     L.addChild(new P.CompoundPath({children:[big,pg],fillRule:'evenodd',fillColor:board,data:{sys:true}}));L.locked=true;
-    PV={L};uiLayer.visible=false;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=false;
+    PV={L,paper:pageRect?pageRect.fillColor:null};if(pageRect)pageRect.fillColor=new P.Color('#ffffff');uiLayer.visible=false;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=false;
     const pc=document.getElementById('pts');if(pc)pc.style.visibility='hidden';
     document.body.classList.add('apv');$('#hint').textContent='Aperçu de la page · Échap ou le bouton : revenir';
   }else{
-    PV.L.remove();PV=null;uiLayer.visible=true;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=true;
+    PV.L.remove();if(pageRect&&PV.paper)pageRect.fillColor=PV.paper;PV=null;uiLayer.visible=true;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=true;
     const pc=document.getElementById('pts');if(pc)pc.style.visibility='';
     document.body.classList.remove('apv');$('#hint').textContent=HINTS[S.tool]||'';ensureLayer();drawUI();
   }
@@ -2217,8 +2218,8 @@ function fillThinHoles(bits,w,h,maxW){
   const fill=new Uint8Array(id+1);for(let i=1;i<=id;i++)fill[i]=!border[i]&&edge[i]>0&&(2*area[i]/edge[i])<=maxW?1:0;
   for(let p=0;p<n;p++)if(lab[p]&&fill[lab[p]])bits[p]=1;
 }
-function vxParams(){return{seuil:+$('#vxSeuil').value,flou:+$('#vxFlou').value,tache:+$('#vxTache').value,liser:+$('#vxLiser').value,lisse:+$('#vxLisse').value,ferme:+$('#vxFerme').value,lignes:$('#vxFin').checked,blanc:$('#vxBlanc').checked,prec:+$('#vxPrec').value,def:+$('#vxDef').value,inv:$('#vxInv').checked};}
-function vxLabels(){const p=vxParams();$('#vSeuil').textContent=p.seuil+' %';$('#vFlou').textContent=p.flou;$('#vTache').textContent=p.tache+' px';$('#vLiser').textContent=p.liser?'jusqu’à '+p.liser+' px':'non';$('#vLisse').textContent=p.lisse.toFixed(2);$('#vFerme').textContent=p.ferme+' px';$('#vPrec').textContent=p.prec.toFixed(2);$('#vDef').textContent=p.def+' Mpx'+(VX.img&&VX.img.naturalWidth*VX.img.naturalHeight<p.def*1e6?' (image : '+(VX.img.naturalWidth*VX.img.naturalHeight/1e6).toFixed(1)+' Mpx, max atteint)':'');}
+function vxParams(){return{seuil:+$('#vxSeuil').value,flou:+$('#vxFlou').value,tache:+$('#vxTache').value,liser:+$('#vxLiser').value,lisse:+$('#vxLisse').value,ferme:+$('#vxFerme').value,lignes:$('#vxFin').checked,blanc:$('#vxBlanc').checked,ouv:+(($('#vxOuv')||{}).value||0),prec:+$('#vxPrec').value,def:+$('#vxDef').value,inv:$('#vxInv').checked};}
+function vxLabels(){const p=vxParams();$('#vSeuil').textContent=p.seuil+' %';$('#vFlou').textContent=p.flou;$('#vTache').textContent=p.tache+' px';$('#vLiser').textContent=p.liser?'jusqu’à '+p.liser+' px':'non';$('#vLisse').textContent=p.lisse.toFixed(2);$('#vFerme').textContent=p.ferme+' px';if($('#vOuv'))$('#vOuv').textContent=p.ouv?p.ouv+' mm':'non';$('#vPrec').textContent=p.prec.toFixed(2);$('#vDef').textContent=p.def+' Mpx'+(VX.img&&VX.img.naturalWidth*VX.img.naturalHeight<p.def*1e6?' (image : '+(VX.img.naturalWidth*VX.img.naturalHeight/1e6).toFixed(1)+' Mpx, max atteint)':'');}
 function vxBitmap(){
   const p=vxParams(),img=VX.img;
   const W0=img.naturalWidth,H0=img.naturalHeight;
@@ -2334,7 +2335,7 @@ async function vxPlace(){
     const g=buildVx(VX.shapes,VX.whites||[],{name:old.name,scale:VX.scale,mode:VX.mode,blanc:p.blanc,params:p,src:VX.edit.src,black:'#000000',white:'#ffffff'});
     xf(g,new P.Matrix(VX.edit.m));
     if(old.parent){g.insertAbove(old);if(old.data&&old.data.link)linkedTops(old.data.link).forEach(x=>{if(x!==old)x.remove();});old.remove();}
-    VX.edit=null;const parts=placeVx(g);setTool('select');setSel(parts);commit();return;
+    VX.edit=null;const parts=placeVx(g);setTool('select');setSel(parts);commit();if(p.blanc&&p.ouv>0)vxFillOpen(parts,p.ouv);return;
   }
   const g=buildVx(VX.shapes,VX.whites||[],{name:VX.name,scale:VX.scale,mode:VX.mode,blanc:p.blanc,params:p,src:VX.srcKey,black:'#000000'});
   // pixels d'origine → mm
@@ -2345,6 +2346,15 @@ async function vxPlace(){
   moveIt(g,(VX.at||new P.Point(S.page.w/2,S.page.h/2)).subtract(g.position));VX.at=null;
   const parts=placeVx(g);
   setTool('select');setSel(parts);commit();
+  if(p.blanc&&p.ouv>0)vxFillOpen(parts,p.ouv);
+}
+/* zones presque fermées du dessin vectorisé : remplies en blanc avec le pot de peinture (toutes les zones, ouverture jusqu'à gap mm) */
+async function vxFillOpen(parts,gap){
+  const keepGap=S.opt.gap,keepRole=activeRole;
+  try{BK.silent=true;S.opt.gap=gap;fillCache=null;setSel(parts);setRole('blanc');
+    await bkStart('all',null);
+    if(BK.pending&&BK.pending.shape)bkValidate();else if(BK.pending)bkCancel();
+  }catch(e){console.error(e);}finally{BK.silent=false;S.opt.gap=keepGap;setRole(keepRole);renderLayers();setTool('select');setSel(parts.filter(x=>x.parent));}
 }
 /* dessin vectorisé : les zones blanches dans « Blanc », les traits dans « Couleur », liés en un seul objet */
 function placeVx(g){
@@ -2362,7 +2372,7 @@ async function blobToImage(blob){const url=URL.createObjectURL(blob);const img=n
 function setVxParams(p){
   const set=(id,v)=>{if(v!=null)$('#'+id).value=v;};
   set('vxSeuil',p.seuil);set('vxFlou',p.flou);set('vxFerme',p.ferme);set('vxTache',p.tache);set('vxLiser',p.liser||0);set('vxLisse',p.lisse);set('vxPrec',p.prec);set('vxDef',p.def);
-  if(p.inv!=null)$('#vxInv').checked=p.inv;if(p.lignes!=null)$('#vxFin').checked=p.lignes;if(p.blanc!=null)$('#vxBlanc').checked=p.blanc;
+  if(p.inv!=null)$('#vxInv').checked=p.inv;if(p.lignes!=null)$('#vxFin').checked=p.lignes;if(p.blanc!=null)$('#vxBlanc').checked=p.blanc;if(p.ouv!=null&&$('#vxOuv'))$('#vxOuv').value=p.ouv;
 }
 function vxDialogMode(edit){
   $('#vxTitle').textContent=edit?'Revectoriser le dessin sélectionné':'Vectoriser un dessin';
@@ -2560,7 +2570,7 @@ $('#bDoc').onclick=openDoc;
 $('#bVecto').onclick=openVx;
 $('#vxFile').onchange=e=>{const f=e.target.files[0];e.target.value='';vxOpenFile(f);};
 ['vxSeuil','vxFlou','vxFerme','vxTache','vxLiser','vxLisse','vxPrec','vxDef'].forEach(id=>$('#'+id).addEventListener('input',vxSchedule));
-$('#vxInv').onchange=vxSchedule;$('#vxBlanc').onchange=()=>{vxLabels();vxDraw();};$('#vxPts').onchange=vxDraw;$('#vxZoom').onchange=vxDraw;$('#vxFin').onchange=vxSchedule;
+$('#vxInv').onchange=vxSchedule;$('#vxBlanc').onchange=()=>{vxLabels();vxDraw();};$('#vxOuv').oninput=vxLabels;$('#vxPts').onchange=vxDraw;$('#vxZoom').onchange=vxDraw;$('#vxFin').onchange=vxSchedule;
 function segBind(id,key,cb){$('#'+id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;VX[key]=b.dataset.v;$('#'+id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));cb&&cb();});}
 segBind('vxPlace','place',()=>{$('#vxDpiBox').hidden=VX.place!=='dpi';});
 segBind('vxMode','mode');

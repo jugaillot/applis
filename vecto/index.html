@@ -1582,11 +1582,11 @@ function setPreview(on){
     const prevAct=P.project.activeLayer;const L=new P.Layer({name:'__pvmask'});L.bringToFront();uiLayer.bringToFront();if(prevAct&&prevAct!==L)prevAct.activate();
     const big=new P.Path.Rectangle({rectangle:new P.Rectangle(-1e5,-1e5,2e5,2e5),insert:false}),pg=new P.Path.Rectangle({rectangle:new P.Rectangle(0,0,S.page.w,S.page.h),insert:false});
     L.addChild(new P.CompoundPath({children:[big,pg],fillRule:'evenodd',fillColor:board,data:{sys:true}}));L.locked=true;
-    PV={L};uiLayer.visible=false;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=false;
+    PV={L,paper:pageRect?pageRect.fillColor:null};if(pageRect)pageRect.fillColor=new P.Color('#ffffff');uiLayer.visible=false;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=false;
     const pc=document.getElementById('pts');if(pc)pc.style.visibility='hidden';
     document.body.classList.add('apv');$('#hint').textContent='Aperçu de la page · Échap ou le bouton : revenir';
   }else{
-    PV.L.remove();PV=null;uiLayer.visible=true;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=true;
+    PV.L.remove();if(pageRect&&PV.paper)pageRect.fillColor=PV.paper;PV=null;uiLayer.visible=true;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=true;
     const pc=document.getElementById('pts');if(pc)pc.style.visibility='';
     document.body.classList.remove('apv');$('#hint').textContent=HINTS[S.tool]||'';ensureLayer();drawUI();
   }
