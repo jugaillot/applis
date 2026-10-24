@@ -454,7 +454,7 @@ function selectable(item){const l=item&&item.layer;return l&&!isSys(l)&&l.visibl
 function setSel(items){if(window.BK&&BK.pending&&!BK.lock){const a=new Set(BK.pending.scope);const same=items&&items.length===a.size&&items.every(i=>a.has(i));if(!same)bkValidate();}
   if(!items||!items.length){if(!(window.BK&&BK.lock))fillCache=null;}sel=items.filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();if(S.tool==='bucket'&&!(window.BK&&(BK.lock||BK.prep)))bkWarm();}
 function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
-function selBounds(){if(!sel.length)return null;let b=sel[0].bounds.clone();for(let i=1;i<sel.length;i++)b=b.unite(sel[i].bounds);return b;}
+function selBounds(){const T=typeof cmdTargets==='function'?cmdTargets():sel;if(!T.length)return null;let b=T[0].bounds.clone();for(let i=1;i<T.length;i++)b=b.unite(T[i].bounds);return b;}
 function allTop(){const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children);});return out;}
 function hitLeaf(point){
   const r=P.project.hitTest(point,{fill:true,stroke:true,segments:false,tolerance:px(4),match:h=>selectable(h.item)});
@@ -588,9 +588,9 @@ function renderSwatches(){
 /* ---------- panneau ---------- */
 function syncPanel(){
   const b=selBounds();
-  $('#selCount').textContent=sel.length?(sel.length+' objet'+(sel.length>1?'s':'')):'';
+  {const T=cmdTargets();$('#selCount').textContent=T!==sel&&T.length?(T.length+' élément'+(T.length>1?'s':'')):sel.length?(sel.length+' objet'+(sel.length>1?'s':'')):'';}
   document.querySelectorAll('[data-geo]').forEach(i=>{if(document.activeElement===i)return;i.value=b?f1({x:b.x,y:b.y,w:b.width,h:b.height}[i.dataset.geo]):'';i.disabled=!b;});
-  document.querySelectorAll('#secSel .btn,[data-cmd],#bDetach').forEach(x=>x.disabled=!sel.length);
+  {const n=cmdTargets().length;document.querySelectorAll('#secSel .btn,[data-cmd],#bDetach').forEach(x=>x.disabled=!n);}
   $('#bUndo').disabled=!S.undo.length;$('#bRedo').disabled=!S.redo.length;
   $('#bUndo').style.opacity=S.undo.length?1:.35;$('#bRedo').style.opacity=S.redo.length?1:.35;
   if(sel.length&&S.tool!=='bucket'){currentStyleFromSel();}
@@ -629,7 +629,7 @@ $('#toolBar').addEventListener('input',e=>{const k=e.target.dataset.opt;if(!k)re
 $('#toolBar').addEventListener('click',e=>{const b=e.target.closest('[data-bk]');if(!b)return;const a=b.dataset.bk;if(a==='ok')bkValidate();else if(a==='cancel')bkCancel();else if(a==='all')bkStart('all',null);});
 function bkHistory(){try{if(!(history.state&&history.state.bk))history.pushState({bk:1},'');}catch(e){}}
 addEventListener('popstate',()=>{if(S.tool==='bucket'&&((window.BK&&BK.pending)||S.undo.length)){undo();bkHistory();}});
-$('#toolBar').addEventListener('change',e=>{if(e.target.dataset.opt)e.target.blur();});
+$('#toolBar').addEventListener('change',e=>{if(e.target.dataset.opt){if(e.target.dataset.opt==='gap')bkSchedule();e.target.blur();}});
 
 const HINTS={
   select:'Clic : sélectionner · Ctrl+clic : sélectionner une forme à l’intérieur d’un groupe · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : dupliquer · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
@@ -1188,10 +1188,10 @@ async function bkTrace(C,mask,lab){
   const {ox,oy,ppm,cw,ch,n}=C;
   // le remplissage s'étend sous les traits (jamais dans le vide d'à côté) : pas de liseré entre le trait et la couleur
   // (plusieurs zones : chacune garde son étiquette, et un pixel les sépare sous le trait pour qu'elles restent des formes à part)
-  const g=new Int32Array(n),bar=C.bar,lim=Math.max(2,Math.round(0.35*ppm)),q=new Int32Array(n),dd=new Uint8Array(n);let qh=0,qt=0;
+  const g=new Int32Array(n),bar=C.bar,lim=Math.max(4,Math.round(1.5*ppm)),B=C.barB?C.barB.b:null,q=new Int32Array(n),dd=new Uint8Array(n);let qh=0,qt=0;
   for(let p=0;p<n;p++)if(mask[p]){g[p]=lab?Math.max(2,lab[p]):2;q[qt++]=p;}
   while(qh<qt){const p=q[qh++];const d=dd[p],l=g[p];const x=p%cw;const nb=[x>0?p-1:-1,x<cw-1?p+1:-1,p>=cw?p-cw:-1,p<n-cw?p+cw:-1];
-    for(const k of nb){if(k<0||g[k]||!bar[k]||d+1>lim)continue;g[k]=l;dd[k]=d+1;q[qt++]=k;}}
+    for(const k of nb){if(k<0||g[k]||d+1>lim||(B&&B[k]&&!bar[k]))continue;g[k]=l;dd[k]=d+1;q[qt++]=k;}}
   const grow=new Int8Array(n);
   for(let p=0;p<n;p++){const l=g[p];if(!l)continue;if(lab){const x=p%cw;if((x>0&&g[p-1]&&g[p-1]!==l)||(x<cw-1&&g[p+1]&&g[p+1]!==l&&l<g[p+1])||(p>=cw&&g[p-cw]&&g[p-cw]!==l)||(p<n-cw&&g[p+cw]&&g[p+cw]!==l&&l<g[p+cw]))continue;}grow[p]=1;}
   if(!bucketWorker)bucketWorker=new Worker('potrace-worker.js');
@@ -1216,20 +1216,49 @@ function bkColor(){
   if(S.pickFill)S.fill=S.pickFill;const c=S.fill||S.lastFill;if(!c)alert('Choisis d’abord une couleur de fond (pas « aucune »).');return c;
 }
 /* aperçu provisoire */
+/* le remplissage suit exactement les traits : on retire de la zone la forme vectorielle des traits qui la bordent */
+function bkExact(cp,pd,mask){
+  const C=pd.C,fb=cp.bounds,pts=[];
+  // quelques points de la zone, pour reconnaître une forme qui l'entoure (fond, grande zone blanche) : celle-là, on ne la retire pas
+  for(let k=0,p=0;k<C.n&&pts.length<12;k+=Math.max(1,Math.floor(C.n/4000))){if(mask[k]){const x=k%C.cw,y=(k-x)/C.cw;pts.push(new P.Point(C.ox+(x+.5)/C.ppm,C.oy+(y+.5)/C.ppm));k+=Math.floor(C.n/12);}}
+  const leaves=[];const add=p=>{if(!(p instanceof P.Path||p instanceof P.CompoundPath))return;if(typeof isOutline==='function'&&isOutline(p))return;if(!p.visible||!p.parent)return;if(!p.strokeBounds.intersects(fb))return;leaves.push(p);};
+  pd.scope.forEach(it=>leafPaths(it).forEach(add));
+  userLayers().forEach(l=>l.getItems({match:it=>it.name==='Remplissage'&&!(it.data&&it.data.sys)}).forEach(it=>{if(!pd.scope.some(s=>s===it||s.isAncestor(it)))add(it);}));
+  let res=cp;
+  for(const p of leaves){
+    const filled=p.fillColor&&(p.closed||p instanceof P.CompoundPath);
+    if(filled&&p.bounds.contains(fb)&&pts.some(q=>p.contains(q)))continue;
+    const shapes=[];if(filled)shapes.push(p);
+    if(p.strokeColor&&p.strokeWidth>0){const s=strokeToShape(p,true);if(s){if(s.parent)s.remove();shapes.push(s);}}
+    for(const sh of shapes){try{const r=res.subtract(sh,{insert:false});if(r)res=r;}catch(e){}}
+  }
+  // on ne garde que les morceaux qui sont bien dans la zone (pas les miettes passées de l'autre côté d'un trait fin)
+  const parts=bkSplit(res).filter(z=>{const ip=z.firstChild&&z.firstChild.interiorPoint;if(!ip)return false;const x=Math.floor((ip.x-C.ox)*C.ppm),y=Math.floor((ip.y-C.oy)*C.ppm);
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<C.cw&&yy<C.ch&&mask[yy*C.cw+xx])return true;}return false;});
+  if(!parts.length)return cp;
+  return new P.CompoundPath({insert:false,fillRule:'evenodd',children:parts.flatMap(z=>z.removeChildren())});
+}
 async function bkShow(){
   const pd=BK.pending;if(!pd)return;
-  const C=pd.C;let res;
-  if(pd.mode==='one'){res=bkOne(C,pd.pt);if(!res.mask){bkCancel();if(res.msg)alert(res.msg);else if(res.hint)$('#hint').textContent=res.hint;return;}}
-  else{res=bkAll(C);if(!res.zones){bkCancel();alert('Aucune zone à remplir avec ce réglage.\nAugmente « Fermeture des ouvertures » si des zones sont ouvertes.');return;}}
-  const cp=await bkTrace(C,res.mask,res.lab);
+  const C=pd.C;let res;const first=!pd.shown;
+  const fail=(msg)=>{if(first){bkCancel();if(msg)alert(msg);return;}
+    // en réglant la sensibilité : on reste dans l'aperçu, même s'il n'y a rien pour ce réglage
+    bkClearPreview();pd.shape=null;pd.mask=null;$('#hint').textContent='Aucune zone avec ce réglage · bouge « Fermeture des ouvertures » · Échap : annuler';P.view.update();};
+  if(pd.mode==='one'){res=bkOne(C,pd.pt);if(!res.mask){if(!first||res.msg)return fail(res.msg);bkCancel();if(res.hint)$('#hint').textContent=res.hint;return;}}
+  else{res=bkAll(C);if(!res.zones)return fail('Aucune zone à remplir avec ce réglage.\nAugmente « Fermeture des ouvertures » si des zones sont ouvertes.');}
+  let cp=await bkTrace(C,res.mask,res.lab);
+  if(BK.pending!==pd)return;
+  if(!cp)return fail(null);
+  cp=bkExact(cp,pd,res.mask);
   if(BK.pending!==pd)return;
   bkClearPreview();
-  if(!cp){bkCancel();return;}
   pd.mask=res.mask;pd.shape=cp;
   const pv=cp.clone({insert:false});pv.fillColor=new P.Color(pd.col);pv.opacity=0.6;pv.strokeColor=new P.Color(pd.col);pv.strokeWidth=px(1);pv.dashArray=[px(4),px(3)];pv.data.sys=true;
   bkLayer().addChild(pv);
   $('#hint').textContent=(pd.mode==='all'?res.zones+' zone'+(res.zones>1?'s':'')+' en aperçu':'Aperçu'+(res.how?' ('+res.how+')':''))+' · règle « Fermeture des ouvertures », puis Valider (Entrée) · Échap : annuler';
-  renderToolBar(S.tool);P.view.update();
+  // la barre n'est refaite qu'à la première fois (sinon le curseur qu'on est en train de bouger serait remplacé)
+  if(first){pd.shown=true;renderToolBar(S.tool);}
+  P.view.update();
 }
 async function bkStart(mode,pt,edit){
   const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
@@ -1456,7 +1485,13 @@ function erUp(){
 }
 
 /* ---------- commandes ---------- */
-function cmd(name){
+/* les outils du panneau agissent sur ce qui est pris : l'objet, ou seulement les éléments pris à la flèche blanche / au lasso */
+function cmdTargets(){if(S.tool==='direct'&&typeof movableSelection==='function'){const t=movableSelection();if(t.length)return t;}return sel;}
+function onTargets(fn){const T=cmdTargets();if(T===sel)return fn();const keep=sel;sel=T;try{return fn();}finally{if(sel===T){sel=keep;}syncPanel();drawUI();if(S.tool==='direct')T.forEach(i=>{if(i.parent)i.selected=true;});}}
+function cmd(name){return onTargets(()=>cmd0(name));}
+function align(kind){return onTargets(()=>align0(kind));}
+function setGeo(k,v){return onTargets(()=>setGeo0(k,v));}
+function cmd0(name){
   if(!sel.length&&!['selall','front','back'].includes(name))return;
   const b=selBounds();
   switch(name){
@@ -1511,13 +1546,13 @@ function cmd(name){
   commit();
 }
 /* contour → forme pleine : on échantillonne le tracé et on construit l'enveloppe du trait */
-function strokeToShape(p){
+function strokeToShape(p,fine){
   if(!p.strokeColor||!p.strokeWidth)return null;
   const paths=p instanceof P.CompoundPath?p.children:[p];
   let acc=null;const hw=p.strokeWidth/2;
   for(const path of paths){
     const L=path.length;if(!L)continue;
-    const n=Math.max(8,Math.ceil(L/Math.max(0.15,hw*0.5)));
+    const n=Math.max(8,Math.ceil(L/(fine?Math.min(0.08,Math.max(0.02,hw*0.2)):Math.max(0.15,hw*0.5))));
     const left=[],right=[];
     for(let i=0;i<=n;i++){
       const off=path.closed?(i%n)*L/n:i*L/n;
@@ -1531,14 +1566,14 @@ function strokeToShape(p){
       if(p.strokeCap==='round'){const c1=new P.Path.Circle({center:path.firstSegment.point,radius:hw,insert:false}),c2=new P.Path.Circle({center:path.lastSegment.point,radius:hw,insert:false});shape=shape.unite(c1,{insert:false}).unite(c2,{insert:false});}
     }
     try{shape=shape.unite(new P.Path({insert:false}),{insert:false});}catch(e){}
-    shape.simplify&&shape.simplify(Math.max(0.02,hw*0.15));
+    if(!fine)shape.simplify&&shape.simplify(Math.max(0.02,hw*0.15));
     acc=acc?acc.unite(shape,{insert:false}):shape;
   }
   if(!acc)return null;
   acc.fillColor=p.strokeColor;acc.strokeColor=null;
   return acc;
 }
-function align(kind){
+function align0(kind){
   if(!sel.length)return;
   const ref=$('#alignTo').value==='page'||sel.length===1?new P.Rectangle(0,0,S.page.w,S.page.h):selBounds();
   sel.forEach(s=>{const b=s.bounds;let dx=0,dy=0;
@@ -1547,7 +1582,7 @@ function align(kind){
     moveIt(s,new P.Point(dx,dy));});
   commit();
 }
-function setGeo(k,v){
+function setGeo0(k,v){
   const b=selBounds();if(!b||isNaN(v))return;
   if(k==='x'){sel.forEach(s=>moveIt(s,new P.Point(v-b.x,0)));}
   else if(k==='y'){sel.forEach(s=>moveIt(s,new P.Point(0,v-b.y)));}
