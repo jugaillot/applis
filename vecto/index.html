@@ -1212,11 +1212,11 @@ async function bkTrace(C,mask,lab){
   // le remplissage s'étend sous les traits (jamais dans le vide d'à côté) : pas de liseré entre le trait et la couleur
   // (plusieurs zones : chacune garde son étiquette, et un pixel les sépare sous le trait pour qu'elles restent des formes à part)
   const g=new Int32Array(n),bar=C.bar,lim=Math.max(4,Math.round(1.5*ppm)),B=C.barB?C.barB.b:null,q=new Int32Array(n),dd=new Uint8Array(n);let qh=0,qt=0;
-  for(let p=0;p<n;p++)if(mask[p]){g[p]=lab?Math.max(2,lab[p]):2;q[qt++]=p;}
+  for(let p=0;p<n;p++){if(mask[p]){g[p]=lab?Math.max(2,lab[p]):2;q[qt++]=p;}else if(!bar[p]){g[p]=-1;q[qt++]=p;}}
   while(qh<qt){const p=q[qh++];const d=dd[p],l=g[p];const x=p%cw;const nb=[x>0?p-1:-1,x<cw-1?p+1:-1,p>=cw?p-cw:-1,p<n-cw?p+cw:-1];
     for(const k of nb){if(k<0||g[k]||!bar[k]||d+1>lim)continue;g[k]=l;dd[k]=d+1;q[qt++]=k;}}
   const grow=new Int8Array(n);
-  for(let p=0;p<n;p++){const l=g[p];if(!l)continue;if(lab){const x=p%cw;if((x>0&&g[p-1]&&g[p-1]!==l)||(x<cw-1&&g[p+1]&&g[p+1]!==l&&l<g[p+1])||(p>=cw&&g[p-cw]&&g[p-cw]!==l)||(p<n-cw&&g[p+cw]&&g[p+cw]!==l&&l<g[p+cw]))continue;}grow[p]=1;}
+  for(let p=0;p<n;p++){const l=g[p];if(l<=0)continue;if(lab){const x=p%cw;if((x>0&&g[p-1]>0&&g[p-1]!==l)||(x<cw-1&&g[p+1]>0&&g[p+1]!==l&&l<g[p+1])||(p>=cw&&g[p-cw]>0&&g[p-cw]!==l)||(p<n-cw&&g[p+cw]>0&&g[p+cw]!==l&&l<g[p+cw]))continue;}grow[p]=1;}
   if(!bucketWorker)bucketWorker=new Worker('potrace-worker.js');
   const id=++bucketId;
   const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1,opttolerance:0.2,optcurve:true,close:0}},[grow.buffer]);});
