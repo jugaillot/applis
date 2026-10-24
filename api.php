@@ -82,7 +82,7 @@ if ($a === 'getblob') {
   if (!is_file($f)) out(404, array('error' => 'introuvable'));
   flock($lock, LOCK_SH); $j = idx_read(); flock($lock, LOCK_UN);
   $t = isset($j['blobs'][$id]['type']) && $j['blobs'][$id]['type'] ? $j['blobs'][$id]['type'] : 'application/octet-stream';
-  header('Content-Type: ' . $t); header('Content-Length: ' . filesize($f));
+  header('Content-Type: ' . $t);
   readfile($f); exit;
 }
 
