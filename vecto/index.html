@@ -466,8 +466,8 @@ let sel=[];
 function topOf(item){while(item&&item.parent&&!(item.parent instanceof P.Layer))item=item.parent;return item;}
 function selectable(item){const l=item&&item.layer;return l&&!isSys(l)&&l.visible&&!l.locked;}
 function setSel(items){if(window.BK&&BK.pending&&!BK.lock){const a=new Set(BK.pending.scope);const same=items&&items.length===a.size&&items.every(i=>a.has(i));if(!same)bkValidate();}
-  if(!items||!items.length){if(!(window.BK&&BK.lock))fillCache=null;}sel=items.filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();if(S.tool==='bucket'&&!(window.BK&&(BK.lock||BK.prep)))bkWarm();}
-function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
+  if(!items||!items.length){if(!(window.BK&&BK.lock))fillCache=null;}sel=items.filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();if(S.tool!=='direct'&&P.project.selectedItems.length)clearDirect();drawUI();if(S.tool==='bucket'&&!(window.BK&&(BK.lock||BK.prep)))bkWarm();}
+function clearDirect(){P.project.getItems({match:p=>p.selected||p.fullySelected}).forEach(p=>{p.selected=false;});}// formes composées comprises (sinon leurs points restent affichés)
 function selBounds(){const T=typeof cmdTargets==='function'?cmdTargets():sel;if(!T.length)return null;let b=T[0].bounds.clone();for(let i=1;i<T.length;i++)b=b.unite(T[i].bounds);return b;}
 function allTop(){const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children);});return out;}
 function hitLeaf(point){

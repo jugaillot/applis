@@ -79,7 +79,8 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .chip{width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,0,0,.2);flex:none;position:relative;background:#fff}
 .chip.none::after{content:"";position:absolute;left:-1px;right:-1px;top:50%;height:2px;background:#d33;transform:rotate(-45deg)}
 .chip.stroke{background:#fff!important;border-width:4px}
-.layer .lx{display:flex;align-items:center;gap:6px;width:100%;flex-wrap:wrap;padding:2px 2px 4px 30px}
+.layer .lx{display:flex;align-items:center;gap:6px;width:100%;flex-wrap:nowrap;padding:2px 2px 4px 8px}
+.layer .lx label.btn{display:inline-flex;flex-direction:row;width:auto;color:var(--ink);font-size:inherit}
 .layer .lx input[type=color]{width:34px;height:22px;padding:0;border:1px solid var(--line);border-radius:5px}
 .layer{flex-wrap:wrap;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:7px;padding:3px 4px;margin-bottom:4px;background:#fff}
 .layer.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
@@ -192,7 +193,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
       <h2><span class="ttl"><span class="tw">▼</span>Calques</span> <span class="row"><button class="btn sm" id="bToLayer" title="Déplacer la sélection dans le calque actif (elle prend sa couleur)">Sélection ici</button></span></h2>
       <div id="layers"></div>
       <label class="chk" style="margin-top:6px">Couleur du papier <input type="color" id="paperCol" value="#ffffff" style="width:40px;height:22px;padding:0"></label>
-      <div class="muted" style="margin-top:4px">Les calques Blanc et Couleur ne font que donner la couleur : ce qui est devant dépend de l’ordre des objets (Devant / Derrière). Clique sur un calque pour y dessiner ; avec une sélection, elle prend sa couleur. L’Aquarelle reste au fond et montre l’image à travers ses formes ; à l’export elle sort en formes noires pour la découpe.</div>
+      <details class="muted" style="margin-top:4px"><summary style="cursor:pointer">Comment marchent les calques ?</summary>Les calques Blanc et Couleur ne font que donner la couleur : ce qui est devant dépend de l’ordre des objets (Devant / Derrière). Clique sur un calque pour y dessiner ; avec une sélection, elle prend sa couleur. L’Aquarelle reste au fond et montre l’image à travers ses formes ; à l’export elle sort en formes noires pour la découpe.</details>
     </section>
     <section id="secSel" data-sec="sel">
       <h2><span class="ttl"><span class="tw">▼</span>Transformation</span> <span class="muted" id="selCount"></span></h2>
@@ -553,8 +554,8 @@ let sel=[];
 function topOf(item){while(item&&item.parent&&!(item.parent instanceof P.Layer))item=item.parent;return item;}
 function selectable(item){if(S.aquaEdit)return !!item&&item===aquaRaster;if(item&&item.data&&item.data.sys)return false;const l=item&&item.layer;if(!(l&&!isSys(l)&&l.visible&&!l.locked))return false;if(roleOf(l)!=='dessin')return true;const lv=shapeLeaves(item);return !lv.length||lv.some(p=>{const r=roleUp(p)||'couleur';return roleVisible(r)&&!roleLocked(r);});}
 function setSel(items){if(window.BK&&BK.pending&&!BK.lock){const a=new Set(BK.pending.scope);const same=items&&items.length===a.size&&items.every(i=>a.has(i));if(!same)bkValidate();}
-  if(!items||!items.length){if(!(window.BK&&BK.lock))fillCache=null;}sel=(typeof expandLinks==='function'?expandLinks(items):items).filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();drawUI();if(S.tool==='bucket'&&!(window.BK&&(BK.lock||BK.prep)))bkWarm();}
-function clearDirect(){P.project.getItems({class:P.Path}).forEach(p=>{if(p.fullySelected||p.selected)p.selected=false;});}
+  if(!items||!items.length){if(!(window.BK&&BK.lock))fillCache=null;}sel=(typeof expandLinks==='function'?expandLinks(items):items).filter(i=>i&&i.parent);if(sel.length&&typeof followLayer==='function')followLayer(sel);syncPanel();if(S.tool!=='direct'&&P.project.selectedItems.length)clearDirect();drawUI();if(S.tool==='bucket'&&!(window.BK&&(BK.lock||BK.prep)))bkWarm();}
+function clearDirect(){P.project.getItems({match:p=>p.selected||p.fullySelected}).forEach(p=>{p.selected=false;});}// formes composées comprises (sinon leurs points restent affichés)
 function selBounds(){const T=typeof cmdTargets==='function'?cmdTargets():sel;if(!T.length)return null;let b=T[0].bounds.clone();for(let i=1;i<T.length;i++)b=b.unite(T[i].bounds);return b;}
 function allTop(){if(S.aquaEdit)return aquaRaster?[aquaRaster]:[];const out=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)out.push(...l.children.filter(c=>!(c.data&&c.data.sys)&&selectable(c)));});return out;}
 function hitLeaf(point){
