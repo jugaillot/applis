@@ -396,7 +396,18 @@ const S={
 const ABORT={n:0};const tick=()=>new Promise(r=>setTimeout(r,0));
 function abortErr(){const e=new Error('arrêté');e.abort=true;return e;}
 async function stepCheck(tok){await tick();if(tok!=null&&tok!==ABORT.n)throw abortErr();}
-const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg+'   ·   Échap : arrêter';b.hidden=false;}else b.hidden=true;document.documentElement.classList.toggle('wait-busy',!!msg);return new Promise(r=>setTimeout(r,30));};
+/* Échap pendant un calcul : tout s'arrête et le document revient à son état d'avant */
+const BUSY={on:false,undo:0,last:null,abort:false};
+function busyRevert(){
+  if(window.BK&&BK.pending)bkCancel();
+  if(S.undo.length>BUSY.undo&&BUSY.last){restore(BUSY.last);lastSnap=BUSY.last;S.undo.length=BUSY.undo;S.redo=[];setSel([]);renderLayers();scheduleAutosave();}
+  $('#hint').textContent='Arrêté : rien n’a été modifié';
+}
+const busy=msg=>{const b=$('#busy');
+  if(msg){if(!BUSY.on){BUSY.on=true;BUSY.undo=S.undo.length;BUSY.last=lastSnap;BUSY.abort=false;}b.textContent=BUSY.abort?'Arrêt…':msg+'   ·   Échap : arrêter';b.hidden=false;}
+  else{b.hidden=true;if(BUSY.on){BUSY.on=false;if(BUSY.abort){BUSY.abort=false;try{busyRevert();}catch(e){console.error(e);}}}}
+  document.documentElement.classList.toggle('wait-busy',!!msg);return new Promise(r=>setTimeout(r,30));};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&BUSY.on){e.preventDefault();e.stopImmediatePropagation();BUSY.abort=true;ABORT.n++;$('#busy').textContent='Arrêt…';}},true);
 const f1=v=>Math.round(v*10)/10;
 
 /* ---------- paper ---------- */
@@ -1284,10 +1295,10 @@ async function bkStart(mode,pt,edit){
     const C=await bkPrepare(scope);
     BK.pending={mode,pt,scope:sel.slice(),C,col,edit:edit||null};
     await bkShow();
-  }catch(err){bkCancel();if(err&&err.abort)$('#hint').textContent='Arrêté';else{console.error(err);alert('Remplissage impossible : '+(err.message||err));}}
+  }catch(err){bkCancel();if(err&&err.abort){}else{console.error(err);alert('Remplissage impossible : '+(err.message||err));}}
   await busy();
 }
-function bkSchedule(){if(!BK.pending)return;clearTimeout(BK.timer);BK.timer=setTimeout(async()=>{await busy('Nouvel aperçu…');try{await bkShow();}catch(e){if(e&&e.abort){bkCancel();$('#hint').textContent='Arrêté';}else console.error(e);}await busy();},200);}
+function bkSchedule(){if(!BK.pending)return;clearTimeout(BK.timer);BK.timer=setTimeout(async()=>{await busy('Nouvel aperçu…');try{await bkShow();}catch(e){if(e&&e.abort){bkCancel();}else console.error(e);}await busy();},200);}
 function bkCancel(){const pd=BK.pending;if(pd&&pd.edit&&pd.edit.parent){pd.edit.visible=true;fillCache=null;}BK.pending=null;bkClearPreview();renderToolBar(S.tool);P.view.update();}
 function bkValidate(){
   const pd=BK.pending;if(!pd)return;
@@ -2249,7 +2260,6 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&e
 let spaceDown=false;
 document.addEventListener('keydown',e=>{
   if($('#vxDlg').open||$('#docDlg').open||$('#phDlg').open||$('#ungDlg').open)return;
-  if(e.key==='Escape'&&!$('#busy').hidden){e.preventDefault();ABORT.n++;$('#busy').textContent='Arrêt…';return;}
   if(BK.pending&&(e.key==='Enter'||e.key==='Escape')){e.preventDefault();e.key==='Enter'?bkValidate():bkCancel();return;}
   const tag=document.activeElement&&document.activeElement.tagName;
   if(/INPUT|SELECT|TEXTAREA/.test(tag))return;
