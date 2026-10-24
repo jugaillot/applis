@@ -28,13 +28,17 @@ header h1 span{color:var(--acc)}
 .btn.accent{background:var(--acc);color:#fff;border-color:var(--acc)}
 .btn.sm{padding:3px 7px;font-size:12px}
 .btn.ic{padding:4px 6px;min-width:28px;justify-content:center}
-main{flex:1;display:grid;grid-template-columns:48px 1fr 290px;min-height:0}
+main{flex:1;display:grid;grid-template-columns:86px 1fr 290px;min-height:0}
 #tools{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0}
 .tool{width:36px;height:36px;border:1px solid transparent;border-radius:8px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink)}
 .tool:hover{background:var(--soft)}
 .tool.on{background:var(--ink);color:#fff}
 .tool svg{width:20px;height:20px}
 .tsep{width:26px;height:1px;background:var(--line);margin:4px 0}
+#tools .tgrid{display:grid;grid-template-columns:36px 36px;gap:3px;justify-content:center;align-content:start}
+#tools .tgrid .tsep{grid-column:1 / -1;width:auto;margin:4px 6px}
+#tools #bPreview{margin-top:auto;flex-shrink:0}
+body.apv #bPreview{background:var(--ink);color:#fff}
 #stage{position:relative;min-width:0;min-height:0;background:var(--board)}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #pts{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -139,7 +143,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 #asideTg:hover{background:var(--soft);color:var(--ink)}
 #asideTg svg{width:16px;height:16px;transition:transform .15s}
 #mini{display:none}
-body.amini main{grid-template-columns:48px 1fr 78px}
+body.amini main{grid-template-columns:86px 1fr 78px}
 body.amini aside{padding:0 6px 20px}
 body.amini aside>section{display:none}
 body.amini #asideTop{margin:0 -6px 6px;justify-content:center}
@@ -165,6 +169,7 @@ body.amini #mini{display:flex;flex-direction:column;align-items:stretch;gap:8px}
   header::-webkit-scrollbar{display:none}
   header>*{flex-shrink:0}
   #tools{overflow-y:auto;min-height:0}
+  #tools .tgrid{grid-template-columns:36px}
   aside{min-height:0;padding-bottom:60px}
   aside .btn,aside select,aside input{min-height:34px}
   aside{grid-column:1 / -1;border-left:0;border-top:1px solid var(--line)}
@@ -212,7 +217,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn accent" id="bPdf">PDF 40 × 60 par calque…</button>
 </header>
 <main>
-  <nav id="tools">
+  <nav id="tools"><div class="tgrid">
     <button class="tool" data-tool="select" title="Sélection (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor"/></svg></button>
     <button class="tool" data-tool="direct" title="Sélection directe — points (A)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
     <button class="tool" data-tool="lasso" title="Lasso — entourer des formes, même à l’intérieur d’un dessin (Q)"><svg viewBox="0 0 24 24"><path d="M12 4c5 0 8 2.2 8 5s-3.6 5-8 5-8-2.2-8-5 3-5 8-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 2"/><path d="M7 13c-1 2 0 4 2 4s2 2 1 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
@@ -229,6 +234,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <div class="tsep"></div>
     <button class="tool" id="bUndo" title="Annuler (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 7L4 12l5 5M4 12h10a6 6 0 010 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" transform="translate(0,-3)"/></svg></button>
     <button class="tool" id="bRedo" title="Rétablir (Ctrl+Maj+Z)"><svg viewBox="0 0 24 24"><path d="M15 7l5 5-5 5M20 12H10a6 6 0 000 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" transform="translate(0,-3)"/></svg></button>
+  </div>
+    <button class="tool" id="bPreview" title="Aperçu de la page : seuls les dessins posés sur la feuille (Échap : revenir)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><rect x="6" y="3" width="12" height="18" rx="1.2"/><path d="M2.5 12s3-4.2 9.5-4.2S21.5 12 21.5 12s-3 4.2-9.5 4.2S2.5 12 2.5 12z" fill="var(--panel,#fff)"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/></svg></button>
   </nav>
   <div id="stage">
     <canvas id="cv"></canvas>
@@ -523,7 +530,7 @@ const view=P.view;
 const pageLayer=P.project.activeLayer;pageLayer.name='__page';
 let pageRect=null;
 const uiLayer=new P.Layer({name:'__ui'});
-function isSys(l){return l===pageLayer||l===uiLayer||(!!l&&l.name==='__prev');}
+function isSys(l){return l===pageLayer||l===uiLayer||(!!l&&(l.name==='__prev'||l.name==='__pvmask'));}
 function userLayers(){return P.project.layers.filter(l=>!isSys(l));}
 let activeLayer=null;
 function newLayer(name){const l=new P.Layer({name:name||('Calque '+(userLayers().length+1))});l.insertBelow(uiLayer);activeLayer=l;return l;}
@@ -826,6 +833,7 @@ const HINTS={
   hand:'Glisser pour déplacer la vue · molette : zoom · clic molette + glisser : déplacer la vue · Ctrl+molette : horizontal · Maj+molette : vertical'
 };
 function setTool(t){
+  if(typeof PV!=='undefined'&&PV)setPreview(false);
   if(S.rotMode&&typeof setRotMode==='function')setRotMode(false);
   if(typeof BK!=='undefined'&&BK.pending&&t!=='bucket')bkValidate();
   if(S.tool==='pen'&&t!=='pen')finishPen();
@@ -864,6 +872,7 @@ function drawMarquee(a,b){if(marquee)marquee.remove();uiLayer.activate();marquee
 function endMarquee(){if(marquee){marquee.remove();marquee=null;}}
 
 tool.onMouseDown=function(e){
+  if(PV&&S.tool!=='hand'&&!spaceDown&&e.event.button!==1)return;
   if(S.rotMode&&e.event.button!==1&&!spaceDown){const ps=S.tool==='direct'?dirPartialSegs():null;const T=ps||cmdTargets().filter(t=>t&&t.parent);if(T.length){let b=null;T.forEach(t=>{const r=t instanceof P.Segment?new P.Rectangle(t.point,t.point):t.bounds;b=b?b.unite(r):r.clone();});drag={mode:'rot',items:T,center:b.center,start:e.point,pa:0,rotTool:true};}return;}
   const now=Date.now(),dbl=now-lastDown.t<350&&lastDown.p&&lastDown.p.getDistance(e.point)<px(6);lastDown={t:now,p:e.point};
   if(S.tool==='hand'||e.event.button===1||spaceDown){{const [cx,cy]=evXY(e.event);drag={mode:'pan',start:cx,sy:cy,c:view.center};}cv.style.cursor='grabbing';return;}
@@ -1658,6 +1667,29 @@ function setRotMode(on){S.rotMode=!!on;document.querySelectorAll('.rotTg').forEa
   if(S.rotMode){cv.style.cursor=ROT_CUR;$('#hint').textContent='Rotation : glisse sur la feuille pour faire tourner la sélection autour de son centre · Maj : par 15° · Échap ou le bouton : terminer';}
   else{$('#hint').textContent=HINTS[S.tool]||'';cv.style.cursor=S.tool==='hand'?'grab':(S.tool==='select'||S.tool==='direct')?'default':S.tool==='bucket'?bucketCursor():'crosshair';}}
 document.querySelectorAll('.rotTg').forEach(b=>b.addEventListener('click',()=>setRotMode(!S.rotMode)));
+
+/* ---------- aperçu de la page : seuls les dessins posés sur la feuille, sans cadres ni poignées ---------- */
+var PV=null;
+function setPreview(on){
+  if(!!on===!!PV)return;
+  if(on){
+    if(window.BK&&BK.pending)bkValidate();if(S.tool==='pen'&&typeof finishPen==='function')finishPen();
+    setSel([]);clearDirect();
+    const board=getComputedStyle(document.documentElement).getPropertyValue('--board').trim()||'#d9d6cf';
+    const prevAct=P.project.activeLayer;const L=new P.Layer({name:'__pvmask'});L.bringToFront();uiLayer.bringToFront();if(prevAct&&prevAct!==L)prevAct.activate();
+    const big=new P.Path.Rectangle({rectangle:new P.Rectangle(-1e5,-1e5,2e5,2e5),insert:false}),pg=new P.Path.Rectangle({rectangle:new P.Rectangle(0,0,S.page.w,S.page.h),insert:false});
+    L.addChild(new P.CompoundPath({children:[big,pg],fillRule:'evenodd',fillColor:board,data:{sys:true}}));L.locked=true;
+    PV={L};uiLayer.visible=false;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=false;
+    const pc=document.getElementById('pts');if(pc)pc.style.visibility='hidden';
+    document.body.classList.add('apv');$('#hint').textContent='Aperçu de la page · Échap ou le bouton : revenir';
+  }else{
+    PV.L.remove();PV=null;uiLayer.visible=true;if(typeof prevLayer!=='undefined'&&prevLayer)prevLayer.visible=true;
+    const pc=document.getElementById('pts');if(pc)pc.style.visibility='';
+    document.body.classList.remove('apv');$('#hint').textContent=HINTS[S.tool]||'';ensureLayer();drawUI();
+  }
+  P.view.update();
+}
+$('#bPreview').addEventListener('click',()=>setPreview(!PV));
 
 /* ---------- panneau de droite réduit : calques (œil, cadenas, couleur) et commandes les plus utilisées ---------- */
 (function(){
@@ -2874,6 +2906,7 @@ document.addEventListener('keydown',e=>{
   if(ctrl&&(k==='s'||k==='S')){e.preventDefault();$('#bSave').click();return;}
   if(ctrl)return;
   if(k==='Escape'&&S.rotMode){setRotMode(false);return;}
+  if(k==='Escape'&&PV){setPreview(false);return;}
   if(k==='Escape'){if(S.aquaEdit){exitAquaEdit();return;}if(S.tool==='pen'&&penPath){finishPen();return;}setSel([]);clearDirect();return;}
   if(k==='Enter'&&S.tool==='pen'){finishPen();return;}
   if(k==='Delete'||k==='Backspace'){e.preventDefault();if(S.tool==='direct'){if(deleteSegs())return;if(deleteDirectPaths())return;}cmd('del');return;}
