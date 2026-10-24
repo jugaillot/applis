@@ -146,6 +146,7 @@ body.amini #mini{display:flex;flex-direction:column;align-items:stretch;gap:8px}
 .mb{border:1px solid var(--line);background:#fff;border-radius:7px;height:30px;cursor:pointer;display:grid;place-items:center;color:var(--ink);padding:0}
 .mb:hover{background:var(--soft)}
 .mb:disabled{opacity:.35;cursor:default}
+.mb.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .mb svg{width:19px;height:19px}
 @media (max-width:900px){
   main{grid-template-columns:44px 1fr;grid-template-rows:minmax(0,1fr) minmax(0,48%)}
@@ -249,6 +250,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="row" style="margin-top:6px">
         <button class="btn sm ic" data-cmd="rotL" title="Rotation −90°">⟲</button>
         <button class="btn sm ic" data-cmd="rotR" title="Rotation +90°">⟳</button>
+        <button type="button" class="mb rotTg" title="Rotation libre : glisser sur la feuille pour faire tourner la sélection (Maj : 15°)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M5 14a7 7 0 0 1 12-7"/><path d="M14 4.5l3.2 2.6-3.6 2"/><path d="M19 10a7 7 0 0 1-12 7"/><path d="M10 19.5l-3.2-2.6 3.6-2"/></svg></button>
         <button class="btn sm ic" data-cmd="flipH" title="Symétrie horizontale">⇋</button>
         <button class="btn sm ic" data-cmd="flipV" title="Symétrie verticale">⥮</button>
         <input type="number" id="rotVal" value="15" step="1" style="width:56px" title="Angle">
@@ -330,6 +332,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
         <button type="button" class="mb" data-cmd="dup" title="Dupliquer (Ctrl+D)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
         <button type="button" class="mb" data-cmd="del" title="Supprimer (Suppr)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13M10.5 11v5.5M13.5 11v5.5"/></svg></button>
         <button type="button" class="mb" data-cmd="front" title="Devant (premier plan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5" stroke-dasharray="2 2"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".55"/></svg></button>
+        <button type="button" class="mb rotTg" title="Rotation libre : glisser sur la feuille pour faire tourner la sélection (Maj : 15°)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M5 14a7 7 0 0 1 12-7"/><path d="M14 4.5l3.2 2.6-3.6 2"/><path d="M19 10a7 7 0 0 1-12 7"/><path d="M10 19.5l-3.2-2.6 3.6-2"/></svg></button>
         <button type="button" class="mb" data-cmd="back" title="Derrière (arrière-plan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".55"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
       </div>
       <div class="mgrp">
@@ -731,6 +734,7 @@ const HINTS={
   hand:'Glisser pour déplacer la vue · molette : zoom · clic molette + glisser : déplacer la vue · Ctrl+molette : horizontal · Maj+molette : vertical'
 };
 function setTool(t){
+  if(S.rotMode&&typeof setRotMode==='function')setRotMode(false);
   if(typeof BK!=='undefined'&&BK.pending&&t!=='bucket')bkValidate();
   if(S.tool==='pen'&&t!=='pen')finishPen();
   // en quittant la flèche blanche, les éléments pris restent la sélection (la gomme, le pot… n'agissent que sur eux)
@@ -768,6 +772,7 @@ function drawMarquee(a,b){if(marquee)marquee.remove();uiLayer.activate();marquee
 function endMarquee(){if(marquee){marquee.remove();marquee=null;}}
 
 tool.onMouseDown=function(e){
+  if(S.rotMode&&e.event.button!==1&&!spaceDown){const T=cmdTargets().filter(t=>t&&t.parent);if(T.length){let b=T[0].bounds.clone();T.forEach(t=>b=b.unite(t.bounds));drag={mode:'rot',items:T,center:b.center,start:e.point,pa:0,rotTool:true};}return;}
   const now=Date.now(),dbl=now-lastDown.t<350&&lastDown.p&&lastDown.p.getDistance(e.point)<px(6);lastDown={t:now,p:e.point};
   if(S.tool==='hand'||e.event.button===1||spaceDown){{const [cx,cy]=evXY(e.event);drag={mode:'pan',start:cx,sy:cy,c:view.center};}cv.style.cursor='grabbing';return;}
   if(S.tool==='select')return selDown(e,dbl);
@@ -785,6 +790,7 @@ tool.onMouseDown=function(e){
   if(S.tool==='shape'){drag={mode:'shape',from:e.point};return;}
 };
 tool.onMouseDrag=function(e){
+  if(drag&&drag.rotTool)return selDrag(e);
   if(drag&&drag.mode==='pan'){const z=view.zoom,[cx,cy]=evXY(e.event);if(!isFinite(cx)||!isFinite(cy))return;view.center=drag.c.subtract(new P.Point(cx-drag.start,cy-drag.sy).divide(z));afterView();return;}
   if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selDrag(e);
   if(S.tool==='lasso')return lassoDrag(e);
@@ -807,6 +813,7 @@ tool.onMouseDrag=function(e){
   }
 };
 tool.onMouseUp=function(e){
+  if(drag&&drag.rotTool){const T=drag.items;selUp(e);if(S.tool==='direct')T.forEach(i=>{if(i.parent)i.selected=true;});drawUI();syncPanel();cv.style.cursor=ROT_CUR;return;}
   if(drag&&drag.mode==='pan'){drag=null;cv.style.cursor=S.tool==='hand'?'grab':'default';return;}
   if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selUp(e);
   if(S.tool==='lasso')return lassoUp(e);
@@ -840,6 +847,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Alt'&&altCopyReady()&&!/INPU
 document.addEventListener('keyup',e=>{if(e.key==='Alt'&&altCur!=null){cv.style.cursor=altCur;altCur=null;}});
 addEventListener('blur',()=>{if(altCur!=null){cv.style.cursor=altCur;altCur=null;}});
 tool.onMouseMove=function(e){
+  if(S.rotMode){if(!drag)cv.style.cursor=ROT_CUR;return;}
   if(e.modifiers.alt&&altCopyReady()){cv.style.cursor='copy';return;}
   if((S.tool==='select'||S.tool==='lasso'||S.tool==='direct')&&handles.length){const h=handleAt(e.point);cv.style.cursor=h?(h==='rot'?ROT_CUR:({tl:'nwse-resize',br:'nwse-resize',tr:'nesw-resize',bl:'nesw-resize',tc:'ns-resize',bc:'ns-resize',lc:'ew-resize',rc:'ew-resize'})[h]):(S.tool==='lasso'?'crosshair':'default');}
   if(S.tool==='pen'&&penPath&&penPath.segments.length&&!penDrag){
@@ -1545,6 +1553,12 @@ function doUngroup(mode){
 }
 document.querySelectorAll('#ungDlg [data-ung]').forEach(b=>b.onclick=()=>{$('#ungDlg').close();cmd('ung:'+b.dataset.ung);});
 $('#ungCancel').onclick=()=>$('#ungDlg').close();
+
+/* ---------- outil rotation libre : glisser n'importe où sur la feuille fait tourner la sélection (objet, flèche blanche, lasso) ---------- */
+function setRotMode(on){S.rotMode=!!on;document.querySelectorAll('.rotTg').forEach(b=>b.classList.toggle('on',S.rotMode));
+  if(S.rotMode){cv.style.cursor=ROT_CUR;$('#hint').textContent='Rotation : glisse sur la feuille pour faire tourner la sélection autour de son centre · Maj : par 15° · Échap ou le bouton : terminer';}
+  else{$('#hint').textContent=HINTS[S.tool]||'';cv.style.cursor=S.tool==='hand'?'grab':(S.tool==='select'||S.tool==='direct')?'default':S.tool==='bucket'?bucketCursor():'crosshair';}}
+document.querySelectorAll('.rotTg').forEach(b=>b.addEventListener('click',()=>setRotMode(!S.rotMode)));
 
 /* ---------- panneau de droite réduit : calques (œil, cadenas, couleur) et commandes les plus utilisées ---------- */
 (function(){
@@ -2639,6 +2653,7 @@ document.addEventListener('keydown',e=>{
   if(ctrl&&k==='0'){e.preventDefault();fitView();return;}
   if(ctrl&&(k==='s'||k==='S')){e.preventDefault();$('#bSave').click();return;}
   if(ctrl)return;
+  if(k==='Escape'&&S.rotMode){setRotMode(false);return;}
   if(k==='Escape'){if(S.tool==='pen'&&penPath){finishPen();return;}setSel([]);clearDirect();return;}
   if(k==='Enter'&&S.tool==='pen'){finishPen();return;}
   if(k==='Delete'||k==='Backspace'){e.preventDefault();if(S.tool==='direct'){if(deleteSegs())return;if(deleteDirectPaths())return;}cmd('del');return;}
