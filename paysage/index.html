@@ -1086,6 +1086,55 @@ function bkFloodFn(C){const {n,cw,ch}=C;return (ok,seed)=>{const mask=new Uint8A
         if(px_>0&&!mask[p-1]&&ok(p-1)){mask[p-1]=1;stack[sp++]=p-1;}if(px_<cw-1&&!mask[p+1]&&ok(p+1)){mask[p+1]=1;stack[sp++]=p+1;}
         if(py_>0&&!mask[p-cw]&&ok(p-cw)){mask[p-cw]=1;stack[sp++]=p-cw;}if(py_<ch-1&&!mask[p+cw]&&ok(p+cw)){mask[p+cw]=1;stack[sp++]=p+cw;}}
       return {mask,leak:touches,count};};}
+/* ---------- prolonger les bouts de traits : chaque trait qui s'arrête est prolongé jusqu'au trait le plus proche devant lui
+   (dans la limite du réglage) — ferme les zones ouvertes même étroites, comme la détection des écarts d'Illustrator ---------- */
+function skeletonize(bar,cw,ch){
+  const n=cw*ch,im=new Uint8Array(n);let list=[];
+  for(let p=0;p<n;p++)if(bar[p]){const x=p%cw,y=(p-x)/cw;if(x>0&&y>0&&x<cw-1&&y<ch-1){im[p]=1;list.push(p);}}
+  list=Int32Array.from(list);const del=new Int32Array(list.length);
+  for(let it=0;it<400;it++){let changed=false;
+    for(let step=0;step<2;step++){let nd=0;
+      for(let k=0;k<list.length;k++){const p=list[k];if(!im[p])continue;
+        const P2=im[p-cw],P3=im[p-cw+1],P4=im[p+1],P5=im[p+cw+1],P6=im[p+cw],P7=im[p+cw-1],P8=im[p-1],P9=im[p-cw-1];
+        const B=P2+P3+P4+P5+P6+P7+P8+P9;if(B<2||B>6)continue;
+        const A=(P2===0&&P3===1)+(P3===0&&P4===1)+(P4===0&&P5===1)+(P5===0&&P6===1)+(P6===0&&P7===1)+(P7===0&&P8===1)+(P8===0&&P9===1)+(P9===0&&P2===1);if(A!==1)continue;
+        if(step===0){if(P2*P4*P6||P4*P6*P8)continue;}else{if(P2*P4*P8||P2*P6*P8)continue;}
+        del[nd++]=p;}
+      if(nd){changed=true;for(let k=0;k<nd;k++)im[del[k]]=0;}}
+    if(!changed)break;
+    let m=0;for(let k=0;k<list.length;k++)if(im[list[k]])list[m++]=list[k];list=list.subarray(0,m);
+  }
+  return {im,list};
+}
+function bkBarB(C,gapMax){
+  const key=String(gapMax);if(C.barB&&C.barB.key===key)return C.barB.b;
+  const {cw,ch,n,bar,ppm}=C;
+  if(!C.skel)C.skel=skeletonize(bar,cw,ch);
+  const {im,list}=C.skel,b=new Uint8Array(bar);
+  const Dpx=isFinite(gapMax)?gapMax*ppm:60*ppm,K=Math.max(4,Math.round(1.2*ppm));
+  const NB=[-cw-1,-cw,-cw+1,-1,1,cw-1,cw,cw+1];
+  const nbs=p=>{const r=[];for(const d of NB)if(im[p+d])r.push(p+d);return r;};
+  const line=(x0,y0,x1,y1)=>{const L=Math.max(Math.abs(x1-x0),Math.abs(y1-y0))|0;for(let i=0;i<=L;i++){const x=Math.round(x0+(x1-x0)*i/Math.max(1,L)),y=Math.round(y0+(y1-y0)*i/Math.max(1,L));
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<cw&&yy<ch)b[yy*cw+xx]=1;}}};
+  for(let k=0;k<list.length;k++){const e=list[k];if(nbs(e).length!==1)continue;
+    // on remonte le trait pour connaître sa direction
+    let prev=-1,cur=e,steps=0;
+    while(steps<K){const nx=nbs(cur).filter(q=>q!==prev);if(nx.length!==1)break;prev=cur;cur=nx[0];steps++;}
+    if(steps<3)continue;// petite bosse : ce n'est pas un bout de trait
+    const ex=e%cw,ey=(e-ex)/cw,qx=cur%cw,qy=(cur-qx)/cw;let dx=ex-qx,dy=ey-qy;const dl=Math.hypot(dx,dy)||1;dx/=dl;dy/=dl;
+    let best=null;
+    for(let a=-55;a<=55;a+=5){const t=a*Math.PI/180,rx=dx*Math.cos(t)-dy*Math.sin(t),ry=dx*Math.sin(t)+dy*Math.cos(t);
+      let x=ex+.5,y=ey+.5,s=0,out=null;
+      // on sort d'abord du trait lui-même
+      while(s<Dpx*2){x+=rx;y+=ry;s++;const xi=x|0,yi=y|0;if(xi<0||yi<0||xi>=cw||yi>=ch)break;const q=yi*cw+xi;
+        if(!out){if(!bar[q])out=[xi,yi,s];continue;}
+        if(bar[q]){const len=s-out[2],sc=len*(1+Math.abs(a)/55);// on préfère prolonger tout droit
+          if(len<=Dpx&&(!best||sc<best.sc))best={len,sc,x0:out[0],y0:out[1],x1:xi,y1:yi};break;}
+        if(s-out[2]>Dpx)break;}}
+    if(best)line(best.x0,best.y0,best.x1,best.y1);
+  }
+  C.barB={key,b};return b;
+}
 /* la zone autour d'un clic → {mask,how} ou {msg}/{hint} */
 function bkOne(C,pt){
   const gapMax=bkGap();
@@ -1151,12 +1200,13 @@ function bkOne(C,pt){
           if(hm&&hm[seed0]){const t=flood(p=>!bar[p]&&hm[p],seed0);if(!t.leak)cands.push({mask:t.mask,count:t.count,ray:true,how:'l’ouverture a été fermée en ligne droite'});}
         }
     }
+    if(reg.leak&&gapMax>0){const B=bkBarB(C,gapMax);if(!B[seed0]){const t=flood(p=>!B[p],seed0);if(!t.leak)cands.push({mask:t.mask,count:t.count,tips:true,how:'les bouts de traits ont été prolongés'});}}
     if(!reg.leak){
       // zone fermée : on ne la coupe que si une ouverture assez petite isole une zone bien plus petite autour du clic (feuille ouverte dans un cadre)
       const ray=cands.find(c=>c.ray);if(ray&&ray.count*3<reg.count){reg={mask:ray.mask};how=ray.how;}
     }else{
       // la plus petite zone qui entoure le clic
-      cands.sort((a,b)=>a.count-b.count);
+      cands.sort((a,b)=>(b.tips?1:0)-(a.tips?1:0)||a.count-b.count);
       if(cands.length){reg={mask:cands[0].mask};how=cands[0].how;}
       else if(isFinite(gapMax))return {msg:gapMax>0?'Cette zone a une ouverture de plus de '+gapMax+' mm.\nAugmente « Fermeture des ouvertures » dans la barre du haut, ou ferme-la avec la plume ou le crayon.':'Cette zone n’est pas fermée.\nAugmente « Fermeture des ouvertures » dans la barre du haut pour que le pot la ferme tout seul.'};
       else{
@@ -1172,16 +1222,16 @@ function bkOne(C,pt){
 /* toutes les zones encore blanches de la sélection : zones fermées, et zones dont les ouvertures sont plus petites que le réglage
    (les ouvertures sont refermées, puis chaque zone et l'extérieur se partagent le vide : la limite passe au milieu de l'ouverture) */
 function bkAll(C){
-  const {cw,ch,n,bar,ppm}=C;const gapMax=bkGap();
+  const {cw,ch,n,ppm}=C;const gapMax=bkGap();const bar=gapMax>0?bkBarB(C,gapMax):C.bar;
   const R=gapMax>0?Math.min(Math.round((isFinite(gapMax)?gapMax:50)/2*ppm),Math.round(Math.min(cw,ch)/4)):0;
   // plusieurs échelles : zones fermées, puis zones isolées en refermant des ouvertures de plus en plus larges (jusqu'au réglage)
   const scales=[0];if(R>0){for(let r=Math.max(1,Math.round(0.4*ppm));r<R;r=Math.max(r+1,Math.round(r*1.6)))scales.push(r);scales.push(R);}
-  if(R>0&&!C.dist)C.dist=chamfer(bar,cw,ch);
+  const dist=R>0?(C.distB&&C.distB.key===String(gapMax)?C.distB.d:(C.distB={key:String(gapMax),d:chamfer(bar,cw,ch)}).d):null;
   const lab=new Int32Array(n),q=new Int32Array(n);let L=1;// 1 = l'extérieur
   const minA=Math.max(4,Math.round(0.8*ppm*ppm));
   scales.forEach((r,si)=>{
     let free;
-    if(r>0){const far=new Uint8Array(n);for(let p=0;p<n;p++)far[p]=C.dist[p]>r?1:0;const d2=chamfer(far,cw,ch);free=new Uint8Array(n);for(let p=0;p<n;p++)free[p]=(!bar[p]&&d2[p]<=r)?1:0;}
+    if(r>0){const far=new Uint8Array(n);for(let p=0;p<n;p++)far[p]=dist[p]>r?1:0;const d2=chamfer(far,cw,ch);free=new Uint8Array(n);for(let p=0;p<n;p++)free[p]=(!bar[p]&&d2[p]<=r)?1:0;}
     else{free=new Uint8Array(n);for(let p=0;p<n;p++)free[p]=bar[p]?0:1;}
     const seen=new Uint8Array(n),last=si===scales.length-1;
     for(let s=0;s<n;s++){if(!free[s]||seen[s])continue;let qh=0,qt=0,touch=false,taken=false;seen[s]=1;q[qt++]=s;
@@ -1199,12 +1249,19 @@ function bkAll(C){
       if(x>0&&!bar[p-1]&&!lab[p-1]){lab[p-1]=l;q[qt++]=p-1;}if(x<cw-1&&!bar[p+1]&&!lab[p+1]){lab[p+1]=l;q[qt++]=p+1;}
       if(p>=cw&&!bar[p-cw]&&!lab[p-cw]){lab[p-cw]=l;q[qt++]=p-cw;}if(p<n-cw&&!bar[p+cw]&&!lab[p+cw]){lab[p+cw]=l;q[qt++]=p+cw;}}}
   const mask=new Uint8Array(n);let cnt=0;for(let p=0;p<n;p++)if(lab[p]>1){mask[p]=1;cnt++;}
-  return {mask,zones:L-1,count:cnt};
+  return {mask,zones:L-1,count:cnt,lab};
 }
 /* masque → forme vectorielle (dans le document), un pixel plus large pour passer sous les traits */
-async function bkTrace(C,mask){
+async function bkTrace(C,mask,lab){
   const {ox,oy,ppm,cw,ch,n}=C;
-  const grow=new Int8Array(n);for(let p=0;p<n;p++){if(!mask[p])continue;grow[p]=1;const px_=p%cw;if(px_>0)grow[p-1]=1;if(px_<cw-1)grow[p+1]=1;if(p>=cw)grow[p-cw]=1;if(p<n-cw)grow[p+cw]=1;}
+  // le remplissage s'étend sous les traits (jamais dans le vide d'à côté) : pas de liseré entre le trait et la couleur
+  // (plusieurs zones : chacune garde son étiquette, et un pixel les sépare sous le trait pour qu'elles restent des formes à part)
+  const g=new Int32Array(n),bar=C.bar,lim=Math.max(2,Math.round(0.35*ppm)),q=new Int32Array(n),dd=new Uint8Array(n);let qh=0,qt=0;
+  for(let p=0;p<n;p++)if(mask[p]){g[p]=lab?Math.max(2,lab[p]):2;q[qt++]=p;}
+  while(qh<qt){const p=q[qh++];const d=dd[p],l=g[p];const x=p%cw;const nb=[x>0?p-1:-1,x<cw-1?p+1:-1,p>=cw?p-cw:-1,p<n-cw?p+cw:-1];
+    for(const k of nb){if(k<0||g[k]||!bar[k]||d+1>lim)continue;g[k]=l;dd[k]=d+1;q[qt++]=k;}}
+  const grow=new Int8Array(n);
+  for(let p=0;p<n;p++){const l=g[p];if(!l)continue;if(lab){const x=p%cw;if((x>0&&g[p-1]&&g[p-1]!==l)||(x<cw-1&&g[p+1]&&g[p+1]!==l&&l<g[p+1])||(p>=cw&&g[p-cw]&&g[p-cw]!==l)||(p<n-cw&&g[p+cw]&&g[p+cw]!==l&&l<g[p+cw]))continue;}grow[p]=1;}
   if(!bucketWorker)bucketWorker=new Worker('../vecto/potrace-worker.js');
   const id=++bucketId;
   const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1,opttolerance:0.2,optcurve:true,close:0}},[grow.buffer]);});
@@ -1232,7 +1289,7 @@ async function bkShow(){
   const C=pd.C;let res;
   if(pd.mode==='one'){res=bkOne(C,pd.pt);if(!res.mask){bkCancel();if(res.msg)alert(res.msg);else if(res.hint)$('#hint').textContent=res.hint;return;}}
   else{res=bkAll(C);if(!res.zones){bkCancel();alert('Aucune zone à remplir avec ce réglage.\nAugmente « Fermeture des ouvertures » si des zones sont ouvertes.');return;}}
-  const cp=await bkTrace(C,res.mask);
+  const cp=await bkTrace(C,res.mask,res.lab);
   if(BK.pending!==pd)return;
   bkClearPreview();
   if(!cp){bkCancel();return;}
@@ -1270,7 +1327,7 @@ function bkValidate(){
     if(pd.roleKeep)f.data.role=pd.roleKeep;else if(activeRole!=='aqua')f.data.role=activeRole;
     placeFill(f,pd.pt||f.interiorPoint,pd.scope);});
   // les zones remplies comptent désormais comme des traits (pour « toutes les zones » et les clics suivants)
-  const C=pd.C;for(let p=0;p<C.n;p++)if(pd.mask[p])C.bar[p]=1;C.dist=null;
+  const C=pd.C;for(let p=0;p<C.n;p++)if(pd.mask[p])C.bar[p]=1;C.dist=null;C.skel=null;C.barB=null;C.distB=null;
   if(fillCache===C)fillCache.key=scopeKey(sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys)));
   commit();renderToolBar(S.tool);
   $('#hint').textContent=shapes.length>1?shapes.length+' zones remplies':'Zone remplie';
