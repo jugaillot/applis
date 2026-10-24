@@ -61,6 +61,6 @@ header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $mtime) . ' GMT');
 header('Cache-Control: private, no-cache');
 header('X-Content-Type-Options: nosniff');
 if ((isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag)) { http_response_code(304); exit; }
-header('Content-Length: ' . $size);
+// pas de Content-Length : si le serveur compresse la réponse, une longueur annoncée fausse fait échouer Chrome (ERR_HTTP2_PROTOCOL_ERROR)
 if ($_SERVER['REQUEST_METHOD'] === 'HEAD') exit;
 readfile($full);
