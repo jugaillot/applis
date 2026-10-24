@@ -1624,14 +1624,23 @@ function cmd0(name){
       shapes.forEach(p=>p.remove());cleanEmpty(par);setSel(out.filter(x=>x.parent));break;
     }
     case'unite':case'subtract':case'intersect':case'exclude':{
-      const shapes=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath).sort((a,b)=>a.isAbove(b)?1:-1);
+      // formes concernées (du dessous vers le dessus) ; un trait sans fond compte par sa forme de trait
+      const leaves=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&!(typeof isOutline==='function'&&isOutline(p))).sort((a,b)=>a.isAbove(b)?1:-1);
+      const shapes=leaves.map(p=>{if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))return p;if(p.strokeColor&&p.strokeWidth>0){const s=strokeToShape(p,true);if(s&&s.parent)s.remove();return s;}return null;}).filter(Boolean);
       if(shapes.length<2){alert('Sélectionne au moins deux formes.');return;}
-      let res;
-      if(name==='subtract'){res=shapes[0];for(let i=1;i<shapes.length;i++){const r=res.subtract(shapes[i],{insert:false});if(res!==shapes[0])res.remove();res=r;}}
-      else{res=shapes[0];for(let i=1;i<shapes.length;i++){const r=res[name](shapes[i],{insert:false});if(res!==shapes[0])res.remove();res=r;}}
-      res.style=shapes[0].style;{const r0=roleUp(shapes[0]);if(r0)res.data.role=r0;}
-      res.insertAbove(shapes[shapes.length-1]);
-      sel.forEach(s=>s.remove());shapes.forEach(s=>s.parent&&s.remove());
+      let res=shapes[0];
+      for(let i=1;i<shapes.length;i++){let r;try{r=res[name](shapes[i],{insert:false});}catch(err){continue;}if(res!==shapes[0]&&res.parent)res.remove();res=r;}
+      if(res===shapes[0])res=res.clone({insert:false});
+      const src=leaves.find(p=>p.fillColor)||leaves[0];
+      res.fillColor=src.fillColor||src.strokeColor;res.strokeColor=null;res.name=name==='unite'?'Réunion':res.name;
+      // une seule couleur : celle du calque actif (Paysage), sinon celle de la forme du dessous
+      if(typeof roleUp==='function'){const r0=(activeRole==='blanc'||activeRole==='couleur')?activeRole:(roleUp(src)||'couleur');res.data.role=r0;}
+      // le résultat prend la place de l'élément le plus haut de la sélection (jamais à l'intérieur d'un objet qu'on supprime)
+      const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];
+      res.insertAbove(top);
+      if(typeof layerByRole==='function'&&res.layer&&roleOf(res.layer)==='aqua'&&res.data.role)layerByRole('dessin').addChild(res);
+      const par=new Set([...sel,...leaves].map(s=>s.parent).filter(Boolean));
+      sel.forEach(s=>{if(s!==res)s.remove();});leaves.forEach(s=>s.parent&&s.remove());cleanEmpty(par);
       setSel([res]);break;
     }
     case'simplify':sel.flatMap(leafPaths).forEach(p=>{const t=Math.max(0.05,px(1.5));if(p instanceof P.CompoundPath)p.children.forEach(c=>c.simplify(t));else if(p.simplify)p.simplify(t);});break;
