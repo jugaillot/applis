@@ -666,7 +666,11 @@ function drawUI(){
   }
   if(prev&&prev!==uiLayer)prev.activate();else ensureLayer();
 }
-function handleAt(point){for(const h of handles){if(h.contains(point)||h.bounds.expand(px(4)).contains(point))return h.data.handle;}return null;}
+function handleAt(point){for(const h of handles){if(h.contains(point)||h.bounds.expand(px(4)).contains(point))return h.data.handle;}
+  // juste à l'extérieur d'un coin : rotation (comme Illustrator)
+  if(handles.length&&sel.length){const b=selBounds();if(b&&!b.expand(px(3)).contains(point))for(const c of [b.topLeft,b.topRight,b.bottomLeft,b.bottomRight]){if(point.getDistance(c)<=px(24))return 'rot';}}
+  return null;}
+const ROT_CUR='url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14a7 7 0 0 1 12-7" stroke="#fff" stroke-width="4"/><path d="M14 4.5l3.2 2.6-3.6 2" stroke="#fff" stroke-width="4"/><path d="M19 10a7 7 0 0 1-12 7" stroke="#fff" stroke-width="4"/><path d="M10 19.5l-3.2-2.6 3.6-2" stroke="#fff" stroke-width="4"/><path d="M5 14a7 7 0 0 1 12-7" stroke="#000" stroke-width="1.6"/><path d="M14 4.5l3.2 2.6-3.6 2" stroke="#000" stroke-width="1.6"/><path d="M19 10a7 7 0 0 1-12 7" stroke="#000" stroke-width="1.6"/><path d="M10 19.5l-3.2-2.6 3.6-2" stroke="#000" stroke-width="1.6"/></g></svg>')+'") 12 12, alias';
 
 /* ---------- historique ---------- */
 function snapshot(){return withoutRaster(()=>userLayers().map(l=>({name:l.name,role:roleOf(l),visible:l.visible,locked:l.locked,json:l.exportJSON({asString:true})})));}
@@ -925,7 +929,7 @@ document.addEventListener('keyup',e=>{if(e.key==='Alt'&&altCur!=null){cv.style.c
 addEventListener('blur',()=>{if(altCur!=null){cv.style.cursor=altCur;altCur=null;}});
 tool.onMouseMove=function(e){
   if(e.modifiers.alt&&altCopyReady()){cv.style.cursor='copy';return;}
-  if(S.tool==='select'&&sel.length){const h=handleAt(e.point);cv.style.cursor=h?(h==='rot'?'alias':({tl:'nwse-resize',br:'nwse-resize',tr:'nesw-resize',bl:'nesw-resize',tc:'ns-resize',bc:'ns-resize',lc:'ew-resize',rc:'ew-resize'})[h]):'default';}
+  if(S.tool==='select'&&sel.length){const h=handleAt(e.point);cv.style.cursor=h?(h==='rot'?ROT_CUR:({tl:'nwse-resize',br:'nwse-resize',tr:'nesw-resize',bl:'nesw-resize',tc:'ns-resize',bc:'ns-resize',lc:'ew-resize',rc:'ew-resize'})[h]):'default';}
   if(S.tool==='pen'&&penPath&&penPath.segments.length&&!penDrag){
     if(penPreview)penPreview.remove();
     uiLayer.activate();penPreview=new P.Path({segments:[penPath.lastSegment.clone(),new P.Segment(e.point)],strokeColor:'#1e88ff',strokeWidth:px(1),dashArray:[px(3),px(3)]});ensureLayer();
