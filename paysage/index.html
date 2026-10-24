@@ -742,7 +742,7 @@ const HINTS={
   pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer',
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
   shape:'Glisser pour dessiner (forme choisie dans la barre du haut) · Maj : carré / cercle · Alt : depuis le centre',
-  eraser:'Glisser pour effacer (diamètre dans la barre du haut) · avec une sélection, n’efface que dans la sélection',
+  eraser:'Glisser pour effacer (diamètre dans la barre du haut) · avec une sélection, n’efface que dans la sélection (aussi les éléments pris à la flèche blanche)',
   bucket:'Sélectionne d’abord l’objet ou l’élément qui entoure la zone (réglage de fermeture dans la barre du haut), puis clique dans la zone : elle prend la couleur du calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic sur un trait : le passe dans ce calque',
   eyedrop:'Clic sur un objet : reprend sa couleur et son style · si des objets sont sélectionnés, ils reçoivent ce style',
   hand:'Glisser pour déplacer la vue · molette : zoom · clic molette + glisser : déplacer la vue · Ctrl+molette : horizontal · Maj+molette : vertical'
@@ -750,7 +750,8 @@ const HINTS={
 function setTool(t){
   if(typeof BK!=='undefined'&&BK.pending&&t!=='bucket')bkValidate();
   if(S.tool==='pen'&&t!=='pen')finishPen();
-  if(S.tool==='direct'&&t!=='direct')clearDirect();
+  // en quittant la flèche blanche, les éléments pris restent la sélection (la gomme, le pot… n'agissent que sur eux)
+  if(S.tool==='direct'&&t!=='direct'){const mv=movableSelection();clearDirect();if(mv.length&&mv.some(i=>!sel.includes(i)))setSel(mv);}
   S.tool=t;
   document.querySelectorAll('.tool[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
   $('#hint').textContent=HINTS[t]||'';
