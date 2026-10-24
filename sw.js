@@ -1,7 +1,7 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Scripts de l'atelier : réseau d'abord aussi. Grosses bibliothèques et polices : copie locale d'abord. */
-const VERSION = 'atelier-v90';
+const VERSION = 'atelier-v91';
 const PRECACHE = [
   '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/', '/paysage/',
   '/vecto/potrace-worker.js', '/lib/sync.js','/lib/tabs.js', '/lib/help.js',
@@ -54,11 +54,13 @@ self.addEventListener('fetch', event => {
     event.respondWith((async () => {
       const cache = await caches.open(VERSION);
       try {
+        // (une page ne peut pas être redemandée avec des options : on la redemande par son adresse)
         const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 4000);
-        const res = await fetch(req, { signal: ctrl.signal, cache: 'no-cache' });
+        const t = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch(req.url, { credentials: 'include', cache: 'no-cache', redirect: 'follow', signal: ctrl.signal });
         clearTimeout(t);
-        if (res.ok && !res.redirected) cache.put(key, res.clone());
+        if (res.redirected) return Response.redirect(res.url, 302); // connexion demandée, etc.
+        if (res.ok) cache.put(key, res.clone());
         return res;
       } catch (e) {
         const hit = await cache.match(key) || await cache.match(key + '/');
