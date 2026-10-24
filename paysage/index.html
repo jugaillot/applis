@@ -173,6 +173,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
     <div class="tsep"></div>
     <button class="tool" data-tool="pen" title="Plume (P)"><svg viewBox="0 0 24 24"><path d="M3 3l10 3.5 5.5 5.5-6.5 6.5-5.5-5.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 3l7.2 7.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11.3" cy="11.3" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M15.2 21.2l6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     <button class="tool" data-tool="pencil" title="Crayon (N)"><svg viewBox="0 0 24 24"><path d="M4 20c3-1 4-5 7-6s4 2 7-1 1-7 1-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <button class="tool" data-tool="blob" title="Forme libre : dessiner une zone pleine, sans contour (F)"><svg viewBox="0 0 24 24"><path d="M5.5 14.5c-1.6-3.4.6-8 4.6-8.6 3.1-.5 4.4 1.8 6.9 1.6 2.6-.2 3.8 2.6 2.6 5-1.1 2.3-.3 4.6-2.8 5.8-2.9 1.4-4.9-.6-7.4.3-2.3.8-3.2-1.4-3.9-4.1z" fill="currentColor"/></svg></button>
     <button class="tool" data-tool="shape" title="Formes : rectangle, ellipse, rectangle arrondi (M)"><svg viewBox="0 0 24 24"><rect x="3.5" y="10" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="15" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <div class="tsep"></div>
     <button class="tool" data-tool="bucket" title="Pot de peinture — remplir une zone (K)"><svg viewBox="0 0 24 24"><g transform="translate(1.5 -1.2) rotate(-38 12 13) scale(1.08) translate(-1 -1)"><path d="M6 8.5h12l-1.4 11a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6.8 14.2h10.4l-.65 5.3a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z" fill="currentColor"/><path d="M8.3 8.5a3.7 3.7 0 017.4 0" fill="none" stroke="currentColor" stroke-width="1.4"/></g><path d="M6.6 9.2C4.6 9.6 3.3 11 3 12.8c-.3 2 .1 5 .7 8.4.5-2.9 1.3-5.5 2.6-7.3.6-.8.7-1.5.6-2.2z" fill="currentColor"/></svg></button>
@@ -737,7 +738,7 @@ function renderToolBar(t){
   if(t==='bucket')h=`<b>Pot de peinture</b><label title="Largeur maximale d’une ouverture que le pot referme tout seul (en ligne droite). Plus c’est grand, plus il ferme les zones ouvertes, mais plus il risque de déborder.">Fermeture des ouvertures <input type="range" min="0" max="61" step="1" data-opt="gap" value="${S.opt.gap}"><span data-optv="gap">${gapLabel(S.opt.gap)}</span></label>`+(BK.pending?`<button class="btn sm on" data-bk="ok" title="Entrée">✓ Valider</button><button class="btn sm" data-bk="cancel" title="Échap">Annuler</button>`:`<button class="btn sm" data-bk="all" title="Aperçu de toutes les zones encore blanches de la sélection, avec ce réglage">Remplir toutes les zones</button>`);
   if(t==='shape')h=`<b>Formes</b><label>Forme <select data-opt="shape"><option value="rect"${S.opt.shape==='rect'?' selected':''}>Rectangle</option><option value="round"${S.opt.shape==='round'?' selected':''}>Rectangle arrondi</option><option value="ellipse"${S.opt.shape==='ellipse'?' selected':''}>Ellipse</option></select></label>`+(S.opt.shape==='round'?`<label>Rayon des angles <input type="number" data-opt="radius" min="0" step="0.5" value="${S.opt.radius}" style="width:64px"> mm</label>`:'');
   if(t==='eraser')h=`<b>Gomme</b><label title="Largeur de la gomme">Diamètre <input type="range" min="0.5" max="50" step="0.5" data-opt="eraser" value="${S.opt.eraser}"><input type="number" data-opt="eraser" min="0.5" step="0.5" value="${S.opt.eraser}" style="width:62px"> mm</label><span class="muted">${sel.length?'efface dans la sélection':'efface tout ce qui est dessous'}</span>`;
-  if(t==='pencil')h=`<b>Crayon</b><label title="0 : le trait suit exactement la main ; plus c’est grand, plus il est lissé (moins de points)">Lissage <input type="range" min="0" max="10" step="0.5" data-opt="smooth" value="${S.opt.smooth}"><span data-optv="smooth">${S.opt.smooth}</span></label>`;
+  if(t==='pencil'||t==='blob')h=`<b>${t==='blob'?'Forme libre':'Crayon'}</b><label title="0 : le trait suit exactement la main ; plus c’est grand, plus il est lissé (moins de points)">Lissage <input type="range" min="0" max="10" step="0.5" data-opt="smooth" value="${S.opt.smooth}"><span data-optv="smooth">${S.opt.smooth}</span></label>`;
   tb.innerHTML=h;tb.hidden=!h;
 }
 $('#toolBar').addEventListener('input',e=>{const k=e.target.dataset.opt;if(!k)return;S.opt[k]=k==='shape'?e.target.value:+e.target.value;if(k==='shape'){saveOpt();renderToolBar(S.tool);return;}if(k==='eraser')$('#toolBar').querySelectorAll('[data-opt=eraser]').forEach(x=>{if(x!==e.target)x.value=S.opt.eraser;});const v=$('#toolBar [data-optv="'+k+'"]');if(v)v.textContent=k==='gap'?gapLabel(S.opt.gap):S.opt[k];saveOpt();if(k==='gap')bkSchedule();});
@@ -751,6 +752,7 @@ const HINTS={
   lasso:'Entoure à main levée les formes à prendre (même à l’intérieur d’un dessin) · si un objet est sélectionné, seulement dans cet objet (clic dans le vide : libérer) · Maj : ajouter · glisser ensuite une forme prise pour tout déplacer · « Détacher en objet » pour en faire un objet à part',
   direct:'Clic sur un tracé : voir ses points · glisser un point ou une poignée · Maj : ajouter des points · double-clic sur un point : angle ↔ courbe · Suppr : effacer les points',
   pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer',
+  blob:'Dessiner à main levée une zone pleine, sans contour, de la couleur du calque actif (lissage dans la barre du haut)',
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
   shape:'Glisser pour dessiner (forme choisie dans la barre du haut) · Maj : carré / cercle · Alt : depuis le centre',
   eraser:'Glisser pour effacer (diamètre dans la barre du haut) · avec une sélection, n’efface que dans la sélection (aussi les éléments pris à la flèche blanche)',
@@ -806,6 +808,7 @@ tool.onMouseDown=function(e){
   if(S.tool==='eraser')return erDown(e);
   if(S.tool==='eyedrop')return eyedropDown(e);
   ensureLayer(true);
+  if(S.tool==='blob'){pencilPath=new P.Path({fillColor:new P.Color(roleColor(activeRole==='aqua'?'aqua':activeRole)),strokeColor:null});if(activeRole!=='aqua')pencilPath.data.role=activeRole;pencilPath.add(e.point);return;}
   if(S.tool==='pencil'){pencilPath=new P.Path(newPathStyle({fillColor:null,strokeColor:new P.Color(S.stroke||S.fill||'#000000'),strokeWidth:S.strokeW||0.5}));pencilPath.add(e.point);return;}
   if(S.tool==='shape'){drag={mode:'shape',from:e.point};return;}
 };
@@ -815,7 +818,7 @@ tool.onMouseDrag=function(e){
   if(S.tool==='lasso')return lassoDrag(e);
   if(S.tool==='direct')return dirDrag(e);
   if(S.tool==='pen')return penDragFn(e);
-  if(S.tool==='pencil'&&pencilPath){pencilPath.add(e.point);return;}
+  if((S.tool==='pencil'||S.tool==='blob')&&pencilPath){pencilPath.add(e.point);return;}
   if(S.tool==='eraser')return erDrag(e);
   if(drag&&drag.mode==='shape'){
     if(shapePath)shapePath.remove();
@@ -837,8 +840,19 @@ tool.onMouseUp=function(e){
   if(S.tool==='pen')return penUp(e);
   if(S.tool==='bucket'&&bkTap){const t=bkTap;bkTap=null;if(!pinch&&Date.now()-t.t<900&&t.p.getDistance(e.point)<px(12))bucketDown(t.e);return;}
   if(S.tool==='eraser')return erUp(e);
+  if(S.tool==='blob'&&pencilPath){
+    // forme libre : la zone dessinée est fermée et remplie, sans contour
+    const p=pencilPath;pencilPath=null;
+    if(p.segments.length<3){p.remove();return;}
+    p.closed=true;if(S.opt.smooth>0)p.simplify(px(S.opt.smooth));
+    let it=p;try{const r=p.unite(new P.Path({insert:false}),{insert:false});if(r&&Math.abs(r.area)>1e-6){r.fillColor=p.fillColor;r.strokeColor=null;r.data=p.data;r.insertAbove(p);p.remove();it=r;}}catch(err){}
+    if(Math.abs(it.area||0)<px(2)*px(2)){it.remove();return;}
+    it.name='Forme libre';sel=[it];commit();return;
+  }
   if(S.tool==='pencil'&&pencilPath){
     if(pencilPath.segments.length<2){pencilPath.remove();pencilPath=null;return;}
+    // revenu au point de départ : le trait se ferme (il reste un trait)
+    if(pencilPath.segments.length>3&&pencilPath.firstSegment.point.getDistance(pencilPath.lastSegment.point)<px(10)){pencilPath.lastSegment.remove();pencilPath.closed=true;}
     if(S.opt.smooth>0)pencilPath.simplify(px(S.opt.smooth));
     const it=pencilPath;pencilPath=null;sel=[it];commit();return;
   }
@@ -2524,7 +2538,7 @@ document.addEventListener('keydown',e=>{
   }
   if(k==='+'||k==='='){zoomAt(1.25);return;}
   if(k==='-'){zoomAt(0.8);return;}
-  const map={q:'lasso',v:'select',a:'direct',p:'pen',n:'pencil',m:'shape',l:'shape',h:'hand',k:'bucket',e:'eraser'};
+  const map={q:'lasso',v:'select',a:'direct',p:'pen',n:'pencil',m:'shape',l:'shape',h:'hand',k:'bucket',e:'eraser',f:'blob'};
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
@@ -3023,6 +3037,6 @@ $('#impOk').onclick=impRun;
 window.zoomAt=zoomAt;
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets blancs et en couleur", "Un dessin collé ou vectorisé garde ses zones blanches (calque Blanc) et ses traits (calque Couleur) dans un seul objet. « Dissocier › par calque » les sépare en deux objets."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Formes (rectangle, ellipse, rectangle arrondi)"], ["E", "Gomme"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"], ["Molette", "Zoom"], ["Clic molette + glisser", "Déplacer la vue"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc. Ce qui est devant dépend de l’ordre des objets (Devant / Derrière), pas du calque."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "Atelier Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets blancs et en couleur", "Un dessin collé ou vectorisé garde ses zones blanches (calque Blanc) et ses traits (calque Couleur) dans un seul objet. « Dissocier › par calque » les sépare en deux objets."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Formes (rectangle, ellipse, rectangle arrondi)"], ["E", "Gomme"], ["F", "Forme libre (zone pleine sans contour)"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"], ["Molette", "Zoom"], ["Clic molette + glisser", "Déplacer la vue"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc. Ce qui est devant dépend de l’ordre des objets (Devant / Derrière), pas du calque."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
 </body>
 </html>
