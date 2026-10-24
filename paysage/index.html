@@ -2781,7 +2781,8 @@ document.addEventListener('keydown',e=>{
   if(S.tool==='bucket'&&(k==='ArrowLeft'||k==='ArrowRight')&&!(e.ctrlKey||e.metaKey)){e.preventDefault();bkCycleLayer(k==='ArrowRight'?1:-1);return;}
   if(k.startsWith('Arrow')&&(sel.length||S.tool==='direct')){
     e.preventDefault();const s=e.shiftKey?10:1;const d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[k];const v=new P.Point(d);
-    if(S.tool==='direct'){const segs=selectedSegs();if(segs.length){segs.forEach(x=>x.point=x.point.add(v));commit();return;}}
+    if(S.tool==='direct'){const segs=selectedSegs();if(segs.length){segs.forEach(x=>x.point=x.point.add(v));commit();return;}
+      const mv=movableSelection();if(mv.length){mv.forEach(x=>moveIt(x,v));commit();return;}}
     sel.forEach(x=>moveIt(x,v));commit();return;
   }
   if(k==='+'||k==='='){zoomAt(1.25);return;}
