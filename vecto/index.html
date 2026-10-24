@@ -773,7 +773,7 @@ tool.onMouseDown=function(e){
   if(S.tool==='eraser')return erDown(e);
   if(S.tool==='eyedrop')return eyedropDown(e);
   ensureLayer(true);
-  if(S.tool==='blob'){pencilPath=new P.Path({fillColor:new P.Color((S.pickFill||S.fill||'#000000')),strokeColor:null});pencilPath.add(e.point);return;}
+  if(S.tool==='blob'){pencilPath=new P.Path({opacity:0.5,fillColor:new P.Color((S.pickFill||S.fill||'#000000')),strokeColor:null});pencilPath.add(e.point);return;}
   if(S.tool==='pencil'){pencilPath=new P.Path(newPathStyle({fillColor:null,strokeColor:new P.Color(S.stroke||S.fill||'#000000'),strokeWidth:S.strokeW||0.5}));pencilPath.add(e.point);return;}
   if(S.tool==='shape'){drag={mode:'shape',from:e.point};return;}
 };
@@ -809,7 +809,7 @@ tool.onMouseUp=function(e){
   if(S.tool==='eraser')return erUp(e);
   if(S.tool==='blob'&&pencilPath){
     // forme libre : la zone dessinée est fermée et remplie, sans contour
-    const p=pencilPath;pencilPath=null;
+    const p=pencilPath;pencilPath=null;p.opacity=1;
     if(p.segments.length<3){p.remove();return;}
     p.closed=true;if(S.opt.smooth>0)p.simplify(px(S.opt.smooth));
     let it=p;try{const r=p.unite(new P.Path({insert:false}),{insert:false});if(r&&Math.abs(r.area)>1e-6){r.fillColor=p.fillColor;r.strokeColor=null;r.data=p.data;r.insertAbove(p);p.remove();it=r;}}catch(err){}

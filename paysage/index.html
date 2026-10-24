@@ -863,7 +863,7 @@ tool.onMouseDown=function(e){
   if(S.tool==='eraser')return erDown(e);
   if(S.tool==='eyedrop')return eyedropDown(e);
   ensureLayer(true);
-  if(S.tool==='blob'){pencilPath=new P.Path({fillColor:new P.Color(roleColor(activeRole==='aqua'?'aqua':activeRole)),strokeColor:null});if(activeRole!=='aqua')pencilPath.data.role=activeRole;pencilPath.add(e.point);return;}
+  if(S.tool==='blob'){pencilPath=new P.Path({opacity:0.5,fillColor:new P.Color(roleColor(activeRole==='aqua'?'aqua':activeRole)),strokeColor:null});if(activeRole!=='aqua')pencilPath.data.role=activeRole;pencilPath.add(e.point);return;}
   if(S.tool==='pencil'){pencilPath=new P.Path(newPathStyle({fillColor:null,strokeColor:new P.Color(S.stroke||S.fill||'#000000'),strokeWidth:S.strokeW||0.5}));pencilPath.add(e.point);return;}
   if(S.tool==='shape'){drag={mode:'shape',from:e.point};return;}
 };
@@ -899,7 +899,7 @@ tool.onMouseUp=function(e){
   if(S.tool==='eraser')return erUp(e);
   if(S.tool==='blob'&&pencilPath){
     // forme libre : la zone dessinée est fermée et remplie, sans contour
-    const p=pencilPath;pencilPath=null;
+    const p=pencilPath;pencilPath=null;p.opacity=1;
     if(p.segments.length<3){p.remove();return;}
     p.closed=true;if(S.opt.smooth>0)p.simplify(px(S.opt.smooth));
     let it=p;try{const r=p.unite(new P.Path({insert:false}),{insert:false});if(r&&Math.abs(r.area)>1e-6){r.fillColor=p.fillColor;r.strokeColor=null;r.data=p.data;r.insertAbove(p);p.remove();it=r;}}catch(err){}
@@ -1975,6 +1975,7 @@ function cmd0(name){
     case'merge':{// comme « Fusion » d'Illustrator : on garde les parties visibles, et les formes de même couleur qui se touchent n'en font qu'une
       const shapes=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&p.fillColor).sort((a,b)=>a.isAbove(b)?1:-1);
       if(shapes.length<2){alert('Sélectionne au moins deux formes pleines.');return;}
+      growWhites(shapes,0.15);
       const byLayer=new Map();shapes.forEach(p=>{const k=p.layer.id+'|'+(leafRole(p)||'');if(!byLayer.has(k))byLayer.set(k,[]);byLayer.get(k).push(p);});
       const out=[],par=new Set(shapes.map(p=>p.parent));
       for(const arr of byLayer.values()){
@@ -2327,6 +2328,7 @@ function importSVGText(text,name,opts){
   if(opts.center){item.position=pastePoint();}
   else if(item.bounds.right<0||item.bounds.bottom<0||item.bounds.left>S.page.w||item.bounds.top>S.page.h)item.position=new P.Point(S.page.w/2,S.page.h/2);
   const parts=splitByWhite(item,name||'Import');
+  growWhites(parts,0.15);
   if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.parent)aquaRaster.bringToFront();
   setTool('select');setSel(parts);commit();
   return parts[0];
@@ -2624,6 +2626,24 @@ function expandLinks(items){
 /* les copies reçoivent un nouveau lien (sinon elles resteraient attachées à l'original) */
 function relink(items){const map={};items.forEach(it=>{if(it&&it.data&&it.data.link){const o=it.data.link;if(!map[o])map[o]=newLink();it.data.link=map[o];}});return items;}
 /* répartit un objet : les parties blanches dans « Blanc », le reste dans « Couleur », liés en un seul objet */
+/* élargit une forme de d mm vers l'extérieur (les trous rétrécissent), en gardant ses courbes :
+   ferme les petits jours entre les blancs et les traits (dessins venus d'Illustrator) */
+function growShape(p,d){
+  const kids=p instanceof P.CompoundPath?p.children.slice():[p];
+  kids.forEach(c=>{
+    if(!c.closed||c.segments.length<2||!c.curves.length)return;
+    const loc=c.getLocationAt(c.length/2);if(!loc||!loc.normal)return;
+    const sg=p.contains(loc.point.add(loc.normal.multiply(Math.min(0.01,d))))?-1:1;
+    const cv=c.curves,n=cv.length;
+    const mv=c.segments.map((seg,i)=>{
+      const n1=cv[(i-1+n)%n].getNormalAtTime(1),n2=cv[i%n].getNormalAtTime(0);
+      if(!n1||!n2||!isFinite(n1.x)||!isFinite(n2.x))return null;
+      let b=n1.add(n2);if(b.length<1e-6)b=n2;const cosH=Math.max(0.34,b.length/2);
+      return b.normalize(d/cosH*sg);});
+    c.segments.forEach((seg,i)=>{if(mv[i])seg.point=seg.point.add(mv[i]);});
+  });
+}
+function growWhites(items,d){items.forEach(it=>shapeLeaves(it).forEach(p=>{if(p.fillColor&&(p.closed||p instanceof P.CompoundPath)&&(roleUp(p)==='blanc'))growShape(p,d);}));}
 function splitByWhite(item,name){
   const D=layerByRole('dessin');
   const leaves=shapeLeaves(item);
