@@ -824,7 +824,7 @@ function setTool(t){
   $('#hint').textContent=HINTS[t]||'';
   cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?bucketCursor():t==='eraser'?'cell':'crosshair';
   renderToolBar(t);
-  if(t!=='bucket'&&window.BK&&(BK.limit||BK.drawLimit)){BK.limit=null;BK.drawLimit=false;bkClearPreview();if(prevLayer)prevLayer.removeChildren();}
+  if(t!=='bucket'&&window.BK){BK.limit=null;BK.drawLimit=false;if(BK.limDraw){BK.limDraw.remove();BK.limDraw=null;}P.project.layers.filter(l=>l.name==='__prev').forEach(l=>l.removeChildren());}
   if(t==='bucket'){bkWarm();if(matchMedia('(pointer:coarse)').matches)bkHistory();}
   drawUI();
 }
@@ -1172,7 +1172,7 @@ function hullMask(pts,cw,ch){
 }
 /* ---------- pot : contours mémorisés, aperçu provisoire, « Remplir toutes les zones » ---------- */
 let prevLayer=null;
-function bkLayer(){if(!prevLayer||!prevLayer.parent){prevLayer=new P.Layer({name:'__prev'});prevLayer.insertBelow(uiLayer);if(activeLayer)activeLayer.activate();}return prevLayer;}
+function bkLayer(){if(!prevLayer||!P.project.layers.includes(prevLayer)){prevLayer=P.project.layers.find(l=>l.name==='__prev')||null;}if(!prevLayer){prevLayer=new P.Layer({name:'__prev'});prevLayer.insertBelow(uiLayer);if(activeLayer)activeLayer.activate();}return prevLayer;}
 function bkClearPreview(){if(prevLayer)prevLayer.children.filter(c=>!(c.data&&c.data.limit)).forEach(c=>c.remove());}
 /* ---------- pot : limiter le remplissage à une zone entourée au lasso ---------- */
 function bkLimitMask(C){
