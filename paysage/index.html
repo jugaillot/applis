@@ -2121,7 +2121,9 @@ function cmd0(name){
       const shapes=leaves.map(p=>{if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))return p;if(p.strokeColor&&p.strokeWidth>0){const s=strokeToShape(p,true);if(s&&s.parent)s.remove();return s;}return null;}).filter(Boolean);
       if(shapes.length<2){alert('Sélectionne au moins deux formes.');return;}
       let res=shapes[0];
-      for(let i=1;i<shapes.length;i++){let r;try{r=res[name](shapes[i],{insert:false});}catch(err){continue;}if(res!==shapes[0]&&res.parent)res.remove();res=r;}
+      if(name==='unite'&&shapes.length>2){// réunion deux à deux (bien plus rapide qu'en ajoutant une forme après l'autre)
+        let lvl=shapes.slice();while(lvl.length>1){const nx=[];for(let i=0;i<lvl.length;i+=2){if(i+1>=lvl.length){nx.push(lvl[i]);continue;}let r;try{r=lvl[i].unite(lvl[i+1],{insert:false});}catch(err){r=lvl[i];}nx.push(r);}lvl=nx;}res=lvl[0];
+      }else for(let i=1;i<shapes.length;i++){let r;try{r=res[name](shapes[i],{insert:false});}catch(err){continue;}if(res!==shapes[0]&&res.parent)res.remove();res=r;}
       if(res===shapes[0])res=res.clone({insert:false});
       const src=leaves.find(p=>p.fillColor)||leaves[0];
       res.fillColor=src.fillColor||src.strokeColor;res.strokeColor=null;res.name=name==='unite'?'Réunion':res.name;
@@ -2145,6 +2147,10 @@ function cmd0(name){
 /* contour → forme pleine : on échantillonne le tracé et on construit l'enveloppe du trait */
 function strokeToShape(p,fine){
   if(!p.strokeColor||!p.strokeWidth)return null;
+  // rapide : forme du trait calculée en polygones (ClipperLib)
+  if(window.ClipperLib&&typeof cpLeaf==='function'){try{const L=cpLeaf(p),C=ClipperLib,hw=p.strokeWidth/2;
+    const out=cpOff(L.closed,hw,p.strokeJoin,C.EndType.etClosedLine).concat(cpOff(L.open,hw,p.strokeJoin,cpEnd(p.strokeCap)));
+    const u=out.length>1?cpBool(C.ClipType.ctUnion,out,null):out;const r=cpToPaper(u);if(r){if(r.children.length===1){const c=r.children[0];c.remove();return c;}return r;}}catch(e){console.error(e);}}
   const paths=p instanceof P.CompoundPath?p.children:[p];
   let acc=null;const hw=p.strokeWidth/2;
   for(const path of paths){
