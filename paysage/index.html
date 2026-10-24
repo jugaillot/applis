@@ -1972,22 +1972,30 @@ function cmd0(name){
     case'ung:layer':case'ung:sub':case'ung:leaf':doUngroup(name.slice(4));break;
     case'release':{const out=[];sel.forEach(s=>{if(s instanceof P.CompoundPath){const st={fillColor:s.fillColor,strokeColor:s.strokeColor,strokeWidth:s.strokeWidth};const ch=s.removeChildren();ch.forEach(c=>{if(s.data&&s.data.role)c.data.role=s.data.role;c.style=st;c.fillColor=st.fillColor;c.strokeColor=st.strokeColor;c.strokeWidth=st.strokeWidth;c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
     case'compound':{const paths=sel.flatMap(leafPaths).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath);if(paths.length<2){alert('Sélectionne au moins deux tracés.');return;}const first=paths[0];const st={fillColor:first.fillColor,strokeColor:first.strokeColor,strokeWidth:first.strokeWidth};const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];const cp=new P.CompoundPath({fillRule:'evenodd'});{const r0=roleUp(first);if(r0)cp.data.role=r0;}cp.insertAbove(top);paths.forEach(p=>{if(p instanceof P.CompoundPath){cp.addChildren(p.removeChildren());p.remove();}else cp.addChild(p);});cp.fillColor=st.fillColor;cp.strokeColor=st.strokeColor;cp.strokeWidth=st.strokeWidth;sel.forEach(s=>{if(s!==cp&&s.parent&&s instanceof P.Group&&!s.children.length)s.remove();});setSel([cp]);break;}
-    case'merge':{// comme « Fusion » d'Illustrator : on garde les parties visibles, et les formes de même couleur qui se touchent n'en font qu'une
-      const shapes=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&p.fillColor).sort((a,b)=>a.isAbove(b)?1:-1);
-      if(shapes.length<2){alert('Sélectionne au moins deux formes pleines.');return;}
-      growWhites(shapes,0.15);
-      const byLayer=new Map();shapes.forEach(p=>{const k=p.layer.id+'|'+(leafRole(p)||'');if(!byLayer.has(k))byLayer.set(k,[]);byLayer.get(k).push(p);});
-      const out=[],par=new Set(shapes.map(p=>p.parent));
-      for(const arr of byLayer.values()){
+    case'merge':{// comme « Fusion » d'Illustrator : chaque forme perd ce qui est caché par les formes du dessus (quelle que soit leur couleur), puis les formes de même couleur qui se touchent n'en font qu'une ; les traits comptent par leur forme
+      const pay=typeof layerByRole==='function';
+      const leaves=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&!(p.data&&p.data.sys)).sort((a,b)=>a.isAbove(b)?1:-1);
+      if(!leaves.length){alert('Sélectionne au moins deux formes ou tracés.');return;}
+      if(pay)growWhites(leaves,0.15);
+      const keyOf=(p,col)=>pay?(roleOf(p.layer)==='aqua'?'aqua':(roleUp(p)||'couleur')):colorHex(col);
+      const items=[];
+      leaves.forEach(p=>{
+        if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))items.push({p,g:p.clone({insert:false}),k:keyOf(p,p.fillColor)});
+        if(p.strokeColor&&p.strokeWidth>0){let s=null;try{s=strokeToShape(p,true);}catch(e){}if(s){if(s.parent)s.remove();items.push({p,g:s,k:keyOf(p,p.strokeColor)});}}
+      });
+      if(items.length<2){alert('Sélectionne au moins deux formes ou tracés.');return;}
+      const part=new Map();items.forEach(it=>{const l=it.p.layer;if(!part.has(l))part.set(l,[]);part.get(l).push(it);});
+      const out=[],par=new Set(leaves.map(p=>p.parent));
+      for(const arr of part.values()){
         const groups=new Map();
-        arr.forEach((p,i)=>{let v=p.clone({insert:false});for(let j=i+1;j<arr.length;j++){const r=v.subtract(arr[j],{insert:false});v=r;}
-          if(!v||(v.isEmpty&&v.isEmpty())||Math.abs(v.area)<1e-4)return;const k=colorHex(p.fillColor);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(v);});
-        const top=arr[arr.length-1];
-        for(const [k,vs] of groups){let u=vs[0];for(let i=1;i<vs.length;i++)u=u.unite(vs[i],{insert:false});
+        arr.forEach((it,i)=>{let v=it.g;for(let j=i+1;j<arr.length;j++){if(!v.bounds.intersects(arr[j].g.bounds))continue;try{v=v.subtract(arr[j].g,{insert:false});}catch(e){}}
+          if(!v||(v.isEmpty&&v.isEmpty())||Math.abs(v.area)<1e-4)return;if(!groups.has(it.k))groups.set(it.k,[]);groups.get(it.k).push(v);});
+        const top=arr[arr.length-1].p;
+        for(const [k,vs] of groups){let u=vs[0];for(let i=1;i<vs.length;i++){try{u=u.unite(vs[i],{insert:false});}catch(e){}}
           if(u instanceof P.CompoundPath&&u.children.length===1)u=u.children[0].clone({insert:false});
-          u.fillColor=new P.Color(k);u.strokeColor=null;u.name='Fusion';{const r0=roleUp(arr[0]);if(r0)u.data.role=r0;}u.insertAbove(top);out.push(u);}
+          u.fillColor=new P.Color(pay?roleColor(k):k);u.strokeColor=null;u.name='Fusion';if(pay&&k!=='aqua')u.data.role=k;u.insertAbove(top);out.push(u);}
       }
-      shapes.forEach(p=>p.remove());cleanEmpty(par);setSel(out.filter(x=>x.parent));break;
+      leaves.forEach(p=>p.remove());cleanEmpty(par);if(pay)enforceColors();setSel(out.filter(x=>x.parent));break;
     }
     case'unite':case'subtract':case'intersect':case'exclude':{
       // formes concernées (du dessous vers le dessus) ; un trait sans fond compte par sa forme de trait
