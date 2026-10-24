@@ -655,7 +655,7 @@ addEventListener('popstate',()=>{if(S.tool==='bucket'&&((window.BK&&BK.pending)|
 $('#toolBar').addEventListener('change',e=>{if(e.target.dataset.opt){if(e.target.dataset.opt==='gap')bkSchedule();e.target.blur();}});
 
 const HINTS={
-  select:'Clic : sélectionner · Ctrl+clic : sélectionner une forme à l’intérieur d’un groupe · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : dupliquer · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
+  select:'Clic : sélectionner · Ctrl+clic : sélectionner une forme à l’intérieur d’un groupe · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : copier (le curseur le montre) · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
   lasso:'Entoure à main levée les formes à prendre (même à l’intérieur d’un dessin) · si un objet est sélectionné, seulement dans cet objet (clic dans le vide : libérer) · Maj : ajouter · glisser ensuite une forme prise pour tout déplacer · « Détacher en objet » pour en faire un objet à part',
   direct:'Clic sur un tracé : voir ses points · glisser un point ou une poignée · Maj : ajouter des points · double-clic sur un point : angle ↔ courbe · Suppr : effacer les points',
   pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer',
@@ -752,7 +752,13 @@ tool.onMouseUp=function(e){
   }
   if(drag&&drag.mode==='shape'){drag=null;if(shapePath&&shapePath.bounds.width>px(2)){const it=shapePath;shapePath=null;sel=[it];commit();}else if(shapePath){shapePath.remove();shapePath=null;}}
 };
+function altCopyReady(){return ['select','direct','lasso'].includes(S.tool)&&(sel.length>0||P.project.selectedItems.length>0);}
+let altCur=null;
+document.addEventListener('keydown',e=>{if(e.key==='Alt'&&altCopyReady()&&!/INPUT|SELECT|TEXTAREA/.test((document.activeElement||{}).tagName||'')){e.preventDefault();if(altCur==null)altCur=cv.style.cursor;cv.style.cursor='copy';}});
+document.addEventListener('keyup',e=>{if(e.key==='Alt'&&altCur!=null){cv.style.cursor=altCur;altCur=null;}});
+addEventListener('blur',()=>{if(altCur!=null){cv.style.cursor=altCur;altCur=null;}});
 tool.onMouseMove=function(e){
+  if(e.modifiers.alt&&altCopyReady()){cv.style.cursor='copy';return;}
   if(S.tool==='select'&&sel.length){const h=handleAt(e.point);cv.style.cursor=h?(h==='rot'?'alias':({tl:'nwse-resize',br:'nwse-resize',tr:'nesw-resize',bl:'nesw-resize',tc:'ns-resize',bc:'ns-resize',lc:'ew-resize',rc:'ew-resize'})[h]):'default';}
   if(S.tool==='pen'&&penPath&&penPath.segments.length&&!penDrag){
     if(penPreview)penPreview.remove();
@@ -865,6 +871,7 @@ function dirDown(e,dbl){
     const p=r.item;
     if(!e.modifiers.shift)clearDirect();
     p.selected=true;followLayer([p]);syncPanel();drawUI();
+    if(e.modifiers.alt){const items=movableSelection();const copies=items.map(it=>{const c=it.clone();c.insertAbove(it);return c;});items.forEach(it=>{it.selected=false;if(it.children)it.children.forEach(k=>{k.selected=false;});});copies.forEach(c=>{c.selected=true;});drag={mode:'pathmove',last:e.point,moved:false,copied:true};return;}
     if(r.type==='stroke'&&dbl&&r.location){p.divideAt(r.location);commit();}
     drag={mode:'pathmove',last:e.point,moved:false,path:p};
     return;
@@ -882,7 +889,7 @@ function dirDrag(e){
     if(!e.modifiers.alt){const other=drag.which==='handleIn'?'handleOut':'handleIn';const len=s[other].length;if(len>0)s[other]=pt.normalize(-len);}
     drag.moved=true;return;
   }
-  if(drag.mode==='pathmove'){const d=e.point.subtract(drag.last);P.project.getItems({class:P.Path,match:p=>p.selected&&selectable(p)}).forEach(p=>p.position=p.position.add(d));drag.last=e.point;drag.moved=true;return;}
+  if(drag.mode==='pathmove'){const d=e.point.subtract(drag.last);[...new Set(P.project.getItems({class:P.Path,match:p=>p.selected&&selectable(p)}).map(p=>drag.copied&&p.parent instanceof P.CompoundPath?p.parent:p))].forEach(p=>p.position=p.position.add(d));drag.last=e.point;drag.moved=true;return;}
   if(drag.mode==='marquee'){drawMarquee(drag.start,e.point);}
 }
 function dirUp(e){
