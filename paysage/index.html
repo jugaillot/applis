@@ -131,7 +131,8 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 .seg button{flex:1;border:0;background:#fff;padding:5px;font:inherit;cursor:pointer}
 .seg button.on{background:var(--ink);color:#fff}
 #docDlg .db{padding:14px 16px;display:flex;flex-direction:column;gap:10px;width:320px}
-#asideTop{display:flex;justify-content:flex-end;margin:0 -12px -10px;padding:4px 6px 0;position:relative;z-index:1}
+#asideTop{position:sticky;top:0;z-index:3;display:flex;justify-content:flex-end;background:var(--panel);margin:0 -12px;padding:4px 6px 2px;border-bottom:1px solid var(--line)}
+.row .mb{width:38px}
 #asideTg{border:0;background:none;cursor:pointer;width:28px;height:24px;border-radius:6px;color:var(--mute);padding:0;display:grid;place-items:center}
 #asideTg:hover{background:var(--soft);color:var(--ink)}
 #asideTg svg{width:16px;height:16px;transition:transform .15s}
@@ -139,7 +140,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 body.amini main{grid-template-columns:48px 1fr 78px}
 body.amini aside{padding:0 6px 20px}
 body.amini aside>section{display:none}
-body.amini #asideTop{margin:0 -6px 2px;justify-content:center}
+body.amini #asideTop{margin:0 -6px 6px;justify-content:center}
 body.amini #asideTg svg{transform:rotate(180deg)}
 body.amini #mini{display:flex;flex-direction:column;align-items:stretch;gap:8px}
 #miniLayers{display:flex;flex-direction:column;gap:4px}
@@ -263,10 +264,10 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
         <button class="btn sm" data-cmd="rotN" title="Rotation de l'angle indiqué">Pivoter</button>
       </div>
       <div class="row" style="margin-top:6px">
-        <button class="btn sm" data-cmd="dup" title="Ctrl+D">Dupliquer</button>
-        <button class="btn sm" data-cmd="del" title="Suppr">Supprimer</button>
-        <button class="btn sm" data-cmd="front" title="Premier plan">Devant</button>
-        <button class="btn sm" data-cmd="back" title="Arrière-plan">Derrière</button>
+        <button type="button" class="mb" data-cmd="dup" title="Dupliquer (Ctrl+D)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
+        <button type="button" class="mb" data-cmd="del" title="Supprimer (Suppr)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13M10.5 11v5.5M13.5 11v5.5"/></svg></button>
+        <button type="button" class="mb" data-cmd="front" title="Devant (premier plan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5" stroke-dasharray="2 2"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".55"/></svg></button>
+        <button type="button" class="mb" data-cmd="back" title="Derrière (arrière-plan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".55"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
       </div>
       <div class="muted" style="margin-top:8px">Aligner <select id="alignTo" style="width:auto;padding:1px 4px;font-size:12px"><option value="sel">sur la sélection</option><option value="page">sur la page</option></select></div>
       <div class="row" style="margin-top:4px">
@@ -303,9 +304,9 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <h2><span class="ttl"><span class="tw">▼</span>Tracés</span></h2>
       <div class="grp">Objets</div>
       <div class="row">
-        <button class="btn sm" data-cmd="group" title="Ctrl+G">Grouper</button>
-        <button class="btn sm" data-cmd="ungroup" title="Ctrl+Maj+G — par calque, par sous-objet ou par élément">Dissocier…</button>
-        <button class="btn sm" id="bDetach" title="La sélection sort de son dessin et devient un objet à part (groupé), au même endroit">Détacher en objet</button>
+        <button type="button" class="mb" data-cmd="group" title="Grouper (Ctrl+G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="2.5 2"/><rect x="6.5" y="6.5" width="6" height="6" rx="1"/><circle cx="15" cy="15" r="3"/></svg></button>
+        <button type="button" class="mb" data-cmd="ungroup" title="Dissocier… (Ctrl+Maj+G) — par calque, par sous-objet ou par élément"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="3" width="9" height="9" rx="1.5" stroke-dasharray="2.5 2"/><rect x="12" y="12" width="9" height="9" rx="1.5" stroke-dasharray="2.5 2"/><rect x="5.5" y="5.5" width="4" height="4" rx=".5"/><circle cx="16.5" cy="16.5" r="2"/></svg></button>
+        <button type="button" class="mb" id="bDetach" title="Détacher en objet : la sélection sort de son dessin et devient un objet à part (groupé), au même endroit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="9" width="12" height="12" rx="1.5" stroke-dasharray="2.5 2"/><path d="M11 13l9-9M14 4h6v6"/></svg></button>
       </div>
       <div class="grp">Tracés composés</div>
       <div class="row">
@@ -314,7 +315,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       </div>
       <div class="grp">Combiner les formes</div>
       <div class="row">
-        <button class="btn sm" data-cmd="unite" title="Réunit les formes sélectionnées en une seule">Réunion</button>
+        <button type="button" class="mb" data-cmd="unite" title="Réunion : réunit les formes sélectionnées en une seule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M4 4h10v6h6v10H10v-6H4z" fill="currentColor" fill-opacity=".55"/></svg></button>
         <button class="btn sm" data-cmd="subtract" title="Retirer les formes du dessus à celle du dessous">Soustraire</button>
         <button class="btn sm" data-cmd="intersect" title="Garder la partie commune">Intersection</button>
         <button class="btn sm" data-cmd="exclude" title="Garder les parties non communes">Exclusion</button>
@@ -339,6 +340,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="mgrp">
         <button type="button" class="mb" data-cmd="group" title="Grouper (Ctrl+G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="2.5 2"/><rect x="6.5" y="6.5" width="6" height="6" rx="1"/><circle cx="15" cy="15" r="3"/></svg></button>
         <button type="button" class="mb" data-cmd="ungroup" title="Dissocier… (Ctrl+Maj+G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="3" width="9" height="9" rx="1.5" stroke-dasharray="2.5 2"/><rect x="12" y="12" width="9" height="9" rx="1.5" stroke-dasharray="2.5 2"/><rect x="5.5" y="5.5" width="4" height="4" rx=".5"/><circle cx="16.5" cy="16.5" r="2"/></svg></button>
+        <button type="button" class="mb" data-cmd="unite" title="Réunion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M4 4h10v6h6v10H10v-6H4z" fill="currentColor" fill-opacity=".55"/></svg></button>
         <button type="button" class="mb" data-px="#bDetach" title="Détacher en objet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="9" width="12" height="12" rx="1.5" stroke-dasharray="2.5 2"/><path d="M11 13l9-9M14 4h6v6"/></svg></button>
       </div>
     </div>
