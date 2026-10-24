@@ -546,7 +546,7 @@ function undo(){
   const keep=S.tool==='bucket'?sel.map(ipath):null,C=fillCache,u=S.undo.length;
   S.redo.push(lastSnap);lastSnap=S.undo.pop();restore(lastSnap);
   if(keep){BK.lock=true;try{setSel(keep.map(fromPath).filter(Boolean));}finally{BK.lock=false;}
-    if(C){const m=C.marks.length&&C.marks[C.marks.length-1];if(m&&m.u===u){C.marks.pop();for(let p=0;p<C.n;p++)if(m.mask[p])C.bar[p]=C.bar0[p];C.dist=C.skel=C.barB=C.distB=null;}
+    if(C){const m=C.marks.length&&C.marks[C.marks.length-1];if(m&&m.u===u){C.marks.pop();bkApplyLimit(C);}
       C.key=scopeKey(sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys)));fillCache=C;}}
   else setSel([]);
   renderLayers();scheduleAutosave();}
@@ -644,14 +644,14 @@ function saveOpt(){try{localStorage.setItem(OPT_KEY,JSON.stringify(S.opt));}catc
 const gapLabel=v=>v>=61?'sans limite':v<=0?'aucune (zones fermées seulement)':'jusqu’à '+v+' mm';
 function renderToolBar(t){
   const tb=$('#toolBar');if(!tb)return;let h='';
-  if(t==='bucket')h=`<b>Pot de peinture</b><label title="Largeur maximale d’une ouverture que le pot referme tout seul (en ligne droite). Plus c’est grand, plus il ferme les zones ouvertes, mais plus il risque de déborder.">Fermeture des ouvertures <input type="range" min="0" max="61" step="1" data-opt="gap" value="${S.opt.gap}"><span data-optv="gap">${gapLabel(S.opt.gap)}</span></label>`+(BK.pending?`<button class="btn sm on" data-bk="ok" title="Entrée">✓ Valider</button><button class="btn sm" data-bk="cancel" title="Échap">Annuler</button>`:`<button class="btn sm" data-bk="all" title="Aperçu de toutes les zones encore blanches de la sélection, avec ce réglage">Remplir toutes les zones</button>`);
+  if(t==='bucket')h=`<b>Pot de peinture</b><label title="Largeur maximale d’une ouverture que le pot referme tout seul (en ligne droite). Plus c’est grand, plus il ferme les zones ouvertes, mais plus il risque de déborder.">Fermeture des ouvertures <input type="range" min="0" max="61" step="1" data-opt="gap" value="${S.opt.gap}"><span data-optv="gap">${gapLabel(S.opt.gap)}</span></label>`+`<button class="btn sm${BK.drawLimit||BK.limit?' on':''}" data-bk="limit" title="Entourer au lasso la zone d’où le remplissage ne pourra pas sortir"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5c-4.4 0-8 2.2-8 5s3.6 5 8 5 8-2.2 8-5-3.6-5-8-5z" stroke-dasharray="3 2.2"/><path d="M8.5 14.3c-.8 1.6-.4 3.3 1 4.2 1.2.8 1 2.3-.2 2.9"/></svg>${BK.limit?' Limite':''}</button>`+(BK.limit?`<button class="btn sm" data-bk="unlimit" title="Retirer la limite">✕</button>`:'')+(BK.pending?`<button class="btn sm on" data-bk="ok" title="Entrée">✓ Valider</button><button class="btn sm" data-bk="cancel" title="Échap">Annuler</button>`:`<button class="btn sm" data-bk="all" title="Aperçu de toutes les zones encore blanches de la sélection, avec ce réglage">Remplir toutes les zones</button>`);
   if(t==='shape')h=`<b>Formes</b><label>Forme <select data-opt="shape"><option value="rect"${S.opt.shape==='rect'?' selected':''}>Rectangle</option><option value="round"${S.opt.shape==='round'?' selected':''}>Rectangle arrondi</option><option value="ellipse"${S.opt.shape==='ellipse'?' selected':''}>Ellipse</option></select></label>`+(S.opt.shape==='round'?`<label>Rayon des angles <input type="number" data-opt="radius" min="0" step="0.5" value="${S.opt.radius}" style="width:64px"> mm</label>`:'');
   if(t==='eraser')h=`<b>Gomme</b><label title="Largeur de la gomme">Diamètre <input type="range" min="0.5" max="50" step="0.5" data-opt="eraser" value="${S.opt.eraser}"><input type="number" data-opt="eraser" min="0.5" step="0.5" value="${S.opt.eraser}" style="width:62px"> mm</label><span class="muted">${sel.length?'efface dans la sélection':'efface tout ce qui est dessous'}</span>`;
   if(t==='pencil'||t==='blob')h=`<b>${t==='blob'?'Forme libre':'Crayon'}</b><label title="0 : le trait suit exactement la main ; plus c’est grand, plus il est lissé (moins de points)">Lissage <input type="range" min="0" max="10" step="0.5" data-opt="smooth" value="${S.opt.smooth}"><span data-optv="smooth">${S.opt.smooth}</span></label>`;
   tb.innerHTML=h;tb.hidden=!h;
 }
 $('#toolBar').addEventListener('input',e=>{const k=e.target.dataset.opt;if(!k)return;S.opt[k]=k==='shape'?e.target.value:+e.target.value;if(k==='shape'){saveOpt();renderToolBar(S.tool);return;}if(k==='eraser')$('#toolBar').querySelectorAll('[data-opt=eraser]').forEach(x=>{if(x!==e.target)x.value=S.opt.eraser;});const v=$('#toolBar [data-optv="'+k+'"]');if(v)v.textContent=k==='gap'?gapLabel(S.opt.gap):S.opt[k];saveOpt();if(k==='gap')bkSchedule();});
-$('#toolBar').addEventListener('click',e=>{const b=e.target.closest('[data-bk]');if(!b)return;const a=b.dataset.bk;if(a==='ok')bkValidate();else if(a==='cancel')bkCancel();else if(a==='all')bkStart('all',null);});
+$('#toolBar').addEventListener('click',e=>{const b=e.target.closest('[data-bk]');if(!b)return;const a=b.dataset.bk;if(a==='ok')bkValidate();else if(a==='cancel')bkCancel();else if(a==='all')bkStart('all',null);else if(a==='limit'){BK.drawLimit=!BK.drawLimit;renderToolBar(S.tool);$('#hint').textContent=BK.drawLimit?'Entoure à main levée la zone où le remplissage doit rester':'';}else if(a==='unlimit')bkSetLimit(null);});
 function bkHistory(){try{if(!(history.state&&history.state.bk))history.pushState({bk:1},'');}catch(e){}}
 addEventListener('popstate',()=>{if(S.tool==='bucket'&&((window.BK&&BK.pending)||S.undo.length)){undo();bkHistory();}});
 $('#toolBar').addEventListener('change',e=>{if(e.target.dataset.opt){if(e.target.dataset.opt==='gap')bkSchedule();e.target.blur();}});
@@ -679,6 +679,7 @@ function setTool(t){
   $('#hint').textContent=HINTS[t]||'';
   cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?bucketCursor():t==='eraser'?'cell':'crosshair';
   renderToolBar(t);
+  if(t!=='bucket'&&window.BK&&(BK.limit||BK.drawLimit)){BK.limit=null;BK.drawLimit=false;bkClearPreview();if(prevLayer)prevLayer.removeChildren();}
   if(t==='bucket'){bkWarm();if(matchMedia('(pointer:coarse)').matches)bkHistory();}
   drawUI();
 }
@@ -713,6 +714,7 @@ tool.onMouseDown=function(e){
   if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
   if(S.tool==='direct')return dirDown(e,dbl);
   if(S.tool==='pen')return penDown(e);
+  if(S.tool==='bucket'&&BK.drawLimit){const L=bkLayer();if(BK.limDraw)BK.limDraw.remove();BK.limDraw=new P.Path({segments:[e.point],strokeColor:'#e8457a',strokeWidth:px(1.5),data:{sys:true,limit:true}});L.addChild(BK.limDraw);if(activeLayer)activeLayer.activate();return;}
   if(S.tool==='bucket'){if(e.event&&e.event.touches){bkTap={e,t:Date.now(),p:e.point};return;}return bucketDown(e);}
   if(S.tool==='eraser')return erDown(e);
   if(S.tool==='eyedrop')return eyedropDown(e);
@@ -729,6 +731,7 @@ tool.onMouseDrag=function(e){
   if(S.tool==='pen')return penDragFn(e);
   if((S.tool==='pencil'||S.tool==='blob')&&pencilPath){pencilPath.add(e.point);return;}
   if(S.tool==='eraser')return erDrag(e);
+  if(S.tool==='bucket'&&BK.limDraw){if(BK.limDraw.lastSegment.point.getDistance(e.point)>px(2))BK.limDraw.add(e.point);return;}
   if(drag&&drag.mode==='shape'){
     if(shapePath)shapePath.remove();
     let a=drag.from,b=e.point;let d=b.subtract(a);
@@ -747,6 +750,7 @@ tool.onMouseUp=function(e){
   if(S.tool==='lasso')return lassoUp(e);
   if(S.tool==='direct')return dirUp(e);
   if(S.tool==='pen')return penUp(e);
+  if(S.tool==='bucket'&&BK.limDraw){const d=BK.limDraw;BK.limDraw=null;BK.drawLimit=false;d.remove();if(d.segments.length<3||d.bounds.width<px(5)){renderToolBar(S.tool);return;}const lim=new P.Path({segments:d.segments.map(s=>s.point),closed:true,insert:false});lim.simplify(px(1));bkSetLimit(lim);return;}
   if(S.tool==='bucket'&&bkTap){const t=bkTap;bkTap=null;if(!pinch&&Date.now()-t.t<900&&t.p.getDistance(e.point)<px(12))bucketDown(t.e);return;}
   if(S.tool==='eraser')return erUp(e);
   if(S.tool==='blob'&&pencilPath){
@@ -1023,7 +1027,35 @@ function hullMask(pts,cw,ch){
 /* ---------- pot : contours mémorisés, aperçu provisoire, « Remplir toutes les zones » ---------- */
 let prevLayer=null;
 function bkLayer(){if(!prevLayer||!prevLayer.parent){prevLayer=new P.Layer({name:'__prev'});prevLayer.insertBelow(uiLayer);if(activeLayer)activeLayer.activate();}return prevLayer;}
-function bkClearPreview(){if(prevLayer)prevLayer.removeChildren();}
+function bkClearPreview(){if(prevLayer)prevLayer.children.filter(c=>!(c.data&&c.data.limit)).forEach(c=>c.remove());}
+/* ---------- pot : limiter le remplissage à une zone entourée au lasso ---------- */
+function bkLimitMask(C){
+  if(!BK.limit)return null;
+  const c=document.createElement('canvas');c.width=C.cw;c.height=C.ch;const x=c.getContext('2d');
+  x.setTransform(C.ppm,0,0,C.ppm,-C.ox*C.ppm,-C.oy*C.ppm);x.fillStyle='#000';
+  const segs=BK.limit.segments;x.beginPath();segs.forEach((s,i)=>i?x.lineTo(s.point.x,s.point.y):x.moveTo(s.point.x,s.point.y));x.closePath();x.fill();
+  const d=x.getImageData(0,0,C.cw,C.ch).data,m=new Uint8Array(C.n);for(let p=0;p<C.n;p++)m[p]=d[p*4+3]>=128?0:1;return m;// 1 = dehors
+}
+/* les traits du calcul = l'objet + les zones déjà remplies + (s'il y en a une) le dehors de la limite */
+function bkApplyLimit(C){
+  if(!C||!C.bar0)return;const n=C.n,b=new Uint8Array(C.bar0);
+  (C.marks||[]).forEach(m=>{for(let p=0;p<n;p++)if(m.mask[p])b[p]=1;});
+  const out=bkLimitMask(C);if(out)for(let p=0;p<n;p++)if(out[p])b[p]=1;
+  C.bar=b;C.dist=null;C.skel=null;C.barB=null;C.distB=null;C.limitKey=BK.limit?BK.limitKey:null;
+}
+function bkShowLimit(){
+  const L=bkLayer();L.children.filter(c=>c.data&&c.data.limit).forEach(c=>c.remove());
+  if(BK.limit){const s=BK.limit.clone({insert:false});s.fillColor=null;s.strokeColor=new P.Color('#e8457a');s.strokeWidth=px(1.5);s.dashArray=[px(6),px(4)];s.data={sys:true,limit:true};L.addChild(s);}
+  P.view.update();
+}
+function bkSetLimit(path){
+  BK.limit=path;BK.limitKey=path?('L'+Date.now()):null;
+  if(fillCache)bkApplyLimit(fillCache);
+  bkShowLimit();renderToolBar(S.tool);
+  if(BK.pending)bkSchedule();
+  $('#hint').textContent=path?'Le remplissage ne sortira pas de la zone entourée (en pointillés roses) · ✕ dans la barre : retirer la limite':'Limite retirée';
+}
+
 function bkGap(){return S.opt.gap>=61?Infinity:Math.max(0,S.opt.gap);}
 /* rendu de la sélection en pixels (traits = tout ce qui n'est pas le fond blanc), gardé tant que l'objet reste sélectionné */
 async function bkPrepare(scope){
@@ -1059,7 +1091,7 @@ async function bkPrepare2(scope,key){
       const d=x.getImageData(0,0,cw,ch).data;
       // les traits : tout ce qui n'est pas le fond blanc
       const bar=new Uint8Array(n);for(let i=0;i<n;i++){const j=i*4;bar[i]=(765-d[j]-d[j+1]-d[j+2])>30?1:0;}
-      const C={key,ox,oy,ppm,cw,ch,n,bar,bar0:new Uint8Array(bar),marks:[],dist:null};
+      const C={key,ox,oy,ppm,cw,ch,n,bar,bar0:new Uint8Array(bar),marks:[],dist:null};if(BK.limit)bkApplyLimit(C);
       fillCache=C;
 
     return C;
@@ -1306,6 +1338,7 @@ async function bkShow(){
   if(BK.pending!==pd)return;
   if(!cp)return fail(null);
   await stepCheck(tok);cp=await bkExact(cp,pd,res.mask,tok);
+  if(BK.limit){try{const r=cp.intersect(BK.limit,{insert:false});if(r)cp=r;}catch(e){}}
   if(BK.pending!==pd)return;
   bkClearPreview();
   pd.mask=res.mask;pd.shape=cp;
