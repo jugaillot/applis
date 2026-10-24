@@ -122,6 +122,29 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 .seg button{flex:1;border:0;background:#fff;padding:5px;font:inherit;cursor:pointer}
 .seg button.on{background:var(--ink);color:#fff}
 #docDlg .db{padding:14px 16px;display:flex;flex-direction:column;gap:10px;width:320px}
+#asideTop{display:flex;justify-content:flex-end;margin:0 -12px -10px;padding:4px 6px 0;position:relative;z-index:1}
+#asideTg{border:0;background:none;cursor:pointer;width:28px;height:24px;border-radius:6px;color:var(--mute);padding:0;display:grid;place-items:center}
+#asideTg:hover{background:var(--soft);color:var(--ink)}
+#asideTg svg{width:16px;height:16px;transition:transform .15s}
+#mini{display:none}
+body.amini main{grid-template-columns:48px 1fr 78px}
+body.amini aside{padding:0 6px 20px}
+body.amini aside>section{display:none}
+body.amini #asideTop{margin:0 -6px 2px;justify-content:center}
+body.amini #asideTg svg{transform:rotate(180deg)}
+body.amini #mini{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+#miniLayers{display:flex;flex-direction:column;gap:4px}
+.ml{display:flex;align-items:center;justify-content:center;gap:1px;border:1px solid var(--line);border-radius:7px;padding:2px 1px;background:#fff}
+.ml.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.ml .ico{border:0;background:none;cursor:pointer;font-size:12px;width:20px;height:24px;padding:0;border-radius:4px;color:var(--ink)}
+.ml .ico:hover{background:var(--soft)}
+.ml .ico.off{opacity:.35}
+.ml .dot{width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.2);cursor:pointer;flex-shrink:0;font-size:9px;font-weight:600;display:grid;place-items:center;overflow:hidden;background:var(--soft)}
+.mgrp{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding-top:8px;border-top:1px solid var(--line)}
+.mb{border:1px solid var(--line);background:#fff;border-radius:7px;height:30px;cursor:pointer;display:grid;place-items:center;color:var(--ink);padding:0}
+.mb:hover{background:var(--soft)}
+.mb:disabled{opacity:.35;cursor:default}
+.mb svg{width:19px;height:19px}
 @media (max-width:900px){
   main{grid-template-columns:44px 1fr;grid-template-rows:minmax(0,1fr) minmax(0,48%)}
   /* en-tête sur une ligne qui défile, outils qui défilent : la place va au panneau du bas */
@@ -136,6 +159,15 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   #hint{display:none}
   #vxView{width:96vw;height:38vh;order:-1}
   #vxSide{max-height:calc(94vh - 38vh - 110px);border-right:0;border-top:1px solid var(--line)}
+  #asideTg svg{transform:rotate(90deg)}
+  body.amini main{grid-template-columns:44px 1fr;grid-template-rows:minmax(0,1fr) auto}
+  body.amini aside{display:flex;align-items:center;gap:8px;padding:4px 8px;overflow-x:auto}
+  body.amini #asideTop{position:static;margin:0;padding:0;flex-shrink:0}
+  body.amini #asideTg svg{transform:rotate(-90deg)}
+  body.amini #mini{flex-direction:row;align-items:center;gap:8px;flex-shrink:0}
+  body.amini #miniLayers{flex-direction:row}
+  body.amini .mgrp{display:flex;border-top:0;padding:0 0 0 8px;border-left:1px solid var(--line)}
+  body.amini .mb{width:38px;height:36px}
 }
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
@@ -193,6 +225,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <div id="zoomBox"><button class="btn sm ic" id="zOut">−</button><span id="zLab">100 %</span><button class="btn sm ic" id="zIn">+</button><button class="btn sm" id="zFit">Page</button><button class="btn sm" id="bPts" title="Afficher les points des tracés (P pour la plume, ici bouton)">Points</button></div>
   </div>
   <aside>
+    <div id="asideTop"><button type="button" id="asideTg" title="Réduire le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l6 6-6 6M12 6l6 6-6 6"/></svg></button></div>
     <section data-sec="doc">
       <h2><span class="ttl"><span class="tw">▼</span>Document</span> <button class="btn sm" id="bDoc">Modifier</button></h2>
       <div class="muted" id="docInfo"></div>
@@ -289,6 +322,20 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
         <button class="btn sm" id="bRevec" title="Reprendre les réglages de vectorisation du dessin sélectionné">Revectoriser…</button>
       </div>
     </section>
+    <div id="mini">
+      <div id="miniLayers"></div>
+      <div class="mgrp">
+        <button type="button" class="mb" data-cmd="dup" title="Dupliquer (Ctrl+D)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
+        <button type="button" class="mb" data-cmd="del" title="Supprimer (Suppr)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13M10.5 11v5.5M13.5 11v5.5"/></svg></button>
+        <button type="button" class="mb" data-cmd="front" title="Devant (premier plan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5" stroke-dasharray="2 2"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".55"/></svg></button>
+        <button type="button" class="mb" data-cmd="back" title="Derrière (arrière-plan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".55"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
+      </div>
+      <div class="mgrp">
+        <button type="button" class="mb" data-cmd="group" title="Grouper (Ctrl+G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="2.5 2"/><rect x="6.5" y="6.5" width="6" height="6" rx="1"/><circle cx="15" cy="15" r="3"/></svg></button>
+        <button type="button" class="mb" data-cmd="ungroup" title="Dissocier… (Ctrl+Maj+G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="3" width="9" height="9" rx="1.5" stroke-dasharray="2.5 2"/><rect x="12" y="12" width="9" height="9" rx="1.5" stroke-dasharray="2.5 2"/><rect x="5.5" y="5.5" width="4" height="4" rx=".5"/><circle cx="16.5" cy="16.5" r="2"/></svg></button>
+        <button type="button" class="mb" data-px="#bDetach" title="Détacher en objet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="9" width="12" height="12" rx="1.5" stroke-dasharray="2.5 2"/><path d="M11 13l9-9M14 4h6v6"/></svg></button>
+      </div>
+    </div>
   </aside>
 </main>
 
@@ -620,7 +667,7 @@ function syncPanel(){
   const b=selBounds();
   {const T=cmdTargets();$('#selCount').textContent=T!==sel&&T.length?(T.length+' élément'+(T.length>1?'s':'')):sel.length?(sel.length+' objet'+(sel.length>1?'s':'')):'';}
   document.querySelectorAll('[data-geo]').forEach(i=>{if(document.activeElement===i)return;i.value=b?f1({x:b.x,y:b.y,w:b.width,h:b.height}[i.dataset.geo]):'';i.disabled=!b;});
-  {const n=cmdTargets().length;document.querySelectorAll('#secSel .btn,[data-cmd],#bDetach').forEach(x=>x.disabled=!n);}
+  {const n=cmdTargets().length;document.querySelectorAll('#secSel .btn,[data-cmd],[data-px],#bDetach').forEach(x=>x.disabled=!n);}
   $('#bUndo').disabled=!S.undo.length;$('#bRedo').disabled=!S.redo.length;
   $('#bUndo').style.opacity=S.undo.length?1:.35;$('#bRedo').style.opacity=S.redo.length?1:.35;
   if(sel.length&&S.tool!=='bucket'){currentStyleFromSel();}
@@ -1468,6 +1515,32 @@ function doUngroup(mode){
 }
 document.querySelectorAll('#ungDlg [data-ung]').forEach(b=>b.onclick=()=>{$('#ungDlg').close();cmd('ung:'+b.dataset.ung);});
 $('#ungCancel').onclick=()=>$('#ungDlg').close();
+
+/* ---------- panneau de droite réduit : calques (œil, cadenas, couleur) et commandes les plus utilisées ---------- */
+(function(){
+  const KEY='atelier.panneauReduit'+location.pathname,tg=$('#asideTg'),ML=$('#miniLayers'),LYR=$('#layers');
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  function set(on,save){document.body.classList.toggle('amini',on);tg.title=on?'Ouvrir le panneau':'Réduire le panneau';
+    if(save)try{localStorage.setItem(KEY,on?'1':'0');}catch(e){}
+    requestAnimationFrame(()=>{try{resizeView();}catch(e){}});}
+  let on=false;try{on=localStorage.getItem(KEY)==='1';}catch(e){}
+  set(on,false);
+  tg.addEventListener('click',()=>set(!document.body.classList.contains('amini'),true));
+  document.querySelectorAll('#mini [data-px]').forEach(b=>b.addEventListener('click',()=>{const o=document.querySelector(b.dataset.px);if(o&&!o.disabled)o.click();}));
+  function build(){
+    ML.innerHTML=[...LYR.children].map((row,i)=>{
+      const v=row.querySelector('[data-la=vis]'),l=row.querySelector('[data-la=lock]'),dot=row.querySelector('span[style*="border-radius"]');
+      const nm=row.querySelector('b')?row.querySelector('b').textContent:(row.querySelector('input[type=text]')||{}).value||'';
+      return `<div class="ml${row.classList.contains('on')?' on':''}" data-i="${i}" title="${esc(nm)}"><button type="button" class="ico${v&&v.classList.contains('off')?' off':''}" data-m="vis" title="Afficher / masquer">👁</button><button type="button" class="ico${l&&l.classList.contains('off')?' off':''}" data-m="lock" title="Verrouiller">🔒</button><span class="dot" data-m="row" title="${esc(nm)}"${dot?` style="${esc(dot.getAttribute('style'))}"`:''}>${dot?'':esc(nm.trim().slice(0,1).toUpperCase())}</span></div>`;
+    }).join('');
+  }
+  let pend=false;
+  new MutationObserver(()=>{if(pend)return;pend=true;queueMicrotask(()=>{pend=false;build();});}).observe(LYR,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','value']});
+  ML.addEventListener('click',e=>{const r=e.target.closest('.ml');if(!r)return;const row=LYR.children[+r.dataset.i];if(!row)return;
+    const m=e.target.closest('[data-m]'),k=m?m.dataset.m:'row';
+    if(k==='row')row.click();else{const b=row.querySelector('[data-la='+k+']');if(b)b.click();}});
+  build();
+})();
 
 /* ---------- panneau de droite : rubriques dépliables (état retenu) ---------- */
 (function(){
