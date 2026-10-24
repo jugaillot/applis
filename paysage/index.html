@@ -3011,11 +3011,14 @@ function aquaBlack(fn){const A=layerByRole('aqua');if(!A||!(S.aqua&&S.aqua.trace
   try{return fn();}finally{old.forEach(([p,f,st])=>{p.fillColor=f;p.strokeColor=st;});}}
 /* l'image d'aquarelle n'entre ni dans l'historique, ni dans les exports vectoriels */
 function withoutRaster(fn){
+  if(aquaRaster)strayRasters();
   if(!aquaRaster||!aquaRaster.parent)return aquaBlack(fn);
   const parent=aquaRaster.parent;aquaRaster.remove();
   try{return aquaBlack(fn);}finally{parent.addChild(aquaRaster);}
 }
-function attachRaster(){const L=layerByRole('aqua');if(aquaRaster&&L){L.addChild(aquaRaster);styleRaster();}}
+/* une seule image d'aquarelle : on retire les copies égarées (chargements simultanés, anciens historiques) */
+function strayRasters(){P.project.getItems({match:x=>x instanceof P.Raster&&x.name==='Aquarelle (image)'&&x!==aquaRaster}).forEach(x=>x.remove());}
+function attachRaster(){strayRasters();const L=layerByRole('aqua');if(aquaRaster&&L){L.addChild(aquaRaster);styleRaster();}}
 function styleRaster(){
   if(!aquaRaster)return;
   if(S.aquaEdit){aquaRaster.blendMode='normal';aquaRaster.opacity=0.55;aquaRaster.locked=false;}
@@ -3040,6 +3043,7 @@ $('#paperCol').addEventListener('input',e=>{S.paper=e.target.value;if(pageRect)p
 
 /* ---------- aquarelle ---------- */
 async function loadAqua(){
+  const tok=loadAqua.n=(loadAqua.n||0)+1;
   $('#paperCol').value=S.paper||'#ffffff';
   if(aquaRaster){aquaRaster.remove();aquaRaster=null;}
   if(!S.aqua||!S.aqua.key){renderLayers();P.view.update();return;}
@@ -3047,6 +3051,7 @@ async function loadAqua(){
   if(!blob&&window.AtelierSync){blob=await AtelierSync.getBlob(S.aqua.key);if(blob)IDB.set(S.aqua.key,blob);}
   if(!blob){$('#hint').textContent='Image de l’aquarelle introuvable sur cet appareil (elle n’est peut-être pas encore synchronisée).';renderLayers();return;}
   const img=await blobToImage(blob);
+  if(tok!==loadAqua.n)return;// un autre chargement a pris la main
   const r=new P.Raster(img);r.remove();r.data.sys=true;r.name='Aquarelle (image)';
   if(S.aqua.m)r.matrix=new P.Matrix(S.aqua.m);
   else{const k=Math.max(S.page.w/img.naturalWidth,S.page.h/img.naturalHeight);r.matrix=new P.Matrix().translate(S.page.w/2,S.page.h/2).scale(k);S.aqua.m=r.matrix.values;}
