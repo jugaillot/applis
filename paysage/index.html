@@ -603,8 +603,17 @@ function commit(){
   lastSnap=snapshot();
   syncPanel();renderLayers();drawUI();scheduleAutosave();
 }
-function undo(){if(!S.undo.length)return;S.redo.push(lastSnap);lastSnap=S.undo.pop();restore(lastSnap);setSel([]);renderLayers();scheduleAutosave();}
-function redo(){if(!S.redo.length)return;S.undo.push(lastSnap);lastSnap=S.redo.pop();restore(lastSnap);setSel([]);renderLayers();scheduleAutosave();}
+function undo(){
+  if(window.BK&&BK.pending){bkCancel();return;}
+  if(!S.undo.length)return;
+  const keep=S.tool==='bucket'?sel.map(ipath):null,C=fillCache,u=S.undo.length;
+  S.redo.push(lastSnap);lastSnap=S.undo.pop();restore(lastSnap);
+  if(keep){BK.lock=true;try{setSel(keep.map(fromPath).filter(Boolean));}finally{BK.lock=false;}
+    if(C){const m=C.marks.length&&C.marks[C.marks.length-1];if(m&&m.u===u){C.marks.pop();for(let p=0;p<C.n;p++)if(m.mask[p])C.bar[p]=C.bar0[p];C.dist=C.skel=C.barB=C.distB=null;}
+      C.key=scopeKey(sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys)));fillCache=C;}}
+  else setSel([]);
+  renderLayers();scheduleAutosave();}
+function redo(){if(!S.redo.length)return;if(window.BK&&BK.pending)bkCancel();const keep=S.tool==='bucket'?sel.map(ipath):null;S.undo.push(lastSnap);lastSnap=S.redo.pop();restore(lastSnap);fillCache=null;setSel(keep?keep.map(fromPath).filter(Boolean):[]);renderLayers();scheduleAutosave();}
 function resetHistory(){enforceColors();S.undo=[];S.redo=[];lastSnap=snapshot();syncPanel();}
 
 /* ---------- autosauvegarde ---------- */
@@ -708,6 +717,8 @@ function renderToolBar(t){
 }
 $('#toolBar').addEventListener('input',e=>{const k=e.target.dataset.opt;if(!k)return;S.opt[k]=k==='shape'?e.target.value:+e.target.value;if(k==='shape'){saveOpt();renderToolBar(S.tool);return;}if(k==='eraser')$('#toolBar').querySelectorAll('[data-opt=eraser]').forEach(x=>{if(x!==e.target)x.value=S.opt.eraser;});const v=$('#toolBar [data-optv="'+k+'"]');if(v)v.textContent=k==='gap'?gapLabel(S.opt.gap):S.opt[k];saveOpt();if(k==='gap')bkSchedule();});
 $('#toolBar').addEventListener('click',e=>{const b=e.target.closest('[data-bk]');if(!b)return;const a=b.dataset.bk;if(a==='ok')bkValidate();else if(a==='cancel')bkCancel();else if(a==='all')bkStart('all',null);});
+function bkHistory(){try{if(!(history.state&&history.state.bk))history.pushState({bk:1},'');}catch(e){}}
+addEventListener('popstate',()=>{if(S.tool==='bucket'&&((window.BK&&BK.pending)||S.undo.length)){undo();bkHistory();}});
 $('#toolBar').addEventListener('change',e=>{if(e.target.dataset.opt)e.target.blur();});
 
 const HINTS={
@@ -731,15 +742,15 @@ function setTool(t){
   $('#hint').textContent=HINTS[t]||'';
   cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?bucketCursor():t==='eraser'?'cell':'crosshair';
   renderToolBar(t);
-  if(t==='bucket')bkWarm();
+  if(t==='bucket'){bkWarm();if(matchMedia('(pointer:coarse)').matches)bkHistory();}
   drawUI();
 }
 
 /* position d'un événement souris ou doigt (sur mobile, le doigt n'a pas de clientX direct) */
 function evXY(ev){const t=(ev.touches&&ev.touches[0])||(ev.changedTouches&&ev.changedTouches[0])||ev;return [t.clientX,t.clientY];}
 /* deux doigts : déplacer et zoomer la vue, quel que soit l'outil */
-let pinch=null;
-cv.addEventListener('touchstart',e=>{if(e.touches.length===2){const [a,b]=[e.touches[0],e.touches[1]];pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),mx:(a.clientX+b.clientX)/2,my:(a.clientY+b.clientY)/2,c:view.center,z:view.zoom};drag=null;e.preventDefault();}},{passive:false});
+let pinch=null,bkTap=null;
+cv.addEventListener('touchstart',e=>{if(e.touches.length===2){bkTap=null;const [a,b]=[e.touches[0],e.touches[1]];pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),mx:(a.clientX+b.clientX)/2,my:(a.clientY+b.clientY)/2,c:view.center,z:view.zoom};drag=null;e.preventDefault();}},{passive:false});
 cv.addEventListener('touchmove',e=>{if(!pinch||e.touches.length!==2)return;e.preventDefault();const [a,b]=[e.touches[0],e.touches[1]];
   const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),mx=(a.clientX+b.clientX)/2,my=(a.clientY+b.clientY)/2;
   const z=Math.min(200,Math.max(0.05,pinch.z*d/Math.max(1,pinch.d)));const r=cv.getBoundingClientRect();
@@ -765,7 +776,7 @@ tool.onMouseDown=function(e){
   if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=relink(sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;}));setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
   if(S.tool==='direct')return dirDown(e,dbl);
   if(S.tool==='pen')return penDown(e);
-  if(S.tool==='bucket')return bucketDown(e);
+  if(S.tool==='bucket'){if(e.event&&e.event.touches){bkTap={e,t:Date.now(),p:e.point};return;}return bucketDown(e);}
   if(S.tool==='eraser')return erDown(e);
   if(S.tool==='eyedrop')return eyedropDown(e);
   ensureLayer(true);
@@ -798,6 +809,7 @@ tool.onMouseUp=function(e){
   if(S.tool==='lasso')return lassoUp(e);
   if(S.tool==='direct')return dirUp(e);
   if(S.tool==='pen')return penUp(e);
+  if(S.tool==='bucket'&&bkTap){const t=bkTap;bkTap=null;if(!pinch&&Date.now()-t.t<900&&t.p.getDistance(e.point)<px(12))bucketDown(t.e);return;}
   if(S.tool==='eraser')return erUp(e);
   if(S.tool==='pencil'&&pencilPath){
     if(pencilPath.segments.length<2){pencilPath.remove();pencilPath=null;return;}
@@ -1034,7 +1046,9 @@ function outsideHull(bar,cw,ch){
 }
 /* mémoire du rendu de la sélection : les remplissages suivants dans le même objet sont immédiats ; oubliée quand on désélectionne */
 var fillCache=null;
-function scopeKey(scope){return scope.map(c=>c.id+':'+[c.strokeBounds.x,c.strokeBounds.y,c.strokeBounds.width,c.strokeBounds.height].map(v=>Math.round(v*100)).join(',')).join('|');}
+function ipath(it){const r=[];while(it&&it.parent){r.unshift(it.index);it=it.parent;}r.unshift(userLayers().indexOf(it));return r;}
+function fromPath(r){let it=userLayers()[r[0]];for(let i=1;i<r.length&&it;i++)it=it.children&&it.children[r[i]];return it||null;}
+function scopeKey(scope){return scope.map(c=>ipath(c).join('.')+':'+[c.strokeBounds.x,c.strokeBounds.y,c.strokeBounds.width,c.strokeBounds.height].map(v=>Math.round(v*100)).join(',')).join('|');}
 /* enveloppe convexe de points [x,y] → masque (1 = dedans) */
 function hullMask(pts,cw,ch){
   if(pts.length<3)return null;
@@ -1068,20 +1082,23 @@ async function bkPrepare2(scope,key){
       {A=null;scope.forEach(c=>{A=A?A.unite(c.strokeBounds):c.strokeBounds.clone();});}
       A=A.expand(40);
       const ox=A.x,oy=A.y,AW=A.width,AH=A.height;
-      const ppm=Math.min(10,Math.sqrt((matchMedia('(pointer:coarse)').matches?2e6:5e6)/(AW*AH)));
+      const ppm=Math.min(10,Math.sqrt((matchMedia('(pointer:coarse)').matches?3e6:5e6)/(AW*AH)));
       const cw=Math.round(AW*ppm),ch=Math.round(AH*ppm),n=cw*ch;
-      const prevSel=sel;sel=[];drawUI();
-      const restore=soloScope(scope);let svg0;try{svg0=buildSVG();}finally{if(restore)restore();}
-      // une zone déjà remplie, même en blanc (calque Blanc), compte comme remplie
-      svg0=svg0.replace(/(fill|stroke)="(#ffffff|#fff|white)"/gi,'$1="#000000"');
-      const svg=svg0.replace(/width="[^"]*mm" height="[^"]*mm" viewBox="0 0 [^"]*"/,`width="${AW}mm" height="${AH}mm" viewBox="${ox} ${oy} ${AW} ${AH}"`);sel=prevSel;syncPanel();drawUI();
-      const img=await new Promise((res,rej)=>{setTimeout(()=>rej(new Error('le rendu prend trop de temps')),30000);const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('rendu impossible'));i.src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));});
+      // rendu direct des formes en pixels (bien plus rapide que de passer par un SVG, surtout sur téléphone)
       const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d',{willReadFrequently:true});
-      x.fillStyle='#fff';x.fillRect(0,0,cw,ch);x.drawImage(img,0,0,cw,ch);
+      x.fillStyle='#fff';x.fillRect(0,0,cw,ch);
+      const items=scope.slice();
+      userLayers().forEach(l=>{if(!l.visible)return;l.getItems({match:it=>it.name==='Remplissage'&&!(it.data&&it.data.sys)}).forEach(it=>{if(!scope.some(s=>s===it||s.isAncestor(it))&&it.bounds.intersects(A))items.push(it);});});
+      // une zone déjà remplie, même en blanc, compte comme remplie : le blanc est rendu en noir le temps du calcul
+      const recol=[];items.forEach(it=>leafPaths(it).forEach(p=>{const f=p.fillColor&&colorHex(p.fillColor)==='#ffffff',st=p.strokeColor&&colorHex(p.strokeColor)==='#ffffff';if(f||st){recol.push([p,p.fillColor,p.strokeColor]);if(f)p.fillColor=new P.Color('#000000');if(st)p.strokeColor=new P.Color('#000000');}}));
+      try{
+        for(const it of items){if(!it.visible||!it.parent)continue;let r;try{r=it.rasterize({resolution:ppm*72,insert:false});}catch(err){continue;}
+          if(!r||!r.canvas||!r.width)continue;const rb=r.bounds;x.drawImage(r.canvas,(rb.x-ox)*ppm,(rb.y-oy)*ppm,rb.width*ppm,rb.height*ppm);}
+      }finally{recol.forEach(([p,f,st])=>{p.fillColor=f;p.strokeColor=st;});}
       const d=x.getImageData(0,0,cw,ch).data;
       // les traits : tout ce qui n'est pas le fond blanc
       const bar=new Uint8Array(n);for(let i=0;i<n;i++){const j=i*4;bar[i]=(765-d[j]-d[j+1]-d[j+2])>30?1:0;}
-      const C={key,ox,oy,ppm,cw,ch,n,bar,dist:null};
+      const C={key,ox,oy,ppm,cw,ch,n,bar,bar0:new Uint8Array(bar),marks:[],dist:null};
       fillCache=C;
 
     return C;
@@ -1270,7 +1287,7 @@ async function bkTrace(C,mask,lab){
   for(let p=0;p<n;p++){const l=g[p];if(!l)continue;if(lab){const x=p%cw;if((x>0&&g[p-1]&&g[p-1]!==l)||(x<cw-1&&g[p+1]&&g[p+1]!==l&&l<g[p+1])||(p>=cw&&g[p-cw]&&g[p-cw]!==l)||(p<n-cw&&g[p+cw]&&g[p+cw]!==l&&l<g[p+cw]))continue;}grow[p]=1;}
   if(!bucketWorker)bucketWorker=new Worker('../vecto/potrace-worker.js');
   const id=++bucketId;
-  const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1,opttolerance:0.2,optcurve:true,close:0}},[grow.buffer]);});
+  const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1.25,opttolerance:0.3,optcurve:true,close:0}},[grow.buffer]);});
   if(res.error)throw new Error(res.error);
   if(!res.shapes.length)return null;
   const cp=new P.CompoundPath({insert:false,pathData:res.shapes.map(s=>s.d).join(''),fillRule:'evenodd'});
@@ -1333,7 +1350,7 @@ function bkValidate(){
     if(pd.roleKeep)f.data.role=pd.roleKeep;else if(activeRole!=='aqua')f.data.role=activeRole;
     placeFill(f,pd.pt||f.interiorPoint,pd.scope);});
   // les zones remplies comptent désormais comme des traits (pour « toutes les zones » et les clics suivants)
-  const C=pd.C;for(let p=0;p<C.n;p++)if(pd.mask[p])C.bar[p]=1;C.dist=null;C.skel=null;C.barB=null;C.distB=null;
+  const C=pd.C;for(let p=0;p<C.n;p++)if(pd.mask[p])C.bar[p]=1;C.dist=null;C.skel=null;C.barB=null;C.distB=null;C.marks.push({mask:pd.mask,u:S.undo.length+1});if(C.marks.length>12)C.marks.shift();
   if(fillCache===C)fillCache.key=scopeKey(sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys)));
   commit();renderToolBar(S.tool);
   $('#hint').textContent=shapes.length>1?shapes.length+' zones remplies':'Zone remplie';
