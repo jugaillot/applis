@@ -772,12 +772,12 @@ function drawMarquee(a,b){if(marquee)marquee.remove();uiLayer.activate();marquee
 function endMarquee(){if(marquee){marquee.remove();marquee=null;}}
 
 tool.onMouseDown=function(e){
-  if(S.rotMode&&e.event.button!==1&&!spaceDown){const T=cmdTargets().filter(t=>t&&t.parent);if(T.length){let b=T[0].bounds.clone();T.forEach(t=>b=b.unite(t.bounds));drag={mode:'rot',items:T,center:b.center,start:e.point,pa:0,rotTool:true};}return;}
+  if(S.rotMode&&e.event.button!==1&&!spaceDown){const ps=S.tool==='direct'?dirPartialSegs():null;const T=ps||cmdTargets().filter(t=>t&&t.parent);if(T.length){let b=null;T.forEach(t=>{const r=t instanceof P.Segment?new P.Rectangle(t.point,t.point):t.bounds;b=b?b.unite(r):r.clone();});drag={mode:'rot',items:T,center:b.center,start:e.point,pa:0,rotTool:true};}return;}
   const now=Date.now(),dbl=now-lastDown.t<350&&lastDown.p&&lastDown.p.getDistance(e.point)<px(6);lastDown={t:now,p:e.point};
   if(S.tool==='hand'||e.event.button===1||spaceDown){{const [cx,cy]=evXY(e.event);drag={mode:'pan',start:cx,sy:cy,c:view.center};}cv.style.cursor='grabbing';return;}
   if(S.tool==='select')return selDown(e,dbl);
   if(S.tool==='lasso'&&sel.length&&handleAt(e.point))return selDown(e,dbl);
-  if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
+  if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!sel.some(s=>s.parent instanceof P.Layer)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;});setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
   if(S.tool==='direct')return dirDown(e,dbl);
   if(S.tool==='pen')return penDown(e);
   if(S.tool==='bucket'&&BK.drawLimit){const L=bkLayer();if(BK.limDraw)BK.limDraw.remove();BK.limDraw=new P.Path({segments:[e.point],strokeColor:'#e8457a',strokeWidth:px(1.5),data:{sys:true,limit:true}});L.addChild(BK.limDraw);if(activeLayer)activeLayer.activate();return;}
@@ -818,7 +818,7 @@ tool.onMouseUp=function(e){
   if(S.tool==='select'||(S.tool==='lasso'&&drag&&['move','scale','rot'].includes(drag.mode)))return selUp(e);
   if(S.tool==='lasso')return lassoUp(e);
   if(S.tool==='direct'&&drag&&drag.items){const T=drag.items;selUp(e);T.forEach(i=>{if(i.parent)i.selected=true;});drawUI();return;}
-  if(S.tool==='direct')return dirUp(e);
+  if(S.tool==='direct'){const r=dirUp(e);drawUI();return r;}
   if(S.tool==='pen')return penUp(e);
   if(S.tool==='bucket'&&BK.limDraw){const d=BK.limDraw;BK.limDraw=null;BK.drawLimit=false;d.remove();if(d.segments.length<3||d.bounds.width<px(5)){renderToolBar(S.tool);return;}const lim=new P.Path({segments:d.segments.map(s=>s.point),closed:true,insert:false});lim.simplify(px(1));bkSetLimit(lim);return;}
   if(S.tool==='bucket'&&bkTap){const t=bkTap;bkTap=null;if(!pinch&&Date.now()-t.t<900&&t.p.getDistance(e.point)<px(12))bucketDown(t.e);return;}
@@ -939,7 +939,9 @@ function rectHits(it,r){
 /* --- sélection directe --- */
 let dirPath=null;
 /* flèche blanche : poignées (taille / rotation) autour des éléments pris entiers, quand aucun point n'est pris */
-function dirHandlesOn(){return S.tool==='direct'&&!drag&&movableSelection().length>0&&!selectedSegs().length||(S.tool==='direct'&&drag&&drag.items);}
+/* points pris à la flèche blanche sur une partie seulement d'un tracé (sinon null) */
+function dirPartialSegs(){const segs=selectedSegs();if(!segs.length)return null;const ps=new Set(segs.map(x=>x.path));for(const p of ps){if(p.segments.some(x=>!x.selected))return segs;}return null;}
+function dirHandlesOn(){if(S.tool!=='direct')return false;if(drag&&drag.items)return true;return !drag&&movableSelection().length>0&&!dirPartialSegs();}
 function dirDown(e,dbl){
   if(dirHandlesOn()&&handles.length){const h=handleAt(e.point);if(h){const T=movableSelection(),b=selBounds();drag={mode:h==='rot'?'rot':'scale',h,b,start:e.point,center:b.center,psx:1,psy:1,pa:0,items:T};return;}}
   const r=P.project.hitTest(e.point,{segments:true,handles:true,fill:true,stroke:true,tolerance:px(6),match:h=>selectable(h.item)&&(h.item instanceof P.Path||h.item instanceof P.CompoundPath)});
