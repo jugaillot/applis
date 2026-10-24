@@ -901,6 +901,8 @@ async function bucketDown(e){
   const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
   if(!scope.length){alert('Sélectionne d’abord l’objet ou l’élément qui entoure la zone à remplir, puis clique dans la zone avec le pot.');return;}
   const inScope=it=>scope.some(s=>s===it||s.isAncestor(it));
+  {const h=P.project.hitTest(e.point,{fill:true,stroke:false,tolerance:0,match:h=>selectable(h.item)&&inScope(h.item)});let f=h&&h.item;if(f&&f.parent instanceof P.CompoundPath)f=f.parent;
+   if(f&&f.name==='Remplissage'&&!e.modifiers.alt){await bkStart('one',e.point,f);return;}}
   // 1. on clique sur une forme fermée (zone blanche, forme pleine) : on la colore directement
   const hitR=P.project.hitTest(e.point,{fill:true,stroke:false,tolerance:0,match:h=>selectable(h.item)&&inScope(h.item)});
   let it=hitR&&hitR.item;if(it&&it.parent instanceof P.CompoundPath)it=it.parent;
@@ -1149,25 +1151,27 @@ async function bkShow(){
   $('#hint').textContent=(pd.mode==='all'?res.zones+' zone'+(res.zones>1?'s':'')+' en aperçu':'Aperçu'+(res.how?' ('+res.how+')':''))+' · règle « Fermeture des ouvertures », puis Valider (Entrée) · Échap : annuler';
   renderToolBar(S.tool);P.view.update();
 }
-async function bkStart(mode,pt){
+async function bkStart(mode,pt,edit){
   const scope=sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
   if(!scope.length){alert('Sélectionne d’abord l’objet ou l’élément qui entoure la zone à remplir.');return;}
-  const col=bkColor();if(!col)return;
+  const col=edit&&edit.fillColor?colorHex(edit.fillColor):bkColor();if(!col)return;
   if(BK.pending)bkValidate();
+  if(edit){edit.visible=false;fillCache=null;}// on retravaille un remplissage existant : on le cache le temps de l'aperçu
   await busy(mode==='all'?'Recherche de toutes les zones…':'Recherche de la zone…');
   try{
     const C=await bkPrepare(scope);
-    BK.pending={mode,pt,scope:sel.slice(),C,col};
+    BK.pending={mode,pt,scope:sel.slice(),C,col,edit:edit||null};
     await bkShow();
   }catch(err){console.error(err);bkCancel();alert('Remplissage impossible : '+(err.message||err));}
   await busy();
 }
 function bkSchedule(){if(!BK.pending)return;clearTimeout(BK.timer);BK.timer=setTimeout(async()=>{await busy('Nouvel aperçu…');try{await bkShow();}catch(e){console.error(e);}await busy();},200);}
-function bkCancel(){BK.pending=null;bkClearPreview();renderToolBar(S.tool);P.view.update();}
+function bkCancel(){const pd=BK.pending;if(pd&&pd.edit&&pd.edit.parent){pd.edit.visible=true;fillCache=null;}BK.pending=null;bkClearPreview();renderToolBar(S.tool);P.view.update();}
 function bkValidate(){
   const pd=BK.pending;if(!pd)return;
   BK.pending=null;bkClearPreview();
-  if(!pd.shape){renderToolBar(S.tool);return;}
+  if(!pd.shape){if(pd.edit&&pd.edit.parent){pd.edit.visible=true;fillCache=null;}renderToolBar(S.tool);return;}
+  if(pd.edit){if(typeof leafRole==='function'&&pd.edit.data&&pd.edit.data.role)pd.roleKeep=pd.edit.data.role;pd.edit.remove();}
   ensureLayer(true);
   const shapes=pd.mode==='all'?bkSplit(pd.shape):[pd.shape];
   setSel(pd.scope);
