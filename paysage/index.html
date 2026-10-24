@@ -426,7 +426,10 @@ const S={
   doc:{id:null,name:''}
 };
 /* pendant un calcul : message et curseur sablier */
-const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;document.documentElement.classList.toggle('wait-busy',!!msg);return new Promise(r=>setTimeout(r,30));};
+const ABORT={n:0};const tick=()=>new Promise(r=>setTimeout(r,0));
+function abortErr(){const e=new Error('arrêté');e.abort=true;return e;}
+async function stepCheck(tok){await tick();if(tok!=null&&tok!==ABORT.n)throw abortErr();}
+const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg+'   ·   Échap : arrêter';b.hidden=false;}else b.hidden=true;document.documentElement.classList.toggle('wait-busy',!!msg);return new Promise(r=>setTimeout(r,30));};
 const f1=v=>Math.round(v*10)/10;
 
 /* ---------- paper ---------- */
@@ -1097,7 +1100,8 @@ async function bkPrepare2(scope,key){
       // une zone déjà remplie, même en blanc, compte comme remplie : le blanc est rendu en noir le temps du calcul
       const recol=[];items.forEach(it=>leafPaths(it).forEach(p=>{const f=p.fillColor&&colorHex(p.fillColor)==='#ffffff',st=p.strokeColor&&colorHex(p.strokeColor)==='#ffffff';if(f||st){recol.push([p,p.fillColor,p.strokeColor]);if(f)p.fillColor=new P.Color('#000000');if(st)p.strokeColor=new P.Color('#000000');}}));
       try{
-        for(const it of items){if(!it.visible||!it.parent)continue;let r;try{r=it.rasterize({resolution:ppm*72,insert:false});}catch(err){continue;}
+        const tok=ABORT.n;let kk=0;
+        for(const it of items){if(++kk%20===0)await stepCheck(tok);if(!it.visible||!it.parent)continue;let r;try{r=it.rasterize({resolution:ppm*72,insert:false});}catch(err){continue;}
           if(!r||!r.canvas||!r.width)continue;const rb=r.bounds;x.drawImage(r.canvas,(rb.x-ox)*ppm,(rb.y-oy)*ppm,rb.width*ppm,rb.height*ppm);}
       }finally{recol.forEach(([p,f,st])=>{p.fillColor=f;p.strokeColor=st;});}
       const d=x.getImageData(0,0,cw,ch).data;
@@ -1252,7 +1256,7 @@ function bkOne(C,pt){
 }
 /* toutes les zones encore blanches de la sélection : zones fermées, et zones dont les ouvertures sont plus petites que le réglage
    (les ouvertures sont refermées, puis chaque zone et l'extérieur se partagent le vide : la limite passe au milieu de l'ouverture) */
-function bkAll(C){
+async function bkAll(C,tok){
   const {cw,ch,n,ppm}=C;const gapMax=bkGap();const bar=gapMax>0?bkBarB(C,gapMax):C.bar;
   const R=gapMax>0?Math.min(Math.round((isFinite(gapMax)?gapMax:50)/2*ppm),Math.round(Math.min(cw,ch)/4)):0;
   // plusieurs échelles : zones fermées, puis zones isolées en refermant des ouvertures de plus en plus larges (jusqu'au réglage)
@@ -1260,7 +1264,7 @@ function bkAll(C){
   const dist=R>0?(C.distB&&C.distB.key===String(gapMax)?C.distB.d:(C.distB={key:String(gapMax),d:chamfer(bar,cw,ch)}).d):null;
   const lab=new Int32Array(n),q=new Int32Array(n);let L=1;// 1 = l'extérieur
   const minA=Math.max(4,Math.round(0.8*ppm*ppm));
-  scales.forEach((r,si)=>{
+  for(let si=0;si<scales.length;si++){const r=scales[si];await stepCheck(tok);
     let free;
     if(r>0){const far=new Uint8Array(n);for(let p=0;p<n;p++)far[p]=dist[p]>r?1:0;const d2=chamfer(far,cw,ch);free=new Uint8Array(n);for(let p=0;p<n;p++)free[p]=(!bar[p]&&d2[p]<=r)?1:0;}
     else{free=new Uint8Array(n);for(let p=0;p<n;p++)free[p]=bar[p]?0:1;}
@@ -1273,7 +1277,7 @@ function bkAll(C){
       if(taken||qt<minA)continue;
       L++;for(let i=0;i<qt;i++)lab[q[i]]=L;
     }
-  });
+  }
   // le vide restant (pointes, ouvertures) va à la zone la plus proche, en contournant les traits
   {let qh=0,qt=0;for(let p=0;p<n;p++)if(lab[p])q[qt++]=p;
     while(qh<qt){const p=q[qh++];const l=lab[p],x=p%cw;
@@ -1316,7 +1320,7 @@ function bkColor(){
 }
 /* aperçu provisoire */
 /* le remplissage suit exactement les traits : on retire de la zone la forme vectorielle des traits qui la bordent */
-function bkExact(cp,pd,mask){
+async function bkExact(cp,pd,mask,tok){
   const C=pd.C,fb=cp.bounds,pts=[];
   // quelques points de la zone, pour reconnaître une forme qui l'entoure (fond, grande zone blanche) : celle-là, on ne la retire pas
   for(let k=0,p=0;k<C.n&&pts.length<12;k+=Math.max(1,Math.floor(C.n/4000))){if(mask[k]){const x=k%C.cw,y=(k-x)/C.cw;pts.push(new P.Point(C.ox+(x+.5)/C.ppm,C.oy+(y+.5)/C.ppm));k+=Math.floor(C.n/12);}}
@@ -1324,7 +1328,8 @@ function bkExact(cp,pd,mask){
   pd.scope.forEach(it=>leafPaths(it).forEach(add));
   userLayers().forEach(l=>l.getItems({match:it=>it.name==='Remplissage'&&!(it.data&&it.data.sys)}).forEach(it=>{if(!pd.scope.some(s=>s===it||s.isAncestor(it)))add(it);}));
   let res=cp;
-  for(const p of leaves){
+  let kk=0;
+  for(const p of leaves){if(++kk%10===0)await stepCheck(tok);
     const filled=p.fillColor&&(p.closed||p instanceof P.CompoundPath);
     if(filled&&p.bounds.contains(fb)&&pts.some(q=>p.contains(q)))continue;
     const shapes=[];if(filled)shapes.push(p);
@@ -1338,17 +1343,17 @@ function bkExact(cp,pd,mask){
   return new P.CompoundPath({insert:false,fillRule:'evenodd',children:parts.flatMap(z=>z.removeChildren())});
 }
 async function bkShow(){
-  const pd=BK.pending;if(!pd)return;
+  const pd=BK.pending;if(!pd)return;const tok=ABORT.n;await stepCheck(tok);
   const C=pd.C;let res;const first=!pd.shown;
   const fail=(msg)=>{if(first){bkCancel();if(msg)alert(msg);return;}
     // en réglant la sensibilité : on reste dans l'aperçu, même s'il n'y a rien pour ce réglage
     bkClearPreview();pd.shape=null;pd.mask=null;$('#hint').textContent='Aucune zone avec ce réglage · bouge « Fermeture des ouvertures » · Échap : annuler';P.view.update();};
   if(pd.mode==='one'){res=bkOne(C,pd.pt);if(!res.mask){if(!first||res.msg)return fail(res.msg);bkCancel();if(res.hint)$('#hint').textContent=res.hint;return;}}
-  else{res=bkAll(C);if(!res.zones)return fail('Aucune zone à remplir avec ce réglage.\nAugmente « Fermeture des ouvertures » si des zones sont ouvertes.');}
-  let cp=await bkTrace(C,res.mask,res.lab);
+  else{res=await bkAll(C,tok);if(!res.zones)return fail('Aucune zone à remplir avec ce réglage.\nAugmente « Fermeture des ouvertures » si des zones sont ouvertes.');}
+  await stepCheck(tok);let cp=await bkTrace(C,res.mask,res.lab);
   if(BK.pending!==pd)return;
   if(!cp)return fail(null);
-  cp=bkExact(cp,pd,res.mask);
+  await stepCheck(tok);cp=await bkExact(cp,pd,res.mask,tok);
   if(BK.pending!==pd)return;
   bkClearPreview();
   pd.mask=res.mask;pd.shape=cp;
@@ -1370,10 +1375,10 @@ async function bkStart(mode,pt,edit){
     const C=await bkPrepare(scope);
     BK.pending={mode,pt,scope:sel.slice(),C,col,edit:edit||null};
     await bkShow();
-  }catch(err){console.error(err);bkCancel();alert('Remplissage impossible : '+(err.message||err));}
+  }catch(err){bkCancel();if(err&&err.abort)$('#hint').textContent='Arrêté';else{console.error(err);alert('Remplissage impossible : '+(err.message||err));}}
   await busy();
 }
-function bkSchedule(){if(!BK.pending)return;clearTimeout(BK.timer);BK.timer=setTimeout(async()=>{await busy('Nouvel aperçu…');try{await bkShow();}catch(e){console.error(e);}await busy();},200);}
+function bkSchedule(){if(!BK.pending)return;clearTimeout(BK.timer);BK.timer=setTimeout(async()=>{await busy('Nouvel aperçu…');try{await bkShow();}catch(e){if(e&&e.abort){bkCancel();$('#hint').textContent='Arrêté';}else console.error(e);}await busy();},200);}
 function bkCancel(){const pd=BK.pending;if(pd&&pd.edit&&pd.edit.parent){pd.edit.visible=true;fillCache=null;}BK.pending=null;bkClearPreview();renderToolBar(S.tool);P.view.update();}
 function bkValidate(){
   const pd=BK.pending;if(!pd)return;
@@ -2337,6 +2342,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&e
 let spaceDown=false;
 document.addEventListener('keydown',e=>{
   if($('#vxDlg').open||$('#docDlg').open||$('#phDlg').open||$('#ungDlg').open||$('#impDlg').open||$('#pdfDlg').open)return;
+  if(e.key==='Escape'&&!$('#busy').hidden){e.preventDefault();ABORT.n++;$('#busy').textContent='Arrêt…';return;}
   if(BK.pending&&(e.key==='Enter'||e.key==='Escape')){e.preventDefault();e.key==='Enter'?bkValidate():bkCancel();return;}
   const tag=document.activeElement&&document.activeElement.tagName;
   if(/INPUT|SELECT|TEXTAREA/.test(tag))return;
