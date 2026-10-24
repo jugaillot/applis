@@ -4,7 +4,12 @@
 <meta name="theme-color" content="#1d1d1f">
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
-<script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}));</script>
+<script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(r=>r.update()).catch(()=>{}));
+/* une nouvelle version vient d'être installée : on recharge une fois pour l'afficher */
+navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}location.reload();}});}
+/* une erreur au démarrage ne laisse plus une page vide : on l'affiche, avec un moyen de repartir */
+setTimeout(()=>{window.__bootOk=true;},10000);
+window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.message)||'erreur';const d=document.getElementById('bootErr')||document.body&&document.body.appendChild(Object.assign(document.createElement('div'),{id:'bootErr'}));if(!d)return;d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#fff3f0;border:1px solid #e3a59a;border-radius:10px;padding:10px 14px;font:13px system-ui;color:#5a1d12;box-shadow:0 6px 24px rgba(0,0,0,.15)';d.innerHTML='<b>Le démarrage a rencontré un problème</b> : '+String(m).replace(/</g,'&lt;')+'<br><button onclick="location.reload()" style="margin-top:6px">Recharger</button>';});</script>
 </head>
 <body><header style="display:flex;align-items:center;justify-content:flex-end;padding:8px 12px;margin:-40px -16px 20px;border-bottom:1px solid #00000010"></header><main><h1>Atelier</h1>
 <p id="inst" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:#77756f;font-size:13px;margin:-6px 0 14px"><button id="bInst" hidden style="font:inherit;border:0;border-radius:7px;background:#1d1d1f;color:#fff;padding:6px 12px;cursor:pointer">Installer l’atelier sur cet ordinateur</button><span id="offl"></span><a href="/login.php?logout=1" style="margin-left:auto;color:#77756f;font-size:12px" title="Se déconnecter sur cet appareil">Se déconnecter</a></p>

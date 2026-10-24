@@ -1,7 +1,7 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
-   Bibliothèques et autres fichiers : copie locale d'abord, mise à jour en arrière-plan. */
-const VERSION = 'atelier-v89';
+   Scripts de l'atelier : réseau d'abord aussi. Grosses bibliothèques et polices : copie locale d'abord. */
+const VERSION = 'atelier-v90';
 const PRECACHE = [
   '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/', '/paysage/',
   '/vecto/potrace-worker.js', '/lib/sync.js','/lib/tabs.js', '/lib/help.js',
@@ -56,7 +56,7 @@ self.addEventListener('fetch', event => {
       try {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 4000);
-        const res = await fetch(req, { signal: ctrl.signal });
+        const res = await fetch(req, { signal: ctrl.signal, cache: 'no-cache' });
         clearTimeout(t);
         if (res.ok && !res.redirected) cache.put(key, res.clone());
         return res;
@@ -68,12 +68,32 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // grosses bibliothèques et polices (elles ne changent pas) : copie locale d'abord
+  const stable = /\/lib\/fonts\/|\.min\.(js|css)$|\/lib\/(pdf\.worker\.min|docx\.iife)\.js$|\.woff2$|\/icons\//.test(url.pathname);
+  if (stable) {
+    event.respondWith((async () => {
+      const cache = await caches.open(VERSION);
+      const hit = await cache.match(key);
+      const update = fetch(req).then(res => { if (res.ok && !res.redirected) cache.put(key, res.clone()); return res; }).catch(() => null);
+      if (hit) { event.waitUntil(update); return hit; }
+      const res = await update;
+      return res || new Response('', { status: 504 });
+    })());
+    return;
+  }
+  // le reste (scripts de l'atelier, réglages…) : toujours la dernière version, copie locale seulement hors connexion
   event.respondWith((async () => {
     const cache = await caches.open(VERSION);
-    const hit = await cache.match(key);
-    const update = fetch(req).then(res => { if (res.ok && !res.redirected) cache.put(key, res.clone()); return res; }).catch(() => null);
-    if (hit) { event.waitUntil(update); return hit; }
-    const res = await update;
-    return res || new Response('', { status: 504 });
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(req, { signal: ctrl.signal, cache: 'no-cache' });
+      clearTimeout(t);
+      if (res.ok && !res.redirected) cache.put(key, res.clone());
+      return res;
+    } catch (e) {
+      const hit = await cache.match(key);
+      return hit || new Response('', { status: 504 });
+    }
   })());
 });
