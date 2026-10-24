@@ -477,12 +477,12 @@ async function stepCheck(tok){await tick();if(tok!=null&&tok!==ABORT.n)throw abo
 const BUSY={on:false,undo:0,last:null,abort:false};
 function busyRevert(){
   if(window.BK&&BK.pending)bkCancel();
-  if(S.undo.length>BUSY.undo&&BUSY.last){restore(BUSY.last);lastSnap=BUSY.last;S.undo.length=BUSY.undo;S.redo=[];setSel([]);renderLayers();scheduleAutosave();}
+  if((S.undo.length>BUSY.undo||BUSY.dirty)&&BUSY.last){restore(BUSY.last);lastSnap=BUSY.last;S.undo.length=BUSY.undo;S.redo=[];setSel([]);renderLayers();scheduleAutosave();}
   $('#hint').textContent='Arrêté : rien n’a été modifié';
 }
 const busy=msg=>{const b=$('#busy');
-  if(msg){if(!BUSY.on){BUSY.on=true;BUSY.undo=S.undo.length;BUSY.last=lastSnap;BUSY.abort=false;}b.textContent=BUSY.abort?'Arrêt…':msg+'   ·   Échap : arrêter';b.hidden=false;}
-  else{b.hidden=true;if(BUSY.on){BUSY.on=false;if(BUSY.abort){BUSY.abort=false;try{busyRevert();}catch(e){console.error(e);}}}}
+  if(msg){if(!BUSY.on){BUSY.on=true;BUSY.undo=S.undo.length;BUSY.last=lastSnap;BUSY.abort=false;BUSY.dirty=false;}b.textContent=BUSY.abort?'Arrêt…':msg+'   ·   Échap : arrêter';b.hidden=false;}
+  else{b.hidden=true;if(BUSY.on){BUSY.on=false;if(BUSY.abort){BUSY.abort=false;try{busyRevert();}catch(e){console.error(e);}}BUSY.dirty=false;}}
   document.documentElement.classList.toggle('wait-busy',!!msg);return new Promise(r=>setTimeout(r,30));};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&BUSY.on){e.preventDefault();e.stopImmediatePropagation();BUSY.abort=true;ABORT.n++;$('#busy').textContent='Arrêt…';}},true);
 const f1=v=>Math.round(v*10)/10;
@@ -1885,6 +1885,54 @@ function onTargets(fn){const T=cmdTargets();if(T===sel)return fn();const keep=se
 function cmd(name){return onTargets(()=>cmd0(name));}
 function align(kind){return onTargets(()=>align0(kind));}
 function setGeo(k,v){return onTargets(()=>setGeo0(k,v));}
+/* opération lourde : sablier, Échap pour l'arrêter (tout revient comme avant) */
+async function runHeavy(msg,fn){await busy(msg);BUSY.dirty=true;const tok=ABORT.n;try{await fn(tok);}catch(e){if(!(e&&e.abort)){console.error(e);alert('Opération impossible : '+(e.message||e));}}finally{await busy();}}
+async function doMerge(sel,tok){
+      const pay=typeof layerByRole==='function';
+      const leaves=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&!(p.data&&p.data.sys)).sort((a,b)=>a.isAbove(b)?1:-1);
+      if(!leaves.length){alert('Sélectionne au moins deux formes ou tracés.');return;}
+      if(pay)growWhites(leaves,0.15);
+      const keyOf=(p,col)=>pay?(roleOf(p.layer)==='aqua'?'aqua':(roleUp(p)||'couleur')):colorHex(col);
+      const items=[];
+      for(let n0=0;n0<leaves.length;n0++){const p=leaves[n0];if(n0%8===7)await stepCheck(tok);
+        if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))items.push({p,g:p.clone({insert:false}),k:keyOf(p,p.fillColor)});
+        if(p.strokeColor&&p.strokeWidth>0){let s=null;try{s=strokeToShape(p,true);}catch(e){}if(s){if(s.parent)s.remove();items.push({p,g:s,k:keyOf(p,p.strokeColor)});}}
+      }
+      if(items.length<2){alert('Sélectionne au moins deux formes ou tracés.');return;}
+      const part=new Map();items.forEach(it=>{const l=it.p.layer;if(!part.has(l))part.set(l,[]);part.get(l).push(it);});
+      const out=[],par=new Set(leaves.map(p=>p.parent));
+      for(const arr of part.values()){
+        const groups=new Map();
+        for(let i=0;i<arr.length;i++){const it=arr[i];await stepCheck(tok);let v=it.g;for(let j=i+1;j<arr.length;j++){if(!v.bounds.intersects(arr[j].g.bounds))continue;try{v=v.subtract(arr[j].g,{insert:false});}catch(e){}}
+          if(!v||(v.isEmpty&&v.isEmpty())||Math.abs(v.area)<1e-4)continue;if(!groups.has(it.k))groups.set(it.k,[]);groups.get(it.k).push(v);}
+        const top=arr[arr.length-1].p;
+        for(const [k,vs] of groups){let u=vs[0];for(let i=1;i<vs.length;i++){if(i%3===0)await stepCheck(tok);try{u=u.unite(vs[i],{insert:false});}catch(e){}}await stepCheck(tok);
+          splitIslands(u).forEach(v=>{v.fillColor=new P.Color(pay?roleColor(k):k);v.strokeColor=null;v.name='Fusion';if(pay&&k!=='aqua')v.data.role=k;v.insertAbove(top);out.push(v);});}
+      }
+      leaves.forEach(p=>p.remove());cleanEmpty(par);if(pay)enforceColors();setSel(out.filter(x=>x.parent));commit();
+}
+async function doBool(name,sel,tok){
+      // formes concernées (du dessous vers le dessus) ; un trait sans fond compte par sa forme de trait
+      const leaves=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&!(typeof isOutline==='function'&&isOutline(p))).sort((a,b)=>a.isAbove(b)?1:-1);
+      await stepCheck(tok);const shapes=leaves.map(p=>{if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))return p;if(p.strokeColor&&p.strokeWidth>0){const s=strokeToShape(p,true);if(s&&s.parent)s.remove();return s;}return null;}).filter(Boolean);
+      if(shapes.length<2){alert('Sélectionne au moins deux formes.');return;}
+      let res=shapes[0];
+      if(name==='unite'&&shapes.length>2){// réunion deux à deux (bien plus rapide qu'en ajoutant une forme après l'autre)
+        let lvl=shapes.slice();while(lvl.length>1){const nx=[];for(let i=0;i<lvl.length;i+=2){await stepCheck(tok);if(i+1>=lvl.length){nx.push(lvl[i]);continue;}let r;try{r=lvl[i].unite(lvl[i+1],{insert:false});}catch(err){r=lvl[i];}nx.push(r);}lvl=nx;}res=lvl[0];
+      }else for(let i=1;i<shapes.length;i++){await stepCheck(tok);let r;try{r=res[name](shapes[i],{insert:false});}catch(err){continue;}if(res!==shapes[0]&&res.parent)res.remove();res=r;}
+      if(res===shapes[0])res=res.clone({insert:false});
+      const src=leaves.find(p=>p.fillColor)||leaves[0];
+      res.fillColor=src.fillColor||src.strokeColor;res.strokeColor=null;res.name=name==='unite'?'Réunion':res.name;
+      // une seule couleur : celle du calque actif (Paysage), sinon celle de la forme du dessous
+      if(typeof roleUp==='function'){const r0=(activeRole==='blanc'||activeRole==='couleur')?activeRole:(roleUp(src)||'couleur');res.data.role=r0;}
+      // le résultat prend la place de l'élément le plus haut de la sélection (jamais à l'intérieur d'un objet qu'on supprime)
+      const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];
+      res.insertAbove(top);
+      if(typeof layerByRole==='function'&&res.layer&&roleOf(res.layer)==='aqua'&&res.data.role)layerByRole('dessin').addChild(res);
+      const par=new Set([...sel,...leaves].map(s=>s.parent).filter(Boolean));
+      sel.forEach(s=>{if(s!==res)s.remove();});leaves.forEach(s=>s.parent&&s.remove());cleanEmpty(par);
+      setSel([res]);commit();
+}
 function cmd0(name){
   if(!sel.length&&!['selall','front','back'].includes(name))return;
   const b=selBounds();
@@ -1904,52 +1952,8 @@ function cmd0(name){
     case'ung:layer':case'ung:sub':case'ung:leaf':doUngroup(name.slice(4));break;
     case'release':{const out=[];sel.forEach(s=>{if(s instanceof P.CompoundPath){const st={fillColor:s.fillColor,strokeColor:s.strokeColor,strokeWidth:s.strokeWidth};const ch=s.removeChildren();ch.forEach(c=>{c.style=st;c.fillColor=st.fillColor;c.strokeColor=st.strokeColor;c.strokeWidth=st.strokeWidth;c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
     case'compound':{const paths=sel.flatMap(leafPaths).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath);if(paths.length<2){alert('Sélectionne au moins deux tracés.');return;}const first=paths[0];const st={fillColor:first.fillColor,strokeColor:first.strokeColor,strokeWidth:first.strokeWidth};const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];const cp=new P.CompoundPath({fillRule:'evenodd'});cp.insertAbove(top);paths.forEach(p=>{if(p instanceof P.CompoundPath){cp.addChildren(p.removeChildren());p.remove();}else cp.addChild(p);});cp.fillColor=st.fillColor;cp.strokeColor=st.strokeColor;cp.strokeWidth=st.strokeWidth;sel.forEach(s=>{if(s!==cp&&s.parent&&s instanceof P.Group&&!s.children.length)s.remove();});setSel([cp]);break;}
-    case'merge':{// comme « Fusion » d'Illustrator : chaque forme perd ce qui est caché par les formes du dessus (quelle que soit leur couleur), puis les formes de même couleur qui se touchent n'en font qu'une ; les traits comptent par leur forme
-      const pay=typeof layerByRole==='function';
-      const leaves=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&!(p.data&&p.data.sys)).sort((a,b)=>a.isAbove(b)?1:-1);
-      if(!leaves.length){alert('Sélectionne au moins deux formes ou tracés.');return;}
-      if(pay)growWhites(leaves,0.15);
-      const keyOf=(p,col)=>pay?(roleOf(p.layer)==='aqua'?'aqua':(roleUp(p)||'couleur')):colorHex(col);
-      const items=[];
-      leaves.forEach(p=>{
-        if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))items.push({p,g:p.clone({insert:false}),k:keyOf(p,p.fillColor)});
-        if(p.strokeColor&&p.strokeWidth>0){let s=null;try{s=strokeToShape(p,true);}catch(e){}if(s){if(s.parent)s.remove();items.push({p,g:s,k:keyOf(p,p.strokeColor)});}}
-      });
-      if(items.length<2){alert('Sélectionne au moins deux formes ou tracés.');return;}
-      const part=new Map();items.forEach(it=>{const l=it.p.layer;if(!part.has(l))part.set(l,[]);part.get(l).push(it);});
-      const out=[],par=new Set(leaves.map(p=>p.parent));
-      for(const arr of part.values()){
-        const groups=new Map();
-        arr.forEach((it,i)=>{let v=it.g;for(let j=i+1;j<arr.length;j++){if(!v.bounds.intersects(arr[j].g.bounds))continue;try{v=v.subtract(arr[j].g,{insert:false});}catch(e){}}
-          if(!v||(v.isEmpty&&v.isEmpty())||Math.abs(v.area)<1e-4)return;if(!groups.has(it.k))groups.set(it.k,[]);groups.get(it.k).push(v);});
-        const top=arr[arr.length-1].p;
-        for(const [k,vs] of groups){let u=vs[0];for(let i=1;i<vs.length;i++){try{u=u.unite(vs[i],{insert:false});}catch(e){}}
-          splitIslands(u).forEach(v=>{v.fillColor=new P.Color(pay?roleColor(k):k);v.strokeColor=null;v.name='Fusion';if(pay&&k!=='aqua')v.data.role=k;v.insertAbove(top);out.push(v);});}
-      }
-      leaves.forEach(p=>p.remove());cleanEmpty(par);if(pay)enforceColors();setSel(out.filter(x=>x.parent));break;
-    }
-    case'unite':case'subtract':case'intersect':case'exclude':{
-      // formes concernées (du dessous vers le dessus) ; un trait sans fond compte par sa forme de trait
-      const leaves=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&!(typeof isOutline==='function'&&isOutline(p))).sort((a,b)=>a.isAbove(b)?1:-1);
-      const shapes=leaves.map(p=>{if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))return p;if(p.strokeColor&&p.strokeWidth>0){const s=strokeToShape(p,true);if(s&&s.parent)s.remove();return s;}return null;}).filter(Boolean);
-      if(shapes.length<2){alert('Sélectionne au moins deux formes.');return;}
-      let res=shapes[0];
-      if(name==='unite'&&shapes.length>2){// réunion deux à deux (bien plus rapide qu'en ajoutant une forme après l'autre)
-        let lvl=shapes.slice();while(lvl.length>1){const nx=[];for(let i=0;i<lvl.length;i+=2){if(i+1>=lvl.length){nx.push(lvl[i]);continue;}let r;try{r=lvl[i].unite(lvl[i+1],{insert:false});}catch(err){r=lvl[i];}nx.push(r);}lvl=nx;}res=lvl[0];
-      }else for(let i=1;i<shapes.length;i++){let r;try{r=res[name](shapes[i],{insert:false});}catch(err){continue;}if(res!==shapes[0]&&res.parent)res.remove();res=r;}
-      if(res===shapes[0])res=res.clone({insert:false});
-      const src=leaves.find(p=>p.fillColor)||leaves[0];
-      res.fillColor=src.fillColor||src.strokeColor;res.strokeColor=null;res.name=name==='unite'?'Réunion':res.name;
-      // une seule couleur : celle du calque actif (Paysage), sinon celle de la forme du dessous
-      if(typeof roleUp==='function'){const r0=(activeRole==='blanc'||activeRole==='couleur')?activeRole:(roleUp(src)||'couleur');res.data.role=r0;}
-      // le résultat prend la place de l'élément le plus haut de la sélection (jamais à l'intérieur d'un objet qu'on supprime)
-      const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];
-      res.insertAbove(top);
-      if(typeof layerByRole==='function'&&res.layer&&roleOf(res.layer)==='aqua'&&res.data.role)layerByRole('dessin').addChild(res);
-      const par=new Set([...sel,...leaves].map(s=>s.parent).filter(Boolean));
-      sel.forEach(s=>{if(s!==res)s.remove();});leaves.forEach(s=>s.parent&&s.remove());cleanEmpty(par);
-      setSel([res]);break;
-    }
+    case'merge':{const T=sel.slice();runHeavy('Fusion…',tok=>doMerge(T,tok));return;}
+    case'unite':case'subtract':case'intersect':case'exclude':{const T=sel.slice();runHeavy(({unite:'Réunion',subtract:'Soustraction',intersect:'Intersection',exclude:'Exclusion'})[name]+'…',tok=>doBool(name,T,tok));return;}
     case'simplify':sel.flatMap(leafPaths).forEach(p=>{const t=Math.max(0.05,px(1.5));if(p instanceof P.CompoundPath)p.children.forEach(c=>c.simplify(t));else if(p.simplify)p.simplify(t);});break;
     case'smooth':sel.flatMap(leafPaths).forEach(p=>{if(p instanceof P.CompoundPath)p.children.forEach(c=>c.smooth({type:'continuous'}));else if(p.smooth)p.smooth({type:'continuous'});});break;
     case'outline':{const out=[];sel.forEach(s=>{leafPaths(s).forEach(p=>{const o=strokeToShape(p);if(o){o.insertAbove(p);out.push(o);if(!p.fillColor)p.remove();else p.strokeColor=null;}});});if(out.length)setSel(out);else{alert('Aucun contour à transformer dans la sélection.');return;}break;}
@@ -2254,9 +2258,9 @@ function splitIslands(u){
     else out.push(new P.CompoundPath({insert:false,fillRule:'evenodd',children:[c.clone({insert:false})].concat(holes.map(h=>h.clone({insert:false})))}));});
   return out.length?out:[u];
 }
-function pasteMerge(){
+async function pasteMerge(){
   const n=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath).length;if(n<2)return;
-  try{cmd('merge');}catch(e){console.error(e);return;}
+  await runHeavy('Fusion…',tok=>doMerge(sel.slice(),tok));
   const tops=[...new Set(sel.map(topOf).filter(x=>x&&x.parent))];if(tops.length)setSel(tops);
 }
 function importSVGText(text,name,opts){
