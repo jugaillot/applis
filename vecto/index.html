@@ -2136,6 +2136,12 @@ function applyClips(item){
 }
 /* les épaisseurs de trait suivent la mise à l'échelle (sinon un trait de 1 pt devient 1 mm) */
 function scaleStrokes(item,k){item.getItems({match:x=>x.strokeWidth>0}).forEach(x=>{x.strokeWidth*=k;});if(item.strokeWidth>0&&!(item instanceof P.Group))item.strokeWidth*=k;}
+/* collage depuis Illustrator : on enchaîne une Fusion (parties cachées retirées, formes de même couleur réunies) */
+function pasteMerge(){
+  const n=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath).length;if(n<2)return;
+  try{cmd('merge');}catch(e){console.error(e);return;}
+  const tops=[...new Set(sel.map(topOf).filter(x=>x&&x.parent))];if(tops.length)setSel(tops);
+}
 function importSVGText(text,name,opts){
   opts=opts||{};
   const doc=new DOMParser().parseFromString(text,'image/svg+xml');const svg=doc.documentElement;
@@ -2160,6 +2166,7 @@ function importSVGText(text,name,opts){
   else if(item.bounds.right<0||item.bounds.bottom<0||item.bounds.left>S.page.w||item.bounds.top>S.page.h)item.position=new P.Point(S.page.w/2,S.page.h/2);
   if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.layer===activeLayer)aquaRaster.bringToFront();
   setTool('select');setSel([item]);commit();
+  if(opts.center)pasteMerge();
   return item;
 }
 
