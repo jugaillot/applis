@@ -8,6 +8,7 @@
 <script src="../lib/jspdf.umd.min.js"></script>
 <script src="../lib/svg2pdf.umd.min.js"></script>
 <script src="../lib/sync.js"></script>
+<script src="../lib/tabs.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#ff48b0;--soft:#f7f6f2;--board:#d9d6cf}
 *{box-sizing:border-box}
@@ -553,8 +554,8 @@ function resetHistory(){S.undo=[];S.redo=[];lastSnap=snapshot();syncPanel();}
 
 /* ---------- autosauvegarde ---------- */
 let asT=0;
-function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{const d=projectData();IDB.set('vecto.autosave',Object.assign({},d,{doc:S.doc}));if(S.doc.id&&window.AtelierSync)AtelierSync.save('vecto',S.doc.id,S.doc.name,d,{lazy:true});},1500);}
-function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'— sans titre';}
+function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{const d=projectData();IDB.set('vecto.autosave',Object.assign({},d,{doc:S.doc}));if(window.AtelierTabs)AtelierTabs.update({id:S.doc.id,name:S.doc.name,data:d});if(S.doc.id&&window.AtelierSync)AtelierSync.save('vecto',S.doc.id,S.doc.name,d,{lazy:true});},1500);}
+function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'— sans titre';if(window.AtelierTabs)AtelierTabs.refresh();}
 async function saveDoc(asNew){
   if(!window.AtelierSync)return download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`vecto-${stamp()}.json`);
   if(!S.doc.id||asNew){const n=prompt('Nom du dessin :',S.doc.name||('Dessin '+new Date().toLocaleDateString('fr-FR')));if(!n||!n.trim())return;S.doc={id:null,name:n.trim()};}
@@ -563,7 +564,7 @@ async function saveDoc(asNew){
 }
 function openDocs(){
   AtelierSync.openDialog({app:'vecto',title:'Mes dessins',current:S.doc.id,
-    onOpen:(id,data,inf)=>{try{loadProject(data);S.doc={id,name:inf?inf.name:id};showDoc();IDB.set('vecto.autosave',Object.assign({},data,{doc:S.doc}));}catch(e){alert('Ouverture impossible : '+e.message);}},
+    onOpen:(id,data,inf)=>{try{if(window.AtelierTabs)AtelierTabs.open(id,inf?inf.name:id,data);else{loadProject(data);S.doc={id,name:inf?inf.name:id};showDoc();IDB.set('vecto.autosave',Object.assign({},data,{doc:S.doc}));}}catch(e){alert('Ouverture impossible : '+e.message);}},
     onRename:(id,n)=>{if(id===S.doc.id){S.doc.name=n;showDoc();}},
     onDelete:id=>{if(id===S.doc.id){S.doc={id:null,name:''};showDoc();}},
     extra:[{label:'Enregistrer sous un autre nom…',action:()=>saveDoc(true)},{label:'Importer un fichier .json…',action:()=>$('#fProj').click()},{label:'Télécharger une copie .json',action:()=>download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`vecto-${stamp()}.json`)}]});
@@ -662,7 +663,7 @@ const HINTS={
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
   shape:'Glisser pour dessiner (forme choisie dans la barre du haut) · Maj : carré / cercle · Alt : depuis le centre',
   eraser:'Glisser pour effacer (diamètre dans la barre du haut) · avec une sélection, n’efface que dans la sélection (aussi les éléments pris à la flèche blanche)',
-  bucket:'Sélectionne d’abord l’objet ou l’élément qui entoure la zone (réglage de fermeture dans la barre du haut), puis clique dans la zone : elle se remplit avec la couleur de fond, dans le calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic : recolore aussi un trait',
+  bucket:'Sélectionne d’abord l’objet ou l’élément qui entoure la zone (réglage de fermeture dans la barre du haut), puis clique dans la zone : elle se remplit avec la couleur de fond, dans le calque actif (zone mal fermée : l’ouverture est refermée) · Alt+clic : recolore aussi un trait · ← → : changer le calque du remplissage',
   eyedrop:'Clic sur un objet : reprend sa couleur et son style · si des objets sont sélectionnés, ils reçoivent ce style',
   hand:'Glisser pour déplacer la vue · molette : zoom · clic molette + glisser : déplacer la vue · Ctrl+molette : horizontal · Maj+molette : vertical'
 };
@@ -925,7 +926,7 @@ function finishPen(){
   if(!penPath)return;
   const p=penPath;penPath=null;penDrag=null;
   if(p.segments.length<2){p.remove();drawUI();return;}
-  if(p.closed&&p.data.penFill){p.fillColor=new P.Color(p.data.penFill);p.strokeColor=null;}
+  // un tracé fermé à la plume reste un trait (pour en faire une zone : le pot de peinture)
   delete p.data.penFill;
   sel=[p];commit();
 }
@@ -1316,6 +1317,18 @@ async function bkStart(mode,pt,edit){
   await busy();
 }
 function bkSchedule(){if(!BK.pending)return;clearTimeout(BK.timer);BK.timer=setTimeout(async()=>{await busy('Nouvel aperçu…');try{await bkShow();}catch(e){if(e&&e.abort){bkCancel();}else console.error(e);}await busy();},200);}
+/* pot : changer le calque du remplissage (flèches ← →, ou clic sur un calque), même pendant l'aperçu */
+function bkLayerChanged(){
+  const name=typeof ROLE_NAME!=='undefined'?ROLE_NAME[activeRole]:(activeLayer&&activeLayer.name);
+  const pd=BK.pending;
+  if(pd){const c=bkColor();if(c){pd.col=c;if(prevLayer)prevLayer.children.forEach(pv=>{pv.fillColor=new P.Color(c);pv.strokeColor=new P.Color(c);});P.view.update();}}
+  $('#hint').textContent='Remplissage dans le calque « '+name+' »'+(pd?' · Valider (Entrée) pour l’appliquer':'')+' · ← → : changer de calque';
+}
+function bkCycleLayer(dir){
+  if(typeof setRole==='function'){const order=['blanc','couleur','aqua'];let i=order.indexOf(activeRole);i=(i+dir+order.length)%order.length;setRole(order[i]);}
+  else{const ls=userLayers();if(!ls.length)return;let i=ls.indexOf(activeLayer);i=(i+dir+ls.length)%ls.length;setActive(ls[i]);}
+  ensureLayer();renderLayers();bkLayerChanged();
+}
 function bkCancel(){const pd=BK.pending;if(pd&&pd.edit&&pd.edit.parent){pd.edit.visible=true;fillCache=null;}BK.pending=null;bkClearPreview();renderToolBar(S.tool);P.view.update();}
 function bkValidate(){
   const pd=BK.pending;if(!pd)return;
@@ -1324,13 +1337,16 @@ function bkValidate(){
   if(pd.edit){if(typeof leafRole==='function'&&pd.edit.data&&pd.edit.data.role)pd.roleKeep=pd.edit.data.role;pd.edit.remove();}
   ensureLayer(true);
   const shapes=pd.mode==='all'?bkSplit(pd.shape):[pd.shape];
-  setSel(pd.scope);
+  // le calque choisi (flèches, clic sur un calque) est gardé même si la sélection en suggère un autre
+  const role0=typeof activeRole!=='undefined'?activeRole:null,layer0=activeLayer;
+  const keepLayer=()=>{if(role0&&typeof setRole==='function')setRole(role0);else if(layer0&&layer0.parent)setActive(layer0);};
+  setSel(pd.scope);keepLayer();
   shapes.forEach(f=>{f.fillColor=new P.Color(pd.col);f.strokeColor=null;f.name='Remplissage';
-    placeFill(f,pd.pt||f.interiorPoint,pd.scope);});
+    keepLayer();placeFill(f,pd.pt||f.interiorPoint,pd.scope);});
   // les zones remplies comptent désormais comme des traits (pour « toutes les zones » et les clics suivants)
   const C=pd.C;for(let p=0;p<C.n;p++)if(pd.mask[p])C.bar[p]=1;C.dist=null;C.skel=null;C.barB=null;C.distB=null;C.marks.push({mask:pd.mask,u:S.undo.length+1});if(C.marks.length>12)C.marks.shift();
   if(fillCache===C)fillCache.key=scopeKey(sel.filter(it=>it&&it.parent&&!(it.data&&it.data.sys)));
-  commit();renderToolBar(S.tool);
+  keepLayer();commit();renderToolBar(S.tool);renderLayers();
   $('#hint').textContent=shapes.length>1?shapes.length+' zones remplies':'Zone remplie';
 }
 /* dès qu'un objet est sélectionné avec le pot : on mémorise ses contours */
@@ -2079,7 +2095,8 @@ $('#vxCancel').onclick=()=>$('#vxDlg').close();
 $('#bRevec').onclick=openRevec;
 $('#vxOk').onclick=()=>{$('#vxDlg').close();vxPlace();};
 $('#fSvg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{importSVGText(await f.text(),f.name.replace(/\.[^.]+$/,''));}catch(err){alert('Import impossible : '+err.message);}};
-$('#bNew').onclick=()=>{if(!confirm('Commencer un nouveau document ? Le dessin actuel sera effacé (pense à l’enregistrer).'))return;userLayers().forEach(l=>l.remove());activeLayer=null;newLayer('Calque 1');setSel([]);renderLayers();resetHistory();S.doc={id:null,name:''};showDoc();scheduleAutosave();};
+function blankDoc(){userLayers().forEach(l=>l.remove());activeLayer=null;newLayer('Calque 1');setSel([]);renderLayers();resetHistory();S.doc={id:null,name:''};showDoc();scheduleAutosave();}
+$('#bNew').onclick=()=>{if(window.AtelierTabs)AtelierTabs.newTab();else if(confirm('Commencer un nouveau document ? Le document actuel sera effacé (pense à l’enregistrer).'))blankDoc();};
 $('#bSave').onclick=()=>saveDoc(false);
 $('#bOpen').onclick=()=>window.AtelierSync?openDocs():$('#fProj').click();
 if(window.AtelierSync)$('#syncBadge').appendChild(AtelierSync.badge());
@@ -2370,7 +2387,7 @@ LY.addEventListener('click',e=>{
   if(act==='del'){if(userLayers().length<=1)return alert('Il faut au moins un calque.');if(l.children.length&&!confirm('Supprimer « '+l.name+' » et son contenu ?'))return;l.remove();if(activeLayer===l)activeLayer=null;ensureLayer();setSel(sel.filter(s=>s.parent));commit();return;}
   if(act==='name')return;
   if(S.tool!=='bucket'){const mv=movableSelection();if(mv.length&&!mv.every(it=>it.layer===l)){moveToLayer(mv,l);return;}}
-  setActive(l);ensureLayer();renderLayers();
+  setActive(l);ensureLayer();renderLayers();if(S.tool==='bucket')bkLayerChanged();
 });
 LY.addEventListener('change',e=>{if(e.target.dataset.la==='name'){const l=layerOf(e.target);if(l){l.name=e.target.value.trim()||l.name;commit();}}});
 LY.addEventListener('focusin',e=>{if(e.target.dataset.la==='name'){const l=layerOf(e.target);if(l&&l!==activeLayer){setActive(l);ensureLayer();document.querySelectorAll('.layer').forEach(x=>x.classList.toggle('on',x===e.target.closest('.layer')));}}});
@@ -2401,6 +2418,7 @@ document.addEventListener('keydown',e=>{
   if(k==='Escape'){if(S.tool==='pen'&&penPath){finishPen();return;}setSel([]);clearDirect();return;}
   if(k==='Enter'&&S.tool==='pen'){finishPen();return;}
   if(k==='Delete'||k==='Backspace'){e.preventDefault();if(S.tool==='direct'){if(deleteSegs())return;if(deleteDirectPaths())return;}cmd('del');return;}
+  if(S.tool==='bucket'&&(k==='ArrowLeft'||k==='ArrowRight')&&!(e.ctrlKey||e.metaKey)){e.preventDefault();bkCycleLayer(k==='ArrowRight'?1:-1);return;}
   if(k.startsWith('Arrow')&&(sel.length||S.tool==='direct')){
     e.preventDefault();const s=e.shiftKey?10:1;const d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[k];const v=new P.Point(d);
     if(S.tool==='direct'){const segs=selectedSegs();if(segs.length){segs.forEach(x=>x.point=x.point.add(v));commit();return;}}
@@ -2495,6 +2513,11 @@ window.addEventListener('storage',e=>{if(e.key==='atelierRiso.inks')renderSwatch
   showDoc();
   if(!restored){if(!userLayers().length)newLayer('Calque 1');drawPage();fitView();resetHistory();}
   renderLayers();setTool('select');syncPanel();
+  if(window.AtelierTabs)AtelierTabs.init({app:'vecto',
+    get:()=>({id:S.doc.id,name:S.doc.name,data:projectData()}),
+    set:async t=>{loadProject(t.data);S.doc={id:t.id||null,name:t.name||''};showDoc();setTool('select');IDB.set('vecto.autosave',Object.assign({},t.data,{doc:S.doc}));},
+    blank:async()=>{blankDoc();},
+    isEmpty:()=>!userLayers().some(l=>l.children.some(c=>!(c.data&&c.data.sys)))});
 })();
 window.zoomAt=zoomAt;
 </script>

@@ -7,6 +7,7 @@
 <script src="../lib/jspdf.umd.min.js"></script>
 <script src="../lib/pdf.min.js"></script>
 <script src="../lib/sync.js"></script>
+<script src="../lib/tabs.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#ff48b0;--acc2:#3255a4;--soft:#f7f6f2}
 *{box-sizing:border-box}
@@ -471,7 +472,7 @@ function buildProject(){
     return P;
 }
 function downloadProject(){const blob=new Blob([JSON.stringify(buildProject())],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(S.doc.name||'projet-riso')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
-function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'';}
+function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'';if(window.AtelierTabs)AtelierTabs.refresh();}
 async function saveProject(asNew){
   if(!window.AtelierSync){downloadProject();return;}
   if(!S.doc.id||asNew){const n=prompt('Nom du projet :',S.doc.name||('Riso '+new Date().toLocaleDateString('fr-FR')));if(!n||!n.trim())return;S.doc={id:null,name:n.trim()};}
@@ -482,7 +483,7 @@ async function saveProject(asNew){
 }
 function openDocs(){
   AtelierSync.openDialog({app:'riso',title:'Mes projets riso',current:S.doc.id,
-    onOpen:async(id,P,inf)=>{await openProjectData(P);S.doc={id,name:inf?inf.name:id};showDoc();},
+    onOpen:async(id,P,inf)=>{if(window.AtelierTabs){AtelierTabs.open(id,inf?inf.name:id,P);return;}await openProjectData(P);S.doc={id,name:inf?inf.name:id};showDoc();},
     onRename:(id,n)=>{if(id===S.doc.id){S.doc.name=n;showDoc();}},
     onDelete:id=>{if(id===S.doc.id){S.doc={id:null,name:''};showDoc();}},
     extra:[{label:'Enregistrer sous un autre nom…',action:()=>saveProject(true)},{label:'Importer un fichier .json…',action:()=>$('#projIn').click()},{label:'Télécharger une copie .json',action:downloadProject}]});
@@ -717,7 +718,16 @@ document.addEventListener('keydown',e=>{
 syncPaperUI();renderSide();scheduleRender();
 
 /* ---------- réception depuis Vecto ---------- */
-(async function fromVecto(){
+/* onglets : Riso n'a pas d'enregistrement automatique, chaque onglet garde son projet sur l'appareil */
+(async function(){
+  if(window.AtelierTabs)await AtelierTabs.init({app:'riso',restore:true,
+    get:()=>({id:S.doc.id,name:S.doc.name,data:buildProject()}),
+    set:async t=>{await openProjectData(t.data);S.doc={id:t.id||null,name:t.name||''};showDoc();},
+    blank:async()=>{await openProjectData({app:'atelier-riso',v:1,paper:S.paper,guides:S.guides,inks:[],groups:[],layers:[]});S.doc={id:null,name:''};showDoc();},
+    isEmpty:()=>!S.groups.length&&!S.layers.length});
+  await fromVecto();
+})();
+async function fromVecto(){
   if(!/[?&]depuis=vecto/.test(location.search))return;
   history.replaceState(null,'',location.pathname);
   const db=await new Promise(res=>{try{const r=indexedDB.open('atelier',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('kv'))r.result.createObjectStore('kv');};r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);}catch(e){res(null);}});
@@ -726,8 +736,9 @@ syncPaperUI();renderSide();scheduleRender();
   if(!t||!t.svg)return;
   await new Promise(res=>{const tx=db.transaction('kv','readwrite');tx.objectStore('kv').delete('transfert.riso');tx.oncomplete=res;tx.onerror=res;});
   if(t.fmt){S.paper.fmt=t.fmt;S.paper.orient=t.orient||'portrait';savePrefs();syncPaperUI();scheduleRender();}
+  if(window.AtelierTabs&&(S.groups.length||S.layers.length))await AtelierTabs.newTab();// ce qui vient de Vecto s'ouvre dans un nouvel onglet
   await importFile(new File([t.svg],(t.name||'Vecto')+'.svg',{type:'image/svg+xml'}));
-})();
+}
 </script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "Atelier Riso", "sections": [{"title": "Clavier et souris", "keys": [["Glisser", "Déplacer l’élément importé sur la feuille"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Format / orientation", "A3 ou A4, portrait ou paysage."], ["Marge", "Cadre bleu non imprimé, à X mm du bord."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut (repère pour le 30 × 40)."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."], ["Intensité", "Renforce ou allège toutes les couches."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>

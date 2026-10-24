@@ -7,6 +7,7 @@
 <script src="../lib/jspdf.umd.min.js"></script>
 <script src="../lib/svg2pdf.umd.min.js"></script>
 <script src="../lib/sync.js"></script>
+<script src="../lib/tabs.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#ff48b0;--soft:#f7f6f2;--cad:#21252b}
 *{box-sizing:border-box}
@@ -1068,8 +1069,8 @@ const IDBk={async get(k){try{return await new Promise((res)=>{const r=indexedDB.
   async set(k,v){try{await new Promise((res)=>{const r=indexedDB.open('atelier',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('kv'))r.result.createObjectStore('kv');};r.onsuccess=()=>{const t=r.result.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=res;};r.onerror=res;});}catch(e){}}};
 const projectData=()=>({app:'atelier-plan',v:1,doc:S.doc});
 let asT=0;
-function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{IDBk.set('plan.autosave',{data:projectData(),meta:S.meta,view:S.view});if(S.meta.id&&window.AtelierSync)AtelierSync.save('plan',S.meta.id,S.meta.name,projectData(),{lazy:true});},1200);}
-function showDoc(){$('#docName').textContent=S.meta.name?'— '+S.meta.name:'— sans titre';}
+function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{IDBk.set('plan.autosave',{data:projectData(),meta:S.meta,view:S.view});if(window.AtelierTabs)AtelierTabs.update({id:S.meta.id,name:S.meta.name,data:projectData()});if(S.meta.id&&window.AtelierSync)AtelierSync.save('plan',S.meta.id,S.meta.name,projectData(),{lazy:true});},1200);}
+function showDoc(){$('#docName').textContent=S.meta.name?'— '+S.meta.name:'— sans titre';if(window.AtelierTabs)AtelierTabs.refresh();}
 function loadData(d){if(!d||d.app!=='atelier-plan')throw new Error('ce fichier n’est pas un plan');S.doc=Object.assign({unit:'mm',dec:1,grid:10,txt:30,dimT:25,dimA:12,layers:DEF_LAYERS(),cur:'L1',objs:[]},d.doc);if(!S.doc.layers.length)S.doc.layers=DEF_LAYERS();if(!S.doc.layers.some(l=>l.id===S.doc.cur))S.doc.cur=S.doc.layers[0].id;S.sel.clear();S.hot=[];S.undo=[];S.redo=[];syncDocProps();refreshPanels();}
 async function saveDoc(asNew){
   if(!window.AtelierSync){download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),'plan.json');return;}
@@ -1078,7 +1079,7 @@ async function saveDoc(asNew){
 }
 function openDocs(){
   AtelierSync.openDialog({app:'plan',title:'Mes plans',current:S.meta.id,
-    onOpen:(id,data,inf)=>{try{loadData(data);S.meta={id,name:inf?inf.name:id};showDoc();zoomExtents();scheduleAutosave();}catch(e){alert('Ouverture impossible : '+e.message);}},
+    onOpen:(id,data,inf)=>{try{if(window.AtelierTabs)AtelierTabs.open(id,inf?inf.name:id,data);else{loadData(data);S.meta={id,name:inf?inf.name:id};showDoc();zoomExtents();scheduleAutosave();}}catch(e){alert('Ouverture impossible : '+e.message);}},
     onRename:(id,n)=>{if(id===S.meta.id){S.meta.name=n;showDoc();}},
     onDelete:id=>{if(id===S.meta.id){S.meta={id:null,name:''};showDoc();}},
     extra:[{label:'Enregistrer sous un autre nom…',action:()=>saveDoc(true)},{label:'Télécharger une copie .json',action:()=>download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),(S.meta.name||'plan')+'.json')}]});
@@ -1086,7 +1087,8 @@ function openDocs(){
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
 $('#bSave').onclick=()=>saveDoc(false);
 $('#bOpen').onclick=()=>window.AtelierSync?openDocs():null;
-$('#bNew').onclick=()=>{if(S.doc.objs.length&&!confirm('Nouveau plan ? Le plan actuel reste dans « Mes plans » s’il a été enregistré.'))return;S.doc={unit:S.doc.unit,dec:S.doc.dec,grid:S.doc.grid,txt:S.doc.txt,dimT:S.doc.dimT,dimA:S.doc.dimA,layers:DEF_LAYERS(),cur:'L1',objs:[]};S.meta={id:null,name:''};S.sel.clear();S.undo=[];S.redo=[];showDoc();syncDocProps();refreshPanels();zoomExtents();scheduleAutosave();};
+function blankDoc(){S.doc={unit:S.doc.unit,dec:S.doc.dec,grid:S.doc.grid,txt:S.doc.txt,dimT:S.doc.dimT,dimA:S.doc.dimA,layers:DEF_LAYERS(),cur:'L1',objs:[]};S.meta={id:null,name:''};S.sel.clear();S.undo=[];S.redo=[];showDoc();syncDocProps();refreshPanels();zoomExtents();scheduleAutosave();}
+$('#bNew').onclick=()=>{if(window.AtelierTabs)AtelierTabs.newTab();else if(!S.doc.objs.length||confirm('Nouveau plan ?'))blankDoc();};
 if(window.AtelierSync){$('#syncBadge').appendChild(AtelierSync.badge());window.addEventListener('atelier-conflict',e=>{if(e.detail.id!==S.meta.id)return;S.meta={id:e.detail.copyId,name:e.detail.name};showDoc();alert('Ce plan a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});}
 
 /* =====================================================================
@@ -1287,6 +1289,11 @@ window.addEventListener('resize',resize);
   if(!saved||!saved.view)zoomExtents();
   setPrompt('Commande :');log('Bienvenue. Tape une commande (L, PL, REC, C, A, COT, T, D, CP, RO, MI, E, ET, DC, AJ, PR, SP, RA, X, DI) ou clique un outil. AIDE pour la liste. F8 ortho · F3 accrochages.');
   cmdInput.focus();draw();
+  if(window.AtelierTabs)AtelierTabs.init({app:'plan',
+    get:()=>({id:S.meta.id,name:S.meta.name,data:projectData()}),
+    set:async t=>{loadData(t.data);S.meta={id:t.id||null,name:t.name||''};S.sel.clear();S.undo=[];S.redo=[];showDoc();syncDocProps();refreshPanels();zoomExtents();scheduleAutosave();},
+    blank:async()=>{blankDoc();},
+    isEmpty:()=>!S.doc.objs.length});
 })();
 </script>
 <script src="../lib/help.js"></script>
