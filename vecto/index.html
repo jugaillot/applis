@@ -1399,7 +1399,7 @@ async function bkShow(){
   if(BK.pending!==pd)return;
   bkClearPreview();
   pd.mask=res.mask;pd.shape=cp;
-  const pv=cp.clone({insert:false});pv.fillColor=new P.Color(pd.col);pv.opacity=0.6;pv.strokeColor=new P.Color(pd.col);pv.strokeWidth=px(1);pv.dashArray=[px(4),px(3)];pv.data.sys=true;
+  const pv=cp.clone({insert:false});pv.fillColor=new P.Color('#1e88ff');pv.opacity=0.4;pv.strokeColor=new P.Color('#0a5cc2');pv.strokeWidth=px(1);pv.dashArray=[px(4),px(3)];pv.data.sys=true;
   bkLayer().addChild(pv);
   $('#hint').textContent=(pd.mode==='all'?res.zones+' zone'+(res.zones>1?'s':'')+' en aperçu':'Aperçu'+(res.how?' ('+res.how+')':''))+' · règle « Fermeture des ouvertures », puis Valider (Entrée) · Échap : annuler';
   // la barre n'est refaite qu'à la première fois (sinon le curseur qu'on est en train de bouger serait remplacé)
@@ -1425,7 +1425,7 @@ function bkSchedule(){if(!BK.pending)return;clearTimeout(BK.timer);BK.timer=setT
 function bkLayerChanged(){
   const name=typeof ROLE_NAME!=='undefined'?ROLE_NAME[activeRole]:(activeLayer&&activeLayer.name);
   const pd=BK.pending;
-  if(pd){const c=bkColor();if(c){pd.col=c;if(prevLayer)prevLayer.children.forEach(pv=>{pv.fillColor=new P.Color(c);pv.strokeColor=new P.Color(c);});P.view.update();}}
+  if(pd){const c=bkColor();if(c)pd.col=c;}
   bkCursorUpd();
   $('#hint').textContent='Remplissage dans le calque « '+name+' »'+(pd?' · Valider (Entrée) pour l’appliquer':'')+' · ← → : changer de calque';
 }
