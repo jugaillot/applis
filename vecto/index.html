@@ -1700,6 +1700,7 @@ function ctRebuild(ol){
   ol.removeChildren();ol.addChildren(shape instanceof P.CompoundPath?shape.removeChildren():[shape]);ol.fillRule='nonzero';
   ol.strokeColor=null;ol.fillColor=ol.fillColor||new P.Color('#000000');
   o.sig=ctSig(ol,lv);
+  if(o.type==='ext'&&ol.parent&&!(ol.parent instanceof P.Layer)&&ol.nextSibling&&!(ol.nextSibling.data&&ol.nextSibling.data.outline))ol.parent.addChild(ol);// devant l'objet : visible en entier, même décalé
 }
 function refreshOutlines(){
   P.project.getItems({match:it=>isOutline(it)&&!(it.layer&&isSys(it.layer))}).forEach(ol=>{
@@ -1730,8 +1731,8 @@ function ctPlace(ol,owner,layerKey,type){
   let L,role=null;if(pay){role=layerKey==='aqua'?null:layerKey;L=layerByRole(layerKey||'couleur');}else{L=userLayers()[+layerKey]||owner.layer;}
   if(role)ol.data.role=role;else delete ol.data.role;
   if(pay&&roleOf(L)==='aqua'){if(!owner.data.link)owner.data.link=newLink();let part=linkedTops(owner.data.link).find(x=>x.layer===L);if(!part){part=new P.Group({name:owner.name||'Objet'});part.data.link=owner.data.link;L.addChild(part);}
-    type==='ext'?part.insertChild(0,ol):part.addChild(ol);if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.parent)aquaRaster.bringToFront();return;}
-  if(owner.layer===L){type==='ext'?owner.insertChild(0,ol):owner.addChild(ol);}else{L.addChild(ol);}
+    part.addChild(ol);if(typeof aquaRaster!=='undefined'&&aquaRaster&&aquaRaster.parent)aquaRaster.bringToFront();return;}
+  if(owner.layer===L){owner.addChild(ol);}else{L.addChild(ol);}
 }
 function ctColor(layerKey){if(typeof roleUp==='function')return roleColor(layerKey==='aqua'?'aqua':layerKey);return S.stroke||'#000000';}
 function ctApply(){
