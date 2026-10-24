@@ -1946,6 +1946,19 @@ function inlineSvgClasses(svgEl){
   if(!Object.keys(rules).length)return;
   svgEl.querySelectorAll('[class]').forEach(el=>{el.getAttribute('class').split(/\s+/).forEach(c=>{const body=rules[c];if(!body)return;body.split(';').forEach(d=>{const i=d.indexOf(':');if(i<0)return;const p=d.slice(0,i).trim(),v=d.slice(i+1).trim();if(p&&v&&!el.hasAttribute(p))el.setAttribute(p,v);});});});
 }
+/* masques d'écrêtage d'Illustrator : on découpe vraiment les formes au lieu de jeter le masque */
+function applyClips(item){
+  item.getItems({match:c=>c instanceof P.Group&&c.clipped}).reverse().forEach(g=>{
+    const mask=g.children.find(c=>c.clipMask);g.clipped=false;if(!mask)return;
+    const m=mask.clone({insert:false});mask.remove();if(!(m instanceof P.Path||m instanceof P.CompoundPath))return;m.closed=true;
+    g.getItems({match:x=>(x instanceof P.Path||x instanceof P.CompoundPath)&&!(x.parent instanceof P.CompoundPath)}).forEach(p=>{
+      if(!p.bounds.intersects(m.bounds)){p.remove();return;}if(m.bounds.contains(p.strokeBounds)&&m.contains(p.bounds.center)&&!p.getIntersections(m).length)return;
+      try{const r=p.intersect(m,{insert:false});r.style=p.style;r.name=p.name;r.data=p.data;r.insertAbove(p);p.remove();}catch(e){}});
+  });
+  item.getItems({match:c=>c.clipMask}).forEach(c=>c.remove());
+}
+/* les épaisseurs de trait suivent la mise à l'échelle (sinon un trait de 1 pt devient 1 mm) */
+function scaleStrokes(item,k){item.getItems({match:x=>x.strokeWidth>0}).forEach(x=>{x.strokeWidth*=k;});if(item.strokeWidth>0&&!(item instanceof P.Group))item.strokeWidth*=k;}
 function importSVGText(text,name,opts){
   opts=opts||{};
   const doc=new DOMParser().parseFromString(text,'image/svg+xml');const svg=doc.documentElement;
@@ -1960,11 +1973,11 @@ function importSVGText(text,name,opts){
   if(vb.length===4&&vb[2]>0&&wmm)unit=wmm/vb[2];
   ensureLayer(true);
   const item=P.project.importSVG(new XMLSerializer().serializeToString(svg),{expandShapes:true,insert:false});
-  item.getItems({match:c=>c.clipMask}).forEach(c=>c.remove());item.clipped=false;
-  item.scale(unit,new P.Point(0,0));
+  applyClips(item);item.clipped=false;
+  item.scale(unit,new P.Point(0,0));scaleStrokes(item,unit);
   activeLayer.addChild(item);
   item.name=name||'Import';
-  if(item.bounds.width>S.page.w||item.bounds.height>S.page.h){const k=Math.min((S.page.w-20)/item.bounds.width,(S.page.h-20)/item.bounds.height);item.scale(k);}
+  if(item.bounds.width>S.page.w||item.bounds.height>S.page.h){const k=Math.min((S.page.w-20)/item.bounds.width,(S.page.h-20)/item.bounds.height);item.scale(k);scaleStrokes(item,k);}
   const page=new P.Rectangle(0,0,S.page.w,S.page.h);
   if(opts.center){item.position=pastePoint();}
   else if(item.bounds.right<0||item.bounds.bottom<0||item.bounds.left>S.page.w||item.bounds.top>S.page.h)item.position=new P.Point(S.page.w/2,S.page.h/2);
