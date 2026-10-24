@@ -967,7 +967,7 @@ function hullMask(pts,cw,ch){
   const hull=lo.slice(0,-1).concat(up.slice(0,-1));if(hull.length<3)return null;
   const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d');x.fillStyle='#000';x.strokeStyle='#000';x.lineWidth=2;
   x.beginPath();hull.forEach((q,i)=>i?x.lineTo(q[0]+.5,q[1]+.5):x.moveTo(q[0]+.5,q[1]+.5));x.closePath();x.fill();x.stroke();
-  const d=x.getImageData(0,0,cw,ch).data,n=cw*ch,m=new Uint8Array(n);for(let p=0;p<n;p++)m[p]=d[p*4+3]>=128?1:0;return m;
+  const d=x.getImageData(0,0,cw,ch).data,n=cw*ch,m=new Uint8Array(n);for(let p=0;p<n;p++)m[p]=d[p*4+3]>=128?1:0;m.hull=hull;return m;
 }
 /* ---------- pot : contours mémorisés, aperçu provisoire, « Remplir toutes les zones » ---------- */
 let prevLayer=null;
@@ -1128,8 +1128,11 @@ function bkOne(C,pt){
         if(okD.length>=K*0.4&&widest<=gapMax){
           okD.sort((a,b)=>a-b);const med=okD[okD.length>>1];
           const keep=[];for(let k=0;k<K;k++)if(!far[k]&&D[k]<=med*3)keep.push([HX[k],HY[k]]);
-          const hm=hullMask(keep,cw,ch);
-          if(hm&&hm[seed0]){const t=flood(p=>!bar[p]&&hm[p],seed0);if(!t.leak)cands.push({mask:t.mask,count:t.count,ray:true,how:'l’ouverture a été fermée en ligne droite'});}
+          const hm=hullMask(keep,cw,ch);let rayOk=true;
+          // la vraie largeur des ouvertures : les côtés de l'enveloppe qui passent dans le vide
+          if(hm&&hm.hull){let w2=0;const H=hm.hull;for(let i=0;i<H.length;i++){const a=H[i],b2=H[(i+1)%H.length];const L=Math.hypot(b2[0]-a[0],b2[1]-a[1]);if(L<3)continue;let open=0,tot=0;for(let t=0.15;t<=0.85;t+=0.05){const xx=Math.round(a[0]+(b2[0]-a[0])*t),yy=Math.round(a[1]+(b2[1]-a[1])*t);tot++;if(!bar[yy*cw+xx])open++;}if(open>tot*0.3)w2=Math.max(w2,L/ppm);}
+            if(w2>gapMax)rayOk=false;}
+          if(hm&&rayOk&&hm[seed0]){const t=flood(p=>!bar[p]&&hm[p],seed0);if(!t.leak)cands.push({mask:t.mask,count:t.count,ray:true,how:'l’ouverture a été fermée en ligne droite'});}
         }
     }
     if(reg.leak&&gapMax>0){const B=bkBarB(C,gapMax);if(!B[seed0]){const t=flood(p=>!B[p],seed0);if(!t.leak)cands.push({mask:t.mask,count:t.count,tips:true,how:'les bouts de traits ont été prolongés'});}}
@@ -1191,12 +1194,12 @@ async function bkTrace(C,mask,lab){
   const g=new Int32Array(n),bar=C.bar,lim=Math.max(4,Math.round(1.5*ppm)),B=C.barB?C.barB.b:null,q=new Int32Array(n),dd=new Uint8Array(n);let qh=0,qt=0;
   for(let p=0;p<n;p++)if(mask[p]){g[p]=lab?Math.max(2,lab[p]):2;q[qt++]=p;}
   while(qh<qt){const p=q[qh++];const d=dd[p],l=g[p];const x=p%cw;const nb=[x>0?p-1:-1,x<cw-1?p+1:-1,p>=cw?p-cw:-1,p<n-cw?p+cw:-1];
-    for(const k of nb){if(k<0||g[k]||d+1>lim||(B&&B[k]&&!bar[k]))continue;g[k]=l;dd[k]=d+1;q[qt++]=k;}}
+    for(const k of nb){if(k<0||g[k]||!bar[k]||d+1>lim)continue;g[k]=l;dd[k]=d+1;q[qt++]=k;}}
   const grow=new Int8Array(n);
   for(let p=0;p<n;p++){const l=g[p];if(!l)continue;if(lab){const x=p%cw;if((x>0&&g[p-1]&&g[p-1]!==l)||(x<cw-1&&g[p+1]&&g[p+1]!==l&&l<g[p+1])||(p>=cw&&g[p-cw]&&g[p-cw]!==l)||(p<n-cw&&g[p+cw]&&g[p+cw]!==l&&l<g[p+cw]))continue;}grow[p]=1;}
   if(!bucketWorker)bucketWorker=new Worker('potrace-worker.js');
   const id=++bucketId;
-  const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1.25,opttolerance:0.3,optcurve:true,close:0}},[grow.buffer]);});
+  const res=await new Promise((resolve,reject)=>{bucketWorker.onmessage=ev=>{if(ev.data.id===id)resolve(ev.data);};bucketWorker.onerror=err=>reject(new Error(err.message||'calcul'));bucketWorker.postMessage({id,w:cw,h:ch,data:grow,params:{turdsize:2,alphamax:1,opttolerance:0.2,optcurve:true,close:0}},[grow.buffer]);});
   if(res.error)throw new Error(res.error);
   if(!res.shapes.length)return null;
   const cp=new P.CompoundPath({insert:false,pathData:res.shapes.map(s=>s.d).join(''),fillRule:'evenodd'});
