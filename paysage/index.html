@@ -170,7 +170,6 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
     <button class="tool" data-tool="ellipse" title="Ellipse (L)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <div class="tsep"></div>
     <button class="tool" data-tool="bucket" title="Pot de peinture — remplir une zone (K)"><svg viewBox="0 0 24 24"><g transform="translate(1.5 -1.2) rotate(-38 12 13) scale(1.08) translate(-1 -1)"><path d="M6 8.5h12l-1.4 11a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6.8 14.2h10.4l-.65 5.3a1.6 1.6 0 01-1.6 1.4H9a1.6 1.6 0 01-1.6-1.4z" fill="currentColor"/><path d="M8.3 8.5a3.7 3.7 0 017.4 0" fill="none" stroke="currentColor" stroke-width="1.4"/></g><path d="M6.6 9.2C4.6 9.6 3.3 11 3 12.8c-.3 2 .1 5 .7 8.4.5-2.9 1.3-5.5 2.6-7.3.6-.8.7-1.5.6-2.2z" fill="currentColor"/></svg></button>
-    <button class="tool" data-tool="eyedrop" title="Pipette — reprendre la couleur et le style d’un objet (I)"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-2 2-6-6zM12 6l6 6-8 8H6v-4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
     <div class="tsep"></div>
     <button class="tool" data-tool="hand" title="Main — déplacer la vue (H ou Espace)"><svg viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 013 0v5V4.5a1.5 1.5 0 013 0V11V5.5a1.5 1.5 0 013 0V14c0 4-2.5 7-6 7s-5-2-6.5-4.5L3 13a1.5 1.5 0 012.4-1.6L8 14z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
     <div class="tsep"></div>
@@ -237,10 +236,17 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
       </div>
       <div class="swatches" id="swatches"></div>
       <div class="g2" style="margin-top:8px">
-        <label>Épaisseur contour (mm)<input type="number" id="strokeW" min="0" step="0.1" value="0.5"></label>
+        <label>Contour des tracés (mm)<input type="number" id="strokeW" min="0" step="0.1" value="0.5"></label>
         <label>Extrémités<select id="strokeCap"><option value="round">Rondes</option><option value="butt">Nettes</option><option value="square">Carrées</option></select></label>
       </div>
-      <button class="btn sm" data-cmd="objOutline" style="margin-top:8px" title="Ajoute un trait sur le seul bord extérieur de l’objet sélectionné (sans les trous ni les traits intérieurs), avec l’épaisseur ci-dessus">Contour de l’objet</button>
+      <div class="grp" style="margin-top:10px">Contour de l’objet <span class="muted">(bord extérieur seul, derrière l’objet)</span></div>
+      <div class="g2">
+        <label>Épaisseur (mm)<input type="number" id="olW" min="0.05" step="0.1" value="1"></label>
+        <label>Angles<select id="olJoin"><option value="round">Arrondis</option><option value="miter">Droits</option><option value="bevel">Biseautés</option></select></label>
+        <label title="Décale le contour vers la droite (+) ou la gauche (−) : il paraît plus épais d’un côté">Décalage X (mm)<input type="number" id="olDx" step="0.5" value="0"></label>
+        <label title="Décale le contour vers le bas (+) ou le haut (−)">Décalage Y (mm)<input type="number" id="olDy" step="0.5" value="0"></label>
+      </div>
+      <div class="row" style="margin-top:6px"><button class="btn sm" id="olAdd" title="Ajoute (ou refait) le contour de l’objet sélectionné avec ces réglages">Ajouter</button><button class="btn sm" id="olDel" title="Retire le contour de l’objet">Retirer</button></div>
     </section>
     <section data-sec="paths">
       <h2><span class="ttl"><span class="tw">▼</span>Tracés</span></h2>
@@ -589,6 +595,7 @@ function restore(snap){
 }
 let lastSnap=null;
 function commit(){
+  try{refreshOutlines();}catch(e){console.error(e);}
   enforceColors();
   if(lastSnap)S.undo.push(lastSnap);
   if(S.undo.length>30)S.undo.shift();
@@ -630,7 +637,7 @@ function loadProject(d){
 /* ---------- styles ---------- */
 function colorHex(c){if(!c)return null;try{return c.toCSS(true);}catch(e){return null;}}
 function leafPaths(item){if(item instanceof P.Group)return item.children.flatMap(leafPaths);return[item];}
-function applyStyle(fn){if(!sel.length)return false;sel.forEach(it=>leafPaths(it).forEach(fn));return true;}
+function applyStyle(fn){if(!sel.length)return false;sel.forEach(it=>leafPaths(it).forEach(p=>{if(!isOutline(p))fn(p);}));return true;}
 function currentStyleFromSel(){
   if(!sel.length)return;
   const leaf=leafPaths(sel[0])[0];if(!leaf)return;
@@ -662,7 +669,8 @@ function syncPanel(){
   document.querySelectorAll('#secSel .btn,[data-cmd],#bDetach').forEach(x=>x.disabled=!sel.length);
   $('#bUndo').disabled=!S.undo.length;$('#bRedo').disabled=!S.redo.length;
   $('#bUndo').style.opacity=S.undo.length?1:.35;$('#bRedo').style.opacity=S.redo.length?1:.35;
-  if(sel.length&&S.tool!=='bucket'){currentStyleFromSel();}// avec le pot, la couleur choisie ne change pas en sélectionnant
+  if(sel.length&&S.tool!=='bucket'){currentStyleFromSel();}
+  if(typeof olSyncPanel==='function'&&$('#olW'))olSyncPanel();// avec le pot, la couleur choisie ne change pas en sélectionnant
   syncChips();
 }
 function renderLayers(){
@@ -1345,39 +1353,72 @@ $('#ungCancel').onclick=()=>$('#ungDlg').close();
   });
 })();
 
-/* contour de l'objet : un trait sur le seul bord extérieur (sans les trous ni le dedans) */
-async function objectOutline(){
-  const tops=[...new Set(sel.map(s=>topOf(s)).filter(Boolean))];if(!tops.length)return;
-  await busy('Contour de l’objet…');
-  try{
-    let u=null;
-    tops.forEach(t=>leafPaths(t).forEach(p=>{
-      if(!(p instanceof P.Path||p instanceof P.CompoundPath))return;
-      let sh=null;
-      if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))sh=p.clone({insert:false});
-      else if(p.strokeColor){sh=strokeToShape(p);if(sh&&sh.parent)sh.remove();}
-      if(!sh)return;
-      u=u?u.unite(sh,{insert:false}):sh;
-    }));
-    if(!u){await busy();alert('Rien à entourer dans la sélection.');return;}
-    const parts=(u instanceof P.CompoundPath?u.children.slice():[u]).filter(c=>c.segments&&c.segments.length>2);
-    const inside=(c,o)=>o!==c&&o.bounds.contains(c.bounds)&&o.contains(c.interiorPoint);
-    const outer=parts.filter(c=>!parts.some(o=>inside(c,o)));
-    if(!outer.length){await busy();return;}
-    const res=new P.CompoundPath({insert:false,children:outer.map(c=>c.clone({insert:false}))});
-    const pay=typeof setRole==='function';
-    const role=pay?(activeRole==='blanc'?'blanc':'couleur'):null;
-    res.fillColor=null;res.strokeColor=new P.Color(pay?roleColor(role):(S.stroke||'#000000'));
-    res.strokeWidth=Math.max(0.05,+S.strokeW||0.5);res.strokeJoin='round';res.strokeCap='round';res.name='Contour';
-    if(role)res.data.role=role;
-    const top=tops.sort((a,b)=>a.isAbove(b)?-1:1)[0];
-    if(tops.length===1&&top instanceof P.Group&&!(top instanceof P.Layer))top.addChild(res);else res.insertAbove(top);
-    if(pay&&res.layer&&roleOf(res.layer)==='aqua')layerByRole('dessin').addChild(res);
-    setSel(tops.length===1?[top]:[res]);commit();
-    $('#hint').textContent='Contour ajouté sur le bord extérieur (épaisseur : '+res.strokeWidth+' mm, réglable dans « Épaisseur contour »)';
-  }catch(e){console.error(e);alert('Contour impossible : '+(e.message||e));}
-  await busy();
+/* ---------- contour de l'objet : un trait sur le seul bord extérieur, avec ses propres réglages, recalculé quand l'objet change ---------- */
+const OL_KEY='atelier.contourObjet'+location.pathname;
+S.ol=Object.assign({w:1,join:'round',dx:0,dy:0},(()=>{try{return JSON.parse(localStorage.getItem(OL_KEY))||{};}catch(e){return{};}})());
+function isOutline(p){return !!(p&&p.data&&p.data.outline);}
+function olOf(g){return g&&g.children?g.children.find(isOutline)||null:null;}
+function olLeaves(g){return leafPaths(g).filter(p=>!isOutline(p)&&(p instanceof P.Path||p instanceof P.CompoundPath));}
+/* empreinte de la forme de l'objet (indépendante de sa position) : sert à savoir s'il faut recalculer */
+function olSig(g){const lv=olLeaves(g);if(!lv.length)return '';let b=lv[0].bounds.clone();lv.forEach(p=>b=b.unite(p.bounds));
+  return lv.length+'#'+lv.map(p=>[p.bounds.x-b.x,p.bounds.y-b.y,p.bounds.width,p.bounds.height].map(v=>Math.round(v*50)).join(',')+':'+(p.children?p.children.length:p.segments.length)).join('|');}
+/* géométrie du bord extérieur (réunion des formes, sans les trous ni l'intérieur) */
+function olGeometry(g){
+  let u=null;
+  olLeaves(g).forEach(p=>{let sh=null;
+    if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))sh=p.clone({insert:false});
+    else if(p.strokeColor){sh=strokeToShape(p);if(sh&&sh.parent)sh.remove();}
+    if(!sh)return;u=u?u.unite(sh,{insert:false}):sh;});
+  if(!u)return null;
+  const parts=(u instanceof P.CompoundPath?u.children.slice():[u]).filter(c=>c.segments&&c.segments.length>2);
+  const inside=(c,o)=>o!==c&&o.bounds.contains(c.bounds)&&o.contains(c.interiorPoint);
+  const outer=parts.filter(c=>!parts.some(o=>inside(c,o)));
+  if(!outer.length)return null;
+  return new P.CompoundPath({insert:false,children:outer.map(c=>c.clone({insert:false}))});
 }
+function olStyle(ol){const o=ol.data.outline;ol.fillColor=null;ol.strokeWidth=Math.max(0.05,+o.w||1);ol.strokeJoin=o.join||'round';ol.strokeCap='round';ol.strokeColor=ol.strokeColor||new P.Color('#000000');}
+function olRebuild(ol){
+  const g=ol.parent;const geo=olGeometry(g);if(!geo){ol.remove();return;}
+  const o=ol.data.outline;geo.translate(new P.Point(+o.dx||0,+o.dy||0));
+  ol.removeChildren();ol.addChildren(geo.removeChildren());ol.fillRule='nonzero';
+  o.sig=olSig(g);olStyle(ol);
+}
+function olAdd(){
+  const tops=[...new Set(sel.map(s=>topOf(s)).filter(Boolean))];if(!tops.length)return;
+  const pay=typeof setRole==='function';const out=[];
+  tops.forEach(t=>{
+    let g=t;if(!(g instanceof P.Group)){g=new P.Group({name:t.name||'Objet'});g.insertAbove(t);if(t.data&&t.data.link){g.data.link=t.data.link;delete t.data.link;}g.addChild(t);}
+    let ol=olOf(g);
+    if(!ol){ol=new P.CompoundPath({name:'Contour de l’objet'});const role=pay?(activeRole==='blanc'?'blanc':'couleur'):null;
+      ol.strokeColor=new P.Color(pay?roleColor(role):(S.stroke||'#000000'));if(role)ol.data.role=role;g.insertChild(0,ol);}// derrière l'objet : un décalage épaissit un côté
+    ol.data.outline={w:S.ol.w,join:S.ol.join,dx:S.ol.dx,dy:S.ol.dy,sig:''};
+    olRebuild(ol);if(ol.parent)out.push(g);
+  });
+  if(!out.length){alert('Rien à entourer dans la sélection.');return;}
+  setSel(out);commit();
+}
+function olRemove(){let n=0;sel.forEach(s=>{const g=topOf(s);const ol=olOf(g);if(ol){ol.remove();n++;}});if(n)commit();syncPanel();}
+/* à chaque modification : les contours d'objet dont l'objet a changé de forme sont refaits */
+function refreshOutlines(){
+  P.project.getItems({match:it=>isOutline(it)&&!(it.layer&&isSys(it.layer))}).forEach(ol=>{
+    if(!(ol.parent instanceof P.Group)||ol.parent instanceof P.Layer){ol.remove();return;}
+    if(olSig(ol.parent)!==ol.data.outline.sig)olRebuild(ol);
+  });
+}
+function olSelected(){const r=[];sel.forEach(s=>{const ol=olOf(topOf(s));if(ol&&!r.includes(ol))r.push(ol);});return r;}
+function olSyncPanel(){
+  const ols=olSelected();const o=ols.length?ols[0].data.outline:(S.ol||{w:1,join:"round",dx:0,dy:0});
+  if(document.activeElement&&/ol[WDJ]/.test(document.activeElement.id||''))return;
+  $('#olW').value=o.w;$('#olJoin').value=o.join||'round';$('#olDx').value=o.dx||0;$('#olDy').value=o.dy||0;
+  $('#olDel').disabled=!ols.length;$('#olAdd').disabled=!sel.length;$('#olAdd').textContent=ols.length?'Refaire':'Ajouter';
+}
+['olW','olJoin','olDx','olDy'].forEach(id=>$('#'+id).addEventListener('change',()=>{
+  S.ol={w:Math.max(0.05,parseFloat($('#olW').value)||1),join:$('#olJoin').value,dx:parseFloat($('#olDx').value)||0,dy:parseFloat($('#olDy').value)||0};
+  try{localStorage.setItem(OL_KEY,JSON.stringify(S.ol));}catch(e){}
+  const ols=olSelected();if(!ols.length)return;
+  ols.forEach(ol=>{Object.assign(ol.data.outline,{w:S.ol.w,join:S.ol.join,dx:S.ol.dx,dy:S.ol.dy});olRebuild(ol);});commit();
+}));
+$('#olAdd').onclick=olAdd;$('#olDel').onclick=olRemove;
 
 /* ---------- commandes ---------- */
 function cmd(name){
@@ -1400,7 +1441,7 @@ function cmd(name){
     case'ung:layer':case'ung:sub':case'ung:leaf':doUngroup(name.slice(4));break;
     case'release':{const out=[];sel.forEach(s=>{if(s instanceof P.CompoundPath){const st={fillColor:s.fillColor,strokeColor:s.strokeColor,strokeWidth:s.strokeWidth};const ch=s.removeChildren();ch.forEach(c=>{if(s.data&&s.data.role)c.data.role=s.data.role;c.style=st;c.fillColor=st.fillColor;c.strokeColor=st.strokeColor;c.strokeWidth=st.strokeWidth;c.insertBelow(s);out.push(c);});s.remove();}else out.push(s);});setSel(out);break;}
     case'compound':{const paths=sel.flatMap(leafPaths).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath);if(paths.length<2){alert('Sélectionne au moins deux tracés.');return;}const first=paths[0];const st={fillColor:first.fillColor,strokeColor:first.strokeColor,strokeWidth:first.strokeWidth};const top=sel.slice().sort((a,b)=>a.isAbove(b)?-1:1)[0];const cp=new P.CompoundPath({fillRule:'evenodd'});{const r0=roleUp(first);if(r0)cp.data.role=r0;}cp.insertAbove(top);paths.forEach(p=>{if(p instanceof P.CompoundPath){cp.addChildren(p.removeChildren());p.remove();}else cp.addChild(p);});cp.fillColor=st.fillColor;cp.strokeColor=st.strokeColor;cp.strokeWidth=st.strokeWidth;sel.forEach(s=>{if(s!==cp&&s.parent&&s instanceof P.Group&&!s.children.length)s.remove();});setSel([cp]);break;}
-    case'objOutline':objectOutline();return;
+    case'objOutline':olAdd();return;
     case'merge':{// comme « Fusion » d'Illustrator : on garde les parties visibles, et les formes de même couleur qui se touchent n'en font qu'une
       const shapes=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&p.fillColor).sort((a,b)=>a.isAbove(b)?1:-1);
       if(shapes.length<2){alert('Sélectionne au moins deux formes pleines.');return;}
@@ -2140,7 +2181,7 @@ document.addEventListener('keydown',e=>{
   }
   if(k==='+'||k==='='){zoomAt(1.25);return;}
   if(k==='-'){zoomAt(0.8);return;}
-  const map={q:'lasso',v:'select',a:'direct',p:'pen',n:'pencil',m:'rect',l:'ellipse',h:'hand',k:'bucket',i:'eyedrop'};
+  const map={q:'lasso',v:'select',a:'direct',p:'pen',n:'pencil',m:'rect',l:'ellipse',h:'hand',k:'bucket'};
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
