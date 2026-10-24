@@ -726,7 +726,7 @@ $('#toolBar').addEventListener('change',e=>{if(e.target.dataset.opt){if(e.target
 
 const HINTS={
   select:'Clic : sélectionner · Ctrl+clic : sélectionner une forme à l’intérieur d’un groupe · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : dupliquer · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
-  lasso:'Entoure à main levée les formes à prendre (même à l’intérieur d’un dessin) · Maj : ajouter · glisser ensuite une forme prise pour tout déplacer · « Détacher en objet » pour en faire un objet à part',
+  lasso:'Entoure à main levée les formes à prendre (même à l’intérieur d’un dessin) · si un objet est sélectionné, seulement dans cet objet (clic dans le vide : libérer) · Maj : ajouter · glisser ensuite une forme prise pour tout déplacer · « Détacher en objet » pour en faire un objet à part',
   direct:'Clic sur un tracé : voir ses points · glisser un point ou une poignée · Maj : ajouter des points · double-clic sur un point : angle ↔ courbe · Suppr : effacer les points',
   pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer',
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
@@ -2204,10 +2204,14 @@ function lassoDown(e){uiLayer.activate();lassoPath=new P.Path({segments:[e.point
 function lassoDrag(e){if(lassoPath){lassoPath.add(e.point);}}
 function lassoUp(e){
   if(!lassoPath)return;const L=lassoPath;lassoPath=null;drag=null;
-  if(L.segments.length<3||L.bounds.width<px(3)){L.remove();if(!e.modifiers.shift)setSel([]);return;}
+  if(L.segments.length<3||L.bounds.width<px(3)){L.remove();if(!e.modifiers.shift)setSel([]);$('#hint').textContent=HINTS.lasso;return;}
   L.closed=true;const lb=L.bounds;
   const found=[];
+  // un objet était sélectionné : le lasso ne prend que dans cet objet
+  let tops=[...new Set(sel.map(s=>topOf(s)).filter(Boolean))];if(typeof expandLinks==='function')tops=expandLinks(tops);
+  const inScope=it=>!tops.length||tops.some(t=>t===it||t.isAncestor(it));
   for(const it of leafShapes()){
+    if(!inScope(it))continue;
     const b=it.bounds;if(!b.intersects(lb))continue;
     if(lb.contains(b)&&L.contains(b.topLeft)&&L.contains(b.bottomRight)&&L.contains(b.center)){found.push(it);continue;}
     // la forme est prise si la plupart de ses points sont dans le lasso
@@ -2218,7 +2222,7 @@ function lassoUp(e){
   L.remove();
   const prev=drag&&drag.add?sel:[];
   setSel(e.modifiers.shift?Array.from(new Set(sel.concat(found))):found);
-  $('#hint').textContent=found.length?found.length+' forme'+(found.length>1?'s':'')+' sélectionnée'+(found.length>1?'s':'')+' — glisser pour déplacer · « Détacher en objet » pour en faire un objet à part':'Aucune forme entièrement dans le lasso';
+  $('#hint').textContent=found.length?found.length+' forme'+(found.length>1?'s':'')+' sélectionnée'+(found.length>1?'s':'')+' — glisser pour déplacer · « Détacher en objet » pour en faire un objet à part':(tops.length?'Aucune forme de l’objet sélectionné dans le lasso':'Aucune forme entièrement dans le lasso');
 }
 function inSel(it){while(it){if(sel.includes(it))return true;it=it.parent;}return false;}
 /* détacher : la sélection sort de son dessin et devient un objet groupé à part, au même endroit */
