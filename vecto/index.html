@@ -1871,8 +1871,7 @@ function cmd0(name){
           if(!v||(v.isEmpty&&v.isEmpty())||Math.abs(v.area)<1e-4)return;if(!groups.has(it.k))groups.set(it.k,[]);groups.get(it.k).push(v);});
         const top=arr[arr.length-1].p;
         for(const [k,vs] of groups){let u=vs[0];for(let i=1;i<vs.length;i++){try{u=u.unite(vs[i],{insert:false});}catch(e){}}
-          if(u instanceof P.CompoundPath&&u.children.length===1)u=u.children[0].clone({insert:false});
-          u.fillColor=new P.Color(pay?roleColor(k):k);u.strokeColor=null;u.name='Fusion';if(pay&&k!=='aqua')u.data.role=k;u.insertAbove(top);out.push(u);}
+          splitIslands(u).forEach(v=>{v.fillColor=new P.Color(pay?roleColor(k):k);v.strokeColor=null;v.name='Fusion';if(pay&&k!=='aqua')v.data.role=k;v.insertAbove(top);out.push(v);});}
       }
       leaves.forEach(p=>p.remove());cleanEmpty(par);if(pay)enforceColors();setSel(out.filter(x=>x.parent));break;
     }
@@ -2183,6 +2182,19 @@ function applyClips(item){
 /* les épaisseurs de trait suivent la mise à l'échelle (sinon un trait de 1 pt devient 1 mm) */
 function scaleStrokes(item,k){item.getItems({match:x=>x.strokeWidth>0}).forEach(x=>{x.strokeWidth*=k;});if(item.strokeWidth>0&&!(item instanceof P.Group))item.strokeWidth*=k;}
 /* collage depuis Illustrator : on enchaîne une Fusion (parties cachées retirées, formes de même couleur réunies) */
+/* sépare une forme composée en îlots : chaque morceau (avec ses propres trous) devient une forme à part, comme la Fusion d'Illustrator */
+function splitIslands(u){
+  if(!(u instanceof P.CompoundPath))return [u];
+  const ch=u.children.filter(c=>c.segments&&c.segments.length>2&&Math.abs(c.area)>1e-6);if(ch.length<=1)return [ch.length?ch[0].clone({insert:false}):u];
+  const ins=(a,o)=>o!==a&&Math.abs(o.area)>Math.abs(a.area)&&o.bounds.contains(a.bounds)&&o.contains(a.interiorPoint);
+  const par=new Map(),depth=new Map();
+  ch.forEach(c=>{let best=null,d=0;ch.forEach(o=>{if(ins(c,o)){d++;if(!best||Math.abs(o.area)<Math.abs(best.area))best=o;}});par.set(c,best);depth.set(c,d);});
+  const out=[];
+  ch.forEach(c=>{if(depth.get(c)%2)return;const holes=ch.filter(h=>par.get(h)===c&&depth.get(h)%2);
+    if(!holes.length)out.push(c.clone({insert:false}));
+    else out.push(new P.CompoundPath({insert:false,fillRule:'evenodd',children:[c.clone({insert:false})].concat(holes.map(h=>h.clone({insert:false})))}));});
+  return out.length?out:[u];
+}
 function pasteMerge(){
   const n=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath).length;if(n<2)return;
   try{cmd('merge');}catch(e){console.error(e);return;}
