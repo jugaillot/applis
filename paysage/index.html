@@ -2685,7 +2685,7 @@ function lassoUp(e){
   if(!lassoPath)return;const L=lassoPath;lassoPath=null;drag=null;
   if(L.segments.length<3||L.bounds.width<px(3)){L.remove();if(!e.modifiers.shift)setSel([]);$('#hint').textContent=HINTS.lasso;return;}
   L.closed=true;const lb=L.bounds;
-  const found=[];
+  const found=[];let splitDone=false;
   // un objet était sélectionné : le lasso ne prend que dans cet objet
   let tops=[...new Set(sel.map(s=>topOf(s)).filter(Boolean))];if(typeof expandLinks==='function')tops=expandLinks(tops);
   const inScope=it=>!tops.length||tops.some(t=>t===it||t.isAncestor(it));
@@ -2696,9 +2696,17 @@ function lassoUp(e){
     // la forme est prise si la plupart de ses points sont dans le lasso
     const paths=it instanceof P.CompoundPath?it.children:[it];let n=0,inn=0;
     for(const p of paths){const segs=p.segments,st=Math.max(1,Math.floor(segs.length/16));for(let i=0;i<segs.length;i+=st){n++;if(L.contains(segs[i].point))inn++;}}
-    if(n&&inn/n>=0.6)found.push(it);
+    if(n&&inn/n>=0.6){found.push(it);continue;}
+    // forme composée de plusieurs morceaux (dessin collé, fusionné…) : on la sépare en morceaux et on prend ceux qui sont dans le lasso
+    if(it instanceof P.CompoundPath&&it.children.length>1&&inn>0){
+      const parts=splitIslands(it);if(parts.length<2)continue;
+      const inL=q=>{const b=q.bounds;if(!lb.intersects(b))return false;if(lb.contains(b)&&L.contains(b.center)&&L.contains(b.topLeft)&&L.contains(b.bottomRight))return true;const ps=q instanceof P.CompoundPath?q.children:[q];let n2=0,i2=0;for(const p of ps){const sg=p.segments,st=Math.max(1,Math.floor(sg.length/16));for(let i=0;i<sg.length;i+=st){n2++;if(L.contains(sg[i].point))i2++;}}return n2&&i2/n2>=0.6;};
+      const pick=parts.filter(inL);if(!pick.length)continue;
+      parts.forEach(q=>{q.style=it.style;q.data=JSON.parse(JSON.stringify(it.data||{}));delete q.data.cuid;q.name=it.name;q.insertBelow(it);});
+      it.remove();found.push(...pick);splitDone=true;
+    }
   }
-  L.remove();
+  L.remove();if(splitDone)commit();
   const prev=drag&&drag.add?sel:[];
   setSel(e.modifiers.shift?Array.from(new Set(sel.concat(found))):found);
   $('#hint').textContent=found.length?found.length+' forme'+(found.length>1?'s':'')+' sélectionnée'+(found.length>1?'s':'')+' — glisser pour déplacer · « Détacher en objet » pour en faire un objet à part':(tops.length?'Aucune forme de l’objet sélectionné dans le lasso':'Aucune forme entièrement dans le lasso');
