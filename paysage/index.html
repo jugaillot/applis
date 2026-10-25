@@ -39,6 +39,7 @@ main{flex:1;display:grid;grid-template-columns:86px 1fr 290px;min-height:0}
 #tools .tgrid .tsep{grid-column:1 / -1;width:auto;margin:4px 6px}
 #tools #bPreview{margin-top:auto;flex-shrink:0}
 body.apv #bPreview{background:var(--ink);color:#fff}
+#askMerge{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 9px 7px 12px;display:flex;gap:8px;align-items:center;box-shadow:0 4px 18px rgba(0,0,0,.15);z-index:20;font-size:13px;white-space:nowrap}
 #stage{position:relative;min-width:0;min-height:0;background:var(--board)}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #pts{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -2080,6 +2081,31 @@ async function doMerge(sel,tok){
       if(!leaves.length){alert('Sélectionne au moins deux formes ou tracés.');return;}
       if(pay)growWhites(leaves,0.15);
       const keyOf=(p,col)=>pay?(roleOf(p.layer)==='aqua'?'aqua':(roleUp(p)||'couleur')):colorHex(col);
+      if(window.ClipperLib&&typeof cpLeaf==='function'){// calcul rapide en polygones
+        const C=ClipperLib,its=[];
+        for(let n0=0;n0<leaves.length;n0++){const p=leaves[n0];if(n0%8===7)await stepCheck(tok);
+          if(p.fillColor&&(p.closed||p instanceof P.CompoundPath)){const L=cpLeaf(p);if(L.closed.length)its.push({p,poly:cpRegion(L.closed,p.fillRule==='evenodd'),k:keyOf(p,p.fillColor)});}
+          if(p.strokeColor&&p.strokeWidth>0){const L=cpLeaf(p),hw=p.strokeWidth/2;const poly=cpOff(L.closed,hw,p.strokeJoin,C.EndType.etClosedLine).concat(cpOff(L.open,hw,p.strokeJoin,cpEnd(p.strokeCap)));if(poly.length)its.push({p,poly,k:keyOf(p,p.strokeColor)});}
+        }
+        if(its.length<2){alert('Sélectionne au moins deux formes ou tracés.');return;}
+        const part=new Map();its.forEach(it=>{const l=it.p.layer;if(!part.has(l))part.set(l,[]);part.get(l).push(it);});
+        const out=[],par=new Set(leaves.map(p=>p.parent));
+        const ring=r=>{r=C.Clipper.CleanPolygon(r,4);if(r.length<3)return null;const q=new P.Path({segments:r.map(z=>[z.X/CPK,z.Y/CPK]),closed:true,insert:false});if(q.segments.length>12)q.simplify(0.004);return q;};
+        for(const arr of part.values()){
+          const groups=new Map();let cov=[];
+          for(let i=arr.length-1;i>=0;i--){const it=arr[i];if((arr.length-i)%6===0)await stepCheck(tok);
+            const vis=cov.length?cpBool(C.ClipType.ctDifference,it.poly,cov):it.poly;
+            if(vis.length){if(!groups.has(it.k))groups.set(it.k,[]);groups.get(it.k).push(...vis);}
+            cov=cov.length?cpBool(C.ClipType.ctUnion,cov,it.poly):it.poly.slice();}
+          const top=arr[arr.length-1].p;
+          for(const [k,vs] of groups){await stepCheck(tok);
+            const c=new C.Clipper();c.AddPaths(vs,C.PolyType.ptSubject,true);const tree=new C.PolyTree();c.Execute(C.ClipType.ctUnion,tree,C.PolyFillType.pftNonZero,C.PolyFillType.pftNonZero);
+            const isl=[];const outer=node=>{const o=ring(node.Contour());if(!o)return;const ch=[o];node.Childs().forEach(h=>{const hr=ring(h.Contour());if(hr)ch.push(hr);h.Childs().forEach(outer);});isl.push(ch.length===1?ch[0]:new P.CompoundPath({insert:false,fillRule:'evenodd',children:ch}));};
+            tree.Childs().forEach(outer);
+            isl.forEach(v=>{if(Math.abs(v.area)<1e-4)return;v.fillColor=new P.Color(pay?roleColor(k):k);v.strokeColor=null;v.name='Fusion';if(pay&&k!=='aqua')v.data.role=k;v.insertAbove(top);out.push(v);});}
+        }
+        leaves.forEach(p=>p.remove());cleanEmpty(par);if(pay)enforceColors();setSel(out.filter(x=>x.parent));commit();return;
+      }
       const items=[];
       for(let n0=0;n0<leaves.length;n0++){const p=leaves[n0];if(n0%8===7)await stepCheck(tok);
         if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))items.push({p,g:p.clone({insert:false}),k:keyOf(p,p.fillColor)});
@@ -2465,8 +2491,18 @@ function splitIslands(u){
     else out.push(new P.CompoundPath({insert:false,fillRule:'evenodd',children:[c.clone({insert:false})].concat(holes.map(h=>h.clone({insert:false})))}));});
   return out.length?out:[u];
 }
+/* après un collage : demander s'il faut fusionner (Entrée : oui · Échap ou clic sur la feuille : non) */
+function askMerge(){return new Promise(res=>{const old=document.getElementById('askMerge');if(old)old.remove();
+  const d=document.createElement('div');d.id='askMerge';d.innerHTML='<span>Dessin collé — le fusionner ?</span><button class="btn sm primary" data-a="1" title="Entrée">Oui, fusionner</button><button class="btn sm" data-a="0" title="Échap">Non</button>';
+  $('#stage').appendChild(d);let over=false;
+  const done=v=>{if(over)return;over=true;d.remove();document.removeEventListener('keydown',kd,true);cv.removeEventListener('pointerdown',cl);res(v);};
+  const kd=e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();done(true);}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();done(false);}};
+  const cl=()=>done(false);
+  document.addEventListener('keydown',kd,true);cv.addEventListener('pointerdown',cl);
+  d.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b)done(b.dataset.a==='1');});});}
 async function pasteMerge(){
   const n=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>p instanceof P.Path||p instanceof P.CompoundPath).length;if(n<2)return;
+  const T=sel.slice();if(!(await askMerge()))return;if(!T.every(x=>x.parent))return;setSel(T);
   await runHeavy('Fusion…',tok=>doMerge(sel.slice(),tok));
   const tops=[...new Set(sel.map(topOf).filter(x=>x&&x.parent))];if(tops.length)setSel(tops);
 }
