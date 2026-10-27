@@ -34,7 +34,7 @@ main{flex:1;display:grid;grid-template-columns:112px 1fr 330px;min-height:0}
 #center{display:flex;flex-direction:column;min-width:0;min-height:0}
 #stage{flex:1;position:relative;min-height:0;display:flex;align-items:center;justify-content:center;background:#2a2b2e;overflow:hidden;user-select:none}
 #stage.light{background:#e9e7e1}
-#view{max-width:100%;max-height:100%;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+#view{max-width:100%;max-height:100%;box-shadow:0 4px 24px rgba(0,0,0,.35);background:repeating-conic-gradient(#e6e6e6 0 25%,#fff 0 50%) 0 0/16px 16px}
 #cropBox{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);cursor:move}
 #cropBox::before,#cropBox::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent calc(33.33% - .5px),rgba(255,255,255,.45) calc(33.33% - .5px),rgba(255,255,255,.45) calc(33.33% + .5px),transparent calc(33.33% + .5px),transparent calc(66.66% - .5px),rgba(255,255,255,.45) calc(66.66% - .5px),rgba(255,255,255,.45) calc(66.66% + .5px),transparent calc(66.66% + .5px))}
 #cropBox::after{background:linear-gradient(180deg,transparent calc(33.33% - .5px),rgba(255,255,255,.45) calc(33.33% - .5px),rgba(255,255,255,.45) calc(33.33% + .5px),transparent calc(33.33% + .5px),transparent calc(66.66% - .5px),rgba(255,255,255,.45) calc(66.66% - .5px),rgba(255,255,255,.45) calc(66.66% + .5px),transparent calc(66.66% + .5px))}
@@ -157,7 +157,9 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="row"><button class="btn sm" id="gCropBtn">✂ Rogner</button></div>
       <div class="row"><button class="btn sm" id="gRotL">⟲ 90°</button><button class="btn sm" id="gRotR">⟳ 90°</button><button class="btn sm" id="gFlipH">⇋ Miroir</button><button class="btn sm" id="gFlipV">⥮ Miroir</button><button class="btn sm" id="gCropReset">Pas de rognage</button></div>
     </div></details>
-    <details data-sec="export"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Taille et export JPG</span></summary><div class="sec">
+    <details data-sec="export"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Taille et export</span></summary><div class="sec">
+      <div class="muted" style="margin-bottom:3px">Format</div>
+      <div class="seg" id="xFmt" style="margin-bottom:8px"><button data-v="jpg" class="on" title="Les zones transparentes deviennent blanches">JPG</button><button data-v="png" title="Garde la transparence">PNG</button></div>
       <div class="seg" id="xMode"><button data-v="px" class="on">Pixels</button><button data-v="pct">%</button><button data-v="kb">Poids</button></div>
       <div id="xPx" class="g2"><label>Largeur (px)<input type="number" id="xW" min="1"></label><label>Hauteur (px)<input type="number" id="xH" min="1"></label></div>
       <label class="chk" id="xLockBox"><input type="checkbox" id="xLock" checked> Garder les proportions</label>
@@ -186,7 +188,7 @@ const SLIDERS={
   fx2:[['split','Force du virage',0,100,1,0],['sepia','Sépia',0,100,1,0],['posterize','Postérisation (niveaux)',0,16,1,0],['threshold','Seuil (noir/blanc pur)',0,255,1,0],['vignette','Vignette',-100,100,1,0],['grain','Grain',0,100,1,0]],
   detail:[['sharpen','Netteté',0,100,1,0],['blur','Flou',0,100,1,0],['denoise','Réduction du bruit',0,100,1,0]]
 };
-const DEF=()=>{const s={bw:false,duo:false,duoA:'#1b2a6b',duoB:'#ffb3c8',splitA:'#1f6f78',splitB:'#ffb070',curve:[[0,0],[255,255]],rot:0,flipH:false,flipV:false,straight:0,crop:{x:0,y:0,w:1,h:1},ratio:'free',paint:[],out:{mode:'px',w:0,h:0,lock:true,pct:100,kb:500,q:90,suffix:'-atelier'},preset:null};for(const g in SLIDERS)for(const d of SLIDERS[g])s[d[0]]=d[5];return s;};
+const DEF=()=>{const s={bw:false,duo:false,duoA:'#1b2a6b',duoB:'#ffb3c8',splitA:'#1f6f78',splitB:'#ffb070',curve:[[0,0],[255,255]],rot:0,flipH:false,flipV:false,straight:0,crop:{x:0,y:0,w:1,h:1},ratio:'free',paint:[],out:{mode:'px',w:0,h:0,lock:true,pct:100,kb:500,q:90,suffix:'-atelier',fmt:'jpg'},preset:null};for(const g in SLIDERS)for(const d of SLIDERS[g])s[d[0]]=d[5];return s;};
 const PRESETS=[
   ['Original',{}],
   ['Lumineux',{brightness:10,contrast:10,saturation:12,vibrance:22,highlights:-10}],
@@ -221,6 +223,7 @@ async function decode(file,maxPx){
   const k=maxPx/Math.max(W,H);const c=document.createElement('canvas');c.width=Math.round(W*k);c.height=Math.round(H*k);const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(bmp,0,0,c.width,c.height);if(bmp.close)bmp.close();
   c.origW=W;c.origH=H;return c;
 }
+function hasAlpha(c){try{const d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height).data;for(let i=3;i<d.length;i+=16)if(d[i]<250)return true;}catch(e){}return false;}
 async function addFiles(list){
   const files=[...list].filter(f=>/^image\//.test(f.type)||/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name));
   if(!files.length)return;
@@ -231,6 +234,8 @@ async function addFiles(list){
       const W=prev.origW||prev.width,H=prev.origH||prev.height;
       const thumb=document.createElement('canvas');const kk=Math.min(1,160/Math.max(prev.width,prev.height));thumb.width=Math.round(prev.width*kk);thumb.height=Math.round(prev.height*kk);thumb.getContext('2d').drawImage(prev,0,0,thumb.width,thumb.height);
       const it={id:'i'+(uid++),file:f,name:f.name.replace(/\.[^.]+$/,''),W,H,prev,thumb,st:DEF(),hist:[],fut:[]};
+      // image avec des zones transparentes (PNG…) : export en PNG par défaut pour les garder
+      if(hasAlpha(prev))it.st.out.fmt='png';
       // une image de plus de 2000 px n'est gardée en pleine définition qu'au moment de l'export
       if(S.items.length>=12&&S.items.length%1===0){for(const o of S.items)if(o.id!==S.cur&&o!==it)o.prev=o.prev&&o.prev.width>700?null:o.prev;}
       S.items.push(it);
@@ -501,8 +506,8 @@ function syncPanel(){
   document.querySelectorAll('[data-k]').forEach(i=>{i.value=st[i.dataset.k];const b=i.parentElement.querySelector('b');b.textContent=fmtVal(i.dataset.k,st[i.dataset.k]);});
   $('#fBw').checked=st.bw;$('#fDuo').checked=st.duo;$('#fDuoA').value=st.duoA;$('#fDuoB').value=st.duoB;$('#fSplitA').value=st.splitA;$('#fSplitB').value=st.splitB;$('#duoBox').hidden=!st.duo;
   $('#gRatio').value=st.ratio;$('#gStraight').value=st.straight;$('#vStraight').textContent=(+st.straight).toFixed(1)+'°';
-  const o=st.out;document.querySelectorAll('#xMode button').forEach(b=>b.classList.toggle('on',b.dataset.v===o.mode));
-  $('#xPx').hidden=$('#xLockBox').hidden=o.mode!=='px';$('#xPct').hidden=o.mode!=='pct';$('#xKb').hidden=o.mode!=='kb';$('#xQBox').hidden=o.mode==='kb';
+  const o=st.out;document.querySelectorAll('#xMode button').forEach(b=>b.classList.toggle('on',b.dataset.v===o.mode));document.querySelectorAll('#xFmt button').forEach(b=>b.classList.toggle('on',b.dataset.v===(o.fmt||'jpg')));
+  $('#xPx').hidden=$('#xLockBox').hidden=o.mode!=='px';$('#xPct').hidden=o.mode!=='pct';$('#xKb').hidden=o.mode!=='kb';$('#xQBox').hidden=o.mode==='kb'||o.fmt==='png';
   if(it){const [w,h]=outDims(it);if(document.activeElement!==$('#xW'))$('#xW').value=o.w||w;if(document.activeElement!==$('#xH'))$('#xH').value=o.h||h;}
   $('#xLock').checked=o.lock;$('#xPctR').value=o.pct;$('#vPct').textContent=o.pct+' %';$('#xKbV').value=o.kb;$('#xQ').value=o.q;$('#vQ').textContent=o.q;$('#xSuffix').value=o.suffix;
   document.querySelectorAll('.pr').forEach(p=>p.classList.toggle('on',st.preset===p.dataset.name));
@@ -547,6 +552,7 @@ $('#gFlipH').onclick=()=>change(st=>{if(st.rot%180)st.flipV=!st.flipV;else st.fl
 $('#gFlipV').onclick=()=>change(st=>{if(st.rot%180)st.flipH=!st.flipH;else st.flipV=!st.flipV;st.crop.y=1-st.crop.y-st.crop.h;});
 $('#gCropReset').onclick=()=>{change(st=>{st.crop={x:0,y:0,w:1,h:1};st.ratio='free';});syncPanel();};
 /* export */
+$('#xFmt').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;change(st=>{st.out.fmt=b.dataset.v;},true);syncPanel();updateExportInfo();});
 $('#xMode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;change(st=>{st.out.mode=b.dataset.v;},true);syncPanel();});
 $('#xW').addEventListener('input',e=>{const it=cur();if(!it)return;const v=parseInt(e.target.value)||0;change(st=>{st.out.w=v;if(st.out.lock){const [cw,ch]=outCrop(it);st.out.h=Math.round(v*ch/cw);$('#xH').value=st.out.h;}},true);});
 $('#xH').addEventListener('input',e=>{const it=cur();if(!it)return;const v=parseInt(e.target.value)||0;change(st=>{st.out.h=v;if(st.out.lock){const [cw,ch]=outCrop(it);st.out.w=Math.round(v*cw/ch);$('#xW').value=st.out.w;}},true);});
@@ -696,9 +702,17 @@ async function renderFull(it){
   const [w,h]=outDims(it);
   let c=geom(full,it.st,w,h);pixels(c,it.st);return c;
 }
-const toBlob=(c,q)=>new Promise(r=>c.toBlob(r,'image/jpeg',q));
+/* JPG : les zones transparentes deviennent blanches */
+function onWhite(c){const n=document.createElement('canvas');n.width=c.width;n.height=c.height;const x=n.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,n.width,n.height);x.drawImage(c,0,0);return n;}
+const toBlob=(c,q)=>new Promise(r=>onWhite(c).toBlob(r,'image/jpeg',q));
+const toPng=c=>new Promise(r=>c.toBlob(r,'image/png'));
 async function encode(it,c){
   const o=it.st.out;
+  if(o.fmt==='png'){// PNG : sans perte ; en mode « poids », seule la taille peut baisser
+    let b=await toPng(c);if(o.mode!=='kb')return b;let canvas=c;
+    for(let round=0;round<8&&b.size>o.kb*1024;round++){const f=Math.sqrt(o.kb*1024/b.size)*0.95;const n=document.createElement('canvas');n.width=Math.max(16,Math.round(canvas.width*f));n.height=Math.max(16,Math.round(canvas.height*f));const x=n.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(canvas,0,0,n.width,n.height);canvas=n;b=await toPng(canvas);}
+    return b;
+  }
   if(o.mode!=='kb')return toBlob(c,o.q/100);
   const target=o.kb*1024;let canvas=c;
   for(let round=0;round<6;round++){
@@ -712,9 +726,9 @@ async function encode(it,c){
   }
   return toBlob(canvas,0.35);
 }
-const fname=it=>(it.name+(it.st.out.suffix||'')).replace(/[\\/:*?"<>|]/g,'_')+'.jpg';
+const fname=it=>(it.name+(it.st.out.suffix||'')).replace(/[\\/:*?"<>|]/g,'_')+(it.st.out.fmt==='png'?'.png':'.jpg');
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);}
-$('#bExportOne').onclick=async()=>{const it=cur();if(!it)return;await busy('Traitement en pleine définition…');try{const c=await renderFull(it);await busy('Compression JPG…');const b=await encode(it,c);download(b,fname(it));$('#xInfo').textContent=`Exporté : ${c.width} × ${c.height} px · ${Math.round(b.size/1024)} Ko`;}catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}await busy();};
+$('#bExportOne').onclick=async()=>{const it=cur();if(!it)return;await busy('Traitement en pleine définition…');try{const c=await renderFull(it);await busy(it.st.out.fmt==='png'?'Compression PNG…':'Compression JPG…');const b=await encode(it,c);download(b,fname(it));$('#xInfo').textContent=`Exporté : ${c.width} × ${c.height} px · ${Math.round(b.size/1024)} Ko`;}catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}await busy();};
 $('#xEstimate').onclick=async()=>{const it=cur();if(!it)return;await busy('Estimation…');try{const c=await renderFull(it);const b=await encode(it,c);$('#xInfo').textContent=`Image exportée : ${c.width} × ${c.height} px · environ ${Math.round(b.size/1024)} Ko`;}catch(e){alert(e.message||e);}await busy();};
 /* ZIP minimal (sans compression : les JPG le sont déjà) */
 const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
@@ -736,8 +750,8 @@ $('#bExportAll').onclick=async()=>{
   const list=S.sel.size?S.items.filter(i=>S.sel.has(i.id)):S.items;if(!list.length)return;
   const files=[];const used=new Set();let total=0;
   try{
-    for(let k=0;k<list.length;k++){const it=list[k];await busy(`Image ${k+1} / ${list.length} — ${it.name}`);const c=await renderFull(it);const b=await encode(it,c);let n=fname(it);let j=2;while(used.has(n)){n=fname(it).replace(/\.jpg$/,`-${j++}.jpg`);}used.add(n);files.push({name:n,data:new Uint8Array(await b.arrayBuffer())});total+=b.size;}
-    if(files.length===1)download(new Blob([files[0].data],{type:'image/jpeg'}),files[0].name);
+    for(let k=0;k<list.length;k++){const it=list[k];await busy(`Image ${k+1} / ${list.length} — ${it.name}`);const c=await renderFull(it);const b=await encode(it,c);let n=fname(it);let j=2;while(used.has(n)){n=fname(it).replace(/\.(jpg|png)$/,`-${j++}.$1`);}used.add(n);files.push({name:n,data:new Uint8Array(await b.arrayBuffer())});total+=b.size;}
+    if(files.length===1)download(new Blob([files[0].data],{type:/\.png$/.test(files[0].name)?'image/png':'image/jpeg'}),files[0].name);
     else download(makeZip(files),'photos-'+new Date().toISOString().slice(0,10)+'.zip');
     $('#info').textContent=`${files.length} image(s) exportée(s) · ${Math.round(total/1024)} Ko au total`;
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
