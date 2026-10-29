@@ -72,7 +72,12 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 #stageWrap{display:flex;flex-direction:column;min-width:0;min-height:0}
 .tools{display:flex;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--soft);flex-wrap:wrap}
 .tools .z{min-width:48px;text-align:center;color:var(--mute)}
-#stage{flex:1;overflow:auto;display:flex;padding:16px;min-height:0}
+#stage{flex:1;overflow:auto;display:flex;padding:16px;min-height:0;position:relative}
+#gsel{position:absolute;border:1px dashed #1e88ff;pointer-events:none;z-index:2}
+#gsel .gh{position:absolute;width:11px;height:11px;background:#fff;border:1.5px solid #1e88ff;border-radius:2px;pointer-events:auto;transform:translate(-50%,-50%)}
+#gsel .gh[data-h=tl]{left:0;top:0;cursor:nwse-resize}#gsel .gh[data-h=br]{left:100%;top:100%;cursor:nwse-resize}
+#gsel .gh[data-h=tr]{left:100%;top:0;cursor:nesw-resize}#gsel .gh[data-h=bl]{left:0;top:100%;cursor:nesw-resize}
+body.tb-resize #cv{cursor:nwse-resize}
 #cv{margin:auto;flex:none;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.16);touch-action:none;cursor:grab}
 #cv:active{cursor:grabbing}
 .glist{display:flex;flex-wrap:wrap;gap:6px}
@@ -144,6 +149,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <nav id="tools"><div class="tgrid">
 <button class="tool" type="button" data-tb="import" title="Importer une image, un SVG, un PDF…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></button>
 <button class="tool on" type="button" data-tb="move" title="Déplacer : glisser un élément sur la feuille (Alt : en faire une copie) · flèches : 1 mm, Maj : 10 mm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor" stroke="none"/></svg></button>
+<button class="tool" type="button" data-tb="resize" title="Redimensionner : glisser sur l’élément vers la droite / le bas pour l’agrandir, vers la gauche / le haut pour le réduire (depuis son centre) · ou tirer les poignées des coins (le coin opposé reste en place)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="10" height="10" rx="1"/><path d="M13 3h8v8M21 3l-8 8"/></svg></button>
     <div class="tsep"></div>
 <button class="tool" type="button" data-tb="center" title="Centrer l’élément choisi sur la feuille"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M12 8v8M8 12h8"/></svg></button>
 <button class="tool" type="button" data-tb="fitmargin" title="Ajuster l’élément à la marge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5" stroke-dasharray="2 2"/><rect x="6.5" y="6.5" width="11" height="11" rx="1"/></svg></button>
@@ -200,7 +206,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <button class="btn sm" id="zFit">Ajuster</button>
       <label class="chk" style="margin-left:8px"><input type="checkbox" id="showTrame"> Voir la trame</label>
     </div>
-    <div id="stage"><canvas id="cv" width="10" height="10"></canvas></div>
+    <div id="stage"><canvas id="cv" width="10" height="10"></canvas><div id="gsel" hidden><div class="gh" data-h="tl"></div><div class="gh" data-h="tr"></div><div class="gh" data-h="bl"></div><div class="gh" data-h="br"></div></div></div>
   </div>
 </main>
 
@@ -779,10 +785,11 @@ function hitGroup(p){for(let k=S.groups.length-1;k>=0;k--){const g=S.groups[k];i
 /* Alt + glisser : copie du dessin (avec ses calques), comme dans Illustrator */
 function dupGroup(g){const g2={...g,id:nid('g'),name:g.name+' (copie)'};S.groups.splice(S.groups.indexOf(g)+1,0,g2);
   const ls=S.layers.filter(l=>l.groupId===g.id).map(l=>({...l,id:nid('l'),groupId:g2.id,cache:null}));let last=-1;S.layers.forEach((l,i)=>{if(l.groupId===g.id)last=i;});S.layers.splice(last+1,0,...ls);return g2;}
-cv.addEventListener('pointerdown',e=>{const p=toMM(e);let hit=hitGroup(p);if(hit&&e.altKey){hit=dupGroup(hit);S.sel=hit.id;renderSide();}else if(hit&&hit.id!==S.sel){S.sel=hit.id;renderGroups();}const g=hit||null;if(!g)return;drag={g,x:p.x,y:p.y};cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointerdown',e=>{const p=toMM(e);let hit=hitGroup(p);
+  if(TBM==='resize'&&hit&&!e.altKey){if(hit.id!==S.sel){S.sel=hit.id;renderGroups();}{const b=gBox(hit),k=cv.clientWidth/pageSize()[0];rsz={g:hit,mode:'c',x0:e.clientX,y0:e.clientY,dg:Math.max(20,Math.hypot(b.w,b.h)*k),s0:hit.scale};}cv.setPointerCapture(e.pointerId);return;}if(hit&&e.altKey){hit=dupGroup(hit);S.sel=hit.id;renderSide();}else if(hit&&hit.id!==S.sel){S.sel=hit.id;renderGroups();}const g=hit||null;if(!g)return;drag={g,x:p.x,y:p.y};cv.setPointerCapture(e.pointerId);});
 cv.addEventListener('mousemove',e=>{if(drag)return;cv.style.cursor=e.altKey&&hitGroup(toMM(e))?'copy':'';});
-cv.addEventListener('pointermove',e=>{if(!drag)return;const p=toMM(e);drag.g.cx+=p.x-drag.x;drag.g.cy+=p.y-drag.y;drag.x=p.x;drag.y=p.y;syncPlacement();scheduleRender();});
-const endDrag=()=>{drag=null;};cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('pointermove',e=>{if(rsz){rszMove(e);return;}if(!drag)return;const p=toMM(e);drag.g.cx+=p.x-drag.x;drag.g.cy+=p.y-drag.y;drag.x=p.x;drag.y=p.y;syncPlacement();scheduleRender();});
+const endDrag=()=>{drag=null;rsz=null;};cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
 document.addEventListener('keydown',e=>{
   if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)||$('#dlg').open)return;
   const g=selGroup();if(!g)return;const s=e.shiftKey?10:1;
@@ -790,7 +797,25 @@ document.addEventListener('keydown',e=>{
   e.preventDefault();g.cx+=m[0];g.cy+=m[1];syncPlacement();scheduleRender();
 });
 
+/* ---------- redimensionner à la main : poignées aux coins de l'élément choisi, ou outil « Redimensionner » ---------- */
+let rsz=null;
+function gBox(g){const r=((g.rot||0)%180+180)%180;const w=(r?g.h:g.w)*g.scale,h=(r?g.w:g.h)*g.scale;return{x:g.cx-w/2,y:g.cy-h/2,w,h};}
+function placeSel(){const el=$('#gsel'),g=selGroup();if(!g||!S.layers.some(l=>l.groupId===g.id)){el.hidden=true;return;}
+  const cv=$('#cv'),[pw]=pageSize(),k=cv.clientWidth/pw,b=gBox(g);el.hidden=false;
+  el.style.left=(cv.offsetLeft+b.x*k)+'px';el.style.top=(cv.offsetTop+b.y*k)+'px';el.style.width=b.w*k+'px';el.style.height=b.h*k+'px';}
+function rszMove(e){const g=rsz.g,p=toMM(e);
+  if(rsz.mode==='c'){g.scale=Math.max(0.01,rsz.s0*Math.max(0.05,1+((e.clientX-rsz.x0)+(e.clientY-rsz.y0))/rsz.dg));}// vers la droite / le bas : plus grand
+  else{const O=rsz.O,d={x:rsz.S.x-O.x,y:rsz.S.y-O.y};const r=Math.max(0.02,((p.x-O.x)*d.x+(p.y-O.y)*d.y)/(d.x*d.x+d.y*d.y));
+    g.scale=Math.max(0.01,rsz.s0*r);g.cx=O.x+(rsz.C.x-O.x)*r;g.cy=O.y+(rsz.C.y-O.y)*r;}
+  syncPlacement();scheduleRender();}
+$('#gsel').addEventListener('pointerdown',e=>{const h=e.target.closest('.gh');if(!h)return;e.preventDefault();e.stopPropagation();const g=selGroup();if(!g)return;const b=gBox(g);
+  const pts={tl:{x:b.x,y:b.y},tr:{x:b.x+b.w,y:b.y},bl:{x:b.x,y:b.y+b.h},br:{x:b.x+b.w,y:b.y+b.h}},opp={tl:'br',tr:'bl',bl:'tr',br:'tl'}[h.dataset.h];
+  rsz={g,mode:'k',O:pts[opp],S:pts[h.dataset.h],C:{x:g.cx,y:g.cy},s0:g.scale};h.setPointerCapture(e.pointerId);});
+$('#gsel').addEventListener('pointermove',e=>{if(rsz&&rsz.mode==='k')rszMove(e);});
+$('#gsel').addEventListener('pointerup',()=>{rsz=null;});
+{const _r=render;render=function(){_r();placeSel();};}
 /* ---------- barre d'outils à gauche, panneau de droite repliable (comme Vecto) ---------- */
+let TBM='move';
 function gAct(a){const g=selGroup();if(!g){if(['center','fitmargin','fitpage','real','rot','dup','del'].includes(a))alert('Choisis d’abord un élément (clic dessus sur la feuille).');return;}const[pw,ph]=pageSize();
   switch(a){case'center':g.cx=pw/2;g.cy=ph/2;break;case'fitmargin':fitGroup(g,marginBox());break;case'fitpage':fitGroup(g,{x:0,y:0,w:pw,h:ph});break;case'real':g.scale=1;break;
     case'rot':g.rot=((g.rot||0)+90)%360;break;
@@ -798,7 +823,7 @@ function gAct(a){const g=selGroup();if(!g){if(['center','fitmargin','fitpage','r
     case'del':{const b=document.querySelector('#groups [data-ga=del]');if(b)b.click();return;}}
   syncPlacement();renderGroups();scheduleRender();}
 document.querySelectorAll('#tools [data-tb]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.tb;
-  if(a==='import'){$('#fileIn').click();return;}if(a==='move')return;
+  if(a==='import'){$('#fileIn').click();return;}if(a==='move'||a==='resize'){TBM=a;document.querySelectorAll('#tools [data-tb=move],#tools [data-tb=resize]').forEach(x=>x.classList.toggle('on',x.dataset.tb===a));document.body.classList.toggle('tb-resize',a==='resize');return;}
   if(a==='zin'){$('#zIn').click();}else if(a==='zout'){$('#zOut').click();}else if(a==='zfit'){$('#zFit').click();}
   else if(a==='trame'){const c=$('#showTrame');c.checked=!c.checked;c.dispatchEvent(new Event('change'));}
   else if(a==='guides'){const c=$('#gShow');c.checked=!c.checked;c.dispatchEvent(new Event('change'));}
