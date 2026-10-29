@@ -503,10 +503,21 @@ function _renderSheets(){
 }
 
 /* ---------- PDF ---------- */
+let RASTERED=0;
+/* page PDF que la bibliothèque ne sait pas recopier (flux abîmé, compression inconnue…) : on la passe en image haute définition */
+async function rasterEmb(p){
+  const f=S.files.get(p.fileId);if(!f||f.type!=='pdf')throw new Error('page illisible');
+  const page=await f.doc.getPage(p.index+1);const v1=page.getViewport({scale:1,rotation:0});const k=Math.min(300/72,Math.sqrt(36e6/(v1.width*v1.height)));const v=page.getViewport({scale:k,rotation:0});
+  let src=document.createElement('canvas');src.width=Math.ceil(v.width);src.height=Math.ceil(v.height);const x=src.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,src.width,src.height);await page.render({canvasContext:x,viewport:v}).promise;
+  if(annOn(p))src=withAnn(src,p);const c=(p.crop||hasLevels(p))?editedCanvas(src,p):src;
+  const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));const OUT=CUR_OUT;const img=await OUT.embedJpg(await b.arrayBuffer());
+  return{kind:'img',obj:img,rot:p.srcRot||0};
+}
+let CUR_OUT=null;
 async function buildPDF(){
   const {PDFDocument,degrees}=PDFLib;
   const {L,sheets}=buildSheets();const sl=slots(L);
-  const out=await PDFDocument.create();
+  const out=await PDFDocument.create();CUR_OUT=out;RASTERED=0;
   const srcDocs=new Map(),embedded=new Map();
   async function getEmb(p){
     if(p.blank)return null;
@@ -526,13 +537,13 @@ async function buildPDF(){
     if(f.type==='pdf'&&annOn(p)){// annotations : on les pose sur une copie de la page source
       const d=await PDFDocument.load(f.bytes,{ignoreEncryption:true});const page=d.getPage(p.index);await drawAnnPdf(d,page,p);
       const cb=page.getCropBox();const c=cropOf(p);
-      const [emb]=await out.embedPages([page],[{left:cb.x+c.l*cb.width,bottom:cb.y+c.b*cb.height,right:cb.x+cb.width*(1-c.r),top:cb.y+cb.height*(1-c.t)}]);
+      const [emb]=await out.embedPages([page],[{left:cb.x+c.l*cb.width,bottom:cb.y+c.b*cb.height,right:cb.x+cb.width*(1-c.r),top:cb.y+cb.height*(1-c.t)}]);await emb.embed();
       e={kind:'page',obj:emb,rot:((page.getRotation().angle%360)+360)%360};embedded.set(key,e);return e;
     }
     if(f.type==='pdf'&&p.crop){
       let src=srcDocs.get(f.id);if(!src){src=await PDFDocument.load(f.bytes,{ignoreEncryption:true});srcDocs.set(f.id,src);}
       const page=src.getPage(p.index);const cb=page.getCropBox();const c=p.crop;
-      const [emb]=await out.embedPages([page],[{left:cb.x+c.l*cb.width,bottom:cb.y+c.b*cb.height,right:cb.x+cb.width*(1-c.r),top:cb.y+cb.height*(1-c.t)}]);
+      const [emb]=await out.embedPages([page],[{left:cb.x+c.l*cb.width,bottom:cb.y+c.b*cb.height,right:cb.x+cb.width*(1-c.r),top:cb.y+cb.height*(1-c.t)}]);await emb.embed();
       e={kind:'page',obj:emb,rot:((page.getRotation().angle%360)+360)%360};
       embedded.set(key,e);return e;
     }
@@ -546,7 +557,7 @@ async function buildPDF(){
     if(f.type==='pdf'){
       let src=srcDocs.get(f.id);if(!src){src=await PDFDocument.load(f.bytes,{ignoreEncryption:true});srcDocs.set(f.id,src);}
       const page=src.getPage(p.index);
-      const [emb]=await out.embedPages([page]);
+      const [emb]=await out.embedPages([page]);await emb.embed();
       e={kind:'page',obj:emb,w:emb.width,h:emb.height,rot:((page.getRotation().angle%360)+360)%360};
     }else{
       let img;
@@ -562,7 +573,7 @@ async function buildPDF(){
     const pg=out.addPage([L.W*PT,L.H*PT]);
     for(let i=0;i<sheets[k].length;i++){
       const p=sheets[k][i],cell=sl[i];if(!cell)continue;
-      const e=await getEmb(p);if(!e)continue;
+      let e;try{e=await getEmb(p);}catch(err){console.warn('page recopiée en image',err);try{out.embeddedPages=out.embeddedPages.filter(x=>x.alreadyEmbedded);}catch(e2){}for(const [k2,v2] of embedded)if(v2&&v2.kind==='page'&&!v2.obj.alreadyEmbedded)embedded.delete(k2);e=await rasterEmb(p);RASTERED++;}if(!e)continue;
       const q=placeIn(p,cell);
       const r=((e.rot+p.rot)%360+360)%360;
       // taille de la page non tournée, à l'échelle
@@ -585,6 +596,7 @@ async function exportPDF(){
   try{const bytes=await buildPDF();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));a.download=`compil-${stamp()}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
   catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
+  if(RASTERED)setTimeout(()=>alert(RASTERED+' page'+(RASTERED>1?'s':'')+' de ce PDF n’a pas pu être recopiée telle quelle (fichier un peu abîmé) : '+(RASTERED>1?'elles sont passées':'elle est passée')+' en image haute définition (300 dpi). Le reste est intact.'),50);
 }
 async function printPDF(){
   if(!S.pages.length)return;
