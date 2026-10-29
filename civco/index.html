@@ -2,11 +2,11 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Atelier Civco</title>
 <script src="../lib/sync.js"></script>
 <style>
-:root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#7a8a1f;--soft:#f7f6f2}
+:root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#7a8a1f;--soft:#f7f6f2;--cream:#F4EEDF;--brown:#4A3B2C}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{font:13px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
@@ -19,10 +19,76 @@ header h1 span{color:var(--acc)}
 .btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--soft);color:var(--ink);padding:5px 9px;border-radius:7px;font:inherit;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:#c9c5bc}
 .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
-main{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
-#board{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.06);max-width:calc(100% - 32px);max-height:calc(100% - 32px)}
-#hello{position:absolute;text-align:center;color:var(--mute);pointer-events:none}
-#hello b{display:block;font-size:20px;color:var(--ink);margin-bottom:6px}
+.btn.acc{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700}
+.btn[disabled]{opacity:.45;cursor:default}
+/* barre de jeu */
+#hud{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-weight:600;white-space:nowrap}
+.chip small{font-weight:600;color:var(--mute)}
+.chip.bad{background:#fbe9e4;border-color:#e3a59a;color:#7a2a1a}
+.chip svg{width:15px;height:15px;flex:none}
+.pips{display:inline-flex;gap:4px;align-items:center}
+.pip{width:12px;height:12px;border-radius:50%;background:var(--acc)}
+.pip.off{background:#dcd8cd}
+#work{flex:1;min-height:0;display:flex;position:relative}
+/* outils */
+#tools{width:112px;flex:none;padding:8px;background:var(--panel);border-right:1px solid var(--line);display:grid;grid-template-columns:repeat(2,1fr);gap:6px;align-content:start}
+.tool{width:100%;aspect-ratio:1;min-height:44px;border:1px solid var(--line);background:var(--soft);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);padding:0;position:relative}
+.tool svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tool:hover{border-color:#c9c5bc}
+.tool.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.tool kbd{position:absolute;right:4px;bottom:2px;font:10px system-ui;opacity:.55}
+/* plateau */
+#stage{flex:1;min-width:0;position:relative;background:var(--cream);overflow:hidden}
+#board{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#opts{position:absolute;left:8px;top:8px;max-width:min(300px,calc(100% - 16px));background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:12px;padding:8px 11px;box-shadow:0 2px 10px rgba(0,0,0,.08);pointer-events:none}
+#opts b{display:block;font-size:13px}
+#opts span{display:block;color:var(--mute);font-size:12px;margin-top:2px}
+#opts em{display:block;font-style:normal;font-size:12px;margin-top:3px;color:var(--acc);font-weight:700}
+#toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:999px;padding:7px 14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100% - 24px);text-align:center;z-index:6}
+#toast.on{opacity:.95}
+/* panneau de propriétés */
+#panel{display:flex;flex:none;background:var(--panel);border-left:1px solid var(--line)}
+.pbody{width:290px;overflow:auto;padding:6px 10px 14px}
+#panel.min .pbody{display:none}
+.pbar{width:46px;flex:none;display:flex;flex-direction:column;gap:6px;align-items:center;padding:8px 0;border-left:1px solid var(--line)}
+.pbtn{width:36px;height:36px;border:1px solid var(--line);background:var(--soft);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);padding:0}
+.pbtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pbtn:hover{border-color:#c9c5bc}
+details{border-bottom:1px solid var(--line);padding:6px 0}
+summary{cursor:pointer;font-weight:700;padding:3px 0;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▾ ";color:var(--mute)}
+details:not([open]) summary::before{content:"▸ "}
+.kv{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+.kv span:first-child{color:var(--mute)}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-weight:700;font-size:12px}
+.pill.ok{background:#dfe8c4;color:#3c4a0d}
+.pill.warn{background:#f3ddb5;color:#6b4a12}
+.pill.bad{background:#f3c9c0;color:#7a2a1a}
+#journal{list-style:none;margin:4px 0 0;padding:0;max-height:260px;overflow:auto}
+#journal li{padding:3px 0;border-bottom:1px dotted var(--line);color:#3d3b36}
+#journal li b{color:var(--acc);margin-right:4px}
+@media (max-width:900px){
+  #panel{position:absolute;right:0;top:0;bottom:0;z-index:5;box-shadow:-4px 0 18px rgba(0,0,0,.12)}
+  #panel.min{box-shadow:none}
+  .pbody{width:min(82vw,300px)}
+}
+@media (max-width:640px){
+  #tools{width:56px;grid-template-columns:1fr;padding:6px}
+  #opts{max-width:calc(100% - 70px)}
+  header h1{font-size:14px}
+  .btn{padding:6px 8px}
+  #hud{padding:5px 8px;gap:5px}
+  .chip{padding:3px 8px}
+}
+/* fin de partie */
+#over{position:absolute;inset:0;background:rgba(244,238,223,.88);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
+#over.on{display:flex}
+#over .card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:22px;max-width:420px;box-shadow:0 8px 30px rgba(0,0,0,.14);text-align:center}
+#over h2{margin:0 0 8px;font-size:20px}
+#over p{margin:0 0 14px;color:#3d3b36;line-height:1.5}
+#over .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
@@ -45,30 +111,314 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bOpen">Mes parties…</button>
   <button class="btn primary" id="bSave">Enregistrer</button>
 </header>
-<main>
-  <canvas id="board" width="960" height="640"></canvas>
-  <div id="hello"><b>Civco</b>Civilisation et coopération — le jeu arrive ici.</div>
-</main>
+
+<div id="hud">
+  <span class="chip" title="Tour en cours">Tour <b id="hTour">1</b><small>/ 40</small></span>
+  <span class="chip" id="cEau" title="Eau"><svg viewBox="-10 -12 20 24"><path d="M0,-10 C6,-2 8,2 8,5 A8,8 0 0 1 -8,5 C-8,2 -6,-2 0,-10 Z" fill="#4F8FA8"/></svg><b id="vEau">0</b><small id="dEau"></small></span>
+  <span class="chip" id="cNou" title="Nourriture"><svg viewBox="-10 -12 20 24"><path d="M0,11 L0,-6" stroke="#A8802A" stroke-width="2" stroke-linecap="round"/><g fill="#C99A3C"><ellipse cx="-4" cy="-3" rx="2.8" ry="4.6" transform="rotate(-25 -4 -3)"/><ellipse cx="4" cy="-3" rx="2.8" ry="4.6" transform="rotate(25 4 -3)"/><ellipse cx="-4" cy="4" rx="2.8" ry="4.6" transform="rotate(-25 -4 4)"/><ellipse cx="4" cy="4" rx="2.8" ry="4.6" transform="rotate(25 4 4)"/><ellipse cx="0" cy="-8" rx="2.6" ry="4.2"/></g></svg><b id="vNou">0</b><small id="dNou"></small></span>
+  <span class="chip" id="cMat" title="Matériaux"><svg viewBox="-10 -12 20 24"><path d="M-8,9 L7,-9" stroke="#8B6B4A" stroke-width="3" stroke-linecap="round"/><path d="M-1,1 L-7,-4" stroke="#8B6B4A" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="6" cy="-3" rx="3" ry="5" transform="rotate(40 6 -3)" fill="#5E9A5A"/></svg><b id="vMat">0</b><small id="dMat"></small></span>
+  <span class="chip" title="Vitalité du vivant"><svg viewBox="-10 -12 20 24"><path d="M0,-10 C7,-6 8,3 0,10 C-8,3 -7,-6 0,-10 Z" fill="#6FA86B"/></svg><b id="vVit">70</b></span>
+  <span class="pips" id="pips" title="Actions restantes"></span>
+  <span class="sp"></span>
+  <button class="btn acc" id="bEnd" title="Fin du tour (Entrée)">Fin du tour</button>
+</div>
+
+<div id="work">
+  <nav id="tools" aria-label="Outils">
+    <button class="tool on" data-tool="view" title="Observer (V)" aria-label="Observer"><svg viewBox="0 0 24 24"><path d="M6 3l12 8-5.2 1.3L10.5 18z"/></svg><kbd>V</kbd></button>
+    <button class="tool" data-tool="explore" title="Explorer (E)" aria-label="Explorer"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l6 6"/></svg><kbd>E</kbd></button>
+    <button class="tool" data-tool="build" title="Aménager (A)" aria-label="Aménager"><svg viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M12 10c0-4 3-6 7-6 0 4-3 6-7 6z"/><path d="M12 14c0-3-2-5-6-5 0 3 2 5 6 5z"/><path d="M5 20h14"/></svg><kbd>A</kbd></button>
+    <button class="tool" data-tool="regen" title="Régénérer (R)" aria-label="Régénérer"><svg viewBox="0 0 24 24"><path d="M12 3c5 3 7 9 0 18C5 12 7 6 12 3z"/><path d="M12 8v10"/></svg><kbd>R</kbd></button>
+  </nav>
+
+  <main id="stage">
+    <canvas id="board"></canvas>
+    <div id="opts"><b id="oName"></b><span id="oHelp"></span><em id="oStat"></em></div>
+    <div id="toast"></div>
+    <div id="over"><div class="card"><h2 id="ovT"></h2><p id="ovP"></p><div class="row"><button class="btn acc" id="ovNew">Nouvelle partie</button><button class="btn" id="ovSee">Voir le plateau</button></div></div></div>
+  </main>
+
+  <aside id="panel" class="min">
+    <div class="pbody">
+      <details id="dVillage" open><summary>Village</summary><div id="pVillage"></div></details>
+      <details id="dCase" open><summary>Case</summary><div id="pCase"></div></details>
+      <details id="dVit" open><summary>Vitalité du vivant</summary><div id="pVit"></div></details>
+      <details id="dJour" open><summary>Journal</summary><ul id="journal"></ul></details>
+    </div>
+    <div class="pbar">
+      <button class="pbtn" id="pTog" title="Replier ou déplier le panneau" aria-label="Replier ou déplier le panneau"><svg viewBox="0 0 24 24"><path id="pTogI" d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="pbtn" data-open="dVillage" title="Village" aria-label="Village"><svg viewBox="0 0 24 24"><path d="M4 12L12 5l8 7"/><path d="M6 11v8h12v-8"/></svg></button>
+      <button class="pbtn" data-open="dCase" title="Case" aria-label="Case"><svg viewBox="0 0 24 24"><path d="M12 3l7.5 4.3v9.4L12 21l-7.5-4.3V7.3z"/></svg></button>
+      <button class="pbtn" data-open="dVit" title="Vitalité" aria-label="Vitalité"><svg viewBox="0 0 24 24"><path d="M12 3c5 3 7 9 0 18C5 12 7 6 12 3z"/></svg></button>
+      <button class="pbtn" data-open="dJour" title="Journal" aria-label="Journal"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 9h6M9 13h6"/></svg></button>
+    </div>
+  </aside>
+</div>
+
 <script>
-/* Civco — coquille de départ : état de partie, enregistrement / ouverture via l'Atelier.
-   Le jeu lui-même se développe à partir d'ici. */
+/* Civco — civilisation et coopération. Un village, un plateau, un vivant à ménager. */
 const $=s=>document.querySelector(s);
 const APP='civco';
-let G=null,DOC={id:null,name:''};
-function newGame(){G={v:1,tour:1};DOC={id:null,name:''};showDoc();draw();}
+const W=12,H=12,TOURS=40,SQ3=Math.sqrt(3);
+const CLIM={t:{n:'Tropical',c:'#6FA86B',e:[.30,.45,.25],s:['fruits','plantes médicinales']},
+  e:{n:'Tempéré',c:'#A9C47F',e:[.30,.50,.20],s:['céréales','bétail']},
+  f:{n:'Froid',c:'#8FA9B8',e:[.25,.15,.60],s:['bois dur','minerai','pierre']},
+  a:{n:'Aride',c:'#E0B779',e:[.10,.20,.70],s:['sel','dattes','énergie solaire']}};
+const RES=['eau','nourriture','matériaux'];
+const TOOLS={
+  view:{n:'Observer',h:'Touche une case pour voir ses détails.'},
+  explore:{n:'Explorer',h:'Révèle une case voisine d\'une case déjà connue. Coûte 1 action.'},
+  build:{n:'Aménager',h:'Met une case en production : 2 matériaux, à 2 cases du village au plus, 10 cases au maximum.'},
+  regen:{n:'Régénérer',h:'Fait reposer une case fatiguée : fatigue −2 et +1 de vitalité. Elle ne produit pas ce tour.'}};
+let G=null,DOC={id:null,name:''},tool='view',sel=null,cam={tx:0,ty:0,k:1},R=34;
+const cv=$('#board'),ctx=cv.getContext('2d');
+
+/* ---------- hasard ---------- */
+function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function pickW(rand,w){const x=rand();let s=0;for(let i=0;i<w.length;i++){s+=w[i];if(x<s)return i;}return w.length-1;}
+
+/* ---------- géométrie hexagonale (lignes impaires décalées) ---------- */
+const idx=(c,r)=>(c>=0&&c<W&&r>=0&&r<H)?r*W+c:-1;
+const cellAt=(c,r)=>{const i=idx(c,r);return i<0?null:G.cells[i];};
+function toCube(c,r){const x=c-(r-(r&1))/2;return{x,z:r,y:-x-r};}
+function dist(a,b){const p=toCube(a.c,a.r),q=toCube(b.c,b.r);return(Math.abs(p.x-q.x)+Math.abs(p.y-q.y)+Math.abs(p.z-q.z))/2;}
+const NB=[[[1,0],[0,-1],[-1,-1],[-1,0],[-1,1],[0,1]],[[1,0],[1,-1],[0,-1],[-1,0],[0,1],[1,1]]];
+function nbrs(cl){return NB[cl.r&1].map(d=>cellAt(cl.c+d[0],cl.r+d[1])).filter(Boolean);}
+const cx=(c,r)=>R*SQ3*(c+.5*(r&1)),cy=r=>R*1.5*r;
+function hexAtWorld(X,Y){const q=(SQ3/3*X-Y/3)/R,rr=(2/3*Y)/R;let x=q,z=rr,y=-x-z;let rx=Math.round(x),ry=Math.round(y),rz=Math.round(z);
+  const dx=Math.abs(rx-x),dy=Math.abs(ry-y),dz=Math.abs(rz-z);if(dx>dy&&dx>dz)rx=-ry-rz;else if(dy>dz)ry=-rx-rz;else rz=-rx-ry;
+  const r=rz,c=rx+(r-(r&1))/2;return cellAt(c,r);}
+
+/* ---------- génération du monde ---------- */
+function genWorld(seed){
+  const rand=rng(seed),keys=['t','e','f','a'];
+  for(let i=3;i>0;i--){const j=Math.floor(rand()*(i+1));[keys[i],keys[j]]=[keys[j],keys[i]];}
+  const quads=[[3,3],[8,3],[3,8],[8,8]],seeds=quads.map((q,i)=>({k:keys[i],c:q[0]+(rand()*3-1.5),r:q[1]+(rand()*3-1.5)}));
+  const cells=[];
+  for(let r=0;r<H;r++)for(let c=0;c<W;c++){
+    const px=cx(c,r)/ (R*SQ3),py=cy(r)/(R*SQ3);let best=null,bd=1e9;
+    seeds.forEach(s=>{const sx=s.c+.5*((Math.round(s.r))&1),sy=s.r*.866;const d=Math.hypot(px-sx,py-sy)+rand()*1.4;if(d<bd){bd=d;best=s.k;}});
+    cells.push({c,r,cl:best,b:0,sp:null,seen:false,ex:false,fat:0,rest:false});
+  }
+  const tseed=seeds.find(s=>s.k==='t');
+  let vc=Math.min(W-3,Math.max(2,Math.round(tseed.c))),vr=Math.min(H-3,Math.max(2,Math.round(tseed.r)));
+  const G0={v:1,seed,tour:1,actions:3,eau:10,nou:10,mat:14,vit:70,pop:10,manque:0,over:null,log:[],cells,vil:[vc,vr]};
+  G=G0;
+  const v=cellAt(vc,vr);v.cl='t';v.vil=true;const nb=nbrs(v);nb.forEach(n=>n.cl='t');
+  cells.forEach(cl=>{const k=CLIM[cl.cl];cl.b=pickW(rand,k.e);if(!cl.vil&&rand()<.15)cl.sp=k.s[Math.floor(rand()*k.s.length)];});
+  nb.slice(0,3).forEach((n,i)=>{n.b=i;n.ex=true;});
+  v.seen=true;nb.forEach(n=>n.seen=true);
+  return G0;
+}
+
+/* ---------- règles ---------- */
+const prodOf=f=>f<=2?2:f<=5?1:0;
+const exCount=()=>G.cells.filter(c=>c.ex).length;
+const vilCell=()=>cellAt(G.vil[0],G.vil[1]);
+function forecast(){const p=[0,0,0];G.cells.forEach(c=>{if(c.ex&&!c.rest)p[c.b]+=prodOf(c.fat);});
+  return{p,n:[p[0]-2,p[1]-2,p[2]]};}
+function etat(){const m=G.manque;return m>=6?{t:'Effondré',k:'bad'}:m>=4?{t:'En crise',k:'bad'}:m>=2?{t:'Tendu',k:'warn'}:{t:'Stable',k:'ok'};}
+function addLog(t){G.log.unshift({t:G.tour,m:t});if(G.log.length>80)G.log.pop();}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2200);}
+function whyNot(t,cl){
+  if(G.over)return'La partie est terminée.';
+  if(t==='view')return null;
+  if(G.actions<1)return'Plus d\'action ce tour : termine le tour.';
+  if(t==='explore'){
+    if(cl.seen)return'Cette case est déjà explorée.';
+    if(!nbrs(cl).some(n=>n.seen))return'Trop loin : explore à côté d\'une case connue.';return null;}
+  if(!cl.seen)return'Il faut d\'abord explorer cette case.';
+  if(cl.vil)return'C\'est le village.';
+  if(dist(cl,vilCell())>2)return'Hors de portée : à 2 cases du village au plus.';
+  if(t==='build'){
+    if(cl.ex)return'Cette case est déjà en production.';
+    if(exCount()>=10)return'Dix cases en production au maximum.';
+    if(G.mat<2)return'Pas assez de matériaux (2 requis).';return null;}
+  if(t==='regen'){
+    if(cl.rest)return'Cette case se repose déjà ce tour.';
+    if(cl.fat<1)return'Cette case est en pleine forme.';return null;}
+  return null;}
+function act(t,cl){
+  const w=whyNot(t,cl);if(w){toast(w);return;}
+  if(t==='explore'){cl.seen=true;addLog('Exploration : '+CLIM[cl.cl].n.toLowerCase()+', '+RES[cl.b]+(cl.sp?' et une ressource spéciale ('+cl.sp+')':'')+'.');}
+  if(t==='build'){G.mat-=2;cl.ex=true;addLog('Une case de '+RES[cl.b]+' est mise en production.');}
+  if(t==='regen'){cl.fat=Math.max(0,cl.fat-2);cl.rest=true;G.vit=Math.min(100,G.vit+1);addLog('Une case se repose : la nature regagne en vitalité.');}
+  G.actions--;sel=cl;refresh();}
+function endTurn(){
+  if(G.over)return;
+  const gain=[0,0,0];
+  G.cells.forEach(c=>{
+    if(c.ex&&!c.rest){gain[c.b]+=prodOf(c.fat);c.fat++;}
+    else if(!c.ex&&c.fat>0&&!c.rest)c.fat--;
+    c.rest=false;});
+  G.eau+=gain[0];G.nou+=gain[1];G.mat+=gain[2];
+  G.eau-=2;G.nou-=2;
+  let short=false;
+  if(G.eau<0){G.eau=0;short=true;addLog('Manque d\'eau.');}
+  if(G.nou<0){G.nou=0;short=true;addLog('Manque de nourriture.');}
+  if(short){G.manque++;if(G.manque===2)addLog('Le village est tendu : la crise arrive dans 2 tours.');
+    if(G.manque===4)addLog('Le village est en crise : il s\'effondre dans 2 tours.');}
+  else if(G.manque>0){G.manque=Math.max(0,G.manque-1);if(G.manque<2)addLog('Le village retrouve son calme.');}
+  const emp=Math.floor(exCount()/4);
+  if(emp){G.vit=Math.max(0,G.vit-emp);addLog('Empreinte du village : −'+emp+' de vitalité.');}
+  const tired=G.cells.filter(c=>c.fat>3).length;
+  if(tired){G.vit=Math.max(0,G.vit-tired);addLog(tired+' case'+(tired>1?'s':'')+' trop fatiguée'+(tired>1?'s':'')+' : la vitalité baisse de '+tired+'.');}
+  if(G.manque>=6){G.over={k:'lose',t:'Le village s\'est effondré',p:'Faute d\'eau ou de nourriture, les habitants ont quitté les lieux. La nature reprend ses droits sur ce coin de plateau. Au tour '+G.tour+', la partie s\'arrête.'};}
+  else if(G.vit<25){G.over={k:'lose',t:'Le vivant s\'est effondré',p:'La vitalité est tombée sous le seuil critique : sols épuisés, sources taries. Au tour '+G.tour+', plus rien ne pousse ici.'};}
+  else if(G.tour>=TOURS){const v=G.vit;G.over={k:'win',t:v>=80?'Un monde qui renaît':v>=50?'Un équilibre fragile':'Tenir, de justesse',
+    p:'Quarante tours, dix ans : le village est encore debout. Vitalité du vivant : '+v+' sur 100. '+(v>=80?'Les terres respirent et le désert recule.':v>=50?'Tout tient, mais la terre reste à ménager.':'La nature est épuisée : il faudra apprendre à faire autrement.')};}
+  if(!G.over){G.tour++;G.actions=3;}
+  G.overSeen=false;
+  refresh();}
+
+/* ---------- affichage : plateau ---------- */
+function mix(a,b,t){const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)),A=p(a),B=p(b);return'rgb('+A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(',')+')';}
+function hexPath(x,y,r){ctx.beginPath();for(let i=0;i<6;i++){const a=(60*i-30)*Math.PI/180;const px=x+r*Math.cos(a),py=y+r*Math.sin(a);i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();}
+function ell(x,y,rx,ry,rot,col){ctx.beginPath();ctx.ellipse(x,y,rx,ry,rot*Math.PI/180,0,6.2832);ctx.fillStyle=col;ctx.fill();}
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function pastille(t,x,y,k,alpha){
+  ctx.save();ctx.translate(x,y);ctx.scale(k,k);ctx.globalAlpha=alpha;
+  ctx.beginPath();ctx.arc(0,0,13,0,6.2832);ctx.fillStyle='#FBF7EC';ctx.fill();
+  if(t===0){ctx.fillStyle='#4F8FA8';ctx.fill(new Path2D('M0,-8 C5,-2 6,1 6,3 A6,6 0 0 1 -6,3 C-6,1 -5,-2 0,-8 Z'));}
+  else if(t===1){ctx.strokeStyle='#A8802A';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(0,8);ctx.lineTo(0,-4);ctx.stroke();
+    ell(-3,-2,2.2,3.6,-25,'#C99A3C');ell(3,-2,2.2,3.6,25,'#C99A3C');ell(-3,3,2.2,3.6,-25,'#C99A3C');ell(3,3,2.2,3.6,25,'#C99A3C');ell(0,-6,2,3.2,0,'#C99A3C');}
+  else{ctx.strokeStyle='#8B6B4A';ctx.lineWidth=2.6;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-6,6);ctx.lineTo(6,-6);ctx.stroke();
+    ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-1,1);ctx.lineTo(-5,-3);ctx.stroke();ell(5,-2,2.4,4,40,'#5E9A5A');}
+  ctx.restore();}
+function sparkle(x,y,k){ctx.save();ctx.translate(x,y);ctx.scale(k,k);ctx.beginPath();ctx.arc(0,0,7,0,6.2832);ctx.fillStyle='#4A3B2C';ctx.fill();
+  ctx.beginPath();ctx.moveTo(0,-4.2);ctx.lineTo(1.2,-1.2);ctx.lineTo(4.2,0);ctx.lineTo(1.2,1.2);ctx.lineTo(0,4.2);ctx.lineTo(-1.2,1.2);ctx.lineTo(-4.2,0);ctx.lineTo(-1.2,-1.2);ctx.closePath();ctx.fillStyle='#FBF7EC';ctx.fill();ctx.restore();}
+function house(x,y,k){ctx.save();ctx.translate(x,y);ctx.scale(k,k);
+  ctx.beginPath();ctx.moveTo(-17,-1);ctx.quadraticCurveTo(0,-24,17,-1);ctx.closePath();ctx.fillStyle='#B8643B';ctx.fill();
+  rrect(-12,-2,24,17,6);ctx.fillStyle='#F4EEDF';ctx.fill();rrect(-3,5,6,10,3);ctx.fillStyle='#8B6B4A';ctx.fill();ctx.restore();}
+function targets(){const s=new Set();if(!G||G.over||tool==='view'||G.actions<1)return s;G.cells.forEach(c=>{if(!whyNot(tool,c))s.add(c);});return s;}
+function draw(){
+  if(!G)return;
+  const dpr=window.devicePixelRatio||1,w=cv.width/dpr,h=cv.height/dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#F4EEDF';ctx.fillRect(0,0,w,h);
+  ctx.setTransform(dpr*cam.k,0,0,dpr*cam.k,dpr*cam.tx,dpr*cam.ty);
+  const T=targets(),k=R/34,rr=R*.84,lw=R*.2;
+  ctx.lineJoin='round';
+  G.cells.forEach(c=>{
+    const x=cx(c.c,c.r),y=cy(c.r);let col;
+    if(!c.seen)col='#E4DCC6';else col=mix(CLIM[c.cl].c,'#F4EEDF',Math.min(c.fat,6)/6*.62);
+    hexPath(x,y,rr);ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.fill();ctx.stroke();
+    if(!c.seen){ if(tool==='explore'&&T.has(c)){ctx.fillStyle='#9a8f77';ctx.font='700 '+(R*.55)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?',x,y+1);}return;}
+    if(!c.vil){pastille(c.b,x,y,k,c.ex?1:.78);if(c.sp)sparkle(x+R*.47,y+R*.4,k);}
+    if(c.ex){hexPath(x,y,R*.66);ctx.strokeStyle='rgba(74,59,44,.6)';ctx.lineWidth=2.4;ctx.stroke();}
+    if(c.ex&&c.fat>0){ctx.fillStyle=c.fat>3?'#8a2d1a':'#4A3B2C';ctx.font='800 '+(R*.3)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(c.fat,x-R*.42,y+R*.4);}
+    if(c.rest){ctx.fillStyle='#4A3B2C';ctx.font='800 '+(R*.3)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('z',x+R*.42,y-R*.38);}
+    if(c.vil)house(x,y+R*.04,k*1.25);
+  });
+  T.forEach(c=>{hexPath(cx(c.c,c.r),cy(c.r),R*.84);ctx.strokeStyle='#fff';ctx.lineWidth=3.2;ctx.shadowColor='rgba(74,59,44,.55)';ctx.shadowBlur=6;ctx.stroke();ctx.shadowBlur=0;});
+  if(sel){hexPath(cx(sel.c,sel.r),cy(sel.r),R*.9);ctx.strokeStyle='#4A3B2C';ctx.lineWidth=3.4;ctx.stroke();}
+}
+let pend=false;function redraw(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;draw();});}
+function fit(){const st=$('#stage'),dpr=window.devicePixelRatio||1,w=st.clientWidth,h=st.clientHeight;
+  if(!w||!h)return;cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);redraw();}
+function centerOnVillage(){const st=$('#stage'),v=vilCell();cam.k=st.clientWidth<640?.95:1.05;cam.tx=st.clientWidth/2-cx(v.c,v.r)*cam.k;cam.ty=st.clientHeight/2-cy(v.r)*cam.k;redraw();}
+function clampCam(){const st=$('#stage'),mw=cx(W-1,1)*cam.k,mh=cy(H-1)*cam.k,sw=st.clientWidth,sh=st.clientHeight;
+  cam.tx=Math.min(sw*.8,Math.max(sw*.2-mw,cam.tx));cam.ty=Math.min(sh*.8,Math.max(sh*.2-mh,cam.ty));}
+
+/* ---------- affichage : interface ---------- */
+function pillHtml(e){return'<span class="pill '+e.k+'">'+e.t+'</span>';}
+function refresh(){
+  if(!G)return;
+  $('#hTour').textContent=Math.min(G.tour,TOURS);
+  $('#vEau').textContent=G.eau;$('#vNou').textContent=G.nou;$('#vMat').textContent=G.mat;$('#vVit').textContent=G.vit;
+  const f=forecast();
+  [['Eau',0,G.eau],['Nou',1,G.nou],['Mat',2,G.mat]].forEach(([id,i,st])=>{
+    const n=f.n[i];$('#d'+id).textContent=(n>0?'+':'')+n+'/tour';
+    $('#c'+id).classList.toggle('bad',i<2&&st+n<0);});
+  $('#pips').innerHTML=[0,1,2].map(i=>'<span class="pip'+(i<G.actions?'':' off')+'"></span>').join('');
+  $('#bEnd').disabled=!!G.over;
+  const e=etat();
+  $('#pVillage').innerHTML='<div class="kv"><span>État</span>'+pillHtml(e)+'</div>'+
+    '<div class="kv"><span>Habitants</span><b>'+G.pop+'</b></div>'+
+    '<div class="kv"><span>Cases en production</span><b>'+exCount()+' / 10</b></div>'+
+    '<div class="kv"><span>Manque consécutif</span><b>'+G.manque+' tour'+(G.manque>1?'s':'')+'</b></div>'+
+    '<div class="kv"><span>Bilan prévu par tour</span><b>'+f.n.map((n,i)=>RES[i][0].toUpperCase()+' '+(n>0?'+':'')+n).join(' · ')+'</b></div>';
+  const c=sel;
+  if(!c||!c.seen)$('#pCase').innerHTML='<span class="muted">'+(c?'Case non explorée.':'Aucune case sélectionnée.')+'</span>';
+  else if(c.vil)$('#pCase').innerHTML='<div class="kv"><span>Lieu</span><b>Le village</b></div>';
+  else $('#pCase').innerHTML='<div class="kv"><span>Climat</span><b>'+CLIM[c.cl].n+'</b></div>'+
+    '<div class="kv"><span>Ressource</span><b>'+RES[c.b]+'</b></div>'+
+    (c.sp?'<div class="kv"><span>Ressource spéciale</span><b>'+c.sp+'</b></div>':'')+
+    '<div class="kv"><span>État</span><b>'+(c.ex?'en production':'libre')+'</b></div>'+
+    '<div class="kv"><span>Fatigue</span><b>'+c.fat+'</b></div>'+
+    '<div class="kv"><span>Rendement</span><b>'+(c.ex?prodOf(c.fat)+' par tour':'—')+'</b></div>';
+  const fillTop=75-150*G.vit/100;
+  $('#pVit').innerHTML='<div style="display:flex;gap:14px;align-items:center"><svg width="70" height="86" viewBox="-70 -85 140 170"><defs><clipPath id="lf"><rect x="-70" y="'+fillTop+'" width="140" height="170"/></clipPath></defs><path d="M0,-75 C48,-45 54,20 0,75 C-54,20 -48,-45 0,-75 Z" fill="#E4DCC6"/><g clip-path="url(#lf)"><path d="M0,-75 C48,-45 54,20 0,75 C-54,20 -48,-45 0,-75 Z" fill="#6FA86B"/></g><path d="M0,68 L0,-38" stroke="#F4EEDF" stroke-width="4" stroke-linecap="round" opacity=".75"/><path d="M0,-75 C48,-45 54,20 0,75 C-54,20 -48,-45 0,-75 Z" fill="none" stroke="#4A3B2C" stroke-opacity=".35" stroke-width="4" stroke-linejoin="round"/></svg><div><div style="font-size:28px;font-weight:800;line-height:1">'+G.vit+'<small style="font-size:12px;color:var(--mute);font-weight:600"> / 100</small></div><div class="muted" style="margin-top:6px;line-height:1.5">sous 25 : fin de partie<br>1 case fatiguée (plus de 3) = −1 par tour</div></div></div>';
+  $('#journal').innerHTML=G.log.length?G.log.map(l=>'<li><b>T'+l.t+'</b>'+l.m+'</li>').join(''):'<li class="muted">Rien pour l\'instant.</li>';
+  showTool();
+  const o=$('#over');if(G.over&&!G.overSeen){$('#ovT').textContent=G.over.t;$('#ovP').textContent=G.over.p;o.classList.add('on');}else o.classList.remove('on');
+  redraw();}
+function showTool(){
+  const t=TOOLS[tool];$('#oName').textContent=t.n;$('#oHelp').textContent=t.h;
+  let s='';if(tool!=='view'&&G){const n=targets().size;s=G.actions<1?'Plus d\'action : termine le tour.':n+' case'+(n>1?'s':'')+' possible'+(n>1?'s':'');}
+  $('#oStat').textContent=s;
+  document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on',b.dataset.tool===tool));}
+function setTool(t){tool=t;showTool();redraw();}
+
+/* ---------- gestes sur le plateau ---------- */
+const ptrs=new Map();let drag=null,pinch=null;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1)drag={x:e.clientX,y:e.clientY,moved:false,pinched:false};
+  if(ptrs.size===2){const a=[...ptrs.values()];pinch={d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),k:cam.k,tx:cam.tx,ty:cam.ty};if(drag)drag.pinched=true;}});
+cv.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId),dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
+  const r=cv.getBoundingClientRect();
+  if(ptrs.size===2&&pinch){const a=[...ptrs.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),mx=(a[0].x+a[1].x)/2-r.left,my=(a[0].y+a[1].y)/2-r.top;
+    const nk=Math.min(2.4,Math.max(.4,pinch.k*d/pinch.d)),wx=(mx-pinch.tx)/pinch.k,wy=(my-pinch.ty)/pinch.k;cam.k=nk;cam.tx=mx-wx*nk;cam.ty=my-wy*nk;pinch.k=nk;pinch.d=d;pinch.tx=cam.tx;pinch.ty=cam.ty;clampCam();redraw();return;}
+  if(drag&&ptrs.size===1){if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>6)drag.moved=true;
+    if(drag.moved){cam.tx+=dx;cam.ty+=dy;clampCam();redraw();}}});
+function up(e){const was=ptrs.has(e.pointerId);ptrs.delete(e.pointerId);if(!was)return;
+  if(drag&&!drag.moved&&!drag.pinched&&ptrs.size===0&&e.type==='pointerup'){const r=cv.getBoundingClientRect();tap(e.clientX-r.left,e.clientY-r.top);}
+  if(ptrs.size===0){drag=null;pinch=null;}else if(ptrs.size===1){pinch=null;const a=[...ptrs.values()][0];if(drag){drag.pinched=true;drag.x=a.x;drag.y=a.y;}}}
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',e=>{e.preventDefault();const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  const nk=Math.min(2.4,Math.max(.4,cam.k*Math.exp(-e.deltaY*.0015))),wx=(mx-cam.tx)/cam.k,wy=(my-cam.ty)/cam.k;cam.k=nk;cam.tx=mx-wx*nk;cam.ty=my-wy*nk;clampCam();redraw();},{passive:false});
+function tap(sx,sy){if(!G)return;const c=hexAtWorld((sx-cam.tx)/cam.k,(sy-cam.ty)/cam.k);
+  if(!c){sel=null;refresh();return;}
+  if(tool==='view'){sel=c;refresh();return;}
+  sel=c;act(tool,c);if(!G.over)refresh();}
+
+/* ---------- parties ---------- */
+function newGame(){genWorld((Math.random()*4294967296)>>>0);DOC={id:null,name:''};sel=null;tool='view';
+  addLog('Ton village s\'installe en terre tropicale. Trois cases produisent déjà : eau, nourriture, matériaux.');
+  showDoc();refresh();centerOnVillage();}
 function showDoc(){$('#docName').textContent=DOC.name?'· '+DOC.name:'';document.title='Atelier Civco'+(DOC.name?' — '+DOC.name:'');}
-function draw(){const c=$('#board'),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);}
 async function save(){if(!window.AtelierSync)return alert('Enregistrement indisponible.');
   if(!DOC.name){const n=prompt('Nom de la partie :','Partie du '+new Date().toLocaleDateString('fr-FR'));if(!n)return;DOC.name=n.trim();}
-  DOC.id=await AtelierSync.save(APP,DOC.id,DOC.name,G);showDoc();}
+  DOC.id=await AtelierSync.save(APP,DOC.id,DOC.name,G);showDoc();toast('Partie enregistrée.');}
+function load(id,data,inf){
+  if(!data||data.v!==1||!Array.isArray(data.cells)||data.cells.length!==W*H){alert('Cette partie n\'est pas lisible.');return;}
+  G=data;DOC={id,name:inf?inf.name:''};sel=null;tool='view';showDoc();refresh();centerOnVillage();}
 $('#bNew').onclick=()=>{if(confirm('Commencer une nouvelle partie ?'))newGame();};
 $('#bSave').onclick=save;
-$('#bOpen').onclick=()=>window.AtelierSync&&AtelierSync.openDialog({app:APP,title:'Mes parties',onOpen:(id,data,inf)=>{G=data;DOC={id,name:inf?inf.name:''};showDoc();draw();}});
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();}});
+$('#bOpen').onclick=()=>window.AtelierSync&&AtelierSync.openDialog({app:APP,title:'Mes parties',current:DOC.id,onOpen:load});
+$('#bEnd').onclick=()=>{if(!G||G.over)return;if(G.actions>0&&!confirm('Il te reste '+G.actions+' action'+(G.actions>1?'s':'')+'. Terminer le tour ?'))return;endTurn();};
+$('#ovNew').onclick=()=>newGame();
+$('#ovSee').onclick=()=>{G.overSeen=true;refresh();};
+document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+function panelMin(m){$('#panel').classList.toggle('min',m);$('#pTogI').setAttribute('d',m?'M15 6l-6 6 6 6':'M9 6l6 6-6 6');setTimeout(fit,0);}
+$('#pTog').onclick=()=>panelMin(!$('#panel').classList.contains('min'));
+document.querySelectorAll('.pbtn[data-open]').forEach(b=>b.onclick=()=>{panelMin(false);document.querySelectorAll('.pbody details').forEach(d=>d.open=d.id===b.dataset.open);});
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();return;}
+  if(e.ctrlKey||e.metaKey||e.altKey||/INPUT|TEXTAREA/.test((e.target||{}).tagName||''))return;
+  const k=e.key.toLowerCase();
+  if(k==='v')setTool('view');else if(k==='e')setTool('explore');else if(k==='a')setTool('build');else if(k==='r')setTool('regen');
+  else if(k==='escape'){if(tool!=='view')setTool('view');else{sel=null;refresh();}}
+  else if(k==='enter'&&G&&!G.over){e.preventDefault();$('#bEnd').click();}});
+window.addEventListener('resize',fit);
+if(window.ResizeObserver)new ResizeObserver(fit).observe($('#stage'));
 if(window.AtelierSync)$('#syncBadge').appendChild(AtelierSync.badge());
-newGame();
+if(window.matchMedia('(min-width:901px)').matches)panelMin(false);
+fit();newGame();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init({app:"civco",title:"Atelier Civco",sections:[{title:"Partie",keys:[["Ctrl + S","Enregistrer la partie"]]}]});</script>
+<script>AtelierHelp.init({app:"civco",title:"Atelier Civco",sections:[
+  {title:"Outils",keys:[["V","Observer une case"],["E","Explorer"],["A","Aménager"],["R","Régénérer"],["Échap","Annuler l'outil, puis désélectionner"]]},
+  {title:"Partie",keys:[["Entrée","Fin du tour"],["Ctrl + S","Enregistrer la partie"]]},
+  {title:"Plateau",keys:[["Glisser","Déplacer le plateau"],["Molette / pincer","Zoomer"]]}]});</script>
 </body>
 </html>
