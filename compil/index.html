@@ -44,6 +44,26 @@ body.t-addtext .shw,body.t-sign .shw,body.t-crop .shw{cursor:crosshair}
 aside{overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:0 12px 30px;order:3}
 #work{order:2}
 #tools{order:1}
+section h2.fold{cursor:pointer;user-select:none;display:flex;align-items:center;gap:5px}
+section h2 .tw{display:inline-block;font-size:8px;transition:transform .15s}
+section.closed>:not(h2){display:none!important}
+section.closed h2 .tw{transform:rotate(-90deg)}
+#asideTop{position:sticky;top:0;z-index:3;display:flex;justify-content:flex-end;background:var(--panel);margin:0 -12px;padding:4px 6px 2px;border-bottom:1px solid var(--line)}
+#asideTg{border:0;background:none;cursor:pointer;width:28px;height:24px;border-radius:6px;color:var(--mute);padding:0;display:grid;place-items:center}
+#asideTg:hover{background:var(--soft);color:var(--ink)}
+#asideTg svg{width:16px;height:16px;transition:transform .15s}
+#mini{display:none}
+body.amini main{grid-template-columns:86px 1fr 64px}
+body.amini aside{padding:0 6px 20px}
+body.amini aside>section{display:none!important}
+body.amini #asideTop{margin:0 -6px 6px;justify-content:center}
+body.amini #asideTg svg{transform:rotate(180deg)}
+body.amini #mini{display:flex;flex-direction:column;align-items:center;gap:4px}
+#mini .mlab{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin-top:8px}
+#mini .mb{width:40px;height:32px;border:1px solid var(--line);background:#fff;border-radius:7px;cursor:pointer;display:grid;place-items:center;color:var(--ink);padding:0;font:inherit;font-size:13px}
+#mini .mb:hover{background:var(--soft)}
+#mini .mb.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+#mini .mb svg{width:19px;height:19px}
 section h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:14px 0 7px;font-weight:600}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
@@ -131,6 +151,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <button class="tool" id="pFold" title="Replier / déplier la liste des pages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
   </div></nav>
   <aside>
+    <div id="asideTop"><button type="button" id="asideTg" title="Réduire le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l6 6-6 6M12 6l6 6-6 6"/></svg></button></div>
     <section id="annSec" hidden>
       <h2 id="annTitle">Texte ajouté</h2>
       <label id="nTxtBox">Texte<textarea id="nTxt" rows="3" style="font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px;resize:vertical"></textarea></label>
@@ -138,8 +159,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" id="nSign" type="button">Changer de signature…</button><button class="btn sm" id="nDel" type="button">Supprimer</button></div>
       <div class="muted" style="margin-top:6px">Glisse l’élément sur la page (Alt : en faire une copie), tire la poignée du coin pour l’agrandir · double-clic : modifier le texte ou refaire la signature · Suppr : supprimer</div>
     </section>
-    <section>
-      <h2>Feuille</h2>
+    <section data-sec="sheet">
+      <h2 class="fold"><span class="tw">▼</span>Feuille</h2>
       <label>Format<select id="oFmt">
         <option value="A4">A4 — 210 × 297 mm</option>
         <option value="A3">A3 — 297 × 420 mm</option>
@@ -154,8 +175,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="muted" style="margin-top:8px">Orientation</div>
       <div class="seg" id="oOr"><button data-v="auto" class="on">Auto</button><button data-v="portrait">Portrait</button><button data-v="paysage">Paysage</button></div>
     </section>
-    <section>
-      <h2>Pages par feuille</h2>
+    <section data-sec="nup">
+      <h2 class="fold"><span class="tw">▼</span>Pages par feuille</h2>
       <div class="seg" id="oN"><button data-v="1" class="on">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="6">6</button><button data-v="8">8</button></div>
       <div class="muted" style="margin-top:8px">Contenu des feuilles</div>
       <div class="seg" id="oMode"><button data-v="suite" class="on">Pages à la suite</button><button data-v="repeat">Répéter chaque page</button></div>
@@ -163,8 +184,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="muted" style="margin-top:8px">Ordre de lecture</div>
       <div class="seg" id="oOrder"><button data-v="z" class="on">En lignes →</button><button data-v="n">En colonnes ↓</button></div>
     </section>
-    <section>
-      <h2>Placement</h2>
+    <section data-sec="place">
+      <h2 class="fold"><span class="tw">▼</span>Placement</h2>
       <div class="g2">
         <label>Marge (mm)<input type="number" id="oM" min="0" step="1" value="5"></label>
         <label>Espacement (mm)<input type="number" id="oG" min="0" step="1" value="5"></label>
@@ -173,16 +194,31 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="seg" id="oFit"><button data-v="fit" class="on">Ajuster à la case</button><button data-v="real">Taille réelle si possible</button></div>
       <div class="muted" style="margin-top:4px">« Taille réelle » garde le 100 % quand la page tient dans sa case, et la réduit sinon.</div>
     </section>
-    <section>
-      <h2>Export</h2>
+    <section data-sec="export">
+      <h2 class="fold"><span class="tw">▼</span>Export</h2>
       <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oRed"> Réduire le poids du fichier</label>
       <div id="oRedBox" hidden style="margin-top:6px"><label>Poids maximum (Mo)<input type="number" id="oRedMb" min="0.1" step="0.1" value="2"></label>
         <div class="muted" style="margin-top:4px">Si le PDF dépasse ce poids, ses pages sont converties en images de plus en plus légères jusqu’à passer en dessous. S’il est déjà plus léger, il est gardé tel quel. Un PDF réduit ne se rouvre pas modifiable.</div></div>
     </section>
-    <section>
-      <h2>Résumé</h2>
+    <section data-sec="sum">
+      <h2 class="fold"><span class="tw">▼</span>Résumé</h2>
       <div class="muted" id="summary">Aucune page.</div>
     </section>
+    <div id="mini">
+      <div class="mlab">Orient.</div>
+<button type="button" class="mb" data-px="#oOr [data-v=auto]" title="Orientation automatique"><b>A</b></button>
+<button type="button" class="mb" data-px="#oOr [data-v=portrait]" title="Portrait"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="1.5"/></svg></button>
+<button type="button" class="mb" data-px="#oOr [data-v=paysage]" title="Paysage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="1.5"/></svg></button>
+      <div class="mlab">Par feuille</div>
+<button type="button" class="mb" data-px="#oN [data-v='1']" title="1 page par feuille"><b>1</b></button>
+<button type="button" class="mb" data-px="#oN [data-v='2']" title="2 pages par feuille"><b>2</b></button>
+<button type="button" class="mb" data-px="#oN [data-v='4']" title="4 pages par feuille"><b>4</b></button>
+<button type="button" class="mb" data-px="#oN [data-v='8']" title="8 pages par feuille"><b>8</b></button>
+      <div class="mlab">Export</div>
+<button type="button" class="mb" data-px="#oRed" title="Réduire le poids du fichier (poids maximum dans le panneau déplié)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v7M9 7l3 3 3-3M12 21v-7M9 17l3-3 3 3M4 12h16"/></svg></button>
+<button type="button" class="mb" data-px="#bPrint" title="Imprimer…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/></svg></button>
+<button type="button" class="mb" data-px="#bPdf" title="Exporter PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg></button>
+    </div>
   </aside>
   <div id="work">
     <div class="bar" id="pgBar">
@@ -995,6 +1031,22 @@ $('#sheets').addEventListener('click',e=>{if(e.target.closest('.an'))return;
 document.addEventListener('keydown',e=>{if($('#edDlg').open||$('#sgDlg').open||/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)||e.ctrlKey||e.metaKey||e.altKey)return;
   const m={v:'select',t:'text'}[e.key.toLowerCase()];if(m)setTool(m);});
 setTool('select');
+/* ---------- panneau de droite : rubriques repliables, panneau réduit en pictos (comme Vecto) ---------- */
+(function(){
+  let st={};try{st=JSON.parse(localStorage.getItem('atelierCompil.rub'))||{};}catch(e){}
+  document.querySelectorAll('aside section[data-sec]').forEach(sec=>{const k=sec.dataset.sec;if(st[k]===false)sec.classList.add('closed');
+    sec.querySelector('h2').addEventListener('click',()=>{sec.classList.toggle('closed');st[k]=!sec.classList.contains('closed');try{localStorage.setItem('atelierCompil.rub',JSON.stringify(st));}catch(e){}});});
+  const set=(on,save)=>{document.body.classList.toggle('amini',on);$('#asideTg').title=on?'Ouvrir le panneau':'Réduire le panneau';if(save)try{localStorage.setItem('atelierCompil.mini',on?'1':'0');}catch(e){}};
+  try{set(localStorage.getItem('atelierCompil.mini')==='1',false);}catch(e){}
+  $('#asideTg').onclick=()=>set(!document.body.classList.contains('amini'),true);
+  const mini=$('#mini');
+  const sync=()=>mini.querySelectorAll('[data-px]').forEach(b=>{const t=document.querySelector(b.dataset.px);if(!t)return;b.classList.toggle('on',t.type==='checkbox'?t.checked:t.classList.contains('on'));b.disabled=!!t.disabled;});
+  mini.addEventListener('click',e=>{const b=e.target.closest('[data-px]');if(!b)return;const t=document.querySelector(b.dataset.px);if(!t||t.disabled)return;
+    if(t.type==='checkbox'){t.checked=!t.checked;t.dispatchEvent(new Event('change',{bubbles:true}));}else t.click();setTimeout(sync,0);});
+  let pend=false;const later=()=>{if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;sync();});};
+  new MutationObserver(ms=>{if(ms.some(m=>!mini.contains(m.target)))later();}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','disabled']});
+  document.addEventListener('change',sync);sync();
+})();
 renderPages();renderSheets();
 </script>
 <script src="../lib/help.js"></script>
