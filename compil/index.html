@@ -179,13 +179,13 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     </section>
   </aside>
   <div id="work">
-    <div class="bar">
+    <div class="bar" id="pgBar">
       <h2 id="pgHead" style="cursor:pointer;user-select:none" title="Replier / déplier les pages"><span id="pgTw" style="display:inline-block;font-size:9px;transition:transform .15s">▼</span> <span id="pgTitle">Pages</span></h2>
       <button class="btn sm" id="pAll">Tout sélectionner</button>
       <span class="muted" id="pgHelp">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : modifier la page</b></span>
     </div>
     <div id="pages"><div id="empty">Glisse ici des PDF ou des images (JPG, PNG),<br>ou utilise « Ajouter des fichiers… ».</div></div>
-    <div class="bar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><span class="muted" id="toolHint"></span><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi Ctrl + molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
+    <div class="bar" id="shBar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><span class="muted" id="toolHint"></span><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi Ctrl + molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
     <div id="sheets"></div>
   </div>
 </main>
@@ -838,9 +838,11 @@ function setZoom(z,save){ZOOM.z=Math.max(1,Math.min(6,z));document.documentEleme
 $('#zoomR').addEventListener('input',e=>setZoom(+e.target.value,true));
 $('#sheets').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();setZoom(ZOOM.z*(e.deltaY<0?1.15:1/1.15),true);},{passive:false});
 try{const z=+localStorage.getItem('atelierCompil.zoom');if(z)setZoom(z,false);}catch(e){}
+/* les deux barres restent visibles en haut quand on fait défiler : celle des feuilles se cale sous celle des pages */
+new ResizeObserver(()=>{$('#shBar').style.top=$('#pgBar').offsetHeight+'px';}).observe($('#pgBar'));
 /* pages : repliables (état retenu) */
 function setPgFold(f,save){$('#pages').style.display=f?'none':'';$('#pgHelp').style.display=f?'none':'';$('#pgTw').style.transform=f?'rotate(-90deg)':'';if(save)try{localStorage.setItem('atelierCompil.fold',f?'1':'0');}catch(e){}}
-$('#pgHead').addEventListener('click',()=>setPgFold($('#pages').style.display!=='none',true));
+$('#pgHead').addEventListener('click',()=>{const f=$('#pages').style.display!=='none';setPgFold(f,true);if(!f)$('#work').scrollTo({top:0,behavior:'smooth'});});
 try{setPgFold(localStorage.getItem('atelierCompil.fold')==='1',false);}catch(e){}
 /* ---------- PDF modifiable : l'état de l'Atelier (fichiers sources, pages, réglages, textes, signatures) est joint au PDF exporté ---------- */
 async function attachState(out){
