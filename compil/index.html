@@ -174,6 +174,12 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="muted" style="margin-top:4px">« Taille réelle » garde le 100 % quand la page tient dans sa case, et la réduit sinon.</div>
     </section>
     <section>
+      <h2>Export</h2>
+      <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oRed"> Réduire le poids du fichier</label>
+      <div id="oRedBox" hidden style="margin-top:6px"><label>Poids maximum (Mo)<input type="number" id="oRedMb" min="0.1" step="0.1" value="2"></label>
+        <div class="muted" style="margin-top:4px">Si le PDF dépasse ce poids, ses pages sont converties en images de plus en plus légères jusqu’à passer en dessous. S’il est déjà plus léger, il est gardé tel quel. Un PDF réduit ne se rouvre pas modifiable.</div></div>
+    </section>
+    <section>
       <h2>Résumé</h2>
       <div class="muted" id="summary">Aucune page.</div>
     </section>
@@ -256,7 +262,7 @@ const $=s=>document.querySelector(s);
 const PT=72/25.4;
 const FORMATS={A4:[210,297],A3:[297,420],A5:[148,210],'30x40':[300,400]};
 pdfjsLib.GlobalWorkerOptions.workerSrc='../lib/pdf.worker.min.js';
-const S={files:new Map(),pages:[],sel:new Set(),anchor:null,opt:{fmt:'A4',w:210,h:297,or:'auto',n:1,mode:'suite',order:'z',m:5,g:5,fit:'fit'}};
+const S={files:new Map(),pages:[],sel:new Set(),anchor:null,opt:{fmt:'A4',w:210,h:297,or:'auto',n:1,mode:'suite',order:'z',m:5,g:5,fit:'fit',red:false,redMb:2}};
 let uid=1;
 const ZOOM={z:1,t:0};
 const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;return new Promise(r=>setTimeout(r,20));};
@@ -513,7 +519,7 @@ async function rasterEmb(p){
   const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));const OUT=CUR_OUT;const img=await OUT.embedJpg(await b.arrayBuffer());
   return{kind:'img',obj:img,rot:p.srcRot||0};
 }
-let CUR_OUT=null;
+let CUR_OUT=null,NOATT=false;
 async function buildPDF(){
   const {PDFDocument,degrees}=PDFLib;
   const {L,sheets}=buildSheets();const sl=slots(L);
@@ -586,17 +592,40 @@ async function buildPDF(){
       if(e.kind==='page')pg.drawPage(e.obj,opts);else pg.drawImage(e.obj,opts);
     }
   }
-  try{await attachState(out);}catch(e){console.error(e);}
+  if(!NOATT)try{await attachState(out);}catch(e){console.error(e);}
   out.setTitle('Compilation');out.setProducer("Atelier PDF");
   return await out.save();
 }
 const stamp=()=>new Date().toISOString().slice(0,10);
+/* pages du PDF converties en images JPEG (dpi, qualité) : pour alléger le fichier */
+async function rasterPdf(bytes,dpi,q){
+  const doc=await pdfjsLib.getDocument({data:bytes.slice(0)}).promise;const out=await PDFLib.PDFDocument.create();
+  try{for(let i=1;i<=doc.numPages;i++){const page=await doc.getPage(i);const v1=page.getViewport({scale:1});const v=page.getViewport({scale:dpi/72});
+    const c=document.createElement('canvas');c.width=Math.ceil(v.width);c.height=Math.ceil(v.height);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+    await page.render({canvasContext:x,viewport:v}).promise;const b=await new Promise(r=>c.toBlob(r,'image/jpeg',q));const img=await out.embedJpg(await b.arrayBuffer());
+    const pg=out.addPage([v1.width,v1.height]);pg.drawImage(img,{x:0,y:0,width:v1.width,height:v1.height});}}
+  finally{doc.destroy();}
+  out.setTitle('Compilation');out.setProducer('Atelier PDF');return await out.save();
+}
+const mo=n=>(n/1048576).toFixed(n<1048576?2:1).replace('.',',')+' Mo';
 async function exportPDF(){
-  if(!S.pages.length)return;
-  try{const bytes=await buildPDF();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));a.download=`compil-${stamp()}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
-  catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
+  if(!S.pages.length)return;let note='';
+  try{
+    let bytes=await buildPDF();
+    if(S.opt.red){const lim=Math.max(0.05,+S.opt.redMb||2)*1048576,orig=bytes.length;
+      if(orig>lim){
+        NOATT=true;let b2;try{b2=await buildPDF();}finally{NOATT=false;}
+        if(b2.length<=lim){bytes=b2;note='PDF allégé : '+mo(b2.length)+' au lieu de '+mo(orig)+' (sans les pièces jointes qui le rendent modifiable).';}
+        else{let best=b2,fit=0;
+          for(const [dpi,q] of [[200,.85],[150,.8],[120,.72],[100,.65],[85,.55],[72,.45],[60,.38],[50,.3]]){await busy(`Réduction du poids — pages à ${dpi} dpi…`);const r=await rasterPdf(b2,dpi,q);if(r.length<best.length)best=r;if(r.length<=lim){fit=dpi;break;}}
+          bytes=best;note=fit?'PDF allégé : '+mo(bytes.length)+' au lieu de '+mo(orig)+' (pages converties en images à '+fit+' dpi).':'Impossible de descendre sous '+mo(lim)+' : la version la plus légère ('+mo(bytes.length)+') a été enregistrée.';}
+      }
+    }
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));a.download=`compil-${stamp()}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
-  if(RASTERED)setTimeout(()=>alert(RASTERED+' page'+(RASTERED>1?'s':'')+' de ce PDF n’a pas pu être recopiée telle quelle (fichier un peu abîmé) : '+(RASTERED>1?'elles sont passées':'elle est passée')+' en image haute définition (300 dpi). Le reste est intact.'),50);
+  const msgs=[];if(RASTERED)msgs.push(RASTERED+' page'+(RASTERED>1?'s':'')+' de ce PDF n’a pas pu être recopiée telle quelle (fichier un peu abîmé) : '+(RASTERED>1?'elles sont passées':'elle est passée')+' en image haute définition (300 dpi).');if(note)msgs.push(note);
+  if(msgs.length)setTimeout(()=>alert(msgs.join('\n\n')),50);
 }
 async function printPDF(){
   if(!S.pages.length)return;
@@ -837,6 +866,9 @@ function segBind(id,key,num){
   el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(S.opt[key])===b.dataset.v));
   el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.opt[key]=num?+b.dataset.v:b.dataset.v;el.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));saveOpt();renderSheets();});
 }
+$('#oRed').checked=!!S.opt.red;$('#oRedBox').hidden=!S.opt.red;$('#oRedMb').value=S.opt.redMb||2;
+$('#oRed').onchange=e=>{S.opt.red=e.target.checked;$('#oRedBox').hidden=!S.opt.red;saveOpt();};
+$('#oRedMb').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0){S.opt.redMb=v;saveOpt();}});
 function syncOptUI(){[['oOr','or'],['oN','n'],['oMode','mode'],['oOrder','order'],['oFit','fit']].forEach(([id,k])=>$('#'+id).querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(S.opt[k])===b.dataset.v)));
   $('#oFmt').value=S.opt.fmt;$('#customBox').hidden=S.opt.fmt!=='custom';$('#oW').value=S.opt.w;$('#oH').value=S.opt.h;$('#oM').value=S.opt.m;$('#oG').value=S.opt.g;}
 segBind('oOr','or');segBind('oN','n',true);segBind('oMode','mode');segBind('oOrder','order');segBind('oFit','fit');
