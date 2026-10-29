@@ -23,7 +23,17 @@ header h1 span{color:var(--acc)}
 .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
 .btn.accent{background:var(--acc);color:#fff;border-color:var(--acc)}
 .btn.sm{padding:3px 7px;font-size:12px}
-main{flex:1;display:grid;grid-template-columns:290px 1fr;min-height:0}
+main{flex:1;display:grid;grid-template-columns:86px 290px 1fr;min-height:0}
+#tools{background:var(--panel);border-right:1px solid var(--line);padding:8px 0;overflow-y:auto}
+#tools .tgrid{display:grid;grid-template-columns:36px 36px;gap:3px;justify-content:center;align-content:start}
+.tool{width:36px;height:36px;border:1px solid transparent;border-radius:8px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);padding:0}
+.tool:hover{background:var(--soft)}
+.tool.on{background:var(--ink);color:#fff}
+.tool:disabled{opacity:.35;cursor:default;background:none}
+.tool svg{width:20px;height:20px}
+.tsep{grid-column:1 / -1;height:1px;background:var(--line);margin:4px 6px}
+body:not(.t-text) .shw .textLayer{pointer-events:none;user-select:none}
+body.t-addtext .shw,body.t-sign .shw,body.t-crop .shw{cursor:crosshair}
 aside{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:0 12px 30px}
 section h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:14px 0 7px;font-weight:600}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -61,13 +71,16 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
 #empty{border:2px dashed var(--line);border-radius:12px;padding:40px;text-align:center;color:var(--mute);width:100%}
 #sheets{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
 .sh{display:flex;flex-direction:column;align-items:center;gap:4px}
+.shw{position:relative;line-height:0}
+.shw .tw{position:absolute;overflow:hidden}
+.shw .tw .textLayer{z-index:1}
 .sh canvas{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18)}
 .sh span{font-size:11px;color:var(--mute)}
 #busy{position:fixed;inset:0;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-weight:600;z-index:60}
 #busy[hidden]{display:none}
 #dropAll{position:fixed;inset:0;background:rgba(30,136,255,.12);border:4px dashed var(--sel);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:var(--sel);z-index:50;pointer-events:none}
 #dropAll[hidden]{display:none}
-@media (max-width:820px){main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}}
+@media (max-width:820px){main{grid-template-columns:1fr}#tools .tgrid{grid-template-columns:repeat(auto-fill,36px);justify-content:start;padding:0 8px}aside{border-right:0;border-bottom:1px solid var(--line)}}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
@@ -90,6 +103,24 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn accent" id="bPdf">Exporter PDF</button>
 </header>
 <main>
+  <nav id="tools"><div class="tgrid">
+<button class="tool" data-tool="select" title="Sélection : clic sur une vignette pour la choisir · double-clic sur une page : la modifier (V)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor" stroke="none"/></svg></button>
+<button class="tool" data-tool="text" title="Sélectionner du texte sur les feuilles pour le copier (T)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6M9 20h6M12 4v16"/><rect x="4" y="9" width="16" height="6" rx="1" fill="currentColor" fill-opacity=".18" stroke="none"/></svg></button>
+<button class="tool" data-tool="addtext" title="Ajouter un texte : clique sur la page à l’endroit voulu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h11v2M9.5 5v13M7 18h5"/><path d="M18 13v7M14.5 16.5h7"/></svg></button>
+<button class="tool" data-tool="sign" title="Signer : clique sur la page à l’endroit voulu (signature dessinée ou importée, mémorisée)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16c2.5-5 4.5-8 5.5-6.5S7 16 9.5 16s3.5-7 5.5-5.5S13.5 15 16 15s3-2 5-2"/><path d="M3 20h18"/></svg></button>
+<button class="tool" data-tool="crop" title="Rogner et niveaux : clique sur une page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14h14"/><path d="M2 6h14v14"/></svg></button>
+    <div class="tsep"></div>
+<button class="tool" id="pRotL" title="Pivoter à gauche les pages choisies"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.7"/><path d="M4 3v5h5"/></svg></button>
+<button class="tool" id="pRotR" title="Pivoter à droite les pages choisies"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 3v5h-5"/></svg></button>
+<button class="tool" id="pDup" title="Dupliquer les pages choisies"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="11" height="13" rx="1.5"/><rect x="9" y="8" width="11" height="13" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
+<button class="tool" id="pDel" title="Supprimer les pages choisies (Suppr)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13M10.5 11v5.5M13.5 11v5.5"/></svg></button>
+<button class="tool" id="pBlank" title="Ajouter une page blanche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M12 11v6M9 14h6"/></svg></button>
+<button class="tool" id="pText" title="Copier le texte des pages choisies (ou de tout le document)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="12" height="15" rx="1.5"/><path d="M11 7h6M11 10h6M11 13h4"/><path d="M5 7v13a1 1 0 0 0 1 1h10"/></svg></button>
+    <div class="tsep"></div>
+<button class="tool" id="zIn" title="Agrandir les feuilles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg></button>
+<button class="tool" id="zOut" title="Réduire les feuilles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M7.5 10.5h6"/></svg></button>
+<button class="tool" id="pFold" title="Replier / déplier la liste des pages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+  </div></nav>
   <aside>
     <section>
       <h2>Feuille</h2>
@@ -135,16 +166,10 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <div class="bar">
       <h2 id="pgHead" style="cursor:pointer;user-select:none" title="Replier / déplier les pages"><span id="pgTw" style="display:inline-block;font-size:9px;transition:transform .15s">▼</span> <span id="pgTitle">Pages</span></h2>
       <button class="btn sm" id="pAll">Tout sélectionner</button>
-      <button class="btn sm" id="pRotL" title="Pivoter à gauche">⟲ Pivoter</button>
-      <button class="btn sm" id="pRotR" title="Pivoter à droite">⟳ Pivoter</button>
-      <button class="btn sm" id="pDup">Dupliquer</button>
-      <button class="btn sm" id="pBlank">+ Page blanche</button>
-      <button class="btn sm" id="pDel">Supprimer</button>
-      <button class="btn sm" id="pText" title="Copie le texte des pages sélectionnées (ou de tout le document) pour le coller ailleurs">Copier le texte</button>
-      <span class="muted" id="pgHelp">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : rogner, copier le texte, annoter (texte, signature)</b></span>
+      <span class="muted" id="pgHelp">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : modifier la page</b></span>
     </div>
     <div id="pages"><div id="empty">Glisse ici des PDF ou des images (JPG, PNG),<br>ou utilise « Ajouter des fichiers… ».</div></div>
-    <div class="bar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi Ctrl + molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
+    <div class="bar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><span class="muted" id="toolHint"></span><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi Ctrl + molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
     <div id="sheets"></div>
   </div>
 </main>
@@ -417,7 +442,24 @@ async function hiVis(p,px){
 async function sheetHi(c){const sh=c._sh;if(!sh||sh.gen!==SHGEN)return;const {pages,sl,scale}=sh;const m=new Map();
   for(let i=0;i<pages.length;i++){const p=pages[i],cell=sl[i];if(!cell||m.has(p))continue;const q=placeIn(p,cell);const px=Math.max(q.w,q.h)*scale;
     try{const h=await hiVis(p,px);if(h)m.set(p,h);}catch(e){console.error(e);}if(sh.gen!==SHGEN||!c.isConnected)return;}
-  if(m.size)drawSheet(c,p=>m.get(p));}
+  if(m.size)drawSheet(c,p=>m.get(p));
+  sheetText(c);}
+/* texte sélectionnable directement sur les feuilles (pages PDF) */
+async function sheetText(c){const sh=c._sh,ov=c._ov;if(!sh||!ov)return;ov.querySelectorAll('.tw').forEach(x=>x.remove());
+  const disp=parseFloat(c.style.width)/sh.L.W;
+  for(let i=0;i<sh.pages.length;i++){const p=sh.pages[i],cell=sh.sl[i];if(!cell||p.blank)continue;const f=S.files.get(p.fileId);if(!f||f.type!=='pdf')continue;
+    try{const page=await f.doc.getPage(p.index+1);const tc=await page.getTextContent();if(!tc.items.some(t=>t.str&&t.str.trim()))continue;if(sh.gen!==SHGEN||!c.isConnected)return;
+      const q=placeIn(p,cell),r=effRot(p);const vp=page.getViewport({scale:disp*q.s/PT,rotation:r});const cd=toDisp(cropOf(p),r);
+      const w=document.createElement('div');w.className='tw';w.style.left=(q.cx-q.w/2)*disp+'px';w.style.top=(q.cy-q.h/2)*disp+'px';w.style.width=q.w*disp+'px';w.style.height=q.h*disp+'px';
+      const tl=document.createElement('div');tl.className='textLayer';tl.style.left=(-cd.l*vp.width)+'px';tl.style.top=(-cd.t*vp.height)+'px';tl.style.setProperty('--scale-factor',vp.scale);
+      w.appendChild(tl);ov.appendChild(w);w._p=p;
+      await pdfjsLib.renderTextLayer({textContentSource:tc,container:tl,viewport:vp,textDivs:[]}).promise;}catch(e){console.error(e);}}
+}
+/* double-clic sur une page d'une feuille : ouvrir la page (annoter, signer, rogner) */
+$('#sheets').addEventListener('dblclick',e=>{const iw=e.target.closest('.shw');if(!iw)return;const c=iw.querySelector('canvas');const sh=c&&c._sh;if(!sh)return;
+  if(getSelection&&String(getSelection()).trim()&&e.target.closest('.textLayer'))return;
+  const r=c.getBoundingClientRect(),disp=r.width/sh.L.W,mx=(e.clientX-r.left)/disp,my=(e.clientY-r.top)/disp;
+  for(let i=0;i<sh.pages.length;i++){const cell=sh.sl[i];if(!cell)continue;if(mx>=cell.x&&mx<=cell.x+cell.w&&my>=cell.y&&my<=cell.y+cell.h){openEditor(sh.pages[i],'ann');return;}}});
 function _renderSheets(){
   SHGEN++;
   const box=$('#sheets');box.innerHTML='';
@@ -435,7 +477,7 @@ function _renderSheets(){
     const c=document.createElement('canvas');c.width=Math.round(L.W*scale);c.height=Math.round(L.H*scale);
     const disp=Math.min(SZ/L.W,SZ/L.H);c.style.width=Math.round(L.W*disp)+'px';c.style.height=Math.round(L.H*disp)+'px';
     c._sh={pages,L,sl,scale,gen:SHGEN};drawSheet(c,vis);SHIO.observe(c);
-    const w=document.createElement('div');w.className='sh';w.appendChild(c);
+    const w=document.createElement('div');w.className='sh';const iw=document.createElement('div');iw.className='shw';iw.appendChild(c);w.appendChild(iw);c._ov=iw;
     const s=document.createElement('span');s.textContent='Feuille '+(k+1);w.appendChild(s);box.appendChild(w);
   });
   if(sheets.length>shown.length){const m=document.createElement('div');m.className='muted';m.textContent='… et '+(sheets.length-shown.length)+' autres feuilles.';box.appendChild(m);}
@@ -544,7 +586,7 @@ const ED={p:null,base:null,crop:null,lv:null,hist:null,k:1,dw:0,dh:0};
 // rognage stocké sur la page non tournée ; affichage dans le sens où on voit la page
 function toDisp(u,r){return r===90?{l:u.b,t:u.l,r:u.t,b:u.r}:r===180?{l:u.r,t:u.b,r:u.l,b:u.t}:r===270?{l:u.t,t:u.r,r:u.b,b:u.l}:{...u};}
 function fromDisp(d,r){return r===90?{b:d.l,l:d.t,t:d.r,r:d.b}:r===180?{r:d.l,b:d.t,l:d.r,t:d.b}:r===270?{t:d.l,r:d.t,b:d.r,l:d.b}:{...d};}
-async function openEditor(p){
+async function openEditor(p,mode){
   if(p.blank)return;
   await busy('Préparation de la page…');
   const f=S.files.get(p.fileId);let base;
@@ -552,7 +594,7 @@ async function openEditor(p){
   else{const k=Math.min(1,1400/Math.max(f.img.naturalWidth,f.img.naturalHeight));base=document.createElement('canvas');base.width=Math.round(f.img.naturalWidth*k);base.height=Math.round(f.img.naturalHeight*k);base.getContext('2d').drawImage(f.img,0,0,base.width,base.height);}
   await busy();
   ED.p=p;ED.base=base;const r=effRot(p);ED.r=r;
-  ED.crop=toDisp(cropOf(p),r);ED.ann=(p.ann||[]).map(a=>({...a}));ED.asel=null;ED.tl=null;edSetMode('crop');ED.lv=Object.assign({black:0,white:255,gamma:1,gray:false},p.levels||{});
+  ED.crop=toDisp(cropOf(p),r);ED.ann=(p.ann||[]).map(a=>({...a}));ED.asel=null;ED.tl=null;edSetMode(mode||'crop');ED.lv=Object.assign({black:0,white:255,gamma:1,gray:false},p.levels||{});
   // histogramme (luminance)
   const d=base.getContext('2d',{willReadFrequently:true}).getImageData(0,0,base.width,base.height).data;const h=new Uint32Array(256);for(let i=0;i<d.length;i+=16)h[Math.round(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])]++;ED.hist=h;
   $('#edTitle').textContent='Modifier la page '+(S.pages.indexOf(p)+1)+(f?' — '+f.name:'');
@@ -778,6 +820,29 @@ try{const z=+localStorage.getItem('atelierCompil.zoom');if(z)setZoom(z,false);}c
 function setPgFold(f,save){$('#pages').style.display=f?'none':'';$('#pgHelp').style.display=f?'none':'';$('#pgTw').style.transform=f?'rotate(-90deg)':'';if(save)try{localStorage.setItem('atelierCompil.fold',f?'1':'0');}catch(e){}}
 $('#pgHead').addEventListener('click',()=>setPgFold($('#pages').style.display!=='none',true));
 try{setPgFold(localStorage.getItem('atelierCompil.fold')==='1',false);}catch(e){}
+/* ---------- barre d'outils ---------- */
+const TH={select:'Clic sur une vignette pour la choisir · double-clic sur une page pour la modifier',text:'Surligne du texte sur les feuilles, puis Ctrl+C',addtext:'Clique sur une page à l’endroit où mettre le texte',sign:'Clique sur une page à l’endroit où signer',crop:'Clique sur une page pour la rogner ou régler ses niveaux'};
+let TOOL='select';
+function setTool(t){TOOL=t;document.querySelectorAll('#tools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
+  ['select','text','addtext','sign','crop'].forEach(k=>document.body.classList.toggle('t-'+k,k===t));$('#toolHint').textContent=TH[t]||'';}
+document.querySelectorAll('#tools [data-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
+$('#zIn').onclick=()=>setZoom(ZOOM.z*1.25,true);$('#zOut').onclick=()=>setZoom(ZOOM.z/1.25,true);
+$('#pFold').onclick=()=>$('#pgHead').click();
+/* page et point (dans la page non tournée) sous la souris, sur une feuille */
+function sheetHit(e){const iw=e.target.closest('.shw');if(!iw)return null;const c=iw.querySelector('canvas');const sh=c&&c._sh;if(!sh)return null;
+  const r=c.getBoundingClientRect(),disp=r.width/sh.L.W,mx=(e.clientX-r.left)/disp,my=(e.clientY-r.top)/disp;
+  for(let i=0;i<sh.pages.length;i++){const cell=sh.sl[i];if(!cell)continue;const p=sh.pages[i];const q=placeIn(p,cell);
+    if(mx>=q.cx-q.w/2&&mx<=q.cx+q.w/2&&my>=q.cy-q.h/2&&my<=q.cy+q.h/2){const rr=effRot(p),cd=toDisp(cropOf(p),rr);
+      const uc=(mx-(q.cx-q.w/2))/q.w,vc=(my-(q.cy-q.h/2))/q.h;const u=cd.l+uc*(1-cd.l-cd.r),v=cd.t+vc*(1-cd.t-cd.b);const [fx,fy]=dispToAnn(u,v,rr);return{p,fx,fy};}}
+  return null;}
+$('#sheets').addEventListener('click',async e=>{if(!['addtext','sign','crop'].includes(TOOL))return;const h=sheetHit(e);if(!h||h.p.blank)return;
+  if(TOOL==='crop'){openEditor(h.p,'crop');return;}
+  await openEditor(h.p,'ann');
+  if(TOOL==='addtext'){edAddAnn({type:'text',fx:h.fx,fy:h.fy,fs:12,col:'#000000',txt:'Texte'});setTimeout(()=>{$('#aTxt').focus();$('#aTxt').select();},30);}
+  else{const s0=signSaved();const put=src=>{const pw=ED.r%180?ED.p.h:ED.p.w;edAddAnn({type:'sign',fx:h.fx,fy:h.fy,sw:Math.min(50*PT,pw*0.4),src});};if(s0)put(s0);else openSign(put);}});
+document.addEventListener('keydown',e=>{if($('#edDlg').open||$('#sgDlg').open||/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)||e.ctrlKey||e.metaKey||e.altKey)return;
+  const m={v:'select',t:'text'}[e.key.toLowerCase()];if(m)setTool(m);});
+setTool('select');
 renderPages();renderSheets();
 </script>
 <script src="../lib/help.js"></script>
