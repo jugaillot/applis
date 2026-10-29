@@ -136,7 +136,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <label id="nTxtBox">Texte<textarea id="nTxt" rows="3" style="font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px;resize:vertical"></textarea></label>
       <div class="g2" style="margin-top:6px"><label><span id="nSizeLab">Taille (pt)</span><input type="number" id="nSize" min="1" step="1"></label><label id="nColBox">Couleur<input type="color" id="nCol" value="#000000" style="height:30px;padding:0"></label></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" id="nSign" type="button">Changer de signature…</button><button class="btn sm" id="nDel" type="button">Supprimer</button></div>
-      <div class="muted" style="margin-top:6px">Glisse l’élément sur la page, tire la poignée du coin pour l’agrandir · double-clic : modifier le texte ou refaire la signature · Suppr : supprimer</div>
+      <div class="muted" style="margin-top:6px">Glisse l’élément sur la page (Alt : en faire une copie), tire la poignée du coin pour l’agrandir · double-clic : modifier le texte ou refaire la signature · Suppr : supprimer</div>
     </section>
     <section>
       <h2>Feuille</h2>
@@ -899,9 +899,9 @@ $('#nSign').onclick=()=>openSign(src=>{if(ANSEL&&ANSEL.a.type==='sign'){ANSEL.a.
 (function(){
   const box=$('#sheets');let dr=null;
   box.addEventListener('pointerdown',e=>{const el=e.target.closest('.an');if(!el||TOOL==='text')return;e.preventDefault();e.stopPropagation();
-    const a=el._a,g=el._g;const now=Date.now();if(LASTAN&&LASTAN.a===a&&now-LASTAN.t<450&&!e.target.closest('.rs')){LASTAN=null;e.preventDefault();e.stopPropagation();setTimeout(()=>annEdit(el),0);return;}LASTAN={a,t:now};ANSEL={p:el._p,a};const wr=el.parentNode.getBoundingClientRect();
+    const a=el._a,g=el._g;const now=Date.now();if(LASTAN&&LASTAN.a===a&&now-LASTAN.t<450&&!e.target.closest('.rs')){LASTAN=null;e.preventDefault();e.stopPropagation();setTimeout(()=>annEdit(el),0);return;}LASTAN={a,t:now};let a2=a;if(e.altKey&&!e.target.closest('.rs')){a2={...a};el._p.ann.push(a2);}ANSEL={p:el._p,a:a2};const wr=el.parentNode.getBoundingClientRect();
     const [u,v]=annToDisp(a.fx,a.fy,g.r);const uc=(u-g.cd.l)/(1-g.cd.l-g.cd.r),vc=(v-g.cd.t)/(1-g.cd.t-g.cd.b);const cx=wr.left+uc*wr.width,cy=wr.top+vc*wr.height;
-    dr={a,g,rs:!!e.target.closest('.rs'),x:e.clientX,y:e.clientY,uc,vc,W:wr.width,H:wr.height,cx,cy,d0:Math.hypot(e.clientX-cx,e.clientY-cy)||1,fs:a.fs,sw:a.sw,moved:false};
+    dr={a:a2,g,rs:!!e.target.closest('.rs'),x:e.clientX,y:e.clientY,uc,vc,W:wr.width,H:wr.height,cx,cy,d0:Math.hypot(e.clientX-cx,e.clientY-cy)||1,fs:a.fs,sw:a.sw,moved:false};
     box.setPointerCapture(e.pointerId);refreshAnn();});
   box.addEventListener('pointermove',e=>{if(!dr)return;const a=dr.a,g=dr.g;dr.moved=true;
     if(dr.rs){const f=Math.max(0.1,Math.hypot(e.clientX-dr.cx,e.clientY-dr.cy)/dr.d0);if(a.type==='text')a.fs=Math.max(2,dr.fs*f);else a.sw=Math.max(5,dr.sw*f);}

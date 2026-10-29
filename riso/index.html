@@ -710,7 +710,11 @@ $('#resetInks').onclick=()=>{if(!confirm('Revenir à la liste d’encres d’ori
 const cv=$('#cv');let drag=null;
 function toMM(e){const r=cv.getBoundingClientRect(),[pw,ph]=pageSize();return{x:(e.clientX-r.left)/r.width*pw,y:(e.clientY-r.top)/r.height*ph};}
 function hitGroup(p){for(let k=S.groups.length-1;k>=0;k--){const g=S.groups[k];if(!S.layers.some(l=>l.groupId===g.id))continue;const a=-g.rot*Math.PI/180;let dx=p.x-g.cx,dy=p.y-g.cy;const x=(dx*Math.cos(a)-dy*Math.sin(a))/g.scale,y=(dx*Math.sin(a)+dy*Math.cos(a))/g.scale;if(Math.abs(x)<=g.w/2&&Math.abs(y)<=g.h/2)return g;}return null;}
-cv.addEventListener('pointerdown',e=>{const p=toMM(e);const hit=hitGroup(p);if(hit&&hit.id!==S.sel){S.sel=hit.id;renderGroups();}const g=hit||null;if(!g)return;drag={g,x:p.x,y:p.y};cv.setPointerCapture(e.pointerId);});
+/* Alt + glisser : copie du dessin (avec ses calques), comme dans Illustrator */
+function dupGroup(g){const g2={...g,id:nid('g'),name:g.name+' (copie)'};S.groups.splice(S.groups.indexOf(g)+1,0,g2);
+  const ls=S.layers.filter(l=>l.groupId===g.id).map(l=>({...l,id:nid('l'),groupId:g2.id,cache:null}));let last=-1;S.layers.forEach((l,i)=>{if(l.groupId===g.id)last=i;});S.layers.splice(last+1,0,...ls);return g2;}
+cv.addEventListener('pointerdown',e=>{const p=toMM(e);let hit=hitGroup(p);if(hit&&e.altKey){hit=dupGroup(hit);S.sel=hit.id;renderSide();}else if(hit&&hit.id!==S.sel){S.sel=hit.id;renderGroups();}const g=hit||null;if(!g)return;drag={g,x:p.x,y:p.y};cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('mousemove',e=>{if(drag)return;cv.style.cursor=e.altKey&&hitGroup(toMM(e))?'copy':'';});
 cv.addEventListener('pointermove',e=>{if(!drag)return;const p=toMM(e);drag.g.cx+=p.x-drag.x;drag.g.cy+=p.y-drag.y;drag.x=p.x;drag.y=p.y;syncPlacement();scheduleRender();});
 const endDrag=()=>{drag=null;};cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
 document.addEventListener('keydown',e=>{
