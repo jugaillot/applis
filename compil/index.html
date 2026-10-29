@@ -392,7 +392,34 @@ function updateButtons(){
 /* ---------- aperçu des feuilles ---------- */
 let shT=0;
 function renderSheets(){clearTimeout(shT);shT=setTimeout(_renderSheets,30);}
+/* dessin d'une feuille ; src(p) donne l'image de la page (vignette, ou version nette pour l'aperçu agrandi) */
+let SHIO=null,SHGEN=0;
+function drawSheet(c,src){const {pages,L,sl,scale}=c._sh;const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+  x.strokeStyle='rgba(30,136,255,.25)';x.setLineDash([3,3]);sl.forEach(cell=>x.strokeRect(cell.x*scale,cell.y*scale,cell.w*scale,cell.h*scale));x.setLineDash([]);
+  x.imageSmoothingQuality='high';
+  pages.forEach((p,i)=>{const cell=sl[i];if(!cell)return;const q=placeIn(p,cell);const r=effRot(p),t=src(p)||vis(p);
+    const dw=(r%180?q.h:q.w)*scale,dh=(r%180?q.w:q.h)*scale;
+    x.save();x.translate(q.cx*scale,q.cy*scale);x.rotate(r*Math.PI/180);x.drawImage(t,-dw/2,-dh/2,dw,dh);
+    x.strokeStyle='rgba(0,0,0,.15)';x.strokeRect(-dw/2,-dh/2,dw,dh);x.restore();});}
+/* version nette d'une page à la définition affichée (rendue à la demande, gardée en cache) */
+async function hiVis(p,px){
+  if(p.blank)return null;const f=S.files.get(p.fileId);if(!f)return null;
+  const need=Math.min(4000,Math.ceil(px*1.1));if(need<=Math.max(p.thumb.width,p.thumb.height)*1.05)return null;
+  const b=Math.pow(1.4,Math.ceil(Math.log(need)/Math.log(1.4)));const key=editSig(p)+'@'+Math.round(b);
+  if(p._hi&&p._hi.key===key)return p._hi.c;
+  let src;
+  if(f.type==='pdf'){const page=await f.doc.getPage(p.index+1);const v1=page.getViewport({scale:1,rotation:0});const v=page.getViewport({scale:b/Math.max(v1.width,v1.height),rotation:0});
+    src=document.createElement('canvas');src.width=Math.ceil(v.width);src.height=Math.ceil(v.height);const x=src.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,src.width,src.height);await page.render({canvasContext:x,viewport:v}).promise;}
+  else{const k=Math.min(1,b/Math.max(f.img.naturalWidth,f.img.naturalHeight));src=document.createElement('canvas');src.width=Math.round(f.img.naturalWidth*k);src.height=Math.round(f.img.naturalHeight*k);const x=src.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(f.img,0,0,src.width,src.height);}
+  const c=(p.crop||hasLevels(p)||annOn(p))?editedCanvas(annOn(p)?withAnn(src,p):src,p):src;
+  p._hi={key,c};return c;
+}
+async function sheetHi(c){const sh=c._sh;if(!sh||sh.gen!==SHGEN)return;const {pages,sl,scale}=sh;const m=new Map();
+  for(let i=0;i<pages.length;i++){const p=pages[i],cell=sl[i];if(!cell||m.has(p))continue;const q=placeIn(p,cell);const px=Math.max(q.w,q.h)*scale;
+    try{const h=await hiVis(p,px);if(h)m.set(p,h);}catch(e){console.error(e);}if(sh.gen!==SHGEN||!c.isConnected)return;}
+  if(m.size)drawSheet(c,p=>m.get(p));}
 function _renderSheets(){
+  SHGEN++;
   const box=$('#sheets');box.innerHTML='';
   const {L,sheets}=buildSheets();
   const sl=slots(L);
@@ -401,20 +428,13 @@ function _renderSheets(){
   const sumN=S.pages.length;
   $('#summary').innerHTML=sumN?`${sumN} page${sumN>1?'s':''} → <b>${sheets.length} feuille${sheets.length>1?'s':''}</b> ${fmtName} (${L.or})<br>${L.cols*L.rows} case${L.cols*L.rows>1?'s':''} par feuille, ${L.cols} × ${L.rows}`:'Aucune page.';
   $('#modeHelp').textContent=S.opt.mode==='repeat'?'Chaque page remplit sa feuille avec '+(L.cols*L.rows)+' copies (flyers, cartes à découper).':'Les pages se suivent, '+(L.cols*L.rows)+' par feuille.';
-  const SZ=300*Math.max(1,ZOOM.z*0.8);const scale=Math.min(SZ/L.W,SZ/L.H)*(window.devicePixelRatio>1?1.5:1);
+  const SZ=300*Math.max(1,ZOOM.z*0.8);const scale=Math.min(SZ/L.W,SZ/L.H)*Math.min(2.5,Math.max(1,window.devicePixelRatio||1));
+  if(SHIO)SHIO.disconnect();SHIO=new IntersectionObserver(ents=>ents.forEach(en=>{if(en.isIntersecting){SHIO.unobserve(en.target);sheetHi(en.target);}}),{rootMargin:'300px'});
   const shown=sheets.slice(0,60);
   shown.forEach((pages,k)=>{
     const c=document.createElement('canvas');c.width=Math.round(L.W*scale);c.height=Math.round(L.H*scale);
     const disp=Math.min(SZ/L.W,SZ/L.H);c.style.width=Math.round(L.W*disp)+'px';c.style.height=Math.round(L.H*disp)+'px';
-    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
-    x.strokeStyle='rgba(30,136,255,.25)';x.setLineDash([3,3]);
-    sl.forEach(cell=>x.strokeRect(cell.x*scale,cell.y*scale,cell.w*scale,cell.h*scale));x.setLineDash([]);
-    pages.forEach((p,i)=>{
-      const cell=sl[i];if(!cell)return;const q=placeIn(p,cell);const r=effRot(p),t=vis(p);
-      const dw=(r%180?q.h:q.w)*scale,dh=(r%180?q.w:q.h)*scale;
-      x.save();x.translate(q.cx*scale,q.cy*scale);x.rotate(r*Math.PI/180);x.drawImage(t,-dw/2,-dh/2,dw,dh);
-      x.strokeStyle='rgba(0,0,0,.15)';x.strokeRect(-dw/2,-dh/2,dw,dh);x.restore();
-    });
+    c._sh={pages,L,sl,scale,gen:SHGEN};drawSheet(c,vis);SHIO.observe(c);
     const w=document.createElement('div');w.className='sh';w.appendChild(c);
     const s=document.createElement('span');s.textContent='Feuille '+(k+1);w.appendChild(s);box.appendChild(w);
   });
