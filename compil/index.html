@@ -50,9 +50,9 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
 .bar h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:0 8px 0 0;font-weight:600}
 #pages{display:flex;flex-wrap:wrap;gap:10px;min-height:120px;padding:4px;border-radius:10px}
 #pages.drop{outline:2px dashed var(--sel);outline-offset:2px}
-.pg{width:116px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;cursor:pointer;user-select:none;position:relative}
+.pg{width:calc(116px * var(--z,1));background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;cursor:pointer;user-select:none;position:relative}
 .pg.on{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel)}
-.pg .th{height:120px;display:flex;align-items:center;justify-content:center;background:var(--soft);border-radius:4px;overflow:hidden}
+.pg .th{height:calc(120px * var(--z,1));display:flex;align-items:center;justify-content:center;background:var(--soft);border-radius:4px;overflow:hidden}
 .pg .th canvas{max-width:100%;max-height:100%;box-shadow:0 1px 3px rgba(0,0,0,.25);background:#fff}
 .pg .lb{font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pg .no{position:absolute;top:4px;left:4px;background:var(--ink);color:#fff;border-radius:5px;font-size:11px;padding:0 5px}
@@ -140,6 +140,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <button class="btn sm" id="pDup">Dupliquer</button>
       <button class="btn sm" id="pBlank">+ Page blanche</button>
       <button class="btn sm" id="pDel">Supprimer</button>
+      <label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les pages et les feuilles (aussi Ctrl + molette)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label>
       <button class="btn sm" id="pText" title="Copie le texte des pages sélectionnées (ou de tout le document) pour le coller ailleurs">Copier le texte</button>
       <span class="muted">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : rogner, copier le texte, annoter (texte, signature)</b></span>
     </div>
@@ -217,6 +218,7 @@ const FORMATS={A4:[210,297],A3:[297,420],A5:[148,210],'30x40':[300,400]};
 pdfjsLib.GlobalWorkerOptions.workerSrc='../lib/pdf.worker.min.js';
 const S={files:new Map(),pages:[],sel:new Set(),anchor:null,opt:{fmt:'A4',w:210,h:297,or:'auto',n:1,mode:'suite',order:'z',m:5,g:5,fit:'fit'}};
 let uid=1;
+const ZOOM={z:1,t:0};
 const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;return new Promise(r=>setTimeout(r,20));};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -373,7 +375,7 @@ function renderPages(){
   box.innerHTML='';
   S.pages.forEach((p,i)=>{
     const d=document.createElement('div');d.className='pg'+(S.sel.has(p.uid)?' on':'');d.dataset.u=p.uid;d.draggable=true;
-    const th=document.createElement('div');th.className='th';th.appendChild(thumbCanvas(p,104));
+    const th=document.createElement('div');th.className='th';th.appendChild(thumbCanvas(p,114*ZOOM.z));
     const f=S.files.get(p.fileId);
     d.innerHTML='';d.appendChild(th);
     const lb=document.createElement('div');lb.className='lb';lb.textContent=(p.blank?'Page blanche':(f?f.name+(f.type==='pdf'?' · p.'+(p.index+1):''):''))+(p.crop?' · rognée':'')+(hasLevels(p)?' · niveaux':'')+(annOn(p)?' · annotée':'');lb.title=lb.textContent;d.appendChild(lb);
@@ -400,11 +402,11 @@ function _renderSheets(){
   const sumN=S.pages.length;
   $('#summary').innerHTML=sumN?`${sumN} page${sumN>1?'s':''} → <b>${sheets.length} feuille${sheets.length>1?'s':''}</b> ${fmtName} (${L.or})<br>${L.cols*L.rows} case${L.cols*L.rows>1?'s':''} par feuille, ${L.cols} × ${L.rows}`:'Aucune page.';
   $('#modeHelp').textContent=S.opt.mode==='repeat'?'Chaque page remplit sa feuille avec '+(L.cols*L.rows)+' copies (flyers, cartes à découper).':'Les pages se suivent, '+(L.cols*L.rows)+' par feuille.';
-  const scale=Math.min(300/L.W,300/L.H)*(window.devicePixelRatio>1?1.5:1);
+  const SZ=300*Math.max(1,ZOOM.z*0.8);const scale=Math.min(SZ/L.W,SZ/L.H)*(window.devicePixelRatio>1?1.5:1);
   const shown=sheets.slice(0,60);
   shown.forEach((pages,k)=>{
     const c=document.createElement('canvas');c.width=Math.round(L.W*scale);c.height=Math.round(L.H*scale);
-    const disp=Math.min(300/L.W,300/L.H);c.style.width=Math.round(L.W*disp)+'px';c.style.height=Math.round(L.H*disp)+'px';
+    const disp=Math.min(SZ/L.W,SZ/L.H);c.style.width=Math.round(L.W*disp)+'px';c.style.height=Math.round(L.H*disp)+'px';
     const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
     x.strokeStyle='rgba(30,136,255,.25)';x.setLineDash([3,3]);
     sl.forEach(cell=>x.strokeRect(cell.x*scale,cell.y*scale,cell.w*scale,cell.h*scale));x.setLineDash([]);
@@ -747,6 +749,12 @@ $('#oFmt').value=S.opt.fmt;$('#customBox').hidden=S.opt.fmt!=='custom';$('#oW').
 $('#oFmt').onchange=e=>{S.opt.fmt=e.target.value;$('#customBox').hidden=S.opt.fmt!=='custom';saveOpt();renderSheets();};
 [['oW','w'],['oH','h'],['oM','m'],['oG','g']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.opt[k]=v;saveOpt();renderSheets();}}));
 
+/* ---------- taille d'affichage des pages et des feuilles ---------- */
+function setZoom(z,save){ZOOM.z=Math.max(1,Math.min(6,z));document.documentElement.style.setProperty('--z',ZOOM.z);$('#zoomR').value=ZOOM.z;if(save)try{localStorage.setItem('atelierCompil.zoom',ZOOM.z);}catch(e){}
+  clearTimeout(ZOOM.t);ZOOM.t=setTimeout(()=>{renderPages();renderSheets();},60);}
+$('#zoomR').addEventListener('input',e=>setZoom(+e.target.value,true));
+$('#work').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();setZoom(ZOOM.z*(e.deltaY<0?1.15:1/1.15),true);},{passive:false});
+try{const z=+localStorage.getItem('atelierCompil.zoom');if(z)setZoom(z,false);}catch(e){}
 renderPages();renderSheets();
 </script>
 <script src="../lib/help.js"></script>
