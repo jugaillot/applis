@@ -50,9 +50,9 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
 .bar h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:0 8px 0 0;font-weight:600}
 #pages{display:flex;flex-wrap:wrap;gap:10px;min-height:120px;padding:4px;border-radius:10px}
 #pages.drop{outline:2px dashed var(--sel);outline-offset:2px}
-.pg{width:calc(116px * var(--z,1));background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;cursor:pointer;user-select:none;position:relative}
+.pg{width:116px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;cursor:pointer;user-select:none;position:relative}
 .pg.on{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel)}
-.pg .th{height:calc(120px * var(--z,1));display:flex;align-items:center;justify-content:center;background:var(--soft);border-radius:4px;overflow:hidden}
+.pg .th{height:120px;display:flex;align-items:center;justify-content:center;background:var(--soft);border-radius:4px;overflow:hidden}
 .pg .th canvas{max-width:100%;max-height:100%;box-shadow:0 1px 3px rgba(0,0,0,.25);background:#fff}
 .pg .lb{font-size:11px;color:var(--mute);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pg .no{position:absolute;top:4px;left:4px;background:var(--ink);color:#fff;border-radius:5px;font-size:11px;padding:0 5px}
@@ -133,19 +133,18 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   </aside>
   <div id="work">
     <div class="bar">
-      <h2 id="pgTitle">Pages</h2>
+      <h2 id="pgHead" style="cursor:pointer;user-select:none" title="Replier / déplier les pages"><span id="pgTw" style="display:inline-block;font-size:9px;transition:transform .15s">▼</span> <span id="pgTitle">Pages</span></h2>
       <button class="btn sm" id="pAll">Tout sélectionner</button>
       <button class="btn sm" id="pRotL" title="Pivoter à gauche">⟲ Pivoter</button>
       <button class="btn sm" id="pRotR" title="Pivoter à droite">⟳ Pivoter</button>
       <button class="btn sm" id="pDup">Dupliquer</button>
       <button class="btn sm" id="pBlank">+ Page blanche</button>
       <button class="btn sm" id="pDel">Supprimer</button>
-      <label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les pages et les feuilles (aussi Ctrl + molette)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label>
       <button class="btn sm" id="pText" title="Copie le texte des pages sélectionnées (ou de tout le document) pour le coller ailleurs">Copier le texte</button>
-      <span class="muted">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : rogner, copier le texte, annoter (texte, signature)</b></span>
+      <span class="muted" id="pgHelp">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : rogner, copier le texte, annoter (texte, signature)</b></span>
     </div>
     <div id="pages"><div id="empty">Glisse ici des PDF ou des images (JPG, PNG),<br>ou utilise « Ajouter des fichiers… ».</div></div>
-    <div class="bar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2></div>
+    <div class="bar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi Ctrl + molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
     <div id="sheets"></div>
   </div>
 </main>
@@ -375,7 +374,7 @@ function renderPages(){
   box.innerHTML='';
   S.pages.forEach((p,i)=>{
     const d=document.createElement('div');d.className='pg'+(S.sel.has(p.uid)?' on':'');d.dataset.u=p.uid;d.draggable=true;
-    const th=document.createElement('div');th.className='th';th.appendChild(thumbCanvas(p,114*ZOOM.z));
+    const th=document.createElement('div');th.className='th';th.appendChild(thumbCanvas(p,104));
     const f=S.files.get(p.fileId);
     d.innerHTML='';d.appendChild(th);
     const lb=document.createElement('div');lb.className='lb';lb.textContent=(p.blank?'Page blanche':(f?f.name+(f.type==='pdf'?' · p.'+(p.index+1):''):''))+(p.crop?' · rognée':'')+(hasLevels(p)?' · niveaux':'')+(annOn(p)?' · annotée':'');lb.title=lb.textContent;d.appendChild(lb);
@@ -751,10 +750,14 @@ $('#oFmt').onchange=e=>{S.opt.fmt=e.target.value;$('#customBox').hidden=S.opt.fm
 
 /* ---------- taille d'affichage des pages et des feuilles ---------- */
 function setZoom(z,save){ZOOM.z=Math.max(1,Math.min(6,z));document.documentElement.style.setProperty('--z',ZOOM.z);$('#zoomR').value=ZOOM.z;if(save)try{localStorage.setItem('atelierCompil.zoom',ZOOM.z);}catch(e){}
-  clearTimeout(ZOOM.t);ZOOM.t=setTimeout(()=>{renderPages();renderSheets();},60);}
+  clearTimeout(ZOOM.t);ZOOM.t=setTimeout(()=>{renderSheets();},60);}
 $('#zoomR').addEventListener('input',e=>setZoom(+e.target.value,true));
-$('#work').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();setZoom(ZOOM.z*(e.deltaY<0?1.15:1/1.15),true);},{passive:false});
+$('#sheets').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();setZoom(ZOOM.z*(e.deltaY<0?1.15:1/1.15),true);},{passive:false});
 try{const z=+localStorage.getItem('atelierCompil.zoom');if(z)setZoom(z,false);}catch(e){}
+/* pages : repliables (état retenu) */
+function setPgFold(f,save){$('#pages').style.display=f?'none':'';$('#pgHelp').style.display=f?'none':'';$('#pgTw').style.transform=f?'rotate(-90deg)':'';if(save)try{localStorage.setItem('atelierCompil.fold',f?'1':'0');}catch(e){}}
+$('#pgHead').addEventListener('click',()=>setPgFold($('#pages').style.display!=='none',true));
+try{setPgFold(localStorage.getItem('atelierCompil.fold')==='1',false);}catch(e){}
 renderPages();renderSheets();
 </script>
 <script src="../lib/help.js"></script>
