@@ -23,10 +23,46 @@ header h1 span{color:var(--acc)}
 .btn.accent{background:var(--acc);color:#fff;border-color:var(--acc)}
 .btn.danger{color:#b3261e}
 .btn.sm{padding:3px 7px;font-size:12px}
-main{flex:1;display:grid;grid-template-columns:350px 1fr;min-height:0}
-aside{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:2px 12px 40px}
+main{flex:1;display:grid;grid-template-columns:86px 1fr 350px;min-height:0}
+aside{overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:2px 12px 40px;order:3}
+#stageWrap{order:2}
+#tools{order:1;background:var(--panel);border-right:1px solid var(--line);padding:8px 0;overflow-y:auto}
+#tools .tgrid{display:grid;grid-template-columns:36px 36px;gap:3px;justify-content:center;align-content:start}
+.tool{width:36px;height:36px;border:1px solid transparent;border-radius:8px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);padding:0}
+.tool:hover{background:var(--soft)}
+.tool.on{background:var(--ink);color:#fff}
+.tool:disabled{opacity:.35;cursor:default;background:none}
+.tool svg{width:20px;height:20px}
+.tsep{grid-column:1 / -1;height:1px;background:var(--line);margin:4px 6px}
+.tools{display:none!important}
+section h2.fold{cursor:pointer;user-select:none;display:flex;align-items:center;gap:5px}
+section h2 .tw{display:inline-block;font-size:8px;transition:transform .15s}
+section.closed>:not(h2){display:none!important}
+section.closed h2 .tw{transform:rotate(-90deg)}
+#asideTop{position:sticky;top:0;z-index:3;display:flex;justify-content:flex-end;background:var(--panel);margin:0 -12px;padding:4px 6px 2px;border-bottom:1px solid var(--line)}
+#asideTg{border:0;background:none;cursor:pointer;width:28px;height:24px;border-radius:6px;color:var(--mute);padding:0;display:grid;place-items:center}
+#asideTg:hover{background:var(--soft);color:var(--ink)}
+#asideTg svg{width:16px;height:16px;transition:transform .15s}
+#mini{display:none}
+body.amini main{grid-template-columns:86px 1fr 70px}
+body.amini aside{padding:0 6px 20px}
+body.amini aside>section{display:none!important}
+body.amini #asideTop{margin:0 -6px 6px;justify-content:center}
+body.amini #asideTg svg{transform:rotate(180deg)}
+body.amini #mini{display:flex;flex-direction:column;align-items:center;gap:4px}
+#mini .mlab{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin-top:8px}
+#mini .mb{width:44px;height:30px;border:1px solid var(--line);background:#fff;border-radius:7px;cursor:pointer;display:grid;place-items:center;color:var(--ink);padding:0;font:inherit;font-size:12px}
+#mini .mb.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+#mini .mb svg{width:18px;height:18px}
+#miniLayers{display:flex;flex-direction:column;gap:4px;align-items:center}
+#miniLayers .ml{width:44px;height:26px;border:1px solid var(--line);border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;padding:0}
+#miniLayers .ml.off{opacity:.4}
+#miniLayers .ml .sw{width:16px;height:16px}
 section h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:16px 0 8px;font-weight:600}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid2>*{min-width:0}
+.grid2 input,.grid2 select{width:100%;box-sizing:border-box;min-width:0}
+aside{overflow-x:hidden}
 label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
 label.chk{flex-direction:row;align-items:center;gap:6px;color:var(--ink)}
 input[type=number],input[type=text],select,.lname{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 6px;background:#fff;min-width:0}
@@ -75,7 +111,9 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
 .opt{display:flex;flex-direction:column;gap:6px;padding-left:4px}
 @media (max-width:820px){
   body{height:auto;min-height:100%}
-  main{grid-template-columns:1fr;grid-template-rows:62vh auto}
+  main{grid-template-columns:1fr;grid-template-rows:auto 62vh auto}
+  #tools .tgrid{grid-template-columns:repeat(auto-fill,36px);justify-content:start;padding:0 8px}
+  #tools{order:0;border-right:0;border-bottom:1px solid var(--line)}
   #stageWrap{order:-1;height:62vh}
   aside{border-right:0;border-top:1px solid var(--line);overflow:visible}
 }
@@ -103,9 +141,28 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn accent" id="exportBtn">Exporter PDF</button>
 </header>
 <main>
+  <nav id="tools"><div class="tgrid">
+<button class="tool" type="button" data-tb="import" title="Importer une image, un SVG, un PDF…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></button>
+<button class="tool on" type="button" data-tb="move" title="Déplacer : glisser un élément sur la feuille (Alt : en faire une copie) · flèches : 1 mm, Maj : 10 mm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor" stroke="none"/></svg></button>
+    <div class="tsep"></div>
+<button class="tool" type="button" data-tb="center" title="Centrer l’élément choisi sur la feuille"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M12 8v8M8 12h8"/></svg></button>
+<button class="tool" type="button" data-tb="fitmargin" title="Ajuster l’élément à la marge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5" stroke-dasharray="2 2"/><rect x="6.5" y="6.5" width="11" height="11" rx="1"/></svg></button>
+<button class="tool" type="button" data-tb="fitpage" title="Ajuster l’élément à la page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M7 7h3M7 7v3M17 7h-3M17 7v3M7 17h3M7 17v-3M17 17h-3M17 17v-3"/></svg></button>
+<button class="tool" type="button" data-tb="real" title="Taille d’origine (100 %)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18L18 4"/><path d="M4 12v6h6"/><path d="M14 4h6v6" opacity=".35"/><text x="13.5" y="21" font-size="7" fill="currentColor" stroke="none">1:1</text></svg></button>
+<button class="tool" type="button" data-tb="rot" title="Pivoter l’élément de 90°"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 3v5h-5"/></svg></button>
+<button class="tool" type="button" data-tb="dup" title="Dupliquer l’élément (avec ses calques)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="11" height="13" rx="1.5"/><rect x="9" y="8" width="11" height="13" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
+<button class="tool" type="button" data-tb="del" title="Supprimer l’élément et ses calques"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13M10.5 11v5.5M13.5 11v5.5"/></svg></button>
+    <div class="tsep"></div>
+<button class="tool" type="button" data-tb="zin" title="Agrandir la vue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg></button>
+<button class="tool" type="button" data-tb="zout" title="Réduire la vue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M7.5 10.5h6"/></svg></button>
+<button class="tool" type="button" data-tb="zfit" title="Voir toute la feuille"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+<button class="tool" type="button" data-tb="trame" title="Voir la trame (aperçu de l’impression)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="7" r="1.6" fill="currentColor"/><circle cx="17" cy="7" r="1.6" fill="currentColor"/><circle cx="7" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="17" cy="12" r="1.6" fill="currentColor"/><circle cx="7" cy="17" r="1.6" fill="currentColor"/><circle cx="12" cy="17" r="1.6" fill="currentColor"/><circle cx="17" cy="17" r="1.6" fill="currentColor"/></svg></button>
+<button class="tool" type="button" data-tb="guides" title="Afficher les repères (marge, trait du haut — non imprimés)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><rect x="6.5" y="6.5" width="11" height="11" stroke-dasharray="2 2"/></svg></button>
+  </div><div class="muted" id="zLabT" style="text-align:center;margin-top:6px;font-size:11px"></div></nav>
   <aside>
-    <section>
-      <h2>Papier &amp; repères</h2>
+    <div id="asideTop"><button type="button" id="asideTg" title="Réduire le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l6 6-6 6M12 6l6 6-6 6"/></svg></button></div>
+    <section data-sec="paper">
+      <h2 class="fold"><span class="tw">▼</span>Papier &amp; repères</h2>
       <div class="grid2">
         <label>Format<select id="pFmt"><option value="A3">A3</option><option value="A4">A4</option></select></label>
         <label>Orientation<select id="pOr"><option value="portrait">Portrait</option><option value="paysage">Paysage</option></select></label>
@@ -114,19 +171,28 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       </div>
       <label class="chk" style="margin-top:8px"><input type="checkbox" id="gShow"> Afficher les repères (non imprimés)</label>
     </section>
-    <section>
-      <h2>Éléments importés</h2>
+    <section data-sec="groups">
+      <h2 class="fold"><span class="tw">▼</span>Éléments importés</h2>
       <div id="groups"></div>
     </section>
-    <section>
-      <h2>Calques</h2>
+    <section data-sec="layers">
+      <h2 class="fold"><span class="tw">▼</span>Calques</h2>
       <div id="layers"></div>
     </section>
-    <section>
-      <h2>Encres</h2>
+    <section data-sec="inks">
+      <h2 class="fold"><span class="tw">▼</span>Encres</h2>
       <div id="inks"></div>
       <div class="btns"><button class="btn sm" id="addInk">+ Ajouter une encre</button><button class="btn sm" id="resetInks">Réinitialiser</button></div>
     </section>
+    <div id="mini">
+      <div class="mlab">Papier</div>
+      <button type="button" class="mb" data-pf="A3" title="Format A3"><b>A3</b></button>
+      <button type="button" class="mb" data-pf="A4" title="Format A4"><b>A4</b></button>
+      <button type="button" class="mb" data-po="portrait" title="Portrait"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="1.5"/></svg></button>
+      <button type="button" class="mb" data-po="paysage" title="Paysage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="1.5"/></svg></button>
+      <div class="mlab">Calques</div>
+      <div id="miniLayers"></div>
+    </div>
   </aside>
   <div id="stageWrap">
     <div class="tools">
@@ -724,6 +790,38 @@ document.addEventListener('keydown',e=>{
   e.preventDefault();g.cx+=m[0];g.cy+=m[1];syncPlacement();scheduleRender();
 });
 
+/* ---------- barre d'outils à gauche, panneau de droite repliable (comme Vecto) ---------- */
+function gAct(a){const g=selGroup();if(!g){if(['center','fitmargin','fitpage','real','rot','dup','del'].includes(a))alert('Choisis d’abord un élément (clic dessus sur la feuille).');return;}const[pw,ph]=pageSize();
+  switch(a){case'center':g.cx=pw/2;g.cy=ph/2;break;case'fitmargin':fitGroup(g,marginBox());break;case'fitpage':fitGroup(g,{x:0,y:0,w:pw,h:ph});break;case'real':g.scale=1;break;
+    case'rot':g.rot=((g.rot||0)+90)%360;break;
+    case'dup':{const g2=dupGroup(g);const k=5;g2.cx+=k;g2.cy+=k;S.sel=g2.id;renderSide();scheduleRender();return;}
+    case'del':{const b=document.querySelector('#groups [data-ga=del]');if(b)b.click();return;}}
+  syncPlacement();renderGroups();scheduleRender();}
+document.querySelectorAll('#tools [data-tb]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.tb;
+  if(a==='import'){$('#fileIn').click();return;}if(a==='move')return;
+  if(a==='zin'){$('#zIn').click();}else if(a==='zout'){$('#zOut').click();}else if(a==='zfit'){$('#zFit').click();}
+  else if(a==='trame'){const c=$('#showTrame');c.checked=!c.checked;c.dispatchEvent(new Event('change'));}
+  else if(a==='guides'){const c=$('#gShow');c.checked=!c.checked;c.dispatchEvent(new Event('change'));}
+  else gAct(a);toolSync();}));
+function toolSync(){document.querySelector('#tools [data-tb=trame]').classList.toggle('on',$('#showTrame').checked);document.querySelector('#tools [data-tb=guides]').classList.toggle('on',$('#gShow').checked);
+  const has=!!selGroup();['center','fitmargin','fitpage','real','rot','dup','del'].forEach(k=>{document.querySelector('#tools [data-tb='+k+']').disabled=!has;});
+  $('#zLabT').textContent=$('#zLab').textContent;
+  document.querySelectorAll('#mini [data-pf]').forEach(b=>b.classList.toggle('on',S.paper.fmt===b.dataset.pf));document.querySelectorAll('#mini [data-po]').forEach(b=>b.classList.toggle('on',S.paper.orient===b.dataset.po));
+  const ML=$('#miniLayers');ML.innerHTML=S.layers.map(L=>{const ink=getInk(L.ink);return`<button type="button" class="ml${L.visible?'':' off'}" data-ml="${L.id}" title="${esc(L.name)} — ${esc(ink.name)} (clic : afficher / masquer)"><span class="sw" style="background:${ink.hex}"></span></button>`;}).join('')||'<span class="muted" style="font-size:10px">—</span>';}
+$('#miniLayers').addEventListener('click',e=>{const b=e.target.closest('[data-ml]');if(!b)return;const row=document.querySelector('#layers [data-l="'+b.dataset.ml+'"] [data-la=vis]');if(row)row.click();setTimeout(toolSync,0);});
+$('#mini').addEventListener('click',e=>{const f=e.target.closest('[data-pf]'),o=e.target.closest('[data-po]');
+  if(f){$('#pFmt').value=f.dataset.pf;$('#pFmt').dispatchEvent(new Event('change'));}if(o){$('#pOr').value=o.dataset.po;$('#pOr').dispatchEvent(new Event('change'));}setTimeout(toolSync,0);});
+(function(){
+  let st={};try{st=JSON.parse(localStorage.getItem('atelierRiso.rub'))||{};}catch(e){}
+  document.querySelectorAll('aside section[data-sec]').forEach(sec=>{const k=sec.dataset.sec;if(st[k]===false)sec.classList.add('closed');
+    sec.querySelector('h2').addEventListener('click',()=>{sec.classList.toggle('closed');st[k]=!sec.classList.contains('closed');try{localStorage.setItem('atelierRiso.rub',JSON.stringify(st));}catch(e){}});});
+  const set=(on,save)=>{document.body.classList.toggle('amini',on);$('#asideTg').title=on?'Ouvrir le panneau':'Réduire le panneau';if(save)try{localStorage.setItem('atelierRiso.mini',on?'1':'0');}catch(e){}scheduleRender();};
+  try{set(localStorage.getItem('atelierRiso.mini')==='1',false);}catch(e){}
+  $('#asideTg').onclick=()=>set(!document.body.classList.contains('amini'),true);
+  let pend=false;new MutationObserver(ms=>{if(pend||!ms.some(m=>!$('#mini').contains(m.target)))return;pend=true;requestAnimationFrame(()=>{pend=false;toolSync();});}).observe($('aside'),{subtree:true,childList:true});
+  new MutationObserver(()=>{$('#zLabT').textContent=$('#zLab').textContent;}).observe($('#zLab'),{childList:true,characterData:true,subtree:true});
+  toolSync();
+})();
 syncPaperUI();renderSide();scheduleRender();
 
 /* ---------- réception depuis Vecto ---------- */
