@@ -33,6 +33,19 @@ main{flex:1;display:grid;grid-template-columns:86px 112px 1fr 330px;min-height:0
 .tool svg{width:20px;height:20px}
 .tsep{grid-column:1 / -1;height:1px;background:var(--line);margin:4px 6px}
 #bar>.btn,#bar>.tools{display:none!important}
+#toolBar{position:absolute;left:10px;top:8px;display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;z-index:6;flex-wrap:wrap;max-width:calc(100% - 20px);box-shadow:0 2px 8px rgba(0,0,0,.12);color:var(--ink)}
+#toolBar[hidden]{display:none}
+#toolBar>b{font-weight:600}
+#toolBar [hidden]{display:none!important}
+#toolBar .tbg{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+#toolBar .sl{display:flex;align-items:center;gap:6px;margin:0}
+#toolBar .sl span{color:var(--ink)}
+#toolBar .sl b{min-width:44px;color:var(--mute);font-weight:500;order:3}
+#toolBar input[type=range]{width:130px}
+#toolBar label{display:flex;flex-direction:row;align-items:center;gap:6px;margin:0;color:var(--ink)}
+#toolBar #tBrush{display:flex;gap:12px}
+#toolBar .row{display:flex;gap:6px;margin:0}
+#toolBar .muted{max-width:260px;font-size:11px}
 #asideTop{position:sticky;top:0;z-index:3;display:flex;justify-content:flex-end;background:var(--panel);margin:0 -12px;padding:4px 6px 2px;border-bottom:1px solid var(--line)}
 #asideTg{border:0;background:none;cursor:pointer;width:28px;height:24px;border-radius:6px;color:var(--mute);padding:0;display:grid;place-items:center}
 #asideTg:hover{background:var(--soft);color:var(--ink)}
@@ -907,6 +920,24 @@ renderStrip();syncPanel();renderPresets();renderPreview();syncToolPanel();setToo
   $('#asideTg').onclick=()=>set(!document.body.classList.contains('amini'),true);
   $('#mini').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(!b)return;set(false,true);const d=document.querySelector('details[data-sec="'+b.dataset.open+'"]');if(d){d.open=true;d.dispatchEvent(new Event('toggle'));setTimeout(()=>d.scrollIntoView({block:'start',behavior:'smooth'}),60);}});
   window.addEventListener('resize',()=>{});
+})();
+
+/* ---------- réglages de l'outil : petit bloc en haut à gauche de l'image (comme Vecto) ---------- */
+(function(){
+  const tb=document.createElement('div');tb.id='toolBar';tb.hidden=true;$('#stage').appendChild(tb);
+  const gT=document.createElement('div');gT.className='tbg';const tT=document.createElement('b');gT.appendChild(tT);
+  ['#tBrush','#tFillBox','#tColBox'].forEach(id=>gT.appendChild($(id)));const rw=$('#tUndoLast').parentNode;gT.appendChild(rw);gT.appendChild($('#tHint'));
+  const gC=document.createElement('div');gC.className='tbg';const tC=document.createElement('b');tC.textContent='Rogner';gC.appendChild(tC);
+  gC.appendChild($('#gRatio').closest('label'));gC.appendChild($('#gStraight').closest('.sl'));gC.appendChild($('#gCropBtn').parentNode);$('#gCropBtn').parentNode.appendChild($('#gCropReset'));
+  tb.appendChild(gT);tb.appendChild(gC);
+  const d=$('#dTool');if(d)d.style.display='none';// la rubrique de droite n'a plus lieu d'être
+  const geo=document.querySelector('details[data-sec="rognage"] summary span');if(geo)geo.innerHTML='<i class="grip">⋮⋮</i>Rotation et miroir';
+  const mini=document.querySelector('#mini [data-open=retouche]');if(mini)mini.remove();const mr=document.querySelector('#mini [data-open=rognage]');if(mr)mr.title='Rotation et miroir';
+  const NAMES={stamp:'Tampon',fill:'Pot de peinture',erase:'Gomme'};
+  function tbSync(){const crop=!!S.cropMode,t=TOOL.tool;tb.hidden=!(crop||t);gC.hidden=!crop;gT.hidden=crop||!t;tT.textContent=NAMES[t]||'';}
+  const _st=setTool;setTool=function(x){_st(x);tbSync();};
+  const _tc=toggleCrop;toggleCrop=function(on){_tc(on);tbSync();};
+  tbSync();
 })();
 </script>
 <script src="../lib/help.js"></script>

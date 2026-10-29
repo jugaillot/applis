@@ -86,6 +86,17 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
 .muted{color:var(--mute);font-size:12px}
 #work{overflow:auto;min-width:0;padding:0 16px 40px}
 .bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;position:sticky;top:0;background:var(--bg);padding:10px 0 8px;z-index:2}
+.tbWrap{position:sticky;height:0;z-index:4;top:0}
+#toolBar{position:absolute;left:0;top:4px;display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;flex-wrap:wrap;max-width:calc(100% - 10px);box-shadow:0 2px 8px rgba(0,0,0,.12);color:var(--ink)}
+#toolBar[hidden],#toolBar [hidden]{display:none!important}
+#toolBar>b,#toolBar #annTitle{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);margin:0}
+#toolBar #annSec{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0;padding:0;border:0;background:none}
+#toolBar #annSec label{display:flex;flex-direction:row;align-items:center;gap:6px;margin:0;font-size:12px;color:var(--ink)}
+#toolBar #annSec .g2,#toolBar #annSec>div{display:flex!important;gap:10px;align-items:center;margin:0!important}
+#toolBar #nTxt{width:220px;height:28px;min-height:28px}
+#toolBar #nSize{width:64px}
+#toolBar #nCol{width:36px}
+#toolBar .muted{font-size:11px;max-width:320px}
 .bar h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:0 8px 0 0;font-weight:600}
 #pages{display:flex;flex-wrap:wrap;gap:10px;min-height:120px;padding:4px;border-radius:10px}
 #pages.drop{outline:2px dashed var(--sel);outline-offset:2px}
@@ -157,7 +168,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <label id="nTxtBox">Texte<textarea id="nTxt" rows="3" style="font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px;resize:vertical"></textarea></label>
       <div class="g2" style="margin-top:6px"><label><span id="nSizeLab">Taille (pt)</span><input type="number" id="nSize" min="1" step="1"></label><label id="nColBox">Couleur<input type="color" id="nCol" value="#000000" style="height:30px;padding:0"></label></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" id="nSign" type="button">Changer de signature…</button><button class="btn sm" id="nDel" type="button">Supprimer</button></div>
-      <div class="muted" style="margin-top:6px">Glisse l’élément sur la page (Alt : en faire une copie), tire la poignée du coin pour l’agrandir · double-clic : modifier le texte ou refaire la signature · Suppr : supprimer</div>
+      <div class="muted" style="margin-top:6px" title="Glisse l’élément sur la page (Alt : en faire une copie), tire la poignée du coin pour l’agrandir · double-clic : modifier le texte ou refaire la signature · Suppr : supprimer">Glisser · Alt : copie · coin : taille · double-clic : modifier</div>
     </section>
     <section data-sec="sheet">
       <h2 class="fold"><span class="tw">▼</span>Feuille</h2>
@@ -235,6 +246,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     </div>
     <div id="pages"><div id="empty">Glisse ici des PDF ou des images (JPG, PNG),<br>ou utilise « Ajouter des fichiers… ».</div></div>
     <div class="bar" id="shBar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><span class="muted" id="toolHint"></span><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi Ctrl + molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
+    <div class="tbWrap" id="tbWrap"><div id="toolBar" hidden><b id="tbName"></b><span class="muted" id="tbHint"></span><button class="btn sm" id="tbSign" type="button" hidden>Changer de signature…</button></div></div>
     <div id="sheets"></div>
   </div>
 </main>
@@ -947,7 +959,7 @@ $('#zoomR').addEventListener('input',e=>setZoom(+e.target.value,true));
 $('#sheets').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();setZoom(ZOOM.z*(e.deltaY<0?1.15:1/1.15),true);},{passive:false});
 try{const z=+localStorage.getItem('atelierCompil.zoom');if(z)setZoom(z,false);}catch(e){}
 /* les deux barres restent visibles en haut quand on fait défiler : celle des feuilles se cale sous celle des pages */
-new ResizeObserver(()=>{$('#shBar').style.top=$('#pgBar').offsetHeight+'px';}).observe($('#pgBar'));
+const tbTop=()=>{$('#shBar').style.top=$('#pgBar').offsetHeight+'px';$('#tbWrap').style.top=($('#pgBar').offsetHeight+$('#shBar').offsetHeight)+'px';};new ResizeObserver(tbTop).observe($('#pgBar'));new ResizeObserver(tbTop).observe($('#shBar'));
 /* pages : repliables (état retenu) */
 function setPgFold(f,save){$('#pages').style.display=f?'none':'';$('#pgHelp').style.display=f?'none':'';$('#pgTw').style.transform=f?'rotate(-90deg)':'';if(save)try{localStorage.setItem('atelierCompil.fold',f?'1':'0');}catch(e){}}
 $('#pgHead').addEventListener('click',()=>{const f=$('#pages').style.display!=='none';setPgFold(f,true);if(!f)$('#work').scrollTo({top:0,behavior:'smooth'});});
@@ -998,7 +1010,7 @@ function sheetAnn(c){const sh=c._sh,ov=c._ov;if(!sh||!ov)return;ov.querySelector
     ov.appendChild(w);});}
 function refreshAnn(){if(ANSEL&&(!S.pages.includes(ANSEL.p)||!(ANSEL.p.ann||[]).includes(ANSEL.a)))ANSEL=null;document.querySelectorAll('#sheets canvas').forEach(c=>{if(c._sh)sheetAnn(c);});annPanel();}
 let annT=0;function annChanged(){refreshAnn();clearTimeout(annT);annT=setTimeout(()=>renderPages(),250);}
-function annPanel(){const a=ANSEL&&ANSEL.a;$('#annSec').hidden=!a;if(!a)return;const t=a.type==='text';
+function annPanel(){const a=ANSEL&&ANSEL.a;$('#annSec').hidden=!a;tbSync();if(!a)return;const t=a.type==='text';
   $('#annTitle').textContent=t?'Texte ajouté':'Signature';$('#nTxtBox').hidden=!t;$('#nColBox').hidden=!t;$('#nSign').hidden=t;$('#nSizeLab').textContent=t?'Taille (pt)':'Largeur (mm)';
   if(document.activeElement!==$('#nTxt'))$('#nTxt').value=a.txt||'';if(document.activeElement!==$('#nSize'))$('#nSize').value=t?Math.round(a.fs*10)/10:Math.round(a.sw/PT);$('#nCol').value=a.col||'#000000';}
 $('#nTxt').oninput=e=>{if(ANSEL){ANSEL.a.txt=e.target.value;annChanged();}};
@@ -1037,10 +1049,18 @@ function annEdit(el){const a=el._a,p=el._p;ANSEL={p,a};
 const TH={select:'Clic sur une vignette pour la choisir · double-clic sur une page pour la modifier',text:'Surligne du texte sur les feuilles, puis Ctrl+C',addtext:'Clique sur une page à l’endroit où mettre le texte',sign:'Clique sur une page à l’endroit où signer',crop:'Clique sur une page pour la rogner ou régler ses niveaux'};
 let TOOL='select';
 function setTool(t){TOOL=t;document.querySelectorAll('#tools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
-  ['select','text','addtext','sign','crop'].forEach(k=>document.body.classList.toggle('t-'+k,k===t));$('#toolHint').textContent=TH[t]||'';}
+  ['select','text','addtext','sign','crop'].forEach(k=>document.body.classList.toggle('t-'+k,k===t));$('#toolHint').textContent='';tbSync();}
+const TN={text:'Copier du texte',addtext:'Ajouter du texte',sign:'Signer',crop:'Recadrer'};
+/* réglages de l'outil : petit bloc en haut à gauche des feuilles (comme Vecto) */
+function tbSync(){const a=ANSEL&&ANSEL.a,tb=$('#toolBar');if(!tb)return;let t;try{t=TOOL;}catch(e){return;}
+  tb.hidden=!(a||TN[t]);$('#tbName').hidden=!!a;$('#tbHint').hidden=!!a;$('#tbSign').hidden=!!a||t!=='sign';
+  $('#tbName').textContent=TN[t]||'';$('#tbHint').textContent=TH[t]||'';}
 document.querySelectorAll('#tools [data-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
 $('#zIn').onclick=()=>setZoom(ZOOM.z*1.25,true);$('#zOut').onclick=()=>setZoom(ZOOM.z/1.25,true);
 $('#pFold').onclick=()=>$('#pgHead').click();
+
+/* le bloc d'édition des éléments posés vit dans la barre flottante */
+$('#toolBar').insertBefore($('#annSec'),$('#tbSign').nextSibling);$('#tbSign').onclick=()=>openSign(()=>{});tbSync();
 /* page et point (dans la page non tournée) sous la souris, sur une feuille */
 function sheetHit(e){const iw=e.target.closest('.shw');if(!iw)return null;const c=iw.querySelector('canvas');const sh=c&&c._sh;if(!sh)return null;
   const r=c.getBoundingClientRect(),disp=r.width/sh.L.W,mx=(e.clientX-r.left)/disp,my=(e.clientY-r.top)/disp;

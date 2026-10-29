@@ -69,7 +69,14 @@ input[type=number],input[type=text],select,.lname{font:inherit;color:var(--ink);
 input[type=range]{width:100%;accent-color:var(--ink)}
 .rng span{display:flex;justify-content:space-between}
 .rng b{color:var(--ink);font-weight:600}
-#stageWrap{display:flex;flex-direction:column;min-width:0;min-height:0}
+#stageWrap{display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
+#toolBar{position:absolute;left:10px;top:52px;display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;z-index:6;flex-wrap:wrap;max-width:calc(100% - 20px);box-shadow:0 2px 8px rgba(0,0,0,.12);color:var(--ink)}
+#toolBar[hidden]{display:none}
+#toolBar b.tn{font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#toolBar label{display:flex;flex-direction:row;align-items:center;gap:5px;margin:0;font-size:12px;color:var(--ink)}
+#toolBar input[type=number]{width:62px}
+#toolBar .size{color:var(--mute);font-size:11px}
+#toolBar .btns{display:flex;gap:5px;flex-wrap:wrap}
 .tools{display:flex;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--soft);flex-wrap:wrap}
 .tools .z{min-width:48px;text-align:center;color:var(--mute)}
 #stage{flex:1;overflow:auto;display:flex;padding:16px;min-height:0;position:relative}
@@ -206,6 +213,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <button class="btn sm" id="zFit">Ajuster</button>
       <label class="chk" style="margin-left:8px"><input type="checkbox" id="showTrame"> Voir la trame</label>
     </div>
+    <div id="toolBar" hidden></div>
     <div id="stage"><canvas id="cv" width="10" height="10"></canvas><div id="gsel" hidden><div class="gh" data-h="tl"></div><div class="gh" data-h="tr"></div><div class="gh" data-h="bl"></div><div class="gh" data-h="br"></div></div></div>
   </div>
 </main>
@@ -633,37 +641,34 @@ function renderSide(){renderGroups();renderLayers();renderInks();}
 function rng(label,key,min,max,step,val,unit,attr){return`<label class="rng"><span>${label}<b>${val}${unit||''}</b></span><input type="range" ${attr||'data-lk'}="${key}" min="${min}" max="${max}" step="${step}" value="${val}" data-unit="${unit||''}"></label>`;}
 function renderGroups(){
   const el=$('#groups');
-  if(!S.groups.length){el.innerHTML='<div class="empty">Rien pour l’instant.</div>';return;}
-  const g=selGroup();
+  if(!S.groups.length){el.innerHTML='<div class="empty">Rien pour l’instant.</div>';tbShow('');return;}
+  const g=selGroup();let tb='';
   let h=`<div class="glist">${S.groups.map(x=>`<button class="gitem${x.id===S.sel?' on':''}" data-g="${x.id}" title="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</div>`;
   if(g){
-    h+=`<div class="gprops">
-      <div class="grid2">
-        <label>Centre X (mm)<input type="number" step="1" data-gk="cx" value="${f1(g.cx)}"></label>
-        <label>Centre Y (mm)<input type="number" step="1" data-gk="cy" value="${f1(g.cy)}"></label>
-        <label>Échelle (%)<input type="number" step="1" min="1" data-gk="scale" value="${f1(g.scale*100)}"></label>
+    tb=`<b class="tn" title="${esc(g.name)}">${esc(g.name)}</b>
+        <label>X<input type="number" step="1" data-gk="cx" value="${f1(g.cx)}"> mm</label>
+        <label>Y<input type="number" step="1" data-gk="cy" value="${f1(g.cy)}"> mm</label>
+        <label>Échelle<input type="number" step="1" min="1" data-gk="scale" value="${f1(g.scale*100)}"> %</label>
         <label>Rotation<select data-gk="rot">${[0,90,180,270].map(r=>`<option value="${r}"${r===g.rot?' selected':''}>${r}°</option>`).join('')}</select></label>
-      </div>
-      <div class="size" id="gSize">Taille : ${f1(g.w*g.scale)} × ${f1(g.h*g.scale)} mm</div>
-      <div class="btns">
+        <span class="size" id="gSize">${f1(g.w*g.scale)} × ${f1(g.h*g.scale)} mm</span>
+        <span class="btns">
         <button class="btn sm" data-ga="center">Centrer</button>
         <button class="btn sm" data-ga="fitmargin">Ajuster à la marge</button>
         <button class="btn sm" data-ga="fitpage">Ajuster à la page</button>
         <button class="btn sm" data-ga="real">Taille d’origine</button>
-        <button class="btn sm danger" data-ga="del">Supprimer</button>
-      </div>`;
-    if(g.sep){const p=g.sep;h+=`<div class="sepbox">
+        <button class="btn sm danger" data-ga="del" title="Supprimer">✕</button></span>`;
+    if(g.sep){const p=g.sep;h+=`<div class="gprops"><div class="sepbox">
         <label>Séparation<select data-sk="mode"><option value="melange"${p.mode==='melange'?' selected':''}>Mélange (superpositions)</option><option value="franc"${p.mode==='franc'?' selected':''}>Couleurs franches</option></select></label>
         ${inkChecks(p.inks,'data-sink')}
         ${rng('Blanc papier','white',60,100,1,p.white,' %','data-sk')}
         ${rng('Économie d’encres','eco',0,100,1,p.eco,' %','data-sk')}
         ${rng('Intensité','intensite',30,200,5,p.intensite,' %','data-sk')}
-      </div>`;}
-    h+=`</div>`;
+      </div></div>`;}
   }
-  el.innerHTML=h;
+  el.innerHTML=h;tbShow(tb);
 }
-function syncPlacement(){const g=selGroup();if(!g)return;const set=(k,v)=>{const i=$(`#groups [data-gk="${k}"]`);if(i&&document.activeElement!==i)i.value=v;};set('cx',f1(g.cx));set('cy',f1(g.cy));set('scale',f1(g.scale*100));const s=$('#gSize');if(s)s.textContent=`Taille : ${f1(g.w*g.scale)} × ${f1(g.h*g.scale)} mm`;}
+function tbShow(h){const t=$('#toolBar');t.innerHTML=h;t.hidden=!h;t.style.top=($('#stage').offsetTop+8)+'px';}
+function syncPlacement(){const g=selGroup();if(!g)return;const set=(k,v)=>{const i=$(`#toolBar [data-gk="${k}"]`);if(i&&document.activeElement!==i)i.value=v;};set('cx',f1(g.cx));set('cy',f1(g.cy));set('scale',f1(g.scale*100));const s=$('#gSize');if(s)s.textContent=`${f1(g.w*g.scale)} × ${f1(g.h*g.scale)} mm`;}
 function renderLayers(){
   const el=$('#layers');
   if(!S.layers.length){el.innerHTML='<div class="empty">Les calques apparaîtront ici. L’ordre de la liste donne l’ordre des pages du PDF (une page par encre).</div>';return;}
@@ -714,7 +719,8 @@ $('#showTrame').onchange=e=>{S.showTrame=e.target.checked;scheduleRender();};
 window.addEventListener('resize',scheduleRender);
 
 const G=$('#groups');
-G.addEventListener('click',e=>{
+const TB=$('#toolBar');
+const onGClick=e=>{
   const b=e.target.closest('[data-g]');if(b){S.sel=b.dataset.g;renderGroups();scheduleRender();return;}
   const a=e.target.closest('[data-ga]');if(!a)return;const g=selGroup();if(!g)return;const[pw,ph]=pageSize();
   switch(a.dataset.ga){
@@ -725,12 +731,12 @@ G.addEventListener('click',e=>{
     case'del':if(!confirm('Supprimer « '+g.name+' » et ses calques ?'))return;S.layers=S.layers.filter(l=>l.groupId!==g.id);S.groups=S.groups.filter(x=>x!==g);S.sel=S.groups.length?S.groups[S.groups.length-1].id:null;renderSide();scheduleRender();return;
   }
   syncPlacement();scheduleRender();
-});
-G.addEventListener('input',e=>{
+};G.addEventListener('click',onGClick);TB.addEventListener('click',onGClick);
+const onGInput=e=>{
   const t=e.target,g=selGroup();if(!g)return;
   if(t.dataset.gk){const v=parseFloat(t.value);if(isNaN(v))return;if(t.dataset.gk==='scale')g.scale=Math.max(0.01,v/100);else g[t.dataset.gk]=v;syncPlacement();scheduleRender();}
   if(t.dataset.sk&&t.type==='range')t.previousElementSibling.querySelector('b').textContent=t.value+t.dataset.unit;
-});
+};G.addEventListener('input',onGInput);TB.addEventListener('input',onGInput);
 G.addEventListener('change',async e=>{
   const t=e.target,g=selGroup();if(!g||!g.sep)return;
   if(t.dataset.sk){g.sep[t.dataset.sk]=t.type==='range'?+t.value:t.value;}
@@ -820,7 +826,7 @@ function gAct(a){const g=selGroup();if(!g){if(['center','fitmargin','fitpage','r
   switch(a){case'center':g.cx=pw/2;g.cy=ph/2;break;case'fitmargin':fitGroup(g,marginBox());break;case'fitpage':fitGroup(g,{x:0,y:0,w:pw,h:ph});break;case'real':g.scale=1;break;
     case'rot':g.rot=((g.rot||0)+90)%360;break;
     case'dup':{const g2=dupGroup(g);const k=5;g2.cx+=k;g2.cy+=k;S.sel=g2.id;renderSide();scheduleRender();return;}
-    case'del':{const b=document.querySelector('#groups [data-ga=del]');if(b)b.click();return;}}
+    case'del':{const b=document.querySelector('#toolBar [data-ga=del]');if(b)b.click();return;}}
   syncPlacement();renderGroups();scheduleRender();}
 document.querySelectorAll('#tools [data-tb]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.tb;
   if(a==='import'){$('#fileIn').click();return;}if(a==='move'||a==='resize'){TBM=a;document.querySelectorAll('#tools [data-tb=move],#tools [data-tb=resize]').forEach(x=>x.classList.toggle('on',x.dataset.tb===a));document.body.classList.toggle('tb-resize',a==='resize');return;}
