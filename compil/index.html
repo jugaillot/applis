@@ -196,6 +196,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     </section>
     <section data-sec="export">
       <h2 class="fold"><span class="tw">▼</span>Export</h2>
+      <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oBook"> Format livret</label>
+      <div id="oBookBox" hidden class="muted" style="margin:2px 0 8px">Les pages sont imposées 2 par feuille, à l’italienne, dans l’ordre d’un livret plié au centre (complété par des pages blanches jusqu’à un multiple de 4). Imprime en <b>recto verso, retournement bord court</b>, plie et agrafe. Vaut aussi pour « Imprimer ».</div>
       <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oPx"> Exporter en pixels (images)</label>
       <div id="oPxBox" hidden style="margin:4px 0 8px"><label>Résolution<select id="oPxDpi"><option value="150">150 dpi (léger)</option><option value="200">200 dpi</option><option value="300">300 dpi (impression)</option><option value="600">600 dpi (très fin)</option></select></label>
         <div class="muted" style="margin-top:4px">Chaque feuille devient une image : rendu identique partout, mais le texte n’est plus sélectionnable.</div></div>
@@ -218,6 +220,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <button type="button" class="mb" data-px="#oN [data-v='4']" title="4 pages par feuille"><b>4</b></button>
 <button type="button" class="mb" data-px="#oN [data-v='8']" title="8 pages par feuille"><b>8</b></button>
       <div class="mlab">Export</div>
+<button type="button" class="mb" data-px="#oBook" title="Format livret (recto verso, plié au centre)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 6c-2.5-1.6-5.5-2-9-1.5v14c3.5-.5 6.5-.1 9 1.5 2.5-1.6 5.5-2 9-1.5v-14c-3.5-.5-6.5-.1-9 1.5zM12 6v14"/></svg></button>
 <button type="button" class="mb" data-px="#oPx" title="Exporter en pixels (images)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16"/></svg></button>
 <button type="button" class="mb" data-px="#oRed" title="Réduire le poids du fichier (poids maximum dans le panneau déplié)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v7M9 7l3 3 3-3M12 21v-7M9 17l3-3 3 3M4 12h16"/></svg></button>
 <button type="button" class="mb" data-px="#bPrint" title="Imprimer…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/></svg></button>
@@ -302,7 +305,7 @@ const $=s=>document.querySelector(s);
 const PT=72/25.4;
 const FORMATS={A4:[210,297],A3:[297,420],A5:[148,210],'30x40':[300,400]};
 pdfjsLib.GlobalWorkerOptions.workerSrc='../lib/pdf.worker.min.js';
-const S={files:new Map(),pages:[],sel:new Set(),anchor:null,opt:{fmt:'A4',w:210,h:297,or:'auto',n:1,mode:'suite',order:'z',m:5,g:5,fit:'fit',red:false,redMb:2,px:false,pxDpi:300}};
+const S={files:new Map(),pages:[],sel:new Set(),anchor:null,opt:{fmt:'A4',w:210,h:297,or:'auto',n:1,mode:'suite',order:'z',m:5,g:5,fit:'fit',red:false,redMb:2,px:false,pxDpi:300,book:false}};
 let uid=1;
 const ZOOM={z:1,t:0};
 const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;return new Promise(r=>setTimeout(r,20));};
@@ -423,7 +426,17 @@ function chooseLayout(){
   if(!best){const W=short,H=long;best={W,H,cols:1,rows:n,or:'portrait',s:0};}
   return best;
 }
+/* livret : feuille à l'italienne, 2 pages côte à côte, pages imposées pour une impression recto verso pliée au centre */
+const BOOKBLANK=new Map();
+function bookBlank(ref){const k=Math.round(ref.w)+'x'+Math.round(ref.h);let b=BOOKBLANK.get(k);if(!b){const c=document.createElement('canvas');c.width=Math.max(1,Math.round(ref.w/2));c.height=Math.max(1,Math.round(ref.h/2));const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);b={uid:'bk'+k,fileId:null,index:0,w:ref.w,h:ref.h,srcRot:0,rot:0,thumb:c,blank:true,bookPad:true};BOOKBLANK.set(k,b);}return b;}
+function bookSheets(){
+  const [a,b]=sheetSize();const L={W:Math.max(a,b),H:Math.min(a,b),cols:2,rows:1,or:'paysage',book:true};
+  const pg=S.pages.slice();if(!pg.length)return{L,sheets:[]};const N=Math.ceil(pg.length/4)*4,ref=pg[0];while(pg.length<N)pg.push(bookBlank(ref));
+  const sheets=[];for(let i=0;i<N/4;i++){sheets.push([pg[N-1-2*i],pg[2*i]]);sheets.push([pg[2*i+1],pg[N-2-2*i]]);}
+  return{L,sheets};
+}
 function buildSheets(){
+  if(S.opt.book)return bookSheets();
   const L=chooseLayout(),n=L.cols*L.rows;
   const sheets=[];
   if(S.opt.mode==='repeat')S.pages.forEach(p=>sheets.push(Array(n).fill(p)));
@@ -530,9 +543,10 @@ function _renderSheets(){
   const {L,sheets}=buildSheets();
   const sl=slots(L);
   const fmtName=S.opt.fmt==='custom'?`${L.W} × ${L.H} mm`:(S.opt.fmt==='30x40'?'30 × 40':S.opt.fmt);
-  $('#shTitle').textContent=`Aperçu des feuilles (${sheets.length}) — ${fmtName} ${L.or}, ${L.cols} × ${L.rows}`;
+  $('#shTitle').textContent=L.book?`Livret — ${sheets.length/2} feuille${sheets.length>2?'s':''} ${fmtName} recto verso (${sheets.length} faces)`:`Aperçu des feuilles (${sheets.length}) — ${fmtName} ${L.or}, ${L.cols} × ${L.rows}`;
   const sumN=S.pages.length;
   $('#summary').innerHTML=sumN?`${sumN} page${sumN>1?'s':''} → <b>${sheets.length} feuille${sheets.length>1?'s':''}</b> ${fmtName} (${L.or})<br>${L.cols*L.rows} case${L.cols*L.rows>1?'s':''} par feuille, ${L.cols} × ${L.rows}`:'Aucune page.';
+  if(L.book&&sumN)$('#summary').innerHTML=`${sumN} page${sumN>1?'s':''} → <b>livret de ${sheets.length*2} pages</b> (${sheets.length*2-sumN} blanche${sheets.length*2-sumN>1?'s':''} ajoutée${sheets.length*2-sumN>1?'s':''})<br>${sheets.length/2} feuille${sheets.length>2?'s':''} ${fmtName} recto verso`;
   $('#modeHelp').textContent=S.opt.mode==='repeat'?'Chaque page remplit sa feuille avec '+(L.cols*L.rows)+' copies (flyers, cartes à découper).':'Les pages se suivent, '+(L.cols*L.rows)+' par feuille.';
   const SZ=300*Math.max(1,ZOOM.z*0.8);const scale=Math.min(SZ/L.W,SZ/L.H)*Math.min(2.5,Math.max(1,window.devicePixelRatio||1));
   if(SHIO)SHIO.disconnect();SHIO=new IntersectionObserver(ents=>ents.forEach(en=>{if(en.isIntersecting){SHIO.unobserve(en.target);sheetHi(en.target);}}),{rootMargin:'300px'});
@@ -542,7 +556,7 @@ function _renderSheets(){
     const disp=Math.min(SZ/L.W,SZ/L.H);c.style.width=Math.round(L.W*disp)+'px';c.style.height=Math.round(L.H*disp)+'px';
     c._sh={pages,L,sl,scale,gen:SHGEN};drawSheet(c,visNA);SHIO.observe(c);
     const w=document.createElement('div');w.className='sh';const iw=document.createElement('div');iw.className='shw';iw.appendChild(c);w.appendChild(iw);c._ov=iw;sheetAnn(c);
-    const s=document.createElement('span');s.textContent='Feuille '+(k+1);w.appendChild(s);box.appendChild(w);
+    const s=document.createElement('span');s.textContent=L.book?('Feuille '+(Math.floor(k/2)+1)+(k%2?' — verso':' — recto')):('Feuille '+(k+1));w.appendChild(s);box.appendChild(w);
   });
   annPanel();
   if(sheets.length>shown.length){const m=document.createElement('div');m.className='muted';m.textContent='… et '+(sheets.length-shown.length)+' autres feuilles.';box.appendChild(m);}
@@ -911,6 +925,8 @@ function segBind(id,key,num){
   el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(S.opt[key])===b.dataset.v));
   el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.opt[key]=num?+b.dataset.v:b.dataset.v;el.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));saveOpt();renderSheets();});
 }
+$('#oBook').checked=!!S.opt.book;$('#oBookBox').hidden=!S.opt.book;
+$('#oBook').onchange=e=>{S.opt.book=e.target.checked;$('#oBookBox').hidden=!S.opt.book;saveOpt();renderSheets();};
 $('#oPx').checked=!!S.opt.px;$('#oPxBox').hidden=!S.opt.px;$('#oPxDpi').value=String(S.opt.pxDpi||300);
 $('#oPx').onchange=e=>{S.opt.px=e.target.checked;$('#oPxBox').hidden=!S.opt.px;saveOpt();};
 $('#oPxDpi').onchange=e=>{S.opt.pxDpi=+e.target.value;saveOpt();};
