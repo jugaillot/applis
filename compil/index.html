@@ -23,7 +23,7 @@ header h1 span{color:var(--acc)}
 .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
 .btn.accent{background:var(--acc);color:#fff;border-color:var(--acc)}
 .btn.sm{padding:3px 7px;font-size:12px}
-main{flex:1;display:grid;grid-template-columns:86px 290px 1fr;min-height:0}
+main{flex:1;display:grid;grid-template-columns:86px 1fr 290px;min-height:0}
 #tools{background:var(--panel);border-right:1px solid var(--line);padding:8px 0;overflow-y:auto}
 #tools .tgrid{display:grid;grid-template-columns:36px 36px;gap:3px;justify-content:center;align-content:start}
 .tool{width:36px;height:36px;border:1px solid transparent;border-radius:8px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);padding:0}
@@ -34,7 +34,9 @@ main{flex:1;display:grid;grid-template-columns:86px 290px 1fr;min-height:0}
 .tsep{grid-column:1 / -1;height:1px;background:var(--line);margin:4px 6px}
 body:not(.t-text) .shw .textLayer{pointer-events:none;user-select:none}
 body.t-addtext .shw,body.t-sign .shw,body.t-crop .shw{cursor:crosshair}
-aside{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:0 12px 30px}
+aside{overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:0 12px 30px;order:3}
+#work{order:2}
+#tools{order:1}
 section h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:14px 0 7px;font-weight:600}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
@@ -80,7 +82,7 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
 #busy[hidden]{display:none}
 #dropAll{position:fixed;inset:0;background:rgba(30,136,255,.12);border:4px dashed var(--sel);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:var(--sel);z-index:50;pointer-events:none}
 #dropAll[hidden]{display:none}
-@media (max-width:820px){main{grid-template-columns:1fr}#tools .tgrid{grid-template-columns:repeat(auto-fill,36px);justify-content:start;padding:0 8px}aside{border-right:0;border-bottom:1px solid var(--line)}}
+@media (max-width:820px){main{grid-template-columns:1fr}#tools .tgrid{grid-template-columns:repeat(auto-fill,36px);justify-content:start;padding:0 8px}aside{border-left:0;border-top:1px solid var(--line)}}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
