@@ -136,7 +136,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <label id="nTxtBox">Texte<textarea id="nTxt" rows="3" style="font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px;resize:vertical"></textarea></label>
       <div class="g2" style="margin-top:6px"><label><span id="nSizeLab">Taille (pt)</span><input type="number" id="nSize" min="1" step="1"></label><label id="nColBox">Couleur<input type="color" id="nCol" value="#000000" style="height:30px;padding:0"></label></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" id="nSign" type="button">Changer de signature…</button><button class="btn sm" id="nDel" type="button">Supprimer</button></div>
-      <div class="muted" style="margin-top:6px">Glisse l’élément sur la page, tire la poignée du coin pour l’agrandir · Suppr : supprimer</div>
+      <div class="muted" style="margin-top:6px">Glisse l’élément sur la page, tire la poignée du coin pour l’agrandir · double-clic : modifier le texte ou refaire la signature · Suppr : supprimer</div>
     </section>
     <section>
       <h2>Feuille</h2>
@@ -474,7 +474,7 @@ async function sheetText(c){const sh=c._sh,ov=c._ov;if(!sh||!ov)return;ov.queryS
       await pdfjsLib.renderTextLayer({textContentSource:tc,container:tl,viewport:vp,textDivs:[]}).promise;}catch(e){console.error(e);}}
 }
 /* double-clic sur une page d'une feuille : ouvrir la page (annoter, signer, rogner) */
-$('#sheets').addEventListener('dblclick',e=>{if(e.target.closest('.an')){if(ANSEL&&ANSEL.a.type==='text'){$('#nTxt').focus();$('#nTxt').select();}return;}const iw=e.target.closest('.shw');if(!iw)return;const c=iw.querySelector('canvas');const sh=c&&c._sh;if(!sh)return;
+$('#sheets').addEventListener('dblclick',e=>{if(e.target.closest('.an')||e.target.tagName==='TEXTAREA'){e.preventDefault();return;}const iw=e.target.closest('.shw');if(!iw)return;const c=iw.querySelector('canvas');const sh=c&&c._sh;if(!sh)return;
   if(getSelection&&String(getSelection()).trim()&&e.target.closest('.textLayer'))return;
   const r=c.getBoundingClientRect(),disp=r.width/sh.L.W,mx=(e.clientX-r.left)/disp,my=(e.clientY-r.top)/disp;
   for(let i=0;i<sh.pages.length;i++){const cell=sh.sl[i];if(!cell)continue;if(mx>=cell.x&&mx<=cell.x+cell.w&&my>=cell.y&&my<=cell.y+cell.h){openEditor(sh.pages[i],'crop');return;}}});
@@ -872,7 +872,7 @@ async function restoreAtelier(att,fname){
   if(st.opt){Object.assign(S.opt,st.opt);saveOpt();syncOptUI();}
 }
 /* ---------- texte et signature posés directement sur les feuilles ---------- */
-let ANSEL=null;
+let ANSEL=null,LASTAN=null;
 const sigNA=p=>JSON.stringify([cropOf(p),hasLevels(p)?p.levels:null]);
 function visNA(p){const k=sigNA(p);if(p._vna&&p._vnaK===k&&p._vnaT===p.thumb)return p._vna;p._vna=(p.crop||hasLevels(p))?editedCanvas(p.thumb,p):p.thumb;p._vnaK=k;p._vnaT=p.thumb;return p._vna;}
 function sheetAnn(c){const sh=c._sh,ov=c._ov;if(!sh||!ov)return;ov.querySelectorAll('.aw').forEach(x=>x.remove());
@@ -899,7 +899,7 @@ $('#nSign').onclick=()=>openSign(src=>{if(ANSEL&&ANSEL.a.type==='sign'){ANSEL.a.
 (function(){
   const box=$('#sheets');let dr=null;
   box.addEventListener('pointerdown',e=>{const el=e.target.closest('.an');if(!el||TOOL==='text')return;e.preventDefault();e.stopPropagation();
-    const a=el._a,g=el._g;ANSEL={p:el._p,a};const wr=el.parentNode.getBoundingClientRect();
+    const a=el._a,g=el._g;const now=Date.now();if(LASTAN&&LASTAN.a===a&&now-LASTAN.t<450&&!e.target.closest('.rs')){LASTAN=null;e.preventDefault();e.stopPropagation();setTimeout(()=>annEdit(el),0);return;}LASTAN={a,t:now};ANSEL={p:el._p,a};const wr=el.parentNode.getBoundingClientRect();
     const [u,v]=annToDisp(a.fx,a.fy,g.r);const uc=(u-g.cd.l)/(1-g.cd.l-g.cd.r),vc=(v-g.cd.t)/(1-g.cd.t-g.cd.b);const cx=wr.left+uc*wr.width,cy=wr.top+vc*wr.height;
     dr={a,g,rs:!!e.target.closest('.rs'),x:e.clientX,y:e.clientY,uc,vc,W:wr.width,H:wr.height,cx,cy,d0:Math.hypot(e.clientX-cx,e.clientY-cy)||1,fs:a.fs,sw:a.sw,moved:false};
     box.setPointerCapture(e.pointerId);refreshAnn();});
@@ -912,6 +912,17 @@ $('#nSign').onclick=()=>openSign(src=>{if(ANSEL&&ANSEL.a.type==='sign'){ANSEL.a.
   document.addEventListener('keydown',e=>{if(!ANSEL||$('#edDlg').open||$('#sgDlg').open||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
     if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopImmediatePropagation();$('#nDel').click();}else if(e.key==='Escape'){ANSEL=null;refreshAnn();}},true);
 })();
+/* double-clic sur un élément posé : modifier le texte sur place, ou refaire la signature */
+function annEdit(el){const a=el._a,p=el._p;ANSEL={p,a};
+  if(a.type==='sign'){openSign(src=>{a.src=src;annChanged();});return;}
+  const g=el._g,k=g.disp*g.q.s/PT,w=el.parentNode;const r=el.getBoundingClientRect(),wr=w.getBoundingClientRect();
+  const ta=document.createElement('textarea');ta.value=a.txt||'';const fpx=a.fs*k;
+  ta.style.cssText=`position:absolute;z-index:5;left:${r.left-wr.left+w.offsetLeft-4}px;top:${r.top-wr.top+w.offsetTop-4}px;min-width:${Math.max(80,r.width+40)}px;min-height:${r.height+8}px;font:${fpx}px/1.2 Helvetica,Arial,sans-serif;color:${a.col||'#000'};background:rgba(255,255,255,.95);border:1.5px solid var(--acc);border-radius:4px;padding:3px;resize:both;outline:none`;
+  el.style.visibility='hidden';w.parentNode.appendChild(ta);ta.focus();ta.select();
+  const done=()=>{if(!ta.isConnected)return;a.txt=ta.value;ta.remove();if(!a.txt.trim()){p.ann=p.ann.filter(x=>x!==a);if(!p.ann.length)p.ann=null;ANSEL=null;}annChanged();};
+  ta.addEventListener('input',()=>{a.txt=ta.value;if(document.activeElement!==$('#nTxt'))$('#nTxt').value=ta.value;});
+  ta.addEventListener('blur',done);ta.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'||(e.key==='Enter'&&(e.ctrlKey||e.metaKey))){e.preventDefault();ta.blur();}});
+  annPanel();}
 /* ---------- barre d'outils ---------- */
 const TH={select:'Clic sur une vignette pour la choisir · double-clic sur une page pour la modifier',text:'Surligne du texte sur les feuilles, puis Ctrl+C',addtext:'Clique sur une page à l’endroit où mettre le texte',sign:'Clique sur une page à l’endroit où signer',crop:'Clique sur une page pour la rogner ou régler ses niveaux'};
 let TOOL='select';
