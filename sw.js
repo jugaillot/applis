@@ -1,9 +1,9 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Scripts de l'atelier : réseau d'abord aussi. Grosses bibliothèques et polices : copie locale d'abord. */
-const VERSION = 'atelier-v139';
+const VERSION = 'atelier-v140';
 const PRECACHE = [
-  '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/', '/paysage/',
+  '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/', '/paysage/', '/civco/',
   '/vecto/potrace-worker.js', '/lib/sync.js','/lib/tabs.js', '/lib/help.js',
   '/lib/paper-core.min.js', '/lib/clipper.js', '/lib/jspdf.umd.min.js', '/lib/svg2pdf.umd.min.js',
   '/lib/pdf.min.js', '/lib/pdf.worker.min.js', '/lib/pdf-lib.min.js',
