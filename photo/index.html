@@ -928,7 +928,7 @@ renderStrip();syncPanel();renderPresets();renderPreview();syncToolPanel();setToo
   const gT=document.createElement('div');gT.className='tbg';const tT=document.createElement('b');gT.appendChild(tT);
   ['#tBrush','#tFillBox','#tColBox'].forEach(id=>gT.appendChild($(id)));const rw=$('#tUndoLast').parentNode;gT.appendChild(rw);gT.appendChild($('#tHint'));
   const gC=document.createElement('div');gC.className='tbg';const tC=document.createElement('b');tC.textContent='Rogner';gC.appendChild(tC);
-  gC.appendChild($('#gRatio').closest('label'));gC.appendChild($('#gStraight').closest('.sl'));gC.appendChild($('#gCropBtn').parentNode);$('#gCropBtn').parentNode.appendChild($('#gCropReset'));
+  gC.appendChild($('#gRatio').closest('label'));gC.appendChild($('#gStraight').closest('.sl'));const cb=$('#gCropBtn'),cr=$('#gCropReset');gC.appendChild(cb.parentNode);cb.parentNode.appendChild(cr);
   tb.appendChild(gT);tb.appendChild(gC);
   const d=$('#dTool');if(d)d.style.display='none';// la rubrique de droite n'a plus lieu d'être
   const geo=document.querySelector('details[data-sec="rognage"] summary span');if(geo)geo.innerHTML='<i class="grip">⋮⋮</i>Rotation et miroir';
