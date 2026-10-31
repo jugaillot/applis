@@ -68,6 +68,8 @@ main{flex:1;display:grid;grid-template-columns:250px 1fr;min-height:0}
 .meta input.w{width:190px}
 .acts{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 #edBox{flex:1;min-height:0;background:#fff}
+#bNewFiche,#fType,#bFiche,#lieBox,label:has(>#fTypeD){display:none!important}
+#edBox .toastui-editor-ww-container .ProseMirror{min-height:100%;-webkit-user-select:text;user-select:text}
 #edBox .toastui-editor-defaultUI{border:0;border-radius:0}
 .toastui-editor-contents{font-size:15px}
 #saveInfo{font-size:12px;color:var(--mute);white-space:nowrap}
@@ -117,7 +119,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <main>
   <nav id="side">
     <input type="search" id="q" placeholder="Rechercher…">
-    <div>
+    <div hidden>
       <div class="sideh">Type</div>
       <div class="chips" id="fType"><span class="chip on" data-v="">Tout</span><span class="chip" data-v="dossier">Dossiers</span><span class="chip" data-v="fiche">Fiches action</span></div>
     </div>
@@ -431,6 +433,10 @@ function makeEditor(){
     placeholder:'Écris ici… (titres, listes, tableaux, images par glisser-déposer ou copier-coller)',
     hooks:{addImageBlobHook:async(blob,cb)=>{if(!S.cur)return;await busy('Ajout de l’image…');try{const b=await prepImage(blob);const ext=b.type==='image/png'?'png':'jpg';const path=`images/${S.cur}/${Date.now().toString(36)}.${ext}`;await idb.set('imgpend:'+path,{blob:b});const u=URL.createObjectURL(b);S.imgUrl.set(path,u);S.urlPath.set(u,path);cb(u,(blob.name||'image').replace(/\.[^.]+$/,''));schedulePush(800);}finally{await busy();}}}});
   editor.on('change',()=>{if(!suppress)onEdit();});
+  /* mobile : un appui dans le corps du document ouvre le clavier directement */
+  $('#edBox').addEventListener('touchend',e=>{if(e.target.closest('.toastui-editor-toolbar,.toastui-editor-mode-switch,.toastui-editor-popup,button,input,a'))return;
+    const ww=$('#edBox .toastui-editor-ww-container .ProseMirror'),md=$('#edBox .toastui-editor-md-container .ProseMirror');
+    const a=document.activeElement;if(a===ww||a===md)return;if(ww&&ww.offsetParent){ww.focus();}else if(md&&md.offsetParent)md.focus();},{passive:true});
 }
 function fillStatutSelect(){$('#fStatut').innerHTML=STATUTS.map(([v,l])=>`<option value="${esc(v)}">${l}</option>`).join('');}
 async function openDoc(slug,keepScroll){
@@ -729,6 +735,6 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLower
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init({app:"dossiers",title:"Atelier Dossiers",sections:[
 {title:"Documents",keys:[["Ctrl + S","Enregistrer et envoyer tout de suite sur GitHub"],["Ctrl + P","PDF / imprimer"],["Glisser une ligne sur un classeur","Ranger le document"],["Coller ou glisser une image","L’ajouter au document"]]},
-{title:"Comment ça marche",params:[["Adresse","Chaque document a sa propre adresse (bouton « Copier l’adresse ») : atelier…/dossiers/#nom-du-document. Elle ne change pas si tu renommes le document."],["Enregistrement","Tout est gardé sur l’appareil à chaque frappe, puis envoyé sur GitHub quelques secondes après. Hors connexion, l’envoi se fait au retour du réseau."],["Versions","Chaque envoi est une version : le bouton « Versions » ouvre l’historique sur GitHub."],["Claude","Claude peut créer ou modifier des documents depuis une conversation : ils apparaissent ici à l’actualisation (clic sur l’état de synchronisation, ou en revenant sur la fenêtre)."],["Fiche action","« Créer la fiche action » reprend le début de chaque rubrique (titres de niveau 2) du dossier, sur une page A4 en deux colonnes."],["Lien public","Une page en lecture seule, sans mot de passe, mise à jour à chaque modification."],["Charte","Polices, couleurs, logo et pied de page communs à tous les documents."]]}]});</script>
+{title:"Comment ça marche",params:[["Adresse","Chaque document a sa propre adresse (bouton « Copier l’adresse ») : atelier…/dossiers/#nom-du-document. Elle ne change pas si tu renommes le document."],["Enregistrement","Tout est gardé sur l’appareil à chaque frappe, puis envoyé sur GitHub quelques secondes après. Hors connexion, l’envoi se fait au retour du réseau."],["Versions","Chaque envoi est une version : le bouton « Versions » ouvre l’historique sur GitHub."],["Claude","Claude peut créer ou modifier des documents depuis une conversation : ils apparaissent ici à l’actualisation (clic sur l’état de synchronisation, ou en revenant sur la fenêtre)."],["Lien public","Une page en lecture seule, sans mot de passe, mise à jour à chaque modification."],["Charte","Polices, couleurs, logo et pied de page communs à tous les documents."]]}]});</script>
 </body>
 </html>
