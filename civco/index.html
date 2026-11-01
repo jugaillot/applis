@@ -23,7 +23,8 @@ header h1 span{color:var(--acc)}
 .btn[disabled]{opacity:.45;cursor:default}
 /* barre de jeu */
 #hud{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
-.chip{display:inline-flex;align-items:center;gap:5px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-weight:600;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font:inherit;font-weight:600;white-space:nowrap;color:var(--ink)}
+button.chip{cursor:pointer}
 .chip small{font-weight:600;color:var(--mute)}
 .chip.bad{background:#fbe9e4;border-color:#e3a59a;color:#7a2a1a}
 .chip svg{width:15px;height:15px;flex:none}
@@ -32,7 +33,7 @@ header h1 span{color:var(--acc)}
 .pip.off{background:#dcd8cd}
 #work{flex:1;min-height:0;display:flex;position:relative}
 /* outils */
-#tools{width:112px;flex:none;padding:8px;background:var(--panel);border-right:1px solid var(--line);display:grid;grid-template-columns:repeat(2,1fr);gap:6px;align-content:start}
+#tools{width:112px;flex:none;padding:8px;background:var(--panel);border-right:1px solid var(--line);display:grid;grid-template-columns:repeat(2,1fr);gap:6px;align-content:start;overflow-y:auto}
 .tool{width:100%;aspect-ratio:1;min-height:44px;border:1px solid var(--line);background:var(--soft);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);padding:0;position:relative}
 .tool svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .tool:hover{border-color:#c9c5bc}
@@ -41,10 +42,15 @@ header h1 span{color:var(--acc)}
 /* plateau */
 #stage{flex:1;min-width:0;position:relative;background:var(--cream);overflow:hidden}
 #board{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
-#opts{position:absolute;left:8px;top:8px;max-width:min(300px,calc(100% - 16px));background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:12px;padding:8px 11px;box-shadow:0 2px 10px rgba(0,0,0,.08);pointer-events:none}
+#opts{position:absolute;left:8px;top:8px;max-width:min(320px,calc(100% - 16px));background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:12px;padding:8px 11px;box-shadow:0 2px 10px rgba(0,0,0,.08);pointer-events:none}
 #opts b{display:block;font-size:13px}
 #opts span{display:block;color:var(--mute);font-size:12px;margin-top:2px}
 #opts em{display:block;font-style:normal;font-size:12px;margin-top:3px;color:var(--acc);font-weight:700}
+#oProd{display:none;gap:6px;margin-top:7px;pointer-events:auto}
+#oProd.on{display:flex}
+#oProd button{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:5px 6px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;min-height:38px;color:var(--ink)}
+#oProd button svg{width:17px;height:17px;flex:none}
+#oProd button.on{background:#e6edc6;border-color:var(--acc)}
 #toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:999px;padding:7px 14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100% - 24px);text-align:center;z-index:6}
 #toast.on{opacity:.95}
 /* panneau de propriétés */
@@ -62,10 +68,14 @@ summary::before{content:"▾ ";color:var(--mute)}
 details:not([open]) summary::before{content:"▸ "}
 .kv{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
 .kv span:first-child{color:var(--mute)}
+.kv b{text-align:right}
 .pill{display:inline-block;border-radius:999px;padding:2px 10px;font-weight:700;font-size:12px}
 .pill.ok{background:#dfe8c4;color:#3c4a0d}
 .pill.warn{background:#f3ddb5;color:#6b4a12}
 .pill.bad{background:#f3c9c0;color:#7a2a1a}
+.vrow{display:flex;align-items:center;gap:8px;width:100%;border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:6px 9px;margin:4px 0;font:inherit;cursor:pointer;text-align:left;color:var(--ink)}
+.vrow.on{border-color:var(--acc);background:#eef0d6}
+.vrow b{flex:1}
 #journal{list-style:none;margin:4px 0 0;padding:0;max-height:260px;overflow:auto}
 #journal li{padding:3px 0;border-bottom:1px dotted var(--line);color:#3d3b36}
 #journal li b{color:var(--acc);margin-right:4px}
@@ -114,6 +124,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 
 <div id="hud">
   <span class="chip" title="Tour en cours">Tour <b id="hTour">1</b><small>/ 40</small></span>
+  <button class="chip" id="cVil" title="Village actif : touche pour passer au suivant"></button>
   <span class="chip" id="cEau" title="Eau"><svg viewBox="-10 -12 20 24"><path d="M0,-10 C6,-2 8,2 8,5 A8,8 0 0 1 -8,5 C-8,2 -6,-2 0,-10 Z" fill="#4F8FA8"/></svg><b id="vEau">0</b><small id="dEau"></small></span>
   <span class="chip" id="cNou" title="Nourriture"><svg viewBox="-10 -12 20 24"><path d="M0,11 L0,-6" stroke="#A8802A" stroke-width="2" stroke-linecap="round"/><g fill="#C99A3C"><ellipse cx="-4" cy="-3" rx="2.8" ry="4.6" transform="rotate(-25 -4 -3)"/><ellipse cx="4" cy="-3" rx="2.8" ry="4.6" transform="rotate(25 4 -3)"/><ellipse cx="-4" cy="4" rx="2.8" ry="4.6" transform="rotate(-25 -4 4)"/><ellipse cx="4" cy="4" rx="2.8" ry="4.6" transform="rotate(25 4 4)"/><ellipse cx="0" cy="-8" rx="2.6" ry="4.2"/></g></svg><b id="vNou">0</b><small id="dNou"></small></span>
   <span class="chip" id="cMat" title="Matériaux"><svg viewBox="-10 -12 20 24"><path d="M-8,9 L7,-9" stroke="#8B6B4A" stroke-width="3" stroke-linecap="round"/><path d="M-1,1 L-7,-4" stroke="#8B6B4A" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="6" cy="-3" rx="3" ry="5" transform="rotate(40 6 -3)" fill="#5E9A5A"/></svg><b id="vMat">0</b><small id="dMat"></small></span>
@@ -126,28 +137,33 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <div id="work">
   <nav id="tools" aria-label="Outils">
     <button class="tool on" data-tool="view" title="Observer (V)" aria-label="Observer"><svg viewBox="0 0 24 24"><path d="M6 3l12 8-5.2 1.3L10.5 18z"/></svg><kbd>V</kbd></button>
-    <button class="tool" data-tool="explore" title="Explorer (E)" aria-label="Explorer"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l6 6"/></svg><kbd>E</kbd></button>
+    <button class="tool" data-tool="move" title="Déplacer le personnage (M)" aria-label="Déplacer le personnage"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><path d="M12 8v6l-3 6M12 14l3 6M8 11l4-2 4 2"/></svg><kbd>M</kbd></button>
     <button class="tool" data-tool="build" title="Aménager (A)" aria-label="Aménager"><svg viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M12 10c0-4 3-6 7-6 0 4-3 6-7 6z"/><path d="M12 14c0-3-2-5-6-5 0 3 2 5 6 5z"/><path d="M5 20h14"/></svg><kbd>A</kbd></button>
+    <button class="tool" data-tool="fallow" title="Jachère (J)" aria-label="Jachère"><svg viewBox="0 0 24 24"><path d="M20 14A8 8 0 1 1 10 4a6.5 6.5 0 0 0 10 10z"/></svg><kbd>J</kbd></button>
     <button class="tool" data-tool="regen" title="Régénérer (R)" aria-label="Régénérer"><svg viewBox="0 0 24 24"><path d="M12 3c5 3 7 9 0 18C5 12 7 6 12 3z"/><path d="M12 8v10"/></svg><kbd>R</kbd></button>
+    <button class="tool" data-tool="found" title="Fonder un village (F)" aria-label="Fonder un village"><svg viewBox="0 0 24 24"><path d="M4 12L12 5l8 7"/><path d="M6 11v8h12v-8"/><path d="M12 13v4M10 15h4"/></svg><kbd>F</kbd></button>
+    <button class="tool" data-tool="trade" title="Échanger (E)" aria-label="Échanger"><svg viewBox="0 0 24 24"><path d="M5 8h13l-3-3M19 16H6l3 3"/></svg><kbd>E</kbd></button>
   </nav>
 
   <main id="stage">
     <canvas id="board"></canvas>
-    <div id="opts"><b id="oName"></b><span id="oHelp"></span><em id="oStat"></em></div>
+    <div id="opts"><b id="oName"></b><span id="oHelp"></span><div id="oProd"></div><em id="oStat"></em></div>
     <div id="toast"></div>
     <div id="over"><div class="card"><h2 id="ovT"></h2><p id="ovP"></p><div class="row"><button class="btn acc" id="ovNew">Nouvelle partie</button><button class="btn" id="ovSee">Voir le plateau</button></div></div></div>
   </main>
 
   <aside id="panel" class="min">
     <div class="pbody">
-      <details id="dVillage" open><summary>Village</summary><div id="pVillage"></div></details>
+      <details id="dVillage" open><summary>Village actif</summary><div id="pVillage"></div></details>
+      <details id="dVils" open><summary>Villages</summary><div id="pVils"></div></details>
       <details id="dCase" open><summary>Case</summary><div id="pCase"></div></details>
       <details id="dVit" open><summary>Vitalité du vivant</summary><div id="pVit"></div></details>
       <details id="dJour" open><summary>Journal</summary><ul id="journal"></ul></details>
     </div>
     <div class="pbar">
       <button class="pbtn" id="pTog" title="Replier ou déplier le panneau" aria-label="Replier ou déplier le panneau"><svg viewBox="0 0 24 24"><path id="pTogI" d="M15 6l-6 6 6 6"/></svg></button>
-      <button class="pbtn" data-open="dVillage" title="Village" aria-label="Village"><svg viewBox="0 0 24 24"><path d="M4 12L12 5l8 7"/><path d="M6 11v8h12v-8"/></svg></button>
+      <button class="pbtn" data-open="dVillage" title="Village actif" aria-label="Village actif"><svg viewBox="0 0 24 24"><path d="M4 12L12 5l8 7"/><path d="M6 11v8h12v-8"/></svg></button>
+      <button class="pbtn" data-open="dVils" title="Villages" aria-label="Villages"><svg viewBox="0 0 24 24"><path d="M2 14l4-4 4 4M14 16l4-5 4 5"/><path d="M3 14v5h6v-5M15 16v3h6v-3"/></svg></button>
       <button class="pbtn" data-open="dCase" title="Case" aria-label="Case"><svg viewBox="0 0 24 24"><path d="M12 3l7.5 4.3v9.4L12 21l-7.5-4.3V7.3z"/></svg></button>
       <button class="pbtn" data-open="dVit" title="Vitalité" aria-label="Vitalité"><svg viewBox="0 0 24 24"><path d="M12 3c5 3 7 9 0 18C5 12 7 6 12 3z"/></svg></button>
       <button class="pbtn" data-open="dJour" title="Journal" aria-label="Journal"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 9h6M9 13h6"/></svg></button>
@@ -156,26 +172,40 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 </div>
 
 <script>
-/* Civco — civilisation et coopération. Un village, un plateau, un vivant à ménager. */
+/* Civco — civilisation et coopération. Des villages, un personnage qui explore, un vivant à ménager. */
 const $=s=>document.querySelector(s);
 const APP='civco';
 const W=12,H=12,TOURS=40,SQ3=Math.sqrt(3);
-const CLIM={t:{n:'Tropical',c:'#6FA86B',e:[.30,.45,.25],s:['fruits','plantes médicinales']},
-  e:{n:'Tempéré',c:'#A9C47F',e:[.30,.50,.20],s:['céréales','bétail']},
-  f:{n:'Froid',c:'#8FA9B8',e:[.25,.15,.60],s:['bois dur','minerai','pierre']},
-  a:{n:'Aride',c:'#E0B779',e:[.10,.20,.70],s:['sel','dattes','énergie solaire']}};
+const CLIM={t:{n:'Tropical',c:'#6FA86B',s:['fruits','plantes médicinales']},
+  e:{n:'Tempéré',c:'#A9C47F',s:['céréales','bétail']},
+  f:{n:'Froid',c:'#8FA9B8',s:['bois dur','minerai','pierre']},
+  a:{n:'Aride',c:'#E0B779',s:['sel','dattes','énergie solaire']}};
+/* terrains vierges : ce qu'on y produit dépend de ce qu'on décide d'y faire */
+const TERR={p:'Plaine',f:'Forêt',m:'Montagne',h:'Zone humide',d:'Désert'};
+const TERRHINT={p:'idéale pour la nourriture',f:'riche en bois',m:'pierre et minerai, un peu d\'eau de source',h:'riche en eau',d:'pauvre, un peu de sel et de pierre'};
+const YIELD={p:[1,3,1],f:[2,2,3],m:[2,1,3],h:[3,2,1],d:[1,1,2]};   /* par tour : [eau, nourriture, matériaux] */
+const TW={t:{f:.35,p:.25,h:.25,m:.15},e:{p:.5,f:.25,h:.1,m:.15},f:{m:.4,f:.35,p:.15,h:.1},a:{d:.6,m:.25,p:.1,h:.05}};
 const RES=['eau','nourriture','matériaux'];
+const RCOL=['#4F8FA8','#C99A3C','#8B6B4A'];
+const ICON=['<svg viewBox="-10 -12 20 24"><path d="M0,-10 C6,-2 8,2 8,5 A8,8 0 0 1 -8,5 C-8,2 -6,-2 0,-10 Z" fill="#4F8FA8"/></svg>',
+ '<svg viewBox="-10 -12 20 24"><path d="M0,11 L0,-6" stroke="#A8802A" stroke-width="2" stroke-linecap="round"/><g fill="#C99A3C"><ellipse cx="-4" cy="-3" rx="2.8" ry="4.6" transform="rotate(-25 -4 -3)"/><ellipse cx="4" cy="-3" rx="2.8" ry="4.6" transform="rotate(25 4 -3)"/><ellipse cx="-4" cy="4" rx="2.8" ry="4.6" transform="rotate(-25 -4 4)"/><ellipse cx="4" cy="4" rx="2.8" ry="4.6" transform="rotate(25 4 4)"/><ellipse cx="0" cy="-8" rx="2.6" ry="4.2"/></g></svg>',
+ '<svg viewBox="-10 -12 20 24"><path d="M-8,9 L7,-9" stroke="#8B6B4A" stroke-width="3" stroke-linecap="round"/><path d="M-1,1 L-7,-4" stroke="#8B6B4A" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="6" cy="-3" rx="3" ry="5" transform="rotate(40 6 -3)" fill="#5E9A5A"/></svg>'];
+const PART={t:{s:1,b:2,n:'Rive-Douce'},e:{s:0,b:2,n:'Val-Tendre'},f:{s:2,b:1,n:'Pierre-Froide'},a:{s:2,b:0,n:'Sablonnière'}};
+const COLO=['Fond-Vert','Haut-Pré','La Clairière','Terre-Neuve','Source-Claire','Les Cimes'];
 const TOOLS={
-  view:{n:'Observer',h:'Touche une case pour voir ses détails.'},
-  explore:{n:'Explorer',h:'Révèle une case voisine d\'une case déjà connue. Coûte 1 action.'},
-  build:{n:'Aménager',h:'Met une case en production : 2 matériaux, à 2 cases du village au plus, 10 cases au maximum.'},
-  regen:{n:'Régénérer',h:'Fait reposer une case fatiguée : fatigue −2 et +1 de vitalité. Elle ne produit pas ce tour.'}};
-let G=null,DOC={id:null,name:''},tool='view',sel=null,cam={tx:0,ty:0,k:1},R=34;
+  view:{n:'Observer',h:'Touche une case pour voir ses détails, ou un de tes villages pour le rendre actif.'},
+  move:{n:'Déplacer le personnage',h:'Jusqu\'à 2 cases par action. Il révèle les cases autour de lui.'},
+  build:{n:'Aménager',h:'Choisis la production : plaine → nourriture, forêt et montagne → matériaux, zone humide → eau. Coûte 2 matériaux.'},
+  fallow:{n:'Jachère',h:'Met une case aménagée au repos, ou la relance. Gratuit, sans action.'},
+  regen:{n:'Régénérer',h:'Replante une case : +1 de vitalité, fatigue −2. Une même case : une fois tous les 3 tours.'},
+  found:{n:'Fonder un village',h:'Là où se trouve le personnage : 5 habitants et 6 de chaque ressource, pris au village mère (10 habitants requis). À 3 cases au moins d\'un autre village.'},
+  trade:{n:'Échanger',h:'Avec un village voisin du personnage : tu donnes 2, tu reçois 3 (4 une fois la confiance établie). Une fois par village et par tour.'}};
+let G=null,DOC={id:null,name:''},tool='view',sel=null,prodSel=1,cam={tx:0,ty:0,k:1},R=34;
 const cv=$('#board'),ctx=cv.getContext('2d');
 
 /* ---------- hasard ---------- */
 function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-function pickW(rand,w){const x=rand();let s=0;for(let i=0;i<w.length;i++){s+=w[i];if(x<s)return i;}return w.length-1;}
+function pickT(rand,w){const x=rand();let s=0,last=null;for(const k in w){s+=w[k];last=k;if(x<s)return k;}return last;}
 
 /* ---------- géométrie hexagonale (lignes impaires décalées) ---------- */
 const idx=(c,r)=>(c>=0&&c<W&&r>=0&&r<H)?r*W+c:-1;
@@ -195,78 +225,146 @@ function genWorld(seed){
   for(let i=3;i>0;i--){const j=Math.floor(rand()*(i+1));[keys[i],keys[j]]=[keys[j],keys[i]];}
   const quads=[[3,3],[8,3],[3,8],[8,8]],seeds=quads.map((q,i)=>({k:keys[i],c:q[0]+(rand()*3-1.5),r:q[1]+(rand()*3-1.5)}));
   const cells=[];
+  G={v:2,seed,tour:1,actions:3,vit:70,over:null,overSeen:false,log:[],cells,vils:[],act:0,pj:{c:0,r:0},nCol:0};
   for(let r=0;r<H;r++)for(let c=0;c<W;c++){
-    const px=cx(c,r)/ (R*SQ3),py=cy(r)/(R*SQ3);let best=null,bd=1e9;
+    const px=c+.5*(r&1),py=r*.866;let best=null,bd=1e9;
     seeds.forEach(s=>{const sx=s.c+.5*((Math.round(s.r))&1),sy=s.r*.866;const d=Math.hypot(px-sx,py-sy)+rand()*1.4;if(d<bd){bd=d;best=s.k;}});
-    cells.push({c,r,cl:best,b:0,sp:null,seen:false,ex:false,fat:0,rest:false});
+    cells.push({c,r,cl:best,tr:'p',b:null,sp:null,seen:false,ex:false,own:null,vi:null,fat:0,run:0,rest:false,jach:false,cd:0});
   }
   const tseed=seeds.find(s=>s.k==='t');
-  let vc=Math.min(W-3,Math.max(2,Math.round(tseed.c))),vr=Math.min(H-3,Math.max(2,Math.round(tseed.r)));
-  const G0={v:1,seed,tour:1,actions:3,eau:10,nou:10,mat:14,vit:70,pop:10,manque:0,over:null,log:[],cells,vil:[vc,vr]};
-  G=G0;
-  const v=cellAt(vc,vr);v.cl='t';v.vil=true;const nb=nbrs(v);nb.forEach(n=>n.cl='t');
-  cells.forEach(cl=>{const k=CLIM[cl.cl];cl.b=pickW(rand,k.e);if(!cl.vil&&rand()<.15)cl.sp=k.s[Math.floor(rand()*k.s.length)];});
-  nb.slice(0,3).forEach((n,i)=>{n.b=i;n.ex=true;});
+  const vc=Math.min(W-3,Math.max(2,Math.round(tseed.c))),vr=Math.min(H-3,Math.max(2,Math.round(tseed.r)));
+  const v=cellAt(vc,vr);v.cl='t';const nb=nbrs(v);nb.forEach(n=>n.cl='t');
+  cells.forEach(cl=>{cl.tr=pickT(rand,TW[cl.cl]);if(rand()<.15)cl.sp=CLIM[cl.cl].s[Math.floor(rand()*CLIM[cl.cl].s.length)];});
+  v.tr='p';v.sp=null;v.vi=0;
+  G.vils.push({i:0,c:vc,r:vr,name:'Premier village',own:true,cl:'t',pop:10,eau:10,nou:10,mat:14,manque:0,dead:false,malus:0});
+  ['h','p','f'].forEach((t,i)=>{const n=nb[i];n.tr=t;n.b=i;n.ex=true;n.own=0;});
+  G.pj={c:vc,r:vr};
   v.seen=true;nb.forEach(n=>n.seen=true);
-  return G0;
+  /* les trois villages partenaires, un par autre climat */
+  const placed=[v];
+  keys.filter(k=>k!=='t').forEach(k=>{
+    const s=seeds.find(s=>s.k===k),sx=s.c+.5*((Math.round(s.r))&1),sy=s.r*.866;
+    let cand=cells.filter(c=>c.cl===k&&c.vi===null);if(!cand.length)cand=cells.filter(c=>c.vi===null);
+    cand.sort((a,b)=>Math.hypot(a.c+.5*(a.r&1)-sx,a.r*.866-sy)-Math.hypot(b.c+.5*(b.r&1)-sx,b.r*.866-sy));
+    const p=cand.find(c=>dist(c,v)>=6&&placed.every(q=>dist(q,c)>=3))||cand.find(c=>dist(c,v)>=4)||cand[0];
+    placed.push(p);const id=G.vils.length;p.vi=id;p.tr='p';p.sp=null;
+    G.vils.push({i:id,c:p.c,r:p.r,name:PART[k].n,own:false,cl:k,pop:10,besoin:PART[k].b,surplus:PART[k].s,conf:0,last:-1,dead:false});
+  });
+  return G;
 }
 
 /* ---------- règles ---------- */
-const prodOf=f=>f<=2?2:f<=5?1:0;
-const exCount=()=>G.cells.filter(c=>c.ex).length;
-const vilCell=()=>cellAt(G.vil[0],G.vil[1]);
-function forecast(){const p=[0,0,0];G.cells.forEach(c=>{if(c.ex&&!c.rest)p[c.b]+=prodOf(c.fat);});
-  return{p,n:[p[0]-2,p[1]-2,p[2]]};}
-function etat(){const m=G.manque;return m>=6?{t:'Effondré',k:'bad'}:m>=4?{t:'En crise',k:'bad'}:m>=2?{t:'Tendu',k:'warn'}:{t:'Stable',k:'ok'};}
+const prodOf=c=>{const base=YIELD[c.tr][c.b];return c.fat<=2?base:c.fat<=5?Math.ceil(base/2):0;};
+const charCell=()=>cellAt(G.pj.c,G.pj.r);
+const ownAlive=()=>G.vils.filter(v=>v.own&&!v.dead);
+function av(){let v=G.vils[G.act];if(!v||!v.own||v.dead){v=ownAlive()[0]||null;G.act=v?v.i:0;}return v;}
+function nearestOwn(cl){let b=null,bd=1e9;ownAlive().forEach(v=>{const d=dist(cl,v);if(d<bd){bd=d;b=v;}});return b;}
+const exCountOf=v=>G.cells.filter(c=>c.ex&&c.own===v.i).length;
+const need=v=>Math.max(1,Math.floor(v.pop/5));
+function vForecast(v){const p=[0,0,0];G.cells.forEach(c=>{if(c.ex&&c.own===v.i&&!c.jach&&!c.rest)p[c.b]+=prodOf(c);});
+  if(v.malus>0)for(let i=0;i<3;i++)p[i]=Math.round(p[i]*.7);
+  const k=need(v);return{p,n:[p[0]-k,p[1]-k,p[2]]};}
+function etat(v){const m=v.manque;return m>=6?{t:'Effondré',k:'bad'}:m>=4?{t:'En crise',k:'bad'}:m>=2?{t:'Tendu',k:'warn'}:{t:'Stable',k:'ok'};}
 function addLog(t){G.log.unshift({t:G.tour,m:t});if(G.log.length>80)G.log.pop();}
-function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2200);}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2400);}
+function motherFor(){const c=charCell();let b=null,bd=1e9;ownAlive().forEach(v=>{if(v.pop>=10&&v.eau>=6&&v.nou>=6&&v.mat>=6){const d=dist(c,v);if(d<bd){bd=d;b=v;}}});return b;}
 function whyNot(t,cl){
-  if(G.over)return'La partie est terminée.';
+  if(!G||G.over)return'La partie est terminée.';
   if(t==='view')return null;
+  if(t==='fallow'){return cl.ex?null:'Seule une case aménagée peut être mise en jachère.';}
   if(G.actions<1)return'Plus d\'action ce tour : termine le tour.';
-  if(t==='explore'){
-    if(cl.seen)return'Cette case est déjà explorée.';
-    if(!nbrs(cl).some(n=>n.seen))return'Trop loin : explore à côté d\'une case connue.';return null;}
+  if(t==='move'){
+    const d=dist(G.pj,cl);if(d<1)return'Le personnage est déjà ici.';
+    return d>2?'Trop loin : 2 cases par action au plus.':null;}
+  if(t==='found'){
+    if(cl.vi!==null)return'Il y a déjà un village ici.';
+    if(cl.ex)return'Cette case est déjà aménagée.';
+    if(G.vils.some(v=>dist(v,cl)<3))return'Trop près d\'un autre village (3 cases au moins).';
+    if(!motherFor())return'Aucun village n\'a de quoi partir : 10 habitants et 6 de chaque ressource.';
+    return null;}
+  if(t==='trade'){
+    const p=cl.vi!==null?G.vils[cl.vi]:null;
+    if(!p||p.own||!cl.seen)return'Touche un village voisin du personnage.';
+    if(dist(G.pj,cl)>1)return'Le personnage doit être à côté de ce village.';
+    if(p.last===G.tour)return p.name+' a déjà échangé ce tour.';
+    const a=av();if(!a)return'Aucun village actif.';
+    if(a[['eau','nou','mat'][p.besoin]]<2)return a.name+' n\'a pas 2 '+RES[p.besoin]+' à offrir.';
+    return null;}
   if(!cl.seen)return'Il faut d\'abord explorer cette case.';
-  if(cl.vil)return'C\'est le village.';
-  if(dist(cl,vilCell())>2)return'Hors de portée : à 2 cases du village au plus.';
+  if(cl.vi!==null)return'C\'est un village.';
+  const o=nearestOwn(cl);
+  if(!o||dist(cl,o)>2)return'Hors de portée : à 2 cases d\'un de tes villages au plus.';
   if(t==='build'){
-    if(cl.ex)return'Cette case est déjà en production.';
-    if(exCount()>=10)return'Dix cases en production au maximum.';
-    if(G.mat<2)return'Pas assez de matériaux (2 requis).';return null;}
+    if(cl.ex){
+      if(cl.b===prodSel)return'Déjà en production de '+RES[cl.b]+'. Utilise la jachère pour la reposer.';
+      const ow=G.vils[cl.own];return ow.mat<1?ow.name+' n\'a pas de matériaux pour changer.':null;}
+    if(exCountOf(o)>=10)return o.name+' exploite déjà dix cases.';
+    if(o.mat<2)return'Pas assez de matériaux à '+o.name+' (2 requis).';
+    return null;}
   if(t==='regen'){
-    if(cl.rest)return'Cette case se repose déjà ce tour.';
-    if(cl.fat<1)return'Cette case est en pleine forme.';return null;}
+    if(cl.cd>0)return'Cette case se repose encore ('+cl.cd+' tour'+(cl.cd>1?'s':'')+').';
+    return null;}
   return null;}
+function reveal(cl,rad){let n=0,sp=0;G.cells.forEach(c=>{if(!c.seen&&dist(c,cl)<=rad){c.seen=true;n++;if(c.sp)sp++;
+  if(c.vi!==null&&!G.vils[c.vi].own){const v=G.vils[c.vi];addLog('Un village à l\'horizon : '+v.name+' ('+CLIM[v.cl].n.toLowerCase()+'). Il cherche '+RES[v.besoin]+' et offre '+RES[v.surplus]+'.');}}});return{n,sp};}
 function act(t,cl){
-  const w=whyNot(t,cl);if(w){toast(w);return;}
-  if(t==='explore'){cl.seen=true;addLog('Exploration : '+CLIM[cl.cl].n.toLowerCase()+', '+RES[cl.b]+(cl.sp?' et une ressource spéciale ('+cl.sp+')':'')+'.');}
-  if(t==='build'){G.mat-=2;cl.ex=true;addLog('Une case de '+RES[cl.b]+' est mise en production.');}
-  if(t==='regen'){cl.fat=Math.max(0,cl.fat-2);cl.rest=true;G.vit=Math.min(100,G.vit+1);addLog('Une case se repose : la nature regagne en vitalité.');}
-  G.actions--;sel=cl;refresh();}
+  const w=whyNot(t,cl);if(w){toast(w);return false;}
+  if(t==='fallow'){cl.jach=!cl.jach;if(cl.jach)cl.run=0;sel=cl;refresh();return true;}
+  if(t==='move'){G.pj={c:cl.c,r:cl.r};const r=reveal(cl,1);G.actions--;
+    if(r.n)addLog('Le personnage découvre '+r.n+' case'+(r.n>1?'s':'')+(r.sp?', dont '+r.sp+' avec une ressource spéciale':'')+'.');}
+  else if(t==='build'){
+    if(cl.ex){G.vils[cl.own].mat-=1;cl.b=prodSel;cl.run=0;cl.jach=false;addLog('Une case de '+TERR[cl.tr].toLowerCase()+' passe à la production de '+RES[prodSel]+'.');}
+    else{const o=nearestOwn(cl);o.mat-=2;cl.ex=true;cl.own=o.i;cl.b=prodSel;cl.jach=false;cl.run=0;
+      addLog(o.name+' : '+TERR[cl.tr].toLowerCase()+' en production de '+RES[prodSel]+' ('+YIELD[cl.tr][prodSel]+' par tour).');}
+    G.actions--;}
+  else if(t==='regen'){
+    cl.fat=Math.max(0,cl.fat-2);cl.cd=3;cl.run=0;if(cl.ex)cl.rest=true;
+    G.vit=Math.min(100,G.vit+1);G.actions--;addLog('Une case de '+TERR[cl.tr].toLowerCase()+' est replantée : +1 de vitalité.');}
+  else if(t==='found'){
+    const m=motherFor(),name=COLO[G.nCol++%COLO.length],id=G.vils.length;
+    m.pop-=5;m.eau-=6;m.nou-=6;m.mat-=6;m.malus=6;
+    G.vils.push({i:id,c:cl.c,r:cl.r,name,own:true,cl:cl.cl,pop:5,eau:6,nou:6,mat:6,manque:0,dead:false,malus:0});
+    cl.vi=id;G.act=id;reveal(cl,2);G.actions--;
+    addLog(name+' est fondé ('+CLIM[cl.cl].n.toLowerCase()+') : 5 habitants venus de '+m.name+', qui produit moins pendant 6 tours.');}
+  else if(t==='trade'){
+    const p=G.vils[cl.vi],a=av(),k=['eau','nou','mat'],bonus=p.conf>=3?2:1,got=2+bonus;
+    a[k[p.besoin]]-=2;a[k[p.surplus]]+=got;p.conf++;p.last=G.tour;G.actions--;
+    addLog('Échange avec '+p.name+' : −2 '+RES[p.besoin]+', +'+got+' '+RES[p.surplus]+'.'+(p.conf===3?' La confiance est établie : les prochains échanges seront plus généreux.':''));}
+  sel=cl;refresh();return true;}
+function collapse(v){
+  v.dead=true;G.cells.forEach(c=>{if(c.own===v.i){c.ex=false;c.own=null;c.b=null;c.jach=false;c.run=0;c.fat=6;}});
+  G.vit=Math.max(0,G.vit-5);addLog(v.name+' s\'est effondré : les terres retombent en friche, la vitalité chute de 5.');}
 function endTurn(){
   if(G.over)return;
-  const gain=[0,0,0];
+  const vs=ownAlive(),gain={};vs.forEach(v=>gain[v.i]=[0,0,0]);
   G.cells.forEach(c=>{
-    if(c.ex&&!c.rest){gain[c.b]+=prodOf(c.fat);c.fat++;}
-    else if(!c.ex&&c.fat>0&&!c.rest)c.fat--;
+    if(c.cd>0)c.cd--;
+    const v=c.ex&&c.own!==null?G.vils[c.own]:null;
+    if(v&&!v.dead){
+      if(c.jach||c.rest){c.run=0;if(c.jach&&!c.rest)c.fat=Math.max(0,c.fat-1);}
+      else{gain[v.i][c.b]+=prodOf(c);c.run++;if(c.run>3)c.fat++;}
+    }else if(c.fat>0&&!c.rest)c.fat--;
     c.rest=false;});
-  G.eau+=gain[0];G.nou+=gain[1];G.mat+=gain[2];
-  G.eau-=2;G.nou-=2;
-  let short=false;
-  if(G.eau<0){G.eau=0;short=true;addLog('Manque d\'eau.');}
-  if(G.nou<0){G.nou=0;short=true;addLog('Manque de nourriture.');}
-  if(short){G.manque++;if(G.manque===2)addLog('Le village est tendu : la crise arrive dans 2 tours.');
-    if(G.manque===4)addLog('Le village est en crise : il s\'effondre dans 2 tours.');}
-  else if(G.manque>0){G.manque=Math.max(0,G.manque-1);if(G.manque<2)addLog('Le village retrouve son calme.');}
-  const emp=Math.floor(exCount()/4);
-  if(emp){G.vit=Math.max(0,G.vit-emp);addLog('Empreinte du village : −'+emp+' de vitalité.');}
-  const tired=G.cells.filter(c=>c.fat>3).length;
+  vs.forEach(v=>{
+    let g=gain[v.i];if(v.malus>0){g=g.map(x=>Math.round(x*.7));v.malus--;}
+    v.eau+=g[0];v.nou+=g[1];v.mat+=g[2];
+    const k=need(v);v.eau-=k;v.nou-=k;let short=false;
+    if(v.eau<0){v.eau=0;short=true;}
+    if(v.nou<0){v.nou=0;short=true;}
+    if(short){v.manque++;
+      if(v.manque===1)addLog(v.name+' manque d\'eau ou de nourriture.');
+      if(v.manque===2)addLog(v.name+' est tendu : la crise arrive dans 2 tours.');
+      if(v.manque===4)addLog(v.name+' est en crise : il s\'effondre dans 2 tours.');}
+    else if(v.manque>0)v.manque--;
+    else if(G.tour%4===0&&v.pop<10&&v.eau>=3&&v.nou>=3){v.pop++;addLog(v.name+' accueille un nouvel habitant.');}
+    if(v.manque>=6)collapse(v);});
+  const tired=G.cells.filter(c=>c.ex&&c.fat>3).length;
   if(tired){G.vit=Math.max(0,G.vit-tired);addLog(tired+' case'+(tired>1?'s':'')+' trop fatiguée'+(tired>1?'s':'')+' : la vitalité baisse de '+tired+'.');}
-  if(G.manque>=6){G.over={k:'lose',t:'Le village s\'est effondré',p:'Faute d\'eau ou de nourriture, les habitants ont quitté les lieux. La nature reprend ses droits sur ce coin de plateau. Au tour '+G.tour+', la partie s\'arrête.'};}
-  else if(G.vit<25){G.over={k:'lose',t:'Le vivant s\'est effondré',p:'La vitalité est tombée sous le seuil critique : sols épuisés, sources taries. Au tour '+G.tour+', plus rien ne pousse ici.'};}
+  const alive=ownAlive().length;
+  if(!alive)G.over={k:'lose',t:'Tous tes villages se sont effondrés',p:'Faute d\'eau ou de nourriture, les habitants ont quitté les lieux. La nature reprend ses droits. Au tour '+G.tour+', la partie s\'arrête.'};
+  else if(G.vit<25)G.over={k:'lose',t:'Le vivant s\'est effondré',p:'La vitalité est tombée sous le seuil critique : sols épuisés, sources taries. Au tour '+G.tour+', plus rien ne pousse ici.'};
   else if(G.tour>=TOURS){const v=G.vit;G.over={k:'win',t:v>=80?'Un monde qui renaît':v>=50?'Un équilibre fragile':'Tenir, de justesse',
-    p:'Quarante tours, dix ans : le village est encore debout. Vitalité du vivant : '+v+' sur 100. '+(v>=80?'Les terres respirent et le désert recule.':v>=50?'Tout tient, mais la terre reste à ménager.':'La nature est épuisée : il faudra apprendre à faire autrement.')};}
+    p:'Quarante tours, dix ans : '+alive+' village'+(alive>1?'s':'')+' debout. Vitalité du vivant : '+v+' sur 100. '+(v>=80?'Les terres respirent et le désert recule.':v>=50?'Tout tient, mais la terre reste à ménager.':'La nature est épuisée : il faudra apprendre à faire autrement.')};}
   if(!G.over){G.tour++;G.actions=3;}
   G.overSeen=false;
   refresh();}
@@ -285,37 +383,72 @@ function pastille(t,x,y,k,alpha){
   else{ctx.strokeStyle='#8B6B4A';ctx.lineWidth=2.6;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-6,6);ctx.lineTo(6,-6);ctx.stroke();
     ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-1,1);ctx.lineTo(-5,-3);ctx.stroke();ell(5,-2,2.4,4,40,'#5E9A5A');}
   ctx.restore();}
+function glyph(tr,x,y,k,alpha){
+  ctx.save();ctx.translate(x,y);ctx.scale(k,k);ctx.globalAlpha=alpha;ctx.lineCap='round';ctx.lineJoin='round';
+  if(tr==='f'){ctx.fillStyle='#3F7A45';[[-8,3,7],[4,-3,9],[8,8,6]].forEach(a=>{ctx.beginPath();ctx.arc(a[0],a[1],a[2],0,6.2832);ctx.fill();});
+    ctx.fillStyle='#5A9A5E';[[-10,1,3],[2,-6,3.5]].forEach(a=>{ctx.beginPath();ctx.arc(a[0],a[1],a[2],0,6.2832);ctx.fill();});}
+  else if(tr==='p'){ctx.strokeStyle='#8E7B22';ctx.lineWidth=2.4;[-8,0,8].forEach((dx,i)=>{ctx.beginPath();ctx.moveTo(dx,10);ctx.quadraticCurveTo(dx+(i-1)*3,1,dx+(i-1)*6,-8);ctx.stroke();});
+    ctx.strokeStyle='#B7A23C';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-13,11);ctx.lineTo(13,11);ctx.stroke();}
+  else if(tr==='m'){ctx.fillStyle='#6F747B';ctx.beginPath();ctx.moveTo(-15,11);ctx.lineTo(-4,-9);ctx.lineTo(7,11);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#8C9198';ctx.beginPath();ctx.moveTo(-2,11);ctx.lineTo(7,-4);ctx.lineTo(16,11);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#F4EEDF';ctx.beginPath();ctx.moveTo(-4,-9);ctx.lineTo(-8.5,-1);ctx.lineTo(0,-1);ctx.closePath();ctx.fill();}
+  else if(tr==='h'){ctx.strokeStyle='#3F7FA0';ctx.lineWidth=2.6;[-7,0,7].forEach(yy=>{ctx.beginPath();ctx.moveTo(-13,yy);ctx.quadraticCurveTo(-6.5,yy-5,0,yy);ctx.quadraticCurveTo(6.5,yy+5,13,yy);ctx.stroke();});}
+  else{ctx.strokeStyle='#B07A2A';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(-14,4);ctx.quadraticCurveTo(-5,-9,3,1);ctx.quadraticCurveTo(8,7,14,-3);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-11,11);ctx.quadraticCurveTo(0,3,12,11);ctx.stroke();}
+  ctx.restore();}
 function sparkle(x,y,k){ctx.save();ctx.translate(x,y);ctx.scale(k,k);ctx.beginPath();ctx.arc(0,0,7,0,6.2832);ctx.fillStyle='#4A3B2C';ctx.fill();
   ctx.beginPath();ctx.moveTo(0,-4.2);ctx.lineTo(1.2,-1.2);ctx.lineTo(4.2,0);ctx.lineTo(1.2,1.2);ctx.lineTo(0,4.2);ctx.lineTo(-1.2,1.2);ctx.lineTo(-4.2,0);ctx.lineTo(-1.2,-1.2);ctx.closePath();ctx.fillStyle='#FBF7EC';ctx.fill();ctx.restore();}
-function house(x,y,k){ctx.save();ctx.translate(x,y);ctx.scale(k,k);
-  ctx.beginPath();ctx.moveTo(-17,-1);ctx.quadraticCurveTo(0,-24,17,-1);ctx.closePath();ctx.fillStyle='#B8643B';ctx.fill();
+function house(x,y,k,roof){ctx.save();ctx.translate(x,y);ctx.scale(k,k);
+  ctx.beginPath();ctx.moveTo(-17,-1);ctx.quadraticCurveTo(0,-24,17,-1);ctx.closePath();ctx.fillStyle=roof;ctx.fill();
   rrect(-12,-2,24,17,6);ctx.fillStyle='#F4EEDF';ctx.fill();rrect(-3,5,6,10,3);ctx.fillStyle='#8B6B4A';ctx.fill();ctx.restore();}
-function targets(){const s=new Set();if(!G||G.over||tool==='view'||G.actions<1)return s;G.cells.forEach(c=>{if(!whyNot(tool,c))s.add(c);});return s;}
+function ruin(x,y,k){ctx.save();ctx.translate(x,y);ctx.scale(k,k);
+  ctx.beginPath();ctx.moveTo(-17,-1);ctx.quadraticCurveTo(-6,-14,2,-8);ctx.lineTo(6,-1);ctx.closePath();ctx.fillStyle='#A89F8C';ctx.fill();
+  rrect(-12,-2,24,17,6);ctx.fillStyle='#CFC6B4';ctx.fill();ctx.beginPath();ctx.arc(8,12,5,0,6.2832);ctx.fillStyle='#6FA86B';ctx.fill();ctx.restore();}
+function pawn(x,y,k){ctx.save();ctx.translate(x,y);ctx.scale(k,k);
+  ctx.beginPath();ctx.ellipse(0,13,10,3.6,0,0,6.2832);ctx.fillStyle='rgba(74,59,44,.28)';ctx.fill();
+  ctx.lineWidth=2.6;ctx.strokeStyle='#FBF7EC';
+  ctx.beginPath();ctx.moveTo(-9,12);ctx.quadraticCurveTo(0,-10,9,12);ctx.closePath();ctx.fillStyle='#4A3B2C';ctx.stroke();ctx.fill();
+  ctx.beginPath();ctx.arc(0,-8,6.2,0,6.2832);ctx.fillStyle='#F4EEDF';ctx.stroke();ctx.fill();
+  ctx.lineWidth=1.6;ctx.strokeStyle='#4A3B2C';ctx.stroke();ctx.restore();}
+function badge(x,y,v,col,k){ctx.save();ctx.translate(x,y);ctx.scale(k,k);ctx.beginPath();ctx.arc(0,0,10,0,6.2832);ctx.fillStyle='#FBF7EC';ctx.fill();ctx.lineWidth=2.8;ctx.strokeStyle=col;ctx.stroke();
+  ctx.fillStyle='#4A3B2C';ctx.font='800 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(v,0,.5);ctx.restore();}
+function targets(){const s=new Set();if(!G||G.over||tool==='view')return s;
+  if(tool==='found'){const c=charCell();if(!whyNot('found',c))s.add(c);return s;}
+  G.cells.forEach(c=>{if(!whyNot(tool,c))s.add(c);});return s;}
 function draw(){
   if(!G)return;
   const dpr=window.devicePixelRatio||1,w=cv.width/dpr,h=cv.height/dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#F4EEDF';ctx.fillRect(0,0,w,h);
   ctx.setTransform(dpr*cam.k,0,0,dpr*cam.k,dpr*cam.tx,dpr*cam.ty);
-  const T=targets(),k=R/34,rr=R*.84,lw=R*.2;
+  const T=targets(),k=R/34,rr=R*.84,lw=R*.2,a=av();
   ctx.lineJoin='round';
   G.cells.forEach(c=>{
     const x=cx(c.c,c.r),y=cy(c.r);let col;
     if(!c.seen)col='#E4DCC6';else col=mix(CLIM[c.cl].c,'#F4EEDF',Math.min(c.fat,6)/6*.62);
     hexPath(x,y,rr);ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.fill();ctx.stroke();
-    if(!c.seen){ if(tool==='explore'&&T.has(c)){ctx.fillStyle='#9a8f77';ctx.font='700 '+(R*.55)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?',x,y+1);}return;}
-    if(!c.vil){pastille(c.b,x,y,k,c.ex?1:.78);if(c.sp)sparkle(x+R*.47,y+R*.4,k);}
-    if(c.ex){hexPath(x,y,R*.66);ctx.strokeStyle='rgba(74,59,44,.6)';ctx.lineWidth=2.4;ctx.stroke();}
-    if(c.ex&&c.fat>0){ctx.fillStyle=c.fat>3?'#8a2d1a':'#4A3B2C';ctx.font='800 '+(R*.3)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(c.fat,x-R*.42,y+R*.4);}
-    if(c.rest){ctx.fillStyle='#4A3B2C';ctx.font='800 '+(R*.3)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('z',x+R*.42,y-R*.38);}
-    if(c.vil)house(x,y+R*.04,k*1.25);
+    if(!c.seen){if(T.has(c)){ctx.fillStyle='#9a8f77';ctx.font='700 '+(R*.55)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?',x,y+1);}return;}
+    if(c.vi!==null){
+      const v=G.vils[c.vi];
+      if(v.dead)ruin(x,y+R*.04,k*1.25);else house(x,y+R*.04,k*1.25,v.own?'#B8643B':'#4F8FA8');
+      if(v.own&&!v.dead&&a&&a.i===v.i){hexPath(x,y,R*.7);ctx.strokeStyle='#7a8a1f';ctx.lineWidth=3;ctx.stroke();}
+      return;}
+    if(c.ex){
+      glyph(c.tr,x-R*.12,y-R*.14,k*.78,.95);
+      hexPath(x,y,R*.68);ctx.save();if(c.jach)ctx.setLineDash([5,5]);ctx.strokeStyle='rgba(74,59,44,.6)';ctx.lineWidth=2.4;ctx.stroke();ctx.restore();
+      pastille(c.b,x+R*.38,y+R*.34,k*.74,1);
+      if(c.jach||c.rest){ctx.fillStyle='#4A3B2C';ctx.font='800 '+(R*.34)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('z',x+R*.4,y-R*.38);}
+      else if(c.run>0){ctx.fillStyle=c.run>3?'#8a2d1a':c.run===3?'#8a5d12':'#4A3B2C';ctx.font='800 '+(R*.3)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(c.run,x-R*.42,y+R*.4);}
+    }else{glyph(c.tr,x,y-R*.02,k,c.fat>0?.7:.95);if(c.sp)sparkle(x+R*.47,y+R*.4,k);}
   });
-  T.forEach(c=>{hexPath(cx(c.c,c.r),cy(c.r),R*.84);ctx.strokeStyle='#fff';ctx.lineWidth=3.2;ctx.shadowColor='rgba(74,59,44,.55)';ctx.shadowBlur=6;ctx.stroke();ctx.shadowBlur=0;});
+  T.forEach(c=>{hexPath(cx(c.c,c.r),cy(c.r),R*.84);ctx.strokeStyle='#fff';ctx.lineWidth=3.2;ctx.shadowColor='rgba(74,59,44,.55)';ctx.shadowBlur=6;ctx.stroke();ctx.shadowBlur=0;
+    if(tool==='build'&&c.seen&&c.vi===null)badge(cx(c.c,c.r)-R*.4,cy(c.r)+R*.38,YIELD[c.tr][prodSel],RCOL[prodSel],k);});
+  const pc=charCell(),px=cx(pc.c,pc.r),py=cy(pc.r);pawn(px-R*.36,py+R*.02,k*.82);
   if(sel){hexPath(cx(sel.c,sel.r),cy(sel.r),R*.9);ctx.strokeStyle='#4A3B2C';ctx.lineWidth=3.4;ctx.stroke();}
 }
 let pend=false;function redraw(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;draw();});}
 function fit(){const st=$('#stage'),dpr=window.devicePixelRatio||1,w=st.clientWidth,h=st.clientHeight;
   if(!w||!h)return;cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);redraw();}
-function centerOnVillage(){const st=$('#stage'),v=vilCell();cam.k=st.clientWidth<640?.95:1.05;cam.tx=st.clientWidth/2-cx(v.c,v.r)*cam.k;cam.ty=st.clientHeight/2-cy(v.r)*cam.k;redraw();}
+function centerOn(cl){const st=$('#stage');cam.k=st.clientWidth<640?.95:1.05;cam.tx=st.clientWidth/2-cx(cl.c,cl.r)*cam.k;cam.ty=st.clientHeight/2-cy(cl.r)*cam.k;clampCam();redraw();}
 function clampCam(){const st=$('#stage'),mw=cx(W-1,1)*cam.k,mh=cy(H-1)*cam.k,sw=st.clientWidth,sh=st.clientHeight;
   cam.tx=Math.min(sw*.8,Math.max(sw*.2-mw,cam.tx));cam.ty=Math.min(sh*.8,Math.max(sh*.2-mh,cam.ty));}
 
@@ -323,41 +456,64 @@ function clampCam(){const st=$('#stage'),mw=cx(W-1,1)*cam.k,mh=cy(H-1)*cam.k,sw=
 function pillHtml(e){return'<span class="pill '+e.k+'">'+e.t+'</span>';}
 function refresh(){
   if(!G)return;
+  const a=av();
   $('#hTour').textContent=Math.min(G.tour,TOURS);
-  $('#vEau').textContent=G.eau;$('#vNou').textContent=G.nou;$('#vMat').textContent=G.mat;$('#vVit').textContent=G.vit;
-  const f=forecast();
-  [['Eau',0,G.eau],['Nou',1,G.nou],['Mat',2,G.mat]].forEach(([id,i,st])=>{
-    const n=f.n[i];$('#d'+id).textContent=(n>0?'+':'')+n+'/tour';
-    $('#c'+id).classList.toggle('bad',i<2&&st+n<0);});
+  $('#cVil').textContent=a?a.name:'—';
+  $('#vVit').textContent=G.vit;
+  if(a){
+    const f=vForecast(a);
+    $('#vEau').textContent=a.eau;$('#vNou').textContent=a.nou;$('#vMat').textContent=a.mat;
+    [['Eau',0,a.eau],['Nou',1,a.nou],['Mat',2,a.mat]].forEach(([id,i,st])=>{
+      const n=f.n[i];$('#d'+id).textContent=(n>0?'+':'')+n+'/tour';
+      $('#c'+id).classList.toggle('bad',i<2&&st+n<0);});
+    const e=etat(a);
+    $('#pVillage').innerHTML='<div class="kv"><span>Nom</span><b>'+a.name+'</b></div>'+
+      '<div class="kv"><span>État</span>'+pillHtml(e)+'</div>'+
+      '<div class="kv"><span>Habitants</span><b>'+a.pop+'</b></div>'+
+      '<div class="kv"><span>Cases aménagées</span><b>'+exCountOf(a)+' / 10</b></div>'+
+      '<div class="kv"><span>Manque consécutif</span><b>'+a.manque+' tour'+(a.manque>1?'s':'')+'</b></div>'+
+      '<div class="kv"><span>Bilan par tour</span><b>'+f.n.map((n,i)=>RES[i][0].toUpperCase()+' '+(n>0?'+':'')+n).join(' · ')+'</b></div>'+
+      (a.malus>0?'<div class="kv"><span>Production réduite</span><b>'+a.malus+' tour'+(a.malus>1?'s':'')+'</b></div>':'');
+  }else{['vEau','vNou','vMat'].forEach(i=>$('#'+i).textContent='0');$('#pVillage').innerHTML='<span class="muted">Plus aucun village.</span>';}
   $('#pips').innerHTML=[0,1,2].map(i=>'<span class="pip'+(i<G.actions?'':' off')+'"></span>').join('');
   $('#bEnd').disabled=!!G.over;
-  const e=etat();
-  $('#pVillage').innerHTML='<div class="kv"><span>État</span>'+pillHtml(e)+'</div>'+
-    '<div class="kv"><span>Habitants</span><b>'+G.pop+'</b></div>'+
-    '<div class="kv"><span>Cases en production</span><b>'+exCount()+' / 10</b></div>'+
-    '<div class="kv"><span>Manque consécutif</span><b>'+G.manque+' tour'+(G.manque>1?'s':'')+'</b></div>'+
-    '<div class="kv"><span>Bilan prévu par tour</span><b>'+f.n.map((n,i)=>RES[i][0].toUpperCase()+' '+(n>0?'+':'')+n).join(' · ')+'</b></div>';
+  $('#pVils').innerHTML=G.vils.filter(v=>v.own).map(v=>{const e=v.dead?{t:'Effondré',k:'bad'}:etat(v);
+    return'<button class="vrow'+(a&&a.i===v.i&&!v.dead?' on':'')+'" data-v="'+v.i+'"><b>'+v.name+'</b><span class="muted">'+v.pop+' hab.</span>'+pillHtml(e)+'</button>';}).join('')+
+    (()=>{const met=G.vils.filter(v=>!v.own&&cellAt(v.c,v.r).seen);return met.length?'<div class="muted" style="margin:8px 0 2px">Villages rencontrés</div>'+met.map(v=>'<div class="kv"><span>'+v.name+' · '+CLIM[v.cl].n.toLowerCase()+'</span><b>confiance '+v.conf+'</b></div>').join(''):'';})();
   const c=sel;
   if(!c||!c.seen)$('#pCase').innerHTML='<span class="muted">'+(c?'Case non explorée.':'Aucune case sélectionnée.')+'</span>';
-  else if(c.vil)$('#pCase').innerHTML='<div class="kv"><span>Lieu</span><b>Le village</b></div>';
+  else if(c.vi!==null){const v=G.vils[c.vi];
+    $('#pCase').innerHTML=v.own?'<div class="kv"><span>Lieu</span><b>'+v.name+'</b></div>':
+      '<div class="kv"><span>Village</span><b>'+v.name+'</b></div><div class="kv"><span>Climat</span><b>'+CLIM[v.cl].n+'</b></div>'+
+      '<div class="kv"><span>Cherche</span><b>'+RES[v.besoin]+'</b></div><div class="kv"><span>Offre</span><b>'+RES[v.surplus]+'</b></div>'+
+      '<div class="kv"><span>Confiance</span><b>'+v.conf+(v.conf>=3?' (établie)':' / 3')+'</b></div>'+
+      '<div class="kv"><span>Échange</span><b>2 contre '+(v.conf>=3?4:3)+'</b></div>';}
   else $('#pCase').innerHTML='<div class="kv"><span>Climat</span><b>'+CLIM[c.cl].n+'</b></div>'+
-    '<div class="kv"><span>Ressource</span><b>'+RES[c.b]+'</b></div>'+
+    '<div class="kv"><span>Terrain</span><b>'+TERR[c.tr]+'</b></div>'+
+    '<div class="kv"><span>Rendement</span><b>'+YIELD[c.tr].map((y,i)=>RES[i][0].toUpperCase()+' '+y).join(' · ')+'</b></div>'+
     (c.sp?'<div class="kv"><span>Ressource spéciale</span><b>'+c.sp+'</b></div>':'')+
-    '<div class="kv"><span>État</span><b>'+(c.ex?'en production':'libre')+'</b></div>'+
-    '<div class="kv"><span>Fatigue</span><b>'+c.fat+'</b></div>'+
-    '<div class="kv"><span>Rendement</span><b>'+(c.ex?prodOf(c.fat)+' par tour':'—')+'</b></div>';
+    '<div class="kv"><span>Production</span><b>'+(c.ex?(c.jach?'jachère':RES[c.b]):'aucune')+'</b></div>'+
+    (c.ex?'<div class="kv"><span>Rendement actuel</span><b>'+prodOf(c)+' par tour</b></div><div class="kv"><span>Tours de suite</span><b>'+c.run+' (repos conseillé après 3)</b></div>':'')+
+    '<div class="kv"><span>Fatigue</span><b>'+c.fat+'</b></div>';
   const fillTop=75-150*G.vit/100;
-  $('#pVit').innerHTML='<div style="display:flex;gap:14px;align-items:center"><svg width="70" height="86" viewBox="-70 -85 140 170"><defs><clipPath id="lf"><rect x="-70" y="'+fillTop+'" width="140" height="170"/></clipPath></defs><path d="M0,-75 C48,-45 54,20 0,75 C-54,20 -48,-45 0,-75 Z" fill="#E4DCC6"/><g clip-path="url(#lf)"><path d="M0,-75 C48,-45 54,20 0,75 C-54,20 -48,-45 0,-75 Z" fill="#6FA86B"/></g><path d="M0,68 L0,-38" stroke="#F4EEDF" stroke-width="4" stroke-linecap="round" opacity=".75"/><path d="M0,-75 C48,-45 54,20 0,75 C-54,20 -48,-45 0,-75 Z" fill="none" stroke="#4A3B2C" stroke-opacity=".35" stroke-width="4" stroke-linejoin="round"/></svg><div><div style="font-size:28px;font-weight:800;line-height:1">'+G.vit+'<small style="font-size:12px;color:var(--mute);font-weight:600"> / 100</small></div><div class="muted" style="margin-top:6px;line-height:1.5">sous 25 : fin de partie<br>1 case fatiguée (plus de 3) = −1 par tour</div></div></div>';
+  $('#pVit').innerHTML='<div style="display:flex;gap:14px;align-items:center"><svg width="70" height="86" viewBox="-70 -85 140 170"><defs><clipPath id="lf"><rect x="-70" y="'+fillTop+'" width="140" height="170"/></clipPath></defs><path d="M0,-75 C48,-45 54,20 0,75 C-54,20 -48,-45 0,-75 Z" fill="#E4DCC6"/><g clip-path="url(#lf)"><path d="M0,-75 C48,-45 54,20 0,75 C-54,20 -48,-45 0,-75 Z" fill="#6FA86B"/></g><path d="M0,68 L0,-38" stroke="#F4EEDF" stroke-width="4" stroke-linecap="round" opacity=".75"/><path d="M0,-75 C48,-45 54,20 0,75 C-54,20 -48,-45 0,-75 Z" fill="none" stroke="#4A3B2C" stroke-opacity=".35" stroke-width="4" stroke-linejoin="round"/></svg><div><div style="font-size:28px;font-weight:800;line-height:1">'+G.vit+'<small style="font-size:12px;color:var(--mute);font-weight:600"> / 100</small></div><div class="muted" style="margin-top:6px;line-height:1.5">sous 25 : fin de partie<br>case trop fatiguée : −1 par tour<br>village effondré : −5</div></div></div>';
   $('#journal').innerHTML=G.log.length?G.log.map(l=>'<li><b>T'+l.t+'</b>'+l.m+'</li>').join(''):'<li class="muted">Rien pour l\'instant.</li>';
   showTool();
   const o=$('#over');if(G.over&&!G.overSeen){$('#ovT').textContent=G.over.t;$('#ovP').textContent=G.over.p;o.classList.add('on');}else o.classList.remove('on');
   redraw();}
 function showTool(){
   const t=TOOLS[tool];$('#oName').textContent=t.n;$('#oHelp').textContent=t.h;
-  let s='';if(tool!=='view'&&G){const n=targets().size;s=G.actions<1?'Plus d\'action : termine le tour.':n+' case'+(n>1?'s':'')+' possible'+(n>1?'s':'');}
+  const op=$('#oProd');op.classList.toggle('on',tool==='build');
+  if(tool==='build')op.innerHTML=[0,1,2].map(i=>'<button data-p="'+i+'" class="'+(prodSel===i?'on':'')+'" aria-label="'+RES[i]+'">'+ICON[i]+RES[i].replace('matériaux','bois, pierre').replace('nourriture','nourr.')+'</button>').join('');
+  let s='';
+  if(tool!=='view'&&G){
+    if(tool==='found'){const w=whyNot('found',charCell());s=w||'Fondation possible ici.';}
+    else if(G.actions<1&&tool!=='fallow')s='Plus d\'action : termine le tour.';
+    else{const n=targets().size;s=n+' case'+(n>1?'s':'')+' possible'+(n>1?'s':'');}}
   $('#oStat').textContent=s;
   document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on',b.dataset.tool===tool));}
 function setTool(t){tool=t;showTool();redraw();}
+$('#oProd').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(!b)return;prodSel=+b.dataset.p;showTool();redraw();});
 
 /* ---------- gestes sur le plateau ---------- */
 const ptrs=new Map();let drag=null,pinch=null;
@@ -378,26 +534,29 @@ cv.addEventListener('wheel',e=>{e.preventDefault();const r=cv.getBoundingClientR
   const nk=Math.min(2.4,Math.max(.4,cam.k*Math.exp(-e.deltaY*.0015))),wx=(mx-cam.tx)/cam.k,wy=(my-cam.ty)/cam.k;cam.k=nk;cam.tx=mx-wx*nk;cam.ty=my-wy*nk;clampCam();redraw();},{passive:false});
 function tap(sx,sy){if(!G)return;const c=hexAtWorld((sx-cam.tx)/cam.k,(sy-cam.ty)/cam.k);
   if(!c){sel=null;refresh();return;}
-  if(tool==='view'){sel=c;refresh();return;}
-  sel=c;act(tool,c);if(!G.over)refresh();}
+  if(tool==='view'){sel=c;if(c.vi!==null&&G.vils[c.vi].own&&!G.vils[c.vi].dead)G.act=c.vi;refresh();return;}
+  act(tool,tool==='found'?charCell():c);}
 
 /* ---------- parties ---------- */
 function newGame(){genWorld((Math.random()*4294967296)>>>0);DOC={id:null,name:''};sel=null;tool='view';
-  addLog('Ton village s\'installe en terre tropicale. Trois cases produisent déjà : eau, nourriture, matériaux.');
-  showDoc();refresh();centerOnVillage();}
+  addLog('Ton village s\'installe en terre tropicale. Trois cases produisent déjà. Ton personnage explore à pied : chaque déplacement révèle les cases autour de lui.');
+  showDoc();refresh();centerOn(vAtOrigin());}
+const vAtOrigin=()=>cellAt(G.vils[0].c,G.vils[0].r);
 function showDoc(){$('#docName').textContent=DOC.name?'· '+DOC.name:'';document.title='Atelier Civco'+(DOC.name?' — '+DOC.name:'');}
 async function save(){if(!window.AtelierSync)return alert('Enregistrement indisponible.');
   if(!DOC.name){const n=prompt('Nom de la partie :','Partie du '+new Date().toLocaleDateString('fr-FR'));if(!n)return;DOC.name=n.trim();}
   DOC.id=await AtelierSync.save(APP,DOC.id,DOC.name,G);showDoc();toast('Partie enregistrée.');}
 function load(id,data,inf){
-  if(!data||data.v!==1||!Array.isArray(data.cells)||data.cells.length!==W*H){alert('Cette partie n\'est pas lisible.');return;}
-  G=data;DOC={id,name:inf?inf.name:''};sel=null;tool='view';showDoc();refresh();centerOnVillage();}
+  if(!data||data.v!==2||!Array.isArray(data.cells)||data.cells.length!==W*H||!Array.isArray(data.vils)){alert('Cette partie date d\'une ancienne version du jeu et ne peut plus être ouverte.');return;}
+  G=data;DOC={id,name:inf?inf.name:''};sel=null;tool='view';showDoc();refresh();const a=av();centerOn(a?cellAt(a.c,a.r):vAtOrigin());}
 $('#bNew').onclick=()=>{if(confirm('Commencer une nouvelle partie ?'))newGame();};
 $('#bSave').onclick=save;
 $('#bOpen').onclick=()=>window.AtelierSync&&AtelierSync.openDialog({app:APP,title:'Mes parties',current:DOC.id,onOpen:load});
 $('#bEnd').onclick=()=>{if(!G||G.over)return;if(G.actions>0&&!confirm('Il te reste '+G.actions+' action'+(G.actions>1?'s':'')+'. Terminer le tour ?'))return;endTurn();};
 $('#ovNew').onclick=()=>newGame();
 $('#ovSee').onclick=()=>{G.overSeen=true;refresh();};
+$('#cVil').onclick=()=>{const vs=ownAlive();if(vs.length<1)return;const a=av(),i=vs.findIndex(v=>v.i===a.i),n=vs[(i+1)%vs.length];G.act=n.i;refresh();centerOn(cellAt(n.c,n.r));};
+$('#pVils').addEventListener('click',e=>{const b=e.target.closest('.vrow');if(!b)return;const v=G.vils[+b.dataset.v];if(!v||v.dead)return;G.act=v.i;refresh();centerOn(cellAt(v.c,v.r));});
 document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
 function panelMin(m){$('#panel').classList.toggle('min',m);$('#pTogI').setAttribute('d',m?'M15 6l-6 6 6 6':'M9 6l6 6-6 6');setTimeout(fit,0);}
 $('#pTog').onclick=()=>panelMin(!$('#panel').classList.contains('min'));
@@ -405,8 +564,8 @@ document.querySelectorAll('.pbtn[data-open]').forEach(b=>b.onclick=()=>{panelMin
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();return;}
   if(e.ctrlKey||e.metaKey||e.altKey||/INPUT|TEXTAREA/.test((e.target||{}).tagName||''))return;
-  const k=e.key.toLowerCase();
-  if(k==='v')setTool('view');else if(k==='e')setTool('explore');else if(k==='a')setTool('build');else if(k==='r')setTool('regen');
+  const k=e.key.toLowerCase(),M={v:'view',m:'move',a:'build',j:'fallow',r:'regen',f:'found',e:'trade'};
+  if(M[k])setTool(M[k]);
   else if(k==='escape'){if(tool!=='view')setTool('view');else{sel=null;refresh();}}
   else if(k==='enter'&&G&&!G.over){e.preventDefault();$('#bEnd').click();}});
 window.addEventListener('resize',fit);
@@ -417,7 +576,7 @@ fit();newGame();
 </script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init({app:"civco",title:"Atelier Civco",sections:[
-  {title:"Outils",keys:[["V","Observer une case"],["E","Explorer"],["A","Aménager"],["R","Régénérer"],["Échap","Annuler l'outil, puis désélectionner"]]},
+  {title:"Outils",keys:[["V","Observer une case ou un village"],["M","Déplacer le personnage (2 cases)"],["A","Aménager : choisir la production"],["J","Jachère (gratuit)"],["R","Régénérer"],["F","Fonder un village"],["E","Échanger avec un village voisin"],["Échap","Annuler l'outil, puis désélectionner"]]},
   {title:"Partie",keys:[["Entrée","Fin du tour"],["Ctrl + S","Enregistrer la partie"]]},
   {title:"Plateau",keys:[["Glisser","Déplacer le plateau"],["Molette / pincer","Zoomer"]]}]});</script>
 </body>
