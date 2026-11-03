@@ -121,6 +121,11 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
 #dropAll{position:fixed;inset:0;background:rgba(30,136,255,.12);border:4px dashed var(--sel);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:var(--sel);z-index:50;pointer-events:none}
 #dropAll[hidden]{display:none}
 @media (max-width:820px){main{grid-template-columns:1fr}#tools .tgrid{grid-template-columns:repeat(auto-fill,36px);justify-content:start;padding:0 8px}aside{border-left:0;border-top:1px solid var(--line)}}
+
+/* réglages de l'outil : dans la barre des feuilles (ne recouvre jamais les feuilles) */
+#shBar #tbWrap{flex-basis:100%;order:10}
+#shBar #tbWrap:has(>#toolBar[hidden]){display:none}
+#toolBar{left:auto!important;right:auto!important;top:auto!important;position:static!important;max-width:none!important;border-radius:0!important;border:0!important;border-bottom:1px solid var(--line)!important;box-shadow:none!important;background:var(--panel,#fff)!important;flex:none;border:1px solid var(--line)!important;border-radius:8px!important;margin-top:4px}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
@@ -246,7 +251,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     </div>
     <div id="pages"><div id="empty">Glisse ici des PDF ou des images (JPG, PNG),<br>ou utilise « Ajouter des fichiers… ».</div></div>
     <div class="bar" id="shBar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><span class="muted" id="toolHint"></span><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
-    <div class="tbWrap" id="tbWrap"><div id="toolBar" hidden><b id="tbName"></b><span class="muted" id="tbHint"></span><button class="btn sm" id="tbSign" type="button" hidden>Changer de signature…</button></div></div>
+    <div id="tbWrap"><div id="toolBar" hidden><b id="tbName"></b><span class="muted" id="tbHint"></span><button class="btn sm" id="tbSign" type="button" hidden>Changer de signature…</button></div></div>
     <div id="sheets"></div>
   </div>
 </main>
@@ -959,7 +964,7 @@ $('#zoomR').addEventListener('input',e=>setZoom(+e.target.value,true));
 $('#sheets').addEventListener('wheel',e=>{e.preventDefault();/* molette = zoom ; Maj + molette : défiler */if(e.shiftKey){$('#work').scrollTop+=(e.deltaY||e.deltaX);return;}setZoom(ZOOM.z*(e.deltaY<0?1.15:1/1.15),true);},{passive:false});
 try{const z=+localStorage.getItem('atelierCompil.zoom');if(z)setZoom(z,false);}catch(e){}
 /* les deux barres restent visibles en haut quand on fait défiler : celle des feuilles se cale sous celle des pages */
-const tbTop=()=>{$('#shBar').style.top=$('#pgBar').offsetHeight+'px';$('#tbWrap').style.top=($('#pgBar').offsetHeight+$('#shBar').offsetHeight)+'px';};new ResizeObserver(tbTop).observe($('#pgBar'));new ResizeObserver(tbTop).observe($('#shBar'));
+const tbTop=()=>{$('#shBar').style.top=$('#pgBar').offsetHeight+'px';};new ResizeObserver(tbTop).observe($('#pgBar'));new ResizeObserver(tbTop).observe($('#shBar'));
 /* pages : repliables (état retenu) */
 function setPgFold(f,save){$('#pages').style.display=f?'none':'';$('#pgHelp').style.display=f?'none':'';$('#pgTw').style.transform=f?'rotate(-90deg)':'';if(save)try{localStorage.setItem('atelierCompil.fold',f?'1':'0');}catch(e){}}
 $('#pgHead').addEventListener('click',()=>{const f=$('#pages').style.display!=='none';setPgFold(f,true);if(!f)$('#work').scrollTo({top:0,behavior:'smooth'});});
@@ -1060,7 +1065,7 @@ $('#zIn').onclick=()=>setZoom(ZOOM.z*1.25,true);$('#zOut').onclick=()=>setZoom(Z
 $('#pFold').onclick=()=>$('#pgHead').click();
 
 /* le bloc d'édition des éléments posés vit dans la barre flottante */
-$('#toolBar').insertBefore($('#annSec'),$('#tbSign').nextSibling);$('#tbSign').onclick=()=>openSign(()=>{});tbSync();
+$('#shBar').appendChild($('#tbWrap'));$('#toolBar').insertBefore($('#annSec'),$('#tbSign').nextSibling);$('#tbSign').onclick=()=>openSign(()=>{});tbSync();
 /* page et point (dans la page non tournée) sous la souris, sur une feuille */
 function sheetHit(e){const iw=e.target.closest('.shw');if(!iw)return null;const c=iw.querySelector('canvas');const sh=c&&c._sh;if(!sh)return null;
   const r=c.getBoundingClientRect(),disp=r.width/sh.L.W,mx=(e.clientX-r.left)/disp,my=(e.clientY-r.top)/disp;

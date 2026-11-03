@@ -129,6 +129,9 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
   #stageWrap{order:-1;height:62vh}
   aside{border-right:0;border-top:1px solid var(--line);overflow:visible}
 }
+
+/* réglages : bande au-dessus de la feuille (ne recouvre jamais la feuille) */
+#toolBar{left:auto!important;right:auto!important;top:auto!important;position:static!important;max-width:none!important;border-radius:0!important;border:0!important;border-bottom:1px solid var(--line)!important;box-shadow:none!important;background:var(--panel,#fff)!important;flex:none}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
@@ -667,7 +670,7 @@ function renderGroups(){
   }
   el.innerHTML=h;tbShow(tb);
 }
-function tbShow(h){const t=$('#toolBar');t.innerHTML=h;t.hidden=!h;t.style.top=($('#stage').offsetTop+8)+'px';}
+function tbShow(h){const t=$('#toolBar');const was=t.hidden;t.innerHTML=h;t.hidden=!h;if(was!==t.hidden)scheduleRender();}
 function syncPlacement(){const g=selGroup();if(!g)return;const set=(k,v)=>{const i=$(`#toolBar [data-gk="${k}"]`);if(i&&document.activeElement!==i)i.value=v;};set('cx',f1(g.cx));set('cy',f1(g.cy));set('scale',f1(g.scale*100));const s=$('#gSize');if(s)s.textContent=`${f1(g.w*g.scale)} × ${f1(g.h*g.scale)} mm`;}
 function renderLayers(){
   const el=$('#layers');

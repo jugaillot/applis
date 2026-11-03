@@ -118,6 +118,9 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
 #busy{position:fixed;inset:0;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-weight:600;z-index:60}
 #dropAll{position:fixed;inset:0;background:rgba(240,138,75,.14);border:4px dashed var(--acc);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:var(--acc);z-index:50;pointer-events:none}
 @media (max-width:900px){#tools .tgrid{grid-template-columns:repeat(auto-fill,36px);justify-content:start;padding:0 8px}#tools{grid-column:1/-1;border-right:0;border-bottom:1px solid var(--line)}main{grid-template-columns:80px 1fr}aside{grid-column:1/-1;max-height:45vh;border-left:0;border-top:1px solid var(--line)}}
+
+/* réglages de l'outil : bande au-dessus de l'image (ne recouvre jamais l'image) */
+#toolBar{left:auto!important;right:auto!important;top:auto!important;position:static!important;max-width:none!important;border-radius:0!important;border:0!important;border-bottom:1px solid var(--line)!important;box-shadow:none!important;background:var(--panel,#fff)!important;flex:none}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
@@ -924,7 +927,7 @@ renderStrip();syncPanel();renderPresets();renderPreview();syncToolPanel();setToo
 
 /* ---------- réglages de l'outil : petit bloc en haut à gauche de l'image (comme Vecto) ---------- */
 (function(){
-  const tb=document.createElement('div');tb.id='toolBar';tb.hidden=true;$('#stage').appendChild(tb);
+  const tb=document.createElement('div');tb.id='toolBar';tb.hidden=true;$('#stage').parentNode.insertBefore(tb,$('#stage'));new ResizeObserver(()=>schedule()).observe($('#stage'));
   const gT=document.createElement('div');gT.className='tbg';const tT=document.createElement('b');gT.appendChild(tT);
   ['#tBrush','#tFillBox','#tColBox'].forEach(id=>gT.appendChild($(id)));const rw=$('#tUndoLast').parentNode;gT.appendChild(rw);gT.appendChild($('#tHint'));
   const gC=document.createElement('div');gC.className='tbg';const tC=document.createElement('b');tC.textContent='Rogner';gC.appendChild(tC);
