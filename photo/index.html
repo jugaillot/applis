@@ -89,6 +89,9 @@ details.dropAfter{box-shadow:0 3px 0 var(--acc)}
 #stage.tooling{cursor:none}
 #stage.tool-fill{cursor:crosshair}
 #brush{position:absolute;border-radius:50%;border:1px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.6);pointer-events:none;transform:translate(-50%,-50%)}
+#perspSvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#perspSvg circle{pointer-events:all;cursor:move;fill:rgba(255,255,255,.25);stroke:#fff;stroke-width:2}
+#perspSvg circle:hover{fill:rgba(240,138,75,.5)}
 #cloneMk{position:absolute;width:18px;height:18px;pointer-events:none;transform:translate(-50%,-50%);border:2px solid var(--acc);border-radius:50%}
 #cloneMk::after{content:"+";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--acc);font-weight:700}
 .tools{display:flex;gap:4px}
@@ -147,6 +150,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <nav id="tools"><div class="tgrid">
 <button class="tool" type="button" data-pt="none" title="Sélection : aucun outil (Échap)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor" stroke="none"/></svg></button>
 <button class="tool" type="button" data-px="#bCrop" title="Rogner (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14h14"/><path d="M2 6h14v14"/></svg></button>
+<button class="tool" type="button" data-px="#bPersp" title="Redresser la perspective (K) : place les 4 coins du document photographié de biais"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l14-2 1 16-16-2z"/><circle cx="5" cy="6" r="1.4" fill="currentColor"/><circle cx="19" cy="4" r="1.4" fill="currentColor"/><circle cx="20" cy="20" r="1.4" fill="currentColor"/><circle cx="4" cy="18" r="1.4" fill="currentColor"/></svg></button>
 <button class="tool" type="button" data-px="#bar [data-tool=stamp]" title="Tampon (S) — Alt + clic pour choisir la zone à copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v5l3 3H6l3-3z"/><path d="M5 14h14v3H5z"/><path d="M4 21h16"/></svg></button>
 <button class="tool" type="button" data-px="#bar [data-tool=fill]" title="Pot de peinture (G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l7-7 7 7-7 7z"/><path d="M11 6L9 4"/><path d="M19 15c1 1.6 1.5 2.6 1.5 3.3a1.5 1.5 0 0 1-3 0c0-.7.5-1.7 1.5-3.3z" fill="currentColor"/></svg></button>
 <button class="tool" type="button" data-px="#bar [data-tool=erase]" title="Gomme (E)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l9-9 6 6-6 6H7z"/><path d="M12 20h9"/><path d="M8 12l6 6"/></svg></button>
@@ -167,7 +171,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <div id="stage"><div id="empty">Glisse ici tes photos (JPG, PNG, WebP),<br>colle une image avec Ctrl+V<br>ou utilise « Ajouter des images… »</div><canvas id="view" hidden></canvas><div id="cropBox" hidden></div><div id="brush" hidden></div><div id="cloneMk" hidden></div></div>
     <div id="bar">
       <button class="btn sm" id="bBefore" title="Maintenir pour voir l’original (touche B)">Avant / après</button>
-      <button class="btn sm" id="bCrop" title="Rogner (C)">✂ Rogner</button>
+      <button class="btn sm" id="bCrop" title="Rogner (C)">✂ Rogner</button><button class="btn sm" id="bPersp" title="Redresser la perspective (K)">Perspective</button>
       <span class="tools"><button class="btn sm" data-tool="stamp" title="Tampon (S) — Alt + clic pour choisir la zone à copier">⧉ Tampon</button><button class="btn sm" data-tool="fill" title="Pot de peinture (G)">◍ Remplir</button><button class="btn sm" data-tool="erase" title="Gomme (E)">◌ Gomme</button></span>
       <button class="btn sm" id="bUndo" title="Ctrl+Z">↶</button><button class="btn sm" id="bRedo" title="Ctrl+Y">↷</button>
       <button class="btn sm" id="bReset" title="Revenir à l’original">Tout réinitialiser</button>
@@ -257,7 +261,7 @@ const SLIDERS={
   fx2:[['split','Force du virage',0,100,1,0],['sepia','Sépia',0,100,1,0],['posterize','Postérisation (niveaux)',0,16,1,0],['threshold','Seuil (noir/blanc pur)',0,255,1,0],['vignette','Vignette',-100,100,1,0],['grain','Grain',0,100,1,0]],
   detail:[['sharpen','Netteté',0,100,1,0],['blur','Flou',0,100,1,0],['denoise','Réduction du bruit',0,100,1,0]]
 };
-const DEF=()=>{const s={bw:false,duo:false,duoA:'#1b2a6b',duoB:'#ffb3c8',splitA:'#1f6f78',splitB:'#ffb070',curve:[[0,0],[255,255]],rot:0,flipH:false,flipV:false,straight:0,crop:{x:0,y:0,w:1,h:1},ratio:'free',paint:[],out:{mode:'px',w:0,h:0,lock:true,pct:100,kb:500,q:90,suffix:'-atelier',fmt:'jpg'},preset:null};for(const g in SLIDERS)for(const d of SLIDERS[g])s[d[0]]=d[5];return s;};
+const DEF=()=>{const s={bw:false,duo:false,duoA:'#1b2a6b',duoB:'#ffb3c8',splitA:'#1f6f78',splitB:'#ffb070',curve:[[0,0],[255,255]],rot:0,flipH:false,flipV:false,straight:0,persp:null,crop:{x:0,y:0,w:1,h:1},ratio:'free',paint:[],out:{mode:'px',w:0,h:0,lock:true,pct:100,kb:500,q:90,suffix:'-atelier',fmt:'jpg'},preset:null};for(const g in SLIDERS)for(const d of SLIDERS[g])s[d[0]]=d[5];return s;};
 const PRESETS=[
   ['Original',{}],
   ['Lumineux',{brightness:10,contrast:10,saturation:12,vibrance:22,highlights:-10}],
@@ -457,7 +461,7 @@ function pixels(c,st,scaleRef){
   }
   x.putImageData(im,0,0);return c;
 }
-function outCrop(it){const st=it.st;const [W1,H1]=frameSize(it.W,it.H,st);return [Math.max(1,Math.round(st.crop.w*W1)),Math.max(1,Math.round(st.crop.h*H1))];}
+function outCrop(it){const st=it.st;const [W1,H1]=frameSize(...baseDims(it),st);return [Math.max(1,Math.round(st.crop.w*W1)),Math.max(1,Math.round(st.crop.h*H1))];}
 function outDims(it){
   const [cw,ch]=outCrop(it),o=it.st.out;
   if(o.mode==='pct'){const k=o.pct/100;return [Math.max(1,Math.round(cw*k)),Math.max(1,Math.round(ch*k))];}
@@ -475,7 +479,9 @@ async function renderPreview(){
   const it=cur();
   $('#empty').hidden=!!it;view.hidden=!it;
   if(!it){$('#cropBox').hidden=true;$('#info').textContent='';return;}
-  await ensurePrev(it);const src=S.before?it.prev:paintedPrev(it);
+  await ensurePrev(it);const src0=S.before?it.prev:paintedPrev(it);
+  if(S.perspMode){renderPerspView(it,src0);return;}$('#perspSvg').style.display='none';
+  const src=gsrc(src0,it.st);
   const st=$('#stage').getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);
   let c;
   if(S.cropMode){
@@ -509,9 +515,9 @@ function placeCropBox(){
   box.hidden=false;const v=view.getBoundingClientRect(),st=$('#stage').getBoundingClientRect(),cr=it.st.crop;
   box.style.left=(v.left-st.left+cr.x*v.width)+'px';box.style.top=(v.top-st.top+cr.y*v.height)+'px';box.style.width=(cr.w*v.width)+'px';box.style.height=(cr.h*v.height)+'px';
 }
-function ratioVal(it){const r=it.st.ratio;if(r==='free')return null;if(r==='orig')return it.W/it.H*(it.st.rot%180?-1:1)<0?it.H/it.W:it.W/it.H;return parseFloat(r);}
+function ratioVal(it){const r=it.st.ratio;if(r==='free')return null;if(r==='orig'){const [bw,bh]=baseDims(it);return it.st.rot%180?bh/bw:bw/bh;}return parseFloat(r);}
 function fitRatio(it){
-  const R=ratioVal(it);if(!R)return;const [W1,H1]=frameSize(it.W,it.H,it.st);
+  const R=ratioVal(it);if(!R)return;const [W1,H1]=frameSize(...baseDims(it),it.st);
   // R = largeur/hauteur en pixels ; cadre centré le plus grand possible dans le rognage actuel
   const cr=it.st.crop;const cx=cr.x+cr.w/2,cy=cr.y+cr.h/2;
   let wpx=cr.w*W1,hpx=wpx/R;if(hpx>cr.h*H1){hpx=cr.h*H1;wpx=hpx*R;}
@@ -531,7 +537,7 @@ function fitRatio(it){
       let x0=o.x,y0=o.y,x1=o.x+o.w,y1=o.y+o.h;
       if(drag.L)x0=Math.min(x1-min,Math.max(0,x0+dx));if(drag.R)x1=Math.max(x0+min,Math.min(1,x1+dx));if(drag.T)y0=Math.min(y1-min,Math.max(0,y0+dy));if(drag.B)y1=Math.max(y0+min,Math.min(1,y1+dy));
       const R=ratioVal(it);
-      if(R){const [W1,H1]=frameSize(it.W,it.H,it.st);let w=(x1-x0)*W1,h=(y1-y0)*H1;
+      if(R){const [W1,H1]=frameSize(...baseDims(it),it.st);let w=(x1-x0)*W1,h=(y1-y0)*H1;
         if((drag.L||drag.R)&&!(drag.T||drag.B)){h=w/R;}else if((drag.T||drag.B)&&!(drag.L||drag.R)){w=h*R;}else{if(w/h>R)w=h*R;else h=w/R;}
         let nw=w/W1,nh=h/H1;if(nw>1){nw=1;nh=nw*W1/R/H1;}if(nh>1){nh=1;nw=nh*H1*R/W1;}
         if(drag.L)x0=x1-nw;else x1=x0+nw;if(drag.T)y0=y1-nh;else if(drag.B||!(drag.T||drag.B))y1=y0+nh;
@@ -547,7 +553,7 @@ function fitRatio(it){
   function startDraw(e){
     const it=cur();if(!it)return;e.preventDefault();
     const v=view.getBoundingClientRect();const cl=(a)=>Math.min(1,Math.max(0,a));
-    const ax=cl((e.clientX-v.left)/v.width),ay=cl((e.clientY-v.top)/v.height);pushHist(it);const [W1,H1]=frameSize(it.W,it.H,it.st);const R=ratioVal(it);
+    const ax=cl((e.clientX-v.left)/v.width),ay=cl((e.clientY-v.top)/v.height);pushHist(it);const [W1,H1]=frameSize(...baseDims(it),it.st);const R=ratioVal(it);
     const mv=ev=>{let bx=cl((ev.clientX-v.left)/v.width),by=cl((ev.clientY-v.top)/v.height);
       if(R){let w=Math.abs(bx-ax)*W1,h=Math.abs(by-ay)*H1;if(w/h>R)h=w/R;else w=h*R;
         const maxW=(bx>=ax?1-ax:ax)*W1,maxH=(by>=ay?1-ay:ay)*H1;if(w>maxW){w=maxW;h=w/R;}if(h>maxH){h=maxH;w=h*R;}
@@ -611,7 +617,7 @@ curveCv.addEventListener('pointermove',e=>{if(cDrag<0)return;const it=cur();cons
 curveCv.addEventListener('pointerup',()=>{cDrag=-1;});
 curveCv.addEventListener('dblclick',e=>{const it=cur();if(!it)return;const [x,y]=cPos(e);const pts=it.st.curve;const i=pts.findIndex(p=>Math.hypot(p[0]-x,p[1]-y)<14);if(i>0&&i<pts.length-1){change(st=>{st.curve.splice(i,1);});drawCurve();}});
 $('#bCurveReset').onclick=()=>{change(st=>{st.curve=[[0,0],[255,255]];});drawCurve();};
-$('#bAutoLv').onclick=async()=>{const it=cur();if(!it)return;await ensurePrev(it);const src=paintedPrev(it);const c=geom(src,Object.assign(clone(it.st)),200,Math.max(1,Math.round(200*outCrop(it)[1]/outCrop(it)[0])));const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;const h=new Uint32Array(256);let n=0;for(let i=0;i<d.length;i+=4){h[Math.round(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])]++;n++;}let a=0,lo=0,hi=255;for(let i=0;i<256;i++){a+=h[i];if(a>n*0.004){lo=i;break;}}a=0;for(let i=255;i>=0;i--){a+=h[i];if(a>n*0.004){hi=i;break;}}change(st=>{st.black=Math.min(lo,hi-1);st.white=Math.max(hi,lo+1);st.gamma=1;});syncPanel();};
+$('#bAutoLv').onclick=async()=>{const it=cur();if(!it)return;await ensurePrev(it);const src=gsrc(paintedPrev(it),it.st);const c=geom(src,Object.assign(clone(it.st)),200,Math.max(1,Math.round(200*outCrop(it)[1]/outCrop(it)[0])));const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;const h=new Uint32Array(256);let n=0;for(let i=0;i<d.length;i+=4){h[Math.round(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])]++;n++;}let a=0,lo=0,hi=255;for(let i=0;i<256;i++){a+=h[i];if(a>n*0.004){lo=i;break;}}a=0;for(let i=255;i>=0;i--){a+=h[i];if(a>n*0.004){hi=i;break;}}change(st=>{st.black=Math.min(lo,hi-1);st.white=Math.max(hi,lo+1);st.gamma=1;});syncPanel();};
 /* géométrie */
 $('#gRatio').onchange=e=>{e.target.blur();change(st=>{st.ratio=e.target.value;});fitRatio(cur());if(!S.cropMode)toggleCrop(true);schedule();};
 $('#gStraight').oninput=e=>{change(st=>{st.straight=+e.target.value;});$('#vStraight').textContent=(+e.target.value).toFixed(1)+'°';};
@@ -662,9 +668,11 @@ $('#tUndoLast').onclick=()=>{const it=cur();if(!it||!it.st.paint.length)return;p
 function toImg(e){
   if(!S.viewM)return null;const r=view.getBoundingClientRect();const k=view.width/r.width;
   const q=S.viewM.inverse().transformPoint(new DOMPoint((e.clientX-r.left)*k,(e.clientY-r.top)*k));
-  return [q.x/S.viewSrc[0],q.y/S.viewSrc[1]];
+  const u=q.x/S.viewSrc[0],v=q.y/S.viewSrc[1];const it=cur();
+  if(it&&it.st.persp&&!S.perspMode)return homFwd(homog(it.st.persp),u,v);
+  return [u,v];
 }
-function fromImg(p){const r=view.getBoundingClientRect(),st=$('#stage').getBoundingClientRect();const q=S.viewM.transformPoint(new DOMPoint(p[0]*S.viewSrc[0],p[1]*S.viewSrc[1]));const k=r.width/view.width;return [r.left-st.left+q.x*k,r.top-st.top+q.y*k];}
+function fromImg(p){{const it=cur();if(it&&it.st.persp&&!S.perspMode)p=homInv(homog(it.st.persp),p[0],p[1]);}const r=view.getBoundingClientRect(),st=$('#stage').getBoundingClientRect();const q=S.viewM.transformPoint(new DOMPoint(p[0]*S.viewSrc[0],p[1]*S.viewSrc[1]));const k=r.width/view.width;return [r.left-st.left+q.x*k,r.top-st.top+q.y*k];}
 function screenPerSrc(){const m=S.viewM;const r=view.getBoundingClientRect();return Math.sqrt(Math.abs(m.a*m.d-m.b*m.c))*r.width/view.width;}
 function placeCloneMk(pos){
   const mk=$('#cloneMk');if(TOOL.tool!=='stamp'||!TOOL.cloneSrc||!S.viewM||!cur()){mk.hidden=true;return;}
@@ -712,13 +720,13 @@ $('#stage').addEventListener('pointerup',()=>{if(!stroke)return;const it=cur();i
 /* ---------- préréglages ---------- */
 function userPresets(){try{return JSON.parse(localStorage.getItem('atelierPhoto.presets')||'[]');}catch(e){return [];}}
 function allPresets(){return PRESETS.concat(userPresets().map(p=>[p.name,p.v,true]));}
-function applyPreset(name){const p=allPresets().find(x=>x[0]===name);if(!p)return;change(st=>{const keep={paint:st.paint,crop:st.crop,ratio:st.ratio,rot:st.rot,flipH:st.flipH,flipV:st.flipV,straight:st.straight,out:st.out};Object.assign(st,DEF(),clone(p[1]),keep);st.preset=name;},true);syncPanel();}
+function applyPreset(name){const p=allPresets().find(x=>x[0]===name);if(!p)return;change(st=>{const keep={paint:st.paint,persp:st.persp,crop:st.crop,ratio:st.ratio,rot:st.rot,flipH:st.flipH,flipV:st.flipV,straight:st.straight,out:st.out};Object.assign(st,DEF(),clone(p[1]),keep);st.preset=name;},true);syncPanel();}
 let presetBusy=false;
 async function renderPresets(){
   const box=$('#presets');const it=cur();const list=allPresets();
   box.innerHTML=list.map(([n,,u])=>`<button class="pr" data-name="${n.replace(/"/g,'&quot;')}" title="${u?'Filtre perso — clic droit pour supprimer':n}"><canvas width="96" height="96"></canvas><span>${n}</span></button>`).join('');
   if(!it||presetBusy)return;presetBusy=true;
-  try{await ensurePrev(it);const src=paintedPrev(it);const [cw,ch]=outCrop(it);const k=96/Math.min(cw,ch);
+  try{await ensurePrev(it);const src=gsrc(paintedPrev(it),it.st);const [cw,ch]=outCrop(it);const k=96/Math.min(cw,ch);
     const base=geom(src,it.st,Math.max(1,Math.round(cw*k)),Math.max(1,Math.round(ch*k)));
     const cvs=box.querySelectorAll('canvas');
     list.forEach(([n,v],i)=>{const st=Object.assign(DEF(),clone(v));const c=document.createElement('canvas');c.width=base.width;c.height=base.height;c.getContext('2d').drawImage(base,0,0);pixels(c,st);const x=cvs[i].getContext('2d');x.drawImage(c,(c.width-96)/2,(c.height-96)/2,96,96,0,0,96,96);});
@@ -727,17 +735,17 @@ async function renderPresets(){
 }
 $('#presets').addEventListener('click',e=>{const b=e.target.closest('.pr');if(b)applyPreset(b.dataset.name);});
 $('#presets').addEventListener('contextmenu',e=>{const b=e.target.closest('.pr');if(!b)return;const u=userPresets();const i=u.findIndex(p=>p.name===b.dataset.name);if(i<0)return;e.preventDefault();if(confirm('Supprimer le filtre « '+b.dataset.name+' » ?')){u.splice(i,1);localStorage.setItem('atelierPhoto.presets',JSON.stringify(u));renderPresets();}});
-$('#bSavePreset').onclick=()=>{const it=cur();if(!it)return;const n=prompt('Nom du filtre :');if(!n)return;const v=clone(it.st);['paint','crop','ratio','rot','flipH','flipV','straight','out','preset'].forEach(k=>delete v[k]);const u=userPresets().filter(p=>p.name!==n);u.push({name:n,v});try{localStorage.setItem('atelierPhoto.presets',JSON.stringify(u));}catch(e){}it.st.preset=n;renderPresets();};
+$('#bSavePreset').onclick=()=>{const it=cur();if(!it)return;const n=prompt('Nom du filtre :');if(!n)return;const v=clone(it.st);['paint','persp','crop','ratio','rot','flipH','flipV','straight','out','preset'].forEach(k=>delete v[k]);const u=userPresets().filter(p=>p.name!==n);u.push({name:n,v});try{localStorage.setItem('atelierPhoto.presets',JSON.stringify(u));}catch(e){}it.st.preset=n;renderPresets();};
 
 /* =====================================================================
    Bande d'images (lot)
    ===================================================================== */
-function refreshThumb(it){if(!it||!it.prev)return;const [cw,ch]=outCrop(it);const k=Math.min(1,160/Math.max(cw,ch));const c=geom(paintedPrev(it),it.st,Math.max(1,Math.round(cw*k*(it.prev.width/it.W))),Math.max(1,Math.round(ch*k*(it.prev.width/it.W))));pixels(c,it.st);it.thumb=c;const el=document.querySelector(`.th[data-id="${it.id}"] canvas`);if(el){el.width=c.width;el.height=c.height;el.getContext('2d').drawImage(c,0,0);}}
+function refreshThumb(it){if(!it||!it.prev)return;const [cw,ch]=outCrop(it);const k=Math.min(1,160/Math.max(cw,ch));const c=geom(gsrc(paintedPrev(it),it.st),it.st,Math.max(1,Math.round(cw*k*(it.prev.width/it.W))),Math.max(1,Math.round(ch*k*(it.prev.width/it.W))));pixels(c,it.st);it.thumb=c;const el=document.querySelector(`.th[data-id="${it.id}"] canvas`);if(el){el.width=c.width;el.height=c.height;el.getContext('2d').drawImage(c,0,0);}}
 function renderStrip(){
   const s=$('#strip');
   s.innerHTML=S.items.map(it=>`<div class="th${it.id===S.cur?' on':''}${S.sel.has(it.id)?' sel':''}" data-id="${it.id}" title="${it.name.replace(/"/g,'&quot;')} — Ctrl+clic : sélection multiple"><canvas></canvas><button class="x" data-x="${it.id}" title="Retirer">✕</button></div>`).join('')+`<div class="muted" style="text-align:center">${S.items.length} image${S.items.length>1?'s':''}</div>`;
   S.items.forEach(it=>{const el=s.querySelector(`.th[data-id="${it.id}"] canvas`);el.width=it.thumb.width;el.height=it.thumb.height;el.getContext('2d').drawImage(it.thumb,0,0);});
-  const has=S.items.length>0;['#bCopy','#bPrint','#bExportOne','#bExportAll','#bApplyAll','#bReset','#bUndo','#bRedo','#bCrop','#bBefore'].forEach(id=>$(id).disabled=!has);
+  const has=S.items.length>0;['#bCopy','#bPrint','#bExportOne','#bExportAll','#bApplyAll','#bReset','#bUndo','#bRedo','#bCrop','#bPersp','#bBefore'].forEach(id=>$(id).disabled=!has);
 }
 $('#strip').addEventListener('click',e=>{
   const x=e.target.closest('[data-x]');if(x){const id=x.dataset.x;S.items=S.items.filter(i=>i.id!==id);S.sel.delete(id);if(S.cur===id)S.cur=S.items[0]?S.items[0].id:null;renderStrip();select(S.cur,true);return;}
@@ -759,7 +767,7 @@ $('#bApplyAll').onclick=()=>{
   const withCrop=confirm(`Appliquer les réglages de cette image à ${targets.length} autre(s) image(s)${S.sel.size?' sélectionnée(s)':''} ?\n\nOK = réglages + rognage + taille d’export\nAnnuler = ne rien faire`);
   if(!withCrop)return;
   const geoOnly=!confirm('Reprendre aussi le rognage et la rotation ?\n\nOK = oui (même cadrage partout)\nAnnuler = non, garder le cadrage de chaque image');
-  for(const t of targets){pushHist(t);const keep=geoOnly?{crop:t.st.crop,ratio:t.st.ratio,rot:t.st.rot,flipH:t.st.flipH,flipV:t.st.flipV,straight:t.st.straight}:{};t.st=Object.assign(clone(it.st),keep);if(!geoOnly&&t.st.ratio!=='free'){t.st.crop={x:0,y:0,w:1,h:1};fitRatio(t);}if(t.prev)refreshThumb(t);}
+  for(const t of targets){pushHist(t);const keep=geoOnly?{persp:t.st.persp,crop:t.st.crop,ratio:t.st.ratio,rot:t.st.rot,flipH:t.st.flipH,flipV:t.st.flipV,straight:t.st.straight}:{};t.st=Object.assign(clone(it.st),keep);if(!geoOnly&&t.st.ratio!=='free'){t.st.crop={x:0,y:0,w:1,h:1};fitRatio(t);}if(t.prev)refreshThumb(t);}
   renderStrip();
 };
 
@@ -767,7 +775,7 @@ $('#bApplyAll').onclick=()=>{
    Export JPG / ZIP
    ===================================================================== */
 async function renderFull(it){
-  const full=applyPaint(await decode(it.file,0),it.st.paint);
+  const full=gsrc(applyPaint(await decode(it.file,0),it.st.paint),it.st);
   const [w,h]=outDims(it);
   let c=geom(full,it.st,w,h);pixels(c,it.st);return c;
 }
@@ -871,6 +879,9 @@ document.addEventListener('keydown',e=>{
   if(k==='e'){setTool(TOOL.tool==='erase'?'':'erase');return;}
   if(k==='['||k===']'){TOOL.size=Math.max(2,Math.min(400,Math.round(TOOL.size*(k===']'?1.2:1/1.2))));syncToolPanel();saveTool();const br=$('#brush');br.style.width=br.style.height=TOOL.size+'px';return;}
   if(k==='escape'&&TOOL.tool){setTool('');return;}
+  if(k==='k'){togglePersp();return;}
+  if(S.perspMode&&k==='escape'){togglePersp(false,true);return;}
+  if(S.perspMode&&k==='enter'){togglePersp(false);return;}
   if(k==='c'){if(TOOL.tool)setTool('');toggleCrop();return;}
   if(k==='escape'&&S.cropMode){toggleCrop(false);return;}
   if(k==='enter'&&S.cropMode){toggleCrop(false);return;}
@@ -925,6 +936,84 @@ renderStrip();syncPanel();renderPresets();renderPreview();syncToolPanel();setToo
   window.addEventListener('resize',()=>{});
 })();
 
+
+/* =====================================================================
+   Perspective : remettre à plat un document photographié de biais
+   (4 coins en coordonnées de l'image d'origine, de 0 à 1 : haut-gauche, haut-droite, bas-droite, bas-gauche)
+   ===================================================================== */
+function homog(q){
+  const [x0,y0]=q[0],[x1,y1]=q[1],[x2,y2]=q[2],[x3,y3]=q[3];
+  const dx1=x1-x2,dx2=x3-x2,dx3=x0-x1+x2-x3,dy1=y1-y2,dy2=y3-y2,dy3=y0-y1+y2-y3;
+  let g=0,h=0;if(Math.abs(dx3)>1e-12||Math.abs(dy3)>1e-12){const den=dx1*dy2-dx2*dy1||1e-12;g=(dx3*dy2-dx2*dy3)/den;h=(dx1*dy3-dx3*dy1)/den;}
+  return [x1-x0+g*x1,x3-x0+h*x3,x0,y1-y0+g*y1,y3-y0+h*y3,y0,g,h];
+}
+function homFwd(H,u,v){const w=H[6]*u+H[7]*v+1;return [(H[0]*u+H[1]*v+H[2])/w,(H[3]*u+H[4]*v+H[5])/w];}
+function homInv(H,x,y){const [a,b,c,d,e,f,g,h]=H;
+  const A=e-f*h,B=c*h-b,C=b*f-c*e,D=f*g-d,E=a-c*g,F=c*d-a*f,G=d*h-e*g,Hh=b*g-a*h,I=a*e-b*d;
+  const w=G*x+Hh*y+I;return [(A*x+B*y+C)/w,(D*x+E*y+F)/w];}
+function perspSize(q,W,H){const P=q.map(([x,y])=>[x*W,y*H]);const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  return [Math.max(1,Math.round((d(P[0],P[1])+d(P[3],P[2]))/2)),Math.max(1,Math.round((d(P[0],P[3])+d(P[1],P[2]))/2))];}
+function baseDims(it){return it.st.persp?perspSize(it.st.persp,it.W,it.H):[it.W,it.H];}
+const warpCache=new WeakMap();
+function gsrc(src,st){return st&&st.persp?warpSrc(src,st.persp):src;}
+function warpSrc(src,q){
+  const sig=JSON.stringify(q);const ca=warpCache.get(src);if(ca&&ca.sig===sig)return ca.c;
+  const W=src.width,H=src.height;const [ow,oh]=perspSize(q,W,H);
+  const sd=(src.getContext?src:snapshot(src)).getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
+  const c=document.createElement('canvas');c.width=ow;c.height=oh;const x=c.getContext('2d');const out=x.createImageData(ow,oh),od=out.data;
+  const M=homog(q);let o=0;
+  for(let j=0;j<oh;j++){const v=(j+.5)/oh;for(let i=0;i<ow;i++,o+=4){const u=(i+.5)/ow;const w=M[6]*u+M[7]*v+1;
+    let sx=(M[0]*u+M[1]*v+M[2])/w*W-.5,sy=(M[3]*u+M[4]*v+M[5])/w*H-.5;
+    if(sx<0)sx=0;else if(sx>W-1)sx=W-1;if(sy<0)sy=0;else if(sy>H-1)sy=H-1;
+    const x0=sx|0,y0=sy|0,x1=x0<W-1?x0+1:x0,y1=y0<H-1?y0+1:y0,fx=sx-x0,fy=sy-y0;
+    const p00=(y0*W+x0)*4,p10=(y0*W+x1)*4,p01=(y1*W+x0)*4,p11=(y1*W+x1)*4;
+    for(let k=0;k<4;k++){const t=sd[p00+k]+(sd[p10+k]-sd[p00+k])*fx,b=sd[p01+k]+(sd[p11+k]-sd[p01+k])*fx;od[o+k]=t+(b-t)*fy;}}}
+  x.putImageData(out,0,0);warpCache.set(src,{sig,c});return c;
+}
+/* mode Perspective : image d'origine entière + 4 poignées */
+S.perspMode=false;S.pp=null;
+function renderPerspView(it,src){
+  const st=$('#stage').getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);
+  const k=Math.min((st.width-60)/src.width,(st.height-60)/src.height,1.5)*dpr;const w=Math.max(1,Math.round(src.width*k)),h=Math.max(1,Math.round(src.height*k));
+  view.width=w;view.height=h;view.style.width=Math.round(w/dpr)+'px';view.style.height=Math.round(h/dpr)+'px';view.getContext('2d').drawImage(src,0,0,w,h);
+  S.viewM=new DOMMatrix().scale(w/src.width,h/src.height);S.viewSrc=[src.width,src.height];$('#cropBox').hidden=true;
+  placePersp();$('#info').textContent=`${it.name} · perspective : place les 4 coins`;
+}
+function placePersp(){
+  const svg=$('#perspSvg');if(!S.perspMode||!S.pp||!cur()){svg.style.display='none';return;}
+  svg.style.display='';const v=view.getBoundingClientRect(),st=$('#stage').getBoundingClientRect();
+  const P=S.pp.map(([x,y])=>[v.left-st.left+x*v.width,v.top-st.top+y*v.height]);
+  svg.querySelector('polygon').setAttribute('points',P.map(p=>p.join(',')).join(' '));
+  svg.querySelectorAll('circle').forEach((c,i)=>{c.setAttribute('cx',P[i][0]);c.setAttribute('cy',P[i][1]);});
+}
+function togglePersp(on,cancel){
+  const it=cur();on=on==null?!S.perspMode:on;if(on&&!it)return;
+  if(on===S.perspMode)return;
+  if(on){if(TOOL.tool)setTool('');if(S.cropMode)toggleCrop(false);S.perspMode=true;
+    S.pp=it.st.persp?clone(it.st.persp):[[.08,.08],[.92,.08],[.92,.92],[.08,.92]];}
+  else{S.perspMode=false;
+    if(!cancel&&it&&S.pp){const ident=S.pp.every(([x,y],i)=>Math.abs(x-[0,1,1,0][i])<1e-4&&Math.abs(y-[0,0,1,1][i])<1e-4);const nv=ident?null:S.pp;
+      if(JSON.stringify(nv)!==JSON.stringify(it.st.persp||null)){pushHist(it);it.st.persp=nv;it.st.crop={x:0,y:0,w:1,h:1};it.st.ratio='free';it.st.straight=0;syncPanel();}}
+    S.pp=null;$('#perspSvg').style.display='none';}
+  $('#bPersp').classList.toggle('on',S.perspMode);if(window.tbSync)tbSync();schedule();if(!S.perspMode&&it){refreshThumb(it);}
+}
+(function(){
+  const NS='http://www.w3.org/2000/svg';const svg=document.createElementNS(NS,'svg');svg.id='perspSvg';svg.style.display='none';
+  svg.innerHTML='<polygon fill="rgba(240,138,75,.12)" stroke="#000" stroke-opacity=".5" stroke-width="3"></polygon><polygon fill="none" stroke="#fff" stroke-width="1.5" class="l2"></polygon>'+[0,1,2,3].map(i=>`<circle r="11" data-i="${i}"></circle>`).join('');
+  $('#stage').appendChild(svg);
+  const sync2=()=>{const a=svg.querySelector('polygon');svg.querySelector('.l2').setAttribute('points',a.getAttribute('points')||'');};
+  const _pp=placePersp;placePersp=function(){_pp();sync2();};
+  let dr=null;
+  svg.addEventListener('pointerdown',e=>{const c=e.target.closest('circle');if(!c)return;e.preventDefault();e.stopPropagation();dr={i:+c.dataset.i};c.setPointerCapture(e.pointerId);});
+  svg.addEventListener('pointermove',e=>{if(!dr||!S.pp)return;const v=view.getBoundingClientRect();
+    S.pp[dr.i]=[Math.min(1,Math.max(0,(e.clientX-v.left)/v.width)),Math.min(1,Math.max(0,(e.clientY-v.top)/v.height))];placePersp();});
+  svg.addEventListener('pointerup',()=>{dr=null;});
+  $('#bPersp').onclick=()=>togglePersp();
+  const _tc=toggleCrop;toggleCrop=function(on){if(S.perspMode&&(on==null||on))togglePersp(false,true);_tc(on);};
+  const _st=setTool;setTool=function(t){if(t&&S.perspMode)togglePersp(false,true);_st(t);};
+  const _sel=select;select=async function(id,force){if(S.perspMode)togglePersp(false,true);return _sel(id,force);};
+})();
+
 /* ---------- réglages de l'outil : petit bloc en haut à gauche de l'image (comme Vecto) ---------- */
 (function(){
   const tb=document.createElement('div');tb.id='toolBar';tb.hidden=true;$('#stage').parentNode.insertBefore(tb,$('#stage'));new ResizeObserver(()=>schedule()).observe($('#stage'));
@@ -932,12 +1021,15 @@ renderStrip();syncPanel();renderPresets();renderPreview();syncToolPanel();setToo
   ['#tBrush','#tFillBox','#tColBox'].forEach(id=>gT.appendChild($(id)));const rw=$('#tUndoLast').parentNode;gT.appendChild(rw);gT.appendChild($('#tHint'));
   const gC=document.createElement('div');gC.className='tbg';const tC=document.createElement('b');tC.textContent='Rogner';gC.appendChild(tC);
   gC.appendChild($('#gRatio').closest('label'));gC.appendChild($('#gStraight').closest('.sl'));const cb=$('#gCropBtn'),cr=$('#gCropReset');gC.appendChild(cb.parentNode);cb.parentNode.appendChild(cr);
-  tb.appendChild(gT);tb.appendChild(gC);
+  const gP=document.createElement('div');gP.className='tbg';gP.innerHTML='<b>Perspective</b><span class="muted">Place les 4 poignées sur les coins du document : il sera remis à plat en rectangle.</span><span class="row"><button class="btn sm primary" id="pOk">✓ Appliquer</button><button class="btn sm" id="pCancel">Annuler</button><button class="btn sm" id="pNone">Pas de perspective</button></span>';
+  tb.appendChild(gT);tb.appendChild(gC);tb.appendChild(gP);
+  gP.querySelector('#pOk').onclick=()=>togglePersp(false);gP.querySelector('#pCancel').onclick=()=>togglePersp(false,true);gP.querySelector('#pNone').onclick=()=>{S.pp=[[0,0],[1,0],[1,1],[0,1]];togglePersp(false);};
   const d=$('#dTool');if(d)d.style.display='none';// la rubrique de droite n'a plus lieu d'être
   const geo=document.querySelector('details[data-sec="rognage"] summary span');if(geo)geo.innerHTML='<i class="grip">⋮⋮</i>Rotation et miroir';
   const mini=document.querySelector('#mini [data-open=retouche]');if(mini)mini.remove();const mr=document.querySelector('#mini [data-open=rognage]');if(mr)mr.title='Rotation et miroir';
   const NAMES={stamp:'Tampon',fill:'Pot de peinture',erase:'Gomme'};
-  function tbSync(){const crop=!!S.cropMode,t=TOOL.tool;tb.hidden=!(crop||t);gC.hidden=!crop;gT.hidden=crop||!t;tT.textContent=NAMES[t]||'';}
+  function tbSync(){const crop=!!S.cropMode,t=TOOL.tool,pm=!!S.perspMode;tb.hidden=!(crop||t||pm);gC.hidden=!crop;gP.hidden=!pm;gT.hidden=crop||pm||!t;tT.textContent=NAMES[t]||'';}
+  window.tbSync=tbSync;
   const _st=setTool;setTool=function(x){_st(x);tbSync();};
   const _tc=toggleCrop;toggleCrop=function(on){_tc(on);tbSync();};
   tbSync();
@@ -948,6 +1040,6 @@ renderStrip();syncPanel();renderPresets();renderPreview();syncToolPanel();setToo
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;addFiles(await Promise.all(p.files.map(h=>h.getFile())));});
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "Atelier Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "Atelier Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["K", "Perspective : placer les 4 coins d’un document photographié de biais pour le remettre à plat (Entrée : appliquer, Échap : annuler)"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
 </body>
 </html>
