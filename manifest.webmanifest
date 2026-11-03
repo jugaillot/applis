@@ -68,7 +68,14 @@
           ".pdf"
         ]
       },
-      "launch_type": "single-client"
+      "launch_type": "single-client",
+      "icons": [
+        {
+          "src": "/icons/file-pdf.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "action": "/photo/",
@@ -84,7 +91,14 @@
           ".webp"
         ]
       },
-      "launch_type": "single-client"
+      "launch_type": "single-client",
+      "icons": [
+        {
+          "src": "/icons/file-image.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "action": "/vecto/",
@@ -93,7 +107,14 @@
           ".svg"
         ]
       },
-      "launch_type": "single-client"
+      "launch_type": "single-client",
+      "icons": [
+        {
+          "src": "/icons/file-svg.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
