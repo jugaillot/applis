@@ -245,7 +245,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <span class="muted" id="pgHelp">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : modifier la page</b></span>
     </div>
     <div id="pages"><div id="empty">Glisse ici des PDF ou des images (JPG, PNG),<br>ou utilise « Ajouter des fichiers… ».</div></div>
-    <div class="bar" id="shBar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><span class="muted" id="toolHint"></span><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi Ctrl + molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
+    <div class="bar" id="shBar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><span class="muted" id="toolHint"></span><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
     <div class="tbWrap" id="tbWrap"><div id="toolBar" hidden><b id="tbName"></b><span class="muted" id="tbHint"></span><button class="btn sm" id="tbSign" type="button" hidden>Changer de signature…</button></div></div>
     <div id="sheets"></div>
   </div>
@@ -956,14 +956,14 @@ $('#oFmt').onchange=e=>{S.opt.fmt=e.target.value;$('#customBox').hidden=S.opt.fm
 function setZoom(z,save){ZOOM.z=Math.max(1,Math.min(6,z));document.documentElement.style.setProperty('--z',ZOOM.z);$('#zoomR').value=ZOOM.z;if(save)try{localStorage.setItem('atelierCompil.zoom',ZOOM.z);}catch(e){}
   clearTimeout(ZOOM.t);ZOOM.t=setTimeout(()=>{renderSheets();},60);}
 $('#zoomR').addEventListener('input',e=>setZoom(+e.target.value,true));
-$('#sheets').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();setZoom(ZOOM.z*(e.deltaY<0?1.15:1/1.15),true);},{passive:false});
+$('#sheets').addEventListener('wheel',e=>{e.preventDefault();/* molette = zoom ; Maj + molette : défiler */if(e.shiftKey){$('#work').scrollTop+=(e.deltaY||e.deltaX);return;}setZoom(ZOOM.z*(e.deltaY<0?1.15:1/1.15),true);},{passive:false});
 try{const z=+localStorage.getItem('atelierCompil.zoom');if(z)setZoom(z,false);}catch(e){}
 /* les deux barres restent visibles en haut quand on fait défiler : celle des feuilles se cale sous celle des pages */
 const tbTop=()=>{$('#shBar').style.top=$('#pgBar').offsetHeight+'px';$('#tbWrap').style.top=($('#pgBar').offsetHeight+$('#shBar').offsetHeight)+'px';};new ResizeObserver(tbTop).observe($('#pgBar'));new ResizeObserver(tbTop).observe($('#shBar'));
 /* pages : repliables (état retenu) */
 function setPgFold(f,save){$('#pages').style.display=f?'none':'';$('#pgHelp').style.display=f?'none':'';$('#pgTw').style.transform=f?'rotate(-90deg)':'';if(save)try{localStorage.setItem('atelierCompil.fold',f?'1':'0');}catch(e){}}
 $('#pgHead').addEventListener('click',()=>{const f=$('#pages').style.display!=='none';setPgFold(f,true);if(!f)$('#work').scrollTo({top:0,behavior:'smooth'});});
-try{setPgFold(localStorage.getItem('atelierCompil.fold')==='1',false);}catch(e){}
+setPgFold(true,false);/* à l'ouverture : pages repliées */
 /* ---------- PDF modifiable : l'état de l'Atelier (fichiers sources, pages, réglages, textes, signatures) est joint au PDF exporté ---------- */
 async function attachState(out){
   const used=[...new Set(S.pages.map(p=>p.fileId).filter(Boolean))];
@@ -1085,7 +1085,7 @@ setTool('select');
   document.querySelectorAll('aside section[data-sec]').forEach(sec=>{const k=sec.dataset.sec;if(st[k]===false)sec.classList.add('closed');
     sec.querySelector('h2').addEventListener('click',()=>{sec.classList.toggle('closed');st[k]=!sec.classList.contains('closed');try{localStorage.setItem('atelierCompil.rub',JSON.stringify(st));}catch(e){}});});
   const set=(on,save)=>{document.body.classList.toggle('amini',on);$('#asideTg').title=on?'Ouvrir le panneau':'Réduire le panneau';if(save)try{localStorage.setItem('atelierCompil.mini',on?'1':'0');}catch(e){}};
-  try{set(localStorage.getItem('atelierCompil.mini')==='1',false);}catch(e){}
+  set(true,false);/* à l'ouverture : panneau de droite réduit */
   $('#asideTg').onclick=()=>set(!document.body.classList.contains('amini'),true);
   const mini=$('#mini');
   const sync=()=>mini.querySelectorAll('[data-px]').forEach(b=>{const t=document.querySelector(b.dataset.px);if(!t)return;b.classList.toggle('on',t.type==='checkbox'?t.checked:t.classList.contains('on'));b.disabled=!!t.disabled;});
@@ -1103,6 +1103,6 @@ if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.fil
   S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();addFiles(fs);});
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "Atelier PDF", "sections": [{"title": "Pages", "keys": [["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "Atelier PDF", "sections": [{"title": "Pages", "keys": [["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
 </body>
 </html>
