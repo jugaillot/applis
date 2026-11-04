@@ -97,6 +97,67 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 .hlBtn{display:inline-flex!important;align-items:center;justify-content:center;background:none!important}
 .hlBtn.on{background:#fff27a!important;border-radius:3px}
 #edBox.stabilo .ProseMirror{cursor:text}
+
+/* ---- mise en page comme les autres applis : outils à gauche, propriétés à droite ---- */
+#tools,#props{display:none}
+body.editing main{grid-template-columns:86px 1fr 290px}
+body.editing.amini main{grid-template-columns:86px 1fr 52px}
+body.editing #side{display:none}
+body.editing #tools{display:block;background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:8px 6px}
+.tgrid{display:grid;grid-template-columns:36px 36px;gap:4px;justify-content:center}
+.tool{width:36px;height:36px;border:0;border-radius:8px;background:none;color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.tool svg{width:21px;height:21px}
+.tool:hover{background:var(--soft)}
+.tool.on{background:var(--ink);color:#fff}
+.tsep{grid-column:1/-1;height:1px;background:var(--line);margin:4px 2px}
+.tool[data-ea=props]{display:none}
+body.editing #props{display:block;background:var(--panel);border-left:1px solid var(--line);overflow:auto;padding:0 12px 30px}
+#asideTop{position:sticky;top:0;z-index:3;display:flex;justify-content:flex-end;background:var(--panel);margin:0 -12px;padding:4px 6px 2px;border-bottom:1px solid var(--line)}
+#asideTg{border:0;background:none;cursor:pointer;width:30px;height:28px;border-radius:6px;color:var(--mute);display:flex;align-items:center;justify-content:center}
+#asideTg:hover{background:var(--soft);color:var(--ink)}#asideTg svg{width:18px;height:18px}
+body.amini #asideTg svg{transform:rotate(180deg)}
+#props section{border-bottom:1px solid var(--line);padding:10px 0}
+#props h2.fold{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:0;font-weight:600;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}
+#props h2 .tw{font-size:8px;transition:transform .15s}
+#props section.closed h2 .tw{transform:rotate(-90deg)}
+#props section.closed .sb{display:none}
+#props .sb{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+#props .sb label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
+#props .sb input,#props .sb select{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 7px;background:#fff;width:100%}
+#props .sb .btns{display:flex;flex-wrap:wrap;gap:5px}
+#props #pubBox{flex-wrap:wrap}
+#mini{display:none}
+body.amini #props{padding:0 6px}
+body.amini #props section{display:none}
+body.amini #mini{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:6px}
+.mb{width:36px;height:36px;border:0;border-radius:8px;background:none;color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.mb:hover{background:var(--soft)}.mb svg{width:20px;height:20px}
+.mgrp{width:28px;height:1px;background:var(--line);margin:4px 0}
+#plan a{display:block;color:var(--ink);text-decoration:none;padding:3px 6px;border-radius:5px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#plan a:hover{background:var(--soft)}#plan a.l2{padding-left:16px}#plan a.l3{padding-left:28px;color:var(--mute)}
+#bOpts,#edOpts{display:none!important}
+#edBox .toastui-editor-toolbar{display:none!important}
+/* réglages de l'outil : bande au-dessus du texte */
+#toolBar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 14px;background:var(--panel);border-bottom:1px solid var(--line);font-size:12px}
+#toolBar[hidden]{display:none}
+#toolBar b{font-weight:600}
+#toolBar input[type=number]{width:56px;font:inherit;border:1px solid var(--line);border-radius:6px;padding:3px 5px}
+#toolBar label{display:flex;align-items:center;gap:5px}
+.hlc{width:24px;height:24px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.hlc.on{box-shadow:0 0 0 2px var(--ink)}
+.hlc.none{background:#fff;position:relative;overflow:hidden}.hlc.none::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:#b3261e;transform:rotate(45deg)}
+#edBox.stabilo .ProseMirror{cursor:text}
+@media (max-width:900px){
+  body.editing main{display:flex;flex-direction:column}
+  body.editing #tools{border-right:0;border-bottom:1px solid var(--line);padding:4px;overflow-x:auto;overflow-y:hidden;flex:none}
+  body.editing .tgrid{display:flex;justify-content:flex-start}
+  body.editing .tsep{width:1px;height:28px;margin:4px 2px}
+  .tool[data-ea=props]{display:flex}
+  body.editing #props{display:none}
+  body.editing.propsOpen #props{display:block;position:fixed;right:0;top:0;bottom:0;width:min(320px,90vw);z-index:50;box-shadow:-8px 0 30px rgba(0,0,0,.2)}
+  body.editing #view{flex:1;min-height:0}
+  body.amini #props section{display:block}body.amini #mini{display:none}
+}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
@@ -120,6 +181,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bSetup">Accès GitHub</button>
 </header>
 <main>
+  <nav id="tools"><div class="tgrid"><button class="tool" type="button" data-et="heading" title="Titres (niveaux 1, 2, 3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16M18 4v16M6 12h12"/></svg></button><button class="tool" type="button" data-ea="bold" title="Gras (Ctrl+B)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h6a4 4 0 0 1 0 8H7zM7 12h7a4 4 0 0 1 0 8H7z"/></svg></button><button class="tool" type="button" data-ea="italic" title="Italique (Ctrl+I)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h-4M14 20h-4M14 4l-4 16"/></svg></button><button class="tool" type="button" data-ea="strike" title="Barré"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M16 6.5C15 5 13.6 4.5 12 4.5c-2.5 0-4 1.3-4 3 0 1.5 1 2.4 4 3M8 17.5c1 1.5 2.4 2 4 2 2.5 0 4-1.3 4-3"/></svg></button><button class="tool" type="button" data-et="hl" title="Surligneur (Ctrl+Maj+H) : choisis une couleur, puis sélectionne le texte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8 8H7v-5z"/><path d="M7 17l-3 3h6"/><path d="M4 21h16" stroke="#e8c800" stroke-width="3"/></svg></button><span class="tsep"></span><button class="tool" type="button" data-ea="bulletList" title="Liste à puces"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg></button><button class="tool" type="button" data-ea="orderedList" title="Liste numérotée"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h10M10 12h10M10 18h10M4 4.5l1.5-1v5M3.5 14a1.5 1.5 0 1 1 2.6 1L3.5 19h3"/></svg></button><button class="tool" type="button" data-ea="taskList" title="Cases à cocher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="6" height="6" rx="1"/><path d="M4.5 7l1.2 1.2L8 5.8M12 7h9M3 14h6v6H3zM12 17h9"/></svg></button><button class="tool" type="button" data-ea="blockQuote" title="Citation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h5v5H7l-2 4M14 7h5v5h-3l-2 4"/></svg></button><button class="tool" type="button" data-ea="hr" title="Ligne de séparation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/></svg></button><button class="tool" type="button" data-et="table" title="Tableau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/></svg></button><button class="tool" type="button" data-ea="image" title="Image depuis l’ordinateur (ou glisser-déposer / coller)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-6-6-9 9"/></svg></button><button class="tool" type="button" data-ea="link" title="Lien"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button><span class="tsep"></span><button class="tool" type="button" data-ea="undo" title="Annuler (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button class="tool" type="button" data-ea="redo" title="Rétablir (Ctrl+Y)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button><span class="tsep"></span><button class="tool" type="button" data-ea="mode" title="Basculer texte mis en forme / Markdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v12H3z"/><path d="M6 15V9l2.5 3L11 9v6M15 9v6M13 13l2 2 2-2"/></svg></button><button class="tool" type="button" data-ea="props" title="Propriétés du document"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button></div></nav>
   <nav id="side">
     <input type="search" id="q" placeholder="Rechercher…">
     <div hidden>
@@ -163,9 +225,18 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
         </div>
         </div>
       </div>
+      <div id="toolBar" hidden></div>
       <div id="edBox"></div>
     </div>
   </section>
+  <aside id="props">
+    <div id="asideTop"><button type="button" id="asideTg" title="Réduire le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l6 6-6 6M12 6l6 6-6 6"/></svg></button></div>
+    <div id="mini"><button type="button" class="mb" data-open="doc" title="Document"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg></button><button type="button" class="mb" data-open="export" title="Export et partage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"/></svg></button><button type="button" class="mb" data-open="gestion" title="Gestion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg></button><button type="button" class="mb" data-open="plan" title="Plan du document"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M8 12h12M12 18h8"/></svg></button><span class="mgrp"></span><button type="button" class="mb" data-px="#bPdf" title="PDF / Imprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/></svg></button><button type="button" class="mb" data-px="#bWord" title="Word"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M8.5 11l1.5 6 2-4.5 2 4.5 1.5-6"/></svg></button></div>
+    <section data-sec="doc"><h2 class="fold"><span class="tw">▼</span>Document</h2><div class="sb" id="sec-doc"></div></section>
+    <section data-sec="export"><h2 class="fold"><span class="tw">▼</span>Export et partage</h2><div class="sb" id="sec-export"></div></section>
+    <section data-sec="gestion"><h2 class="fold"><span class="tw">▼</span>Gestion</h2><div class="sb" id="sec-gestion"></div></section>
+    <section data-sec="plan"><h2 class="fold"><span class="tw">▼</span>Plan du document</h2><div class="sb" id="sec-plan"></div></section>
+  </aside>
 </main>
 <datalist id="dlClasseurs"></datalist>
 
@@ -433,39 +504,37 @@ $('#tree').addEventListener('drop',async e=>{const c=e.target.closest('.cl');if(
 let editor=null,suppress=false;
 /* surlignage (coup de stabilo) : balise <mark> gardée dans le Markdown */
 const HL_RENDER={htmlInline:{mark(node,{entering}){return entering?{type:'openTag',tagName:'mark',attributes:node.attrs}:{type:'closeTag',tagName:'mark'};}}};
+let imgHook=null;
 function makeEditor(){
   editor=new toastui.Editor({el:$('#edBox'),customHTMLRenderer:HL_RENDER,height:'100%',initialEditType:'wysiwyg',previewStyle:'tab',language:'fr-FR',usageStatistics:false,autofocus:false,
     placeholder:'Écris ici… (titres, listes, tableaux, images par glisser-déposer ou copier-coller)',
-    hooks:{addImageBlobHook:async(blob,cb)=>{if(!S.cur)return;await busy('Ajout de l’image…');try{const b=await prepImage(blob);const ext=b.type==='image/png'?'png':'jpg';const path=`images/${S.cur}/${Date.now().toString(36)}.${ext}`;await idb.set('imgpend:'+path,{blob:b});const u=URL.createObjectURL(b);S.imgUrl.set(path,u);S.urlPath.set(u,path);cb(u,(blob.name||'image').replace(/\.[^.]+$/,''));schedulePush(800);}finally{await busy();}}}});
+    hooks:{addImageBlobHook:imgHook=async(blob,cb)=>{if(!S.cur)return;await busy('Ajout de l’image…');try{const b=await prepImage(blob);const ext=b.type==='image/png'?'png':'jpg';const path=`images/${S.cur}/${Date.now().toString(36)}.${ext}`;await idb.set('imgpend:'+path,{blob:b});const u=URL.createObjectURL(b);S.imgUrl.set(path,u);S.urlPath.set(u,path);cb(u,(blob.name||'image').replace(/\.[^.]+$/,''));schedulePush(800);}finally{await busy();}}}});
   editor.on('change',()=>{if(!suppress)onEdit();});
-  /* outil Surligner : sur une sélection, surligne (ou enlève) ; sans sélection, active le mode stabilo
-     (chaque texte sélectionné à la souris est surligné, jusqu'à recliquer ou Échap) */
-  const hb=document.createElement('button');hb.type='button';hb.className='toastui-editor-toolbar-icons hlBtn';hb.title='Surligner (Ctrl+Maj+H) — sans sélection : mode stabilo';
-  hb.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8 8H7v-5z"/><path d="M7 17l-3 3h6"/><path d="M4 21h16" stroke="#e8c800" stroke-width="3"/></svg>';
-  hb.addEventListener('mousedown',e=>e.preventDefault());
-  hb.addEventListener('click',()=>{if(!highlight(false)){S.stabilo=!S.stabilo;hb.classList.toggle('on',S.stabilo);$('#edBox').classList.toggle('stabilo',S.stabilo);if(S.stabilo)toast('Mode stabilo : sélectionne du texte pour le surligner (Échap pour arrêter)');}});
-  try{editor.insertToolbarItem({groupIndex:0,itemIndex:5},{name:'surligner',el:hb});}catch(e){}
-  $('#edBox').addEventListener('mouseup',()=>{if(S.stabilo)setTimeout(()=>highlight(true),0);});
-  $('#edBox').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==='h'){e.preventDefault();highlight(false);}if(e.key==='Escape'&&S.stabilo){S.stabilo=false;hb.classList.remove('on');$('#edBox').classList.remove('stabilo');}});
+  initEdTools();
   /* mobile : un appui dans le corps du document ouvre le clavier directement */
   $('#edBox').addEventListener('touchend',e=>{if(e.target.closest('.toastui-editor-toolbar,.toastui-editor-mode-switch,.toastui-editor-popup,button,input,a'))return;
     const ww=$('#edBox .toastui-editor-ww-container .ProseMirror'),md=$('#edBox .toastui-editor-md-container .ProseMirror');
     const a=document.activeElement;if(a===ww||a===md)return;if(ww&&ww.offsetParent){ww.focus();}else if(md&&md.offsetParent)md.focus();},{passive:true});
 }
 
-/* applique / enlève le surlignage sur la sélection ; renvoie false s'il n'y a pas de sélection */
-function highlight(addOnly){
-  if(!editor)return false;
+/* surligneur : couleurs stabilo (balise <mark class="hl-…"> ; <mark> seul = jaune) */
+const HL=[['jaune','#fff27a','Jaune'],['vert','#b8f5a0','Vert'],['rose','#ffb8e0','Rose'],['bleu','#a9e4ff','Bleu'],['orange','#ffd08a','Orange']];
+const HL_CSS=HL.map(([k,c])=>`mark.hl-${k}{background:${c}}`).join('')+'mark{background:#fff27a;color:inherit;padding:0 .08em;border-radius:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}';
+function hlColorOf(el){const m=(el.className||'').match(/hl-(\w+)/);const f=HL.find(h=>h[0]===(m?m[1]:'jaune'));return (f?f[1]:'#fff27a').slice(1);}
+S.hl='jaune';
+/* applique la couleur choisie (ou l'enlève si « gomme ») sur la sélection ; renvoie false s'il n'y a pas de sélection */
+function highlight(addOnly,color){
+  if(!editor)return false;color=color||S.hl;
   if(editor.isWysiwygMode()){const v=editor.wwEditor.view,st=v.state,mt=st.schema.marks.mark;if(!mt)return false;const {from,to,empty}=st.selection;if(empty)return false;
-    const has=st.doc.rangeHasMark(from,to,mt);if(has&&addOnly)return true;
-    v.dispatch(has?st.tr.removeMark(from,to,mt):st.tr.addMark(from,to,mt.create()));v.focus();return true;}
-  const t=editor.getSelectedText();if(!t)return false;
-  const m=t.match(/^<mark>([\s\S]*)<\/mark>$/);if(m&&addOnly)return true;editor.replaceSelection(m?m[1]:'<mark>'+t+'</mark>');return true;
+    let tr=st.tr.removeMark(from,to,mt);if(color!=='aucun')tr=tr.addMark(from,to,mt.create({htmlAttrs:color==='jaune'?{}:{class:'hl-'+color},htmlInline:true}));
+    v.dispatch(tr);return true;}
+  let t=editor.getSelectedText();if(!t)return false;t=t.replace(/<mark[^>]*>|<\/mark>/g,'');
+  editor.replaceSelection(color==='aucun'?t:(color==='jaune'?'<mark>':`<mark class="hl-${color}">`)+t+'</mark>');return true;
 }
 function fillStatutSelect(){$('#fStatut').innerHTML=STATUTS.map(([v,l])=>`<option value="${esc(v)}">${l}</option>`).join('');}
 async function openDoc(slug,keepScroll){
   const r=docRec(slug);if(!r||r.deleted){toast('Document introuvable');location.hash='';return;}
-  S.cur=slug;$('#repo').hidden=true;$('#ed').hidden=false;if(!editor)makeEditor();
+  S.cur=slug;$('#repo').hidden=true;$('#ed').hidden=false;document.body.classList.add('editing');if(!editor)makeEditor();setTimeout(()=>window.renderPlan&&renderPlan(),50);
   const {meta,body}=parseDoc(r.raw);
   $('#fTitre').value=meta.titre||'';$('#fSous').value=meta.sous_titre||'';$('#fTypeD').value=meta.type;$('#fClasseur').value=meta.classeur||'';$('#fStatut').value=meta.statut;$('#fTags').value=(meta.etiquettes||[]).join(', ');
   suppress=true;editor.setMarkdown(await toEditorMd(body),false);suppress=false;
@@ -532,6 +601,88 @@ $('#bHist').onclick=()=>{if(!S.cfg)return;window.open(`https://github.com/${S.cf
 function setOpts(open){$('#edOpts').hidden=!open;$('#bOpts').textContent=open?'Options ▴':'Options ▾';try{localStorage.setItem('atelierDossiers.options',open?'1':'');}catch(e){}}
 $('#bOpts').onclick=()=>setOpts($('#edOpts').hidden);
 try{setOpts(localStorage.getItem('atelierDossiers.options')==='1');}catch(e){setOpts(false);}
+
+/* =====================================================================
+   Outils à gauche, propriétés à droite (comme les autres applis de La Suite)
+   ===================================================================== */
+(function(){
+  // propriétés : on range les champs et boutons existants dans les rubriques de droite
+  const lab=(t,el)=>{const l=document.createElement('label');l.append(t,el);return l;};
+  const D=$('#sec-doc');D.append(lab('Sous-titre',$('#fSous')));
+  ['#fClasseur','#fStatut','#fTags'].forEach(id=>D.appendChild($(id).closest('label')));
+  const E=$('#sec-export'),eb=document.createElement('div');eb.className='btns';['#bPdf','#bWord','#bPublish','#bAddr'].forEach(id=>eb.appendChild($(id)));E.append(eb,$('#pubBox'));
+  const G=$('#sec-gestion'),gb=document.createElement('div');gb.className='btns';['#bDup','#bHist','#bDel'].forEach(id=>gb.appendChild($(id)));G.appendChild(gb);
+  const P=$('#sec-plan');P.innerHTML='<div id="plan"></div>';
+  // rubriques pliables (état gardé)
+  let st={};try{st=JSON.parse(localStorage.getItem('atelierDossiers.secs')||'{}');}catch(e){}
+  document.querySelectorAll('#props section').forEach(sec=>{if(st[sec.dataset.sec]===false)sec.classList.add('closed');
+    sec.querySelector('h2').onclick=()=>{sec.classList.toggle('closed');st[sec.dataset.sec]=!sec.classList.contains('closed');try{localStorage.setItem('atelierDossiers.secs',JSON.stringify(st));}catch(e){}};});
+  // panneau réduit en pictos
+  const setMini=(on,save)=>{document.body.classList.toggle('amini',on);$('#asideTg').title=on?'Ouvrir le panneau':'Réduire le panneau';if(save)try{localStorage.setItem('atelierDossiers.mini',on?'1':'0');}catch(e){}};
+  try{setMini(localStorage.getItem('atelierDossiers.mini')==='1');}catch(e){}
+  $('#asideTg').onclick=()=>{if(matchMedia('(max-width:900px)').matches){document.body.classList.remove('propsOpen');return;}setMini(!document.body.classList.contains('amini'),true);};
+  $('#mini').addEventListener('click',e=>{const b=e.target.closest('.mb');if(!b)return;
+    if(b.dataset.px){$(b.dataset.px).click();return;}
+    setMini(false,true);const sec=document.querySelector(`#props section[data-sec="${b.dataset.open}"]`);if(sec){sec.classList.remove('closed');sec.scrollIntoView({block:'start'});}});
+  // plan du document
+  let pT=0;window.renderPlan=()=>{clearTimeout(pT);pT=setTimeout(()=>{if(!editor)return;const md=editor.getMarkdown();const out=[];let inCode=false;
+    md.split('\n').forEach(l=>{if(/^```/.test(l))inCode=!inCode;const m=!inCode&&l.match(/^(#{1,3})\s+(.*)/);if(m)out.push([m[1].length,m[2].replace(/<[^>]+>|[*_`]/g,'')]);});
+    $('#plan').innerHTML=out.length?out.map(([n,t],i)=>`<a href="#" class="l${n}" data-i="${i}">${esc(t)}</a>`).join(''):'<span class="muted">Les titres du document apparaîtront ici.</span>';},250);};
+  $('#plan').addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;e.preventDefault();
+    const root=editor.isWysiwygMode()?$('#edBox .toastui-editor-ww-container .ProseMirror'):null;
+    if(root){const h=[...root.querySelectorAll('h1,h2,h3')][+a.dataset.i];if(h)h.scrollIntoView({behavior:'smooth',block:'start'});}
+    else{const md=editor.getMarkdown().split('\n');let n=-1,line=0,inCode=false;for(let i=0;i<md.length;i++){if(/^```/.test(md[i]))inCode=!inCode;if(!inCode&&/^#{1,3}\s/.test(md[i])&&++n===+a.dataset.i){line=i+1;break;}}editor.setSelection([line,1],[line,1]);editor.focus();}
+    if(matchMedia('(max-width:900px)').matches)document.body.classList.remove('propsOpen');});
+})();
+/* outils de gauche */
+S.edTool=null;
+function setEdTool(t){
+  if(t===S.edTool)t=null;S.edTool=t;
+  document.querySelectorAll('#tools [data-et]').forEach(b=>b.classList.toggle('on',b.dataset.et===t));
+  $('#edBox').classList.toggle('stabilo',t==='hl');
+  const tb=$('#toolBar');let h='';
+  if(t==='heading')h='<b>Titres</b>'+[1,2,3].map(n=>`<button class="btn sm" data-h="${n}">Titre ${n}</button>`).join('')+'<button class="btn sm" data-h="0">Texte normal</button><span class="muted">Place le curseur dans un paragraphe, puis choisis son niveau.</span>';
+  if(t==='hl')h='<b>Surligneur</b>'+HL.map(([k,c,n])=>`<button class="hlc${S.hl===k?' on':''}" data-c="${k}" title="${n}" style="background:${c}"></button>`).join('')+`<button class="hlc none${S.hl==='aucun'?' on':''}" data-c="aucun" title="Enlever le surlignage"></button><span class="muted">Sélectionne du texte : il est surligné dans la couleur choisie (Échap pour arrêter).</span>`;
+  if(t==='table')h='<b>Tableau</b><label>Colonnes <input type="number" id="tCols" min="1" max="12" value="3"></label><label>Lignes <input type="number" id="tRows" min="1" max="50" value="3"></label><button class="btn sm primary" id="tIns">Insérer</button><span class="muted">Le tableau s’insère à l’endroit du curseur.</span>';
+  tb.innerHTML=h;tb.hidden=!h;
+}
+function edExec(a){
+  if(!editor)return;
+  switch(a){
+    case'image':{const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>{const f=i.files[0];if(f&&imgHook)imgHook(f,(url,alt)=>editor.exec('addImage',{imageUrl:url,altText:alt}));};i.click();return;}
+    case'link':{const sel=editor.getSelectedText();const u=prompt('Adresse du lien (https://…) :',/^https?:\/\//.test(sel)?sel:'https://');if(!u||u==='https://')return;editor.exec('addLink',{linkUrl:u,linkText:sel||u});return;}
+    case'mode':editor.changeMode(editor.isWysiwygMode()?'markdown':'wysiwyg');return;
+    case'props':document.body.classList.toggle('propsOpen');return;
+    case'undo':case'redo':{try{editor.exec(a);}catch(e){document.execCommand(a);}return;}
+    default:try{editor.exec(a);}catch(e){console.warn(a,e);}
+  }
+}
+function initEdTools(){
+  editor.on('change',()=>{if(window.renderPlan)renderPlan();});
+  /* le surlignage ne « déborde » pas sur le texte tapé juste après */
+  const unstick=()=>{try{if(!editor.isWysiwygMode())return;const v=editor.wwEditor.view,st=v.state,mt=st.schema.marks.mark;const {empty,$from}=st.selection;if(!empty||!mt)return;
+    const ms=st.storedMarks||$from.marks();if(!ms.some(m=>m.type===mt))return;const af=$from.nodeAfter;if(af&&af.marks.some(m=>m.type===mt))return;
+    v.dispatch(st.tr.setStoredMarks(ms.filter(m=>m.type!==mt)));}catch(e){}};
+  $('#edBox').addEventListener('keydown',e=>{if(e.key.length===1&&!e.ctrlKey&&!e.metaKey)unstick();},true);
+  $('#edBox').addEventListener('mouseup',()=>{if(S.edTool==='hl')setTimeout(()=>highlight(true),0);});
+  $('#edBox').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==='h'){e.preventDefault();if(!highlight(false))setEdTool('hl');}});
+}
+(function(){
+  const nav=$('#tools');
+  nav.addEventListener('mousedown',e=>{if(e.target.closest('.tool'))e.preventDefault();});// garde la sélection dans le texte
+  nav.addEventListener('click',e=>{const b=e.target.closest('.tool');if(!b||!editor)return;
+    if(b.dataset.et){const t=b.dataset.et;if(t==='hl'&&S.edTool!=='hl'&&highlight(false)){}setEdTool(t);return;}
+    edExec(b.dataset.ea);});
+  const tb=$('#toolBar');
+  tb.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault();});
+  tb.addEventListener('click',e=>{
+    const h=e.target.closest('[data-h]');if(h){const n=+h.dataset.h;n?editor.exec('heading',{level:n}):editor.exec('heading',{level:0});return;}
+    const c=e.target.closest('[data-c]');if(c){S.hl=c.dataset.c;tb.querySelectorAll('.hlc').forEach(x=>x.classList.toggle('on',x===c));highlight(false);return;}
+    if(e.target.id==='tIns'){editor.focus();editor.exec('addTable',{columnCount:Math.max(1,+$('#tCols').value||3),rowCount:Math.max(1,+$('#tRows').value||3)});setEdTool(null);}
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.edTool&&document.body.classList.contains('editing')){setEdTool(null);}});
+  window.setEdTool=setEdTool;
+})();
 $('#bRepo').onclick=e=>{e.preventDefault();location.hash='';};
 
 /* ===================== charte : styles ===================== */
@@ -546,7 +697,7 @@ function applyCharteStyle(){
 #edBox .toastui-editor-contents h1{font-size:2em}#edBox .toastui-editor-contents h2{font-size:1.5em;margin-top:1.4em}#edBox .toastui-editor-contents h3{font-size:1.2em}
 #edBox .toastui-editor-contents blockquote{border-left:4px solid ${c.couleur_secondaire};color:inherit}
 #edBox .toastui-editor-contents a{color:${c.couleur_principale}}
-#edBox .toastui-editor-contents mark{background:#fff27a;color:inherit;padding:0 .08em;border-radius:2px}
+${HL_CSS.replace(/mark/g,'#edBox .toastui-editor-contents mark')}
 #fTitre{font-family:'${c.police_titres}',Georgia,serif!important;color:${c.couleur_principale}!important}`;
 }
 
@@ -587,7 +738,7 @@ h2{font-size:1.55em;margin:1.4em 0 .5em}h3{font-size:1.2em;margin:1.2em 0 .4em}
 .contents h1{font-size:1.9em}
 p,li{orphans:3;widows:3}
 a{color:${c.couleur_principale}}
-mark{background:#fff27a;color:inherit;padding:0 .08em;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+${HL_CSS}
 img{max-width:100%;height:auto;break-inside:avoid;border-radius:2px}
 blockquote{margin:1em 0;padding:.2em 1em;border-left:4px solid ${c.couleur_secondaire};background:color-mix(in srgb,${c.couleur_secondaire} 12%,#fff)}
 table{border-collapse:collapse;width:100%;margin:1em 0;font-size:.92em;break-inside:avoid}
@@ -646,11 +797,11 @@ async function buildDocx(slug){
   function runs(node,st){
     const out=[];
     for(const n of node.childNodes){
-      if(n.nodeType===3){if(n.textContent)out.push(new D.TextRun({text:n.textContent,bold:st.b,italics:st.i,strike:st.s,highlight:st.h?'yellow':undefined,font:st.code?'Courier New':undefined}));continue;}
+      if(n.nodeType===3){if(n.textContent)out.push(new D.TextRun({text:n.textContent,bold:st.b,italics:st.i,strike:st.s,shading:st.h?{type:D.ShadingType.CLEAR,color:'auto',fill:st.h}:undefined,font:st.code?'Courier New':undefined}));continue;}
       if(n.nodeType!==1)continue;const t=n.tagName;
       if(t==='BR'){out.push(new D.TextRun({text:'',break:1}));continue;}
       if(t==='A'){out.push(new D.ExternalHyperlink({link:n.getAttribute('href')||'',children:[new D.TextRun({text:n.textContent,style:'Hyperlink',color:col(c.couleur_principale),underline:{}})]}));continue;}
-      out.push(...runs(n,{b:st.b||t==='STRONG'||t==='B',i:st.i||t==='EM'||t==='I',s:st.s||t==='DEL'||t==='S',code:st.code||t==='CODE',h:st.h||t==='MARK'}));
+      out.push(...runs(n,{b:st.b||t==='STRONG'||t==='B',i:st.i||t==='EM'||t==='I',s:st.s||t==='DEL'||t==='S',code:st.code||t==='CODE',h:t==='MARK'?hlColorOf(n):st.h}));
     }
     return out;
   }
@@ -737,7 +888,7 @@ async function route(){
   if(S.cur&&S.cur!==slug){clearTimeout(editT);await saveCur();}
   if(slug&&docRec(slug)){await openDoc(slug);}
   else{if(slug&&!docRec(slug)){if(S.cfg&&navigator.onLine&&!S.triedPull){S.triedPull=true;await pull();S.triedPull=false;if(docRec(slug))return openDoc(slug);}toast('Ce document n’existe pas (ou plus)');history.replaceState(null,'','#');}
-    S.cur=null;$('#ed').hidden=true;$('#repo').hidden=false;document.title='La Suite Dossiers';renderRepo();}
+    S.cur=null;$('#ed').hidden=true;$('#repo').hidden=false;document.body.classList.remove('editing','propsOpen');if(window.setEdTool)setEdTool(null);document.title='La Suite Dossiers';renderRepo();}
 }
 window.addEventListener('hashchange',route);
 $('#ghState').onclick=()=>pull();
