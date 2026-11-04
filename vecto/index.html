@@ -10,6 +10,7 @@
 <script src="../lib/svg2pdf.umd.min.js"></script>
 <script src="../lib/sync.js"></script>
 <script src="../lib/tabs.js"></script>
+<script src="../lib/pdf.min.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#ff48b0;--soft:#f7f6f2;--board:#d9d6cf}
 *{box-sizing:border-box}
@@ -181,6 +182,10 @@ body.amini #mini{display:flex;flex-direction:column;align-items:stretch;gap:8px}
 
 /* réglages de l'outil : bande au-dessus de la zone de travail (ne recouvre jamais le dessin) */
 #toolBar{left:0!important;right:0!important;top:0!important;max-width:none!important;border-radius:0!important;border:0!important;border-bottom:1px solid var(--line)!important;box-shadow:none!important;background:var(--panel,#fff)!important}
+#pgList button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px;cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:center;font:inherit;font-size:12px;color:var(--mute)}
+#pgList button:hover{border-color:var(--acc)}
+#pgList canvas{max-width:100%;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+#txEdit{position:absolute;z-index:8;font:inherit;border:2px solid var(--acc);border-radius:4px;background:rgba(255,255,255,.96);padding:2px 4px;resize:both;min-width:120px;outline:0}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
@@ -199,7 +204,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span class="muted" id="docName" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
   <button class="btn primary" id="bVecto">Vectoriser une image…</button>
   <label class="btn" title="Photographier un dessin avec l’appareil photo (sur mobile), puis recadrer la zone à vectoriser">📷 Prendre une photo<input type="file" id="phFile" accept="image/*" capture="environment" hidden></label>
-  <label class="btn">Importer SVG<input type="file" id="fSvg" accept=".svg,image/svg+xml" hidden></label>
+  <label class="btn" title="Ouvrir un dessin vectoriel : SVG, PDF ou AI (Illustrator « compatible PDF »)">Ouvrir SVG / PDF / AI…<input type="file" id="fSvg" accept=".svg,image/svg+xml,.pdf,application/pdf,.ai,.eps" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bNew">Nouveau</button>
   <span id="syncBadge"></span>
@@ -419,6 +424,11 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   </div>
 </dialog>
 
+<dialog id="pgDlg">
+  <div class="dh">Choisir la page à ouvrir</div>
+  <div class="db"><div id="pgList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:60vh;overflow:auto;min-width:min(560px,86vw)"></div></div>
+  <div class="df" style="display:flex;justify-content:flex-end;gap:6px;padding:10px 16px;border-top:1px solid var(--line)"><button class="btn" id="pgCancel">Annuler</button></div>
+</dialog>
 <dialog id="docDlg">
   <div class="dh">Format du document</div>
   <div class="db">
@@ -2419,7 +2429,175 @@ segBind('vxShow','show',vxDraw);
 $('#vxCancel').onclick=()=>$('#vxDlg').close();
 $('#bRevec').onclick=openRevec;
 $('#vxOk').onclick=()=>{$('#vxDlg').close();vxPlace();};
-$('#fSvg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{importSVGText(await f.text(),f.name.replace(/\.[^.]+$/,''));}catch(err){alert('Import impossible : '+err.message);}};
+
+/* =====================================================================
+   Ouvrir un PDF / AI vectoriel : formes, couleurs, calques Illustrator et textes (modifiables)
+   ===================================================================== */
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='../lib/pdf.worker.min.js';
+const pMul=(m,n)=>[m[0]*n[0]+m[1]*n[2],m[0]*n[1]+m[1]*n[3],m[2]*n[0]+m[3]*n[2],m[2]*n[1]+m[3]*n[3],m[4]*n[0]+m[5]*n[2]+n[4],m[4]*n[1]+m[5]*n[3]+n[5]];
+const pAp=(m,x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]];
+function pHex(a){if(!a||!a.length)return '#000000';if(typeof a[0]==='string'&&a[0][0]==='#')return a[0].toLowerCase();
+  const h=v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0');return '#'+h(a[0])+h(a[1])+h(a[2]);}
+function pdfOps(ol,geo){
+  const O=pdfjsLib.OPS,F=ol.fnArray,A=ol.argsArray;
+  let st={ctm:[1,0,0,1,0,0],fill:'#000000',stroke:'#000000',lw:1,cap:0,join:0,dash:null};
+  const stack=[],mc=[],out=[],texts=[];let d='',cur=[0,0],start=[0,0];
+  let tm=[1,0,0,1,0,0],lm=[1,0,0,1,0,0],lead=0;
+  const T=(x,y)=>{const p=pAp(st.ctm,x,y);return ((p[0]-geo.x0)*geo.K).toFixed(3)+' '+((geo.y1-p[1])*geo.K).toFixed(3);};
+  const oc=()=>{for(let i=mc.length-1;i>=0;i--)if(mc[i])return mc[i];return null;};
+  const scl=()=>Math.sqrt(Math.abs(st.ctm[0]*st.ctm[3]-st.ctm[1]*st.ctm[2]));
+  const paint=(fill,stroke,rule)=>{if(d){const o=oc();
+      if(fill&&stroke)out.push({d,rule,fill:st.fill,stroke:st.stroke,lw:st.lw*scl()*geo.K,cap:st.cap,join:st.join,dash:st.dash,oc:o});
+      else if(fill)out.push({d,rule,fill:st.fill,oc:o});
+      else if(stroke)out.push({d,stroke:st.stroke,lw:st.lw*scl()*geo.K,cap:st.cap,join:st.join,dash:st.dash,oc:o});}
+    d='';};
+  const showT=()=>{const m=pMul(tm,st.ctm);texts.push({x:m[4],y:m[5],fill:st.fill,oc:oc()});};
+  const mv=(tx,ty)=>{lm=pMul([1,0,0,1,tx,ty],lm);tm=lm.slice();};
+  for(let i=0;i<F.length;i++){const f=F[i],a=A[i];
+    switch(f){
+      case O.save:stack.push(Object.assign({},st));break;
+      case O.restore:if(stack.length)st=stack.pop();break;
+      case O.transform:st.ctm=pMul(a,st.ctm);break;
+      case O.paintFormXObjectBegin:stack.push(Object.assign({},st));if(a&&a[0]&&a[0].length===6)st.ctm=pMul(a[0],st.ctm);break;
+      case O.paintFormXObjectEnd:if(stack.length)st=stack.pop();break;
+      case O.beginGroup:stack.push(Object.assign({},st));if(a&&a[0]&&a[0].matrix)st.ctm=pMul(a[0].matrix,st.ctm);break;
+      case O.endGroup:if(stack.length)st=stack.pop();break;
+      case O.beginMarkedContentProps:{const pp=a&&a[1];mc.push(a&&a[0]==='OC'&&pp?(pp.id||(pp.ids&&pp.ids[0])||null):null);break;}
+      case O.beginMarkedContent:mc.push(null);break;
+      case O.endMarkedContent:mc.pop();break;
+      case O.setFillRGBColor:case O.setFillColor:st.fill=pHex(a);break;
+      case O.setStrokeRGBColor:case O.setStrokeColor:st.stroke=pHex(a);break;
+      case O.setFillGray:st.fill=pHex([a[0]*255,a[0]*255,a[0]*255]);break;
+      case O.setStrokeGray:st.stroke=pHex([a[0]*255,a[0]*255,a[0]*255]);break;
+      case O.setFillColorN:st.fill=(a&&typeof a[0]==='string'&&!a[0].startsWith('#'))?'#888888':pHex(a);break;
+      case O.setStrokeColorN:st.stroke=(a&&typeof a[0]==='string'&&!a[0].startsWith('#'))?'#888888':pHex(a);break;
+      case O.setLineWidth:st.lw=a[0];break;
+      case O.setLineCap:st.cap=a[0];break;
+      case O.setLineJoin:st.join=a[0];break;
+      case O.setDash:st.dash=a&&a[0]&&a[0].length?a[0].slice():null;break;
+      case O.beginText:tm=[1,0,0,1,0,0];lm=[1,0,0,1,0,0];break;
+      case O.setTextMatrix:{const m=a.length>=6?a:a[0];tm=m.slice(0,6);lm=tm.slice();break;}
+      case O.moveText:mv(a[0],a[1]);break;
+      case O.setLeading:lead=a[0];break;
+      case O.setLeadingMoveText:lead=-a[1];mv(a[0],a[1]);break;
+      case O.nextLine:mv(0,-lead);break;
+      case O.showText:case O.showSpacedText:showT();break;
+      case O.nextLineShowText:case O.nextLineSetSpacingShowText:mv(0,-lead);showT();break;
+      case O.constructPath:{const ops=a[0],c=a[1];let k=0;
+        for(const op of ops){
+          if(op===O.moveTo){cur=[c[k],c[k+1]];start=cur;d+='M'+T(c[k],c[k+1]);k+=2;}
+          else if(op===O.lineTo){cur=[c[k],c[k+1]];d+='L'+T(c[k],c[k+1]);k+=2;}
+          else if(op===O.curveTo){d+='C'+T(c[k],c[k+1])+' '+T(c[k+2],c[k+3])+' '+T(c[k+4],c[k+5]);cur=[c[k+4],c[k+5]];k+=6;}
+          else if(op===O.curveTo2){d+='C'+T(cur[0],cur[1])+' '+T(c[k],c[k+1])+' '+T(c[k+2],c[k+3]);cur=[c[k+2],c[k+3]];k+=4;}
+          else if(op===O.curveTo3){d+='C'+T(c[k],c[k+1])+' '+T(c[k+2],c[k+3])+' '+T(c[k+2],c[k+3]);cur=[c[k+2],c[k+3]];k+=4;}
+          else if(op===O.closePath){d+='Z';cur=start;}
+          else if(op===O.rectangle){const x=c[k],y=c[k+1],w=c[k+2],h=c[k+3];d+='M'+T(x,y)+'L'+T(x+w,y)+'L'+T(x+w,y+h)+'L'+T(x,y+h)+'Z';cur=start=[x,y];k+=4;}}
+        break;}
+      case O.fill:paint(true,false,'nonzero');break;
+      case O.eoFill:paint(true,false,'evenodd');break;
+      case O.stroke:paint(false,true);break;
+      case O.closeStroke:d+='Z';paint(false,true);break;
+      case O.fillStroke:paint(true,true,'nonzero');break;
+      case O.eoFillStroke:paint(true,true,'evenodd');break;
+      case O.closeFillStroke:d+='Z';paint(true,true,'nonzero');break;
+      case O.closeEOFillStroke:d+='Z';paint(true,true,'evenodd');break;
+      case O.endPath:d='';break;
+    }}
+  return {shapes:out,texts};
+}
+function fontOf(page,item,styles){
+  let name='';try{const fo=page.commonObjs.get(item.fontName);name=(fo&&(fo.name||fo.loadedName))||'';}catch(e){}
+  const gen=(styles[item.fontName]&&styles[item.fontName].fontFamily)||'sans-serif';
+  const raw=name.replace(/^[A-Z]{6}\+/,'');const fam=raw.split(/[-,]/)[0].replace(/(MT|PS|Std|Pro)$/,'').replace(/([a-z])([A-Z])/g,'$1 $2').trim();
+  const bold=/bold|black|heavy|semibold|demi/i.test(raw),ital=/italic|oblique/i.test(raw);
+  const generic=/serif/i.test(gen)&&!/sans/i.test(gen)?'serif':/mono/i.test(gen)?'monospace':'sans-serif';
+  return {family:(fam?`"${fam}", `:'')+generic,weight:(ital?'italic ':'')+(bold?'bold':'normal')};
+}
+async function pickPdfPage(pdf){
+  if(pdf.numPages<2)return 1;
+  return new Promise(async res=>{const L=$('#pgList');L.innerHTML='';const dlg=$('#pgDlg');let done=false;
+    $('#pgCancel').onclick=()=>{done=true;dlg.close();res(0);};dlg.onclose=()=>{if(!done)res(0);};dlg.showModal();
+    for(let n=1;n<=Math.min(pdf.numPages,60);n++){const b=document.createElement('button');b.type='button';const c=document.createElement('canvas');b.append(c,'Page '+n);L.appendChild(b);
+      b.onclick=()=>{done=true;dlg.close();res(n);};
+      try{const pg=await pdf.getPage(n);const vp=pg.getViewport({scale:1});const k=150/Math.max(vp.width,vp.height);const v2=pg.getViewport({scale:k});c.width=v2.width;c.height=v2.height;await pg.render({canvasContext:c.getContext('2d'),viewport:v2}).promise;}catch(e){}
+      if(done)break;}
+  });
+}
+async function openPdfFile(file){
+  const data=new Uint8Array(await file.arrayBuffer());
+  if(String.fromCharCode(...data.slice(0,5))!=='%PDF-')throw new Error('ce fichier n’est pas lisible comme PDF. Pour un fichier Illustrator, enregistre-le en cochant « Créer un fichier compatible PDF ».');
+  const pdf=await pdfjsLib.getDocument({data,isEvalSupported:false,fontExtraProperties:true}).promise;
+  const n=await pickPdfPage(pdf);if(!n)return;
+  busy('Lecture du PDF…');
+  try{
+    const page=await pdf.getPage(n);const v=page.view;
+    const ol=await page.getOperatorList();
+    let cfg=null;try{cfg=await pdf.getOptionalContentConfig();}catch(e){}
+    const geo={x0:v[0],y0:v[1],x1:v[2],y1:v[3],K:25.4/72};
+    const r=pdfOps(ol,geo);
+    const tc=await page.getTextContent();
+    const name=file.name.replace(/\.[^.]+$/,'')+(pdf.numPages>1?' — page '+n:'');
+    // nouveau document (nouvel onglet) au format de la page
+    if(window.AtelierTabs)await AtelierTabs.newTab();else if(!confirm('Ouvrir « '+name+' » à la place du document actuel ?'))return;
+    userLayers().forEach(l=>l.remove());activeLayer=null;
+    const W=Math.round((v[2]-v[0])*geo.K*10)/10,H=Math.round((v[3]-v[1])*geo.K*10)/10;
+    const f=Object.entries(FORMATS).find(([k,x])=>(Math.abs(x[0]-W)<1&&Math.abs(x[1]-H)<1)||(Math.abs(x[1]-W)<1&&Math.abs(x[0]-H)<1));
+    S.page={w:W,h:H,fmt:f?f[0]:'custom'};S.doc={id:null,name};
+    // un calque par calque Illustrator (dans l'ordre du fichier)
+    const layers=new Map();const order=[];
+    if(cfg&&cfg.getOrder){try{const walk=a=>{for(const x of a){if(Array.isArray(x))walk(x);else if(x&&x.order)walk(x.order);else if(typeof x==='string')order.push(x);}};walk(cfg.getOrder()||[]);}catch(e){}}
+    const keys=[...new Set([...r.shapes.map(x=>x.oc||''),...r.texts.map(x=>x.oc||'')])];
+    keys.sort((a,b)=>order.indexOf(b)-order.indexOf(a));
+    keys.reverse().forEach(k=>{const gr=cfg&&k?cfg.getGroup(k):null;const l=newLayer(k?((gr&&gr.name)||k):(keys.length>1?'Sans calque':'Calque 1'));if(gr&&gr.visible===false)l.visible=false;layers.set(k,l);});
+    if(!layers.size)layers.set('',newLayer('Calque 1'));
+    const lay=k=>layers.get(k||'')||layers.values().next().value;
+    const CAP=['butt','round','square'],JOIN=['miter','round','bevel'];
+    const per=new Map();
+    for(const sh of r.shapes){const it=new P.CompoundPath({pathData:sh.d,insert:false});
+      if(sh.fill){it.fillColor=new P.Color(sh.fill);it.fillRule=sh.rule||'nonzero';}else it.fillColor=null;
+      if(sh.stroke){it.strokeColor=new P.Color(sh.stroke);it.strokeWidth=Math.max(0.02,sh.lw||0.1);it.strokeCap=CAP[sh.cap]||'butt';it.strokeJoin=JOIN[sh.join]||'miter';if(sh.dash)it.dashArray=sh.dash.map(x=>x*geo.K);}
+      const l=lay(sh.oc);if(!per.has(l))per.set(l,[]);per.get(l).push(it);}
+    // textes : de vrais textes modifiables (double-clic pour changer le contenu)
+    let nT=0;
+    for(const it of tc.items){if(!it.str||!it.str.trim())continue;const t=it.transform;
+      const size=Math.hypot(t[2],t[3])*geo.K;if(!(size>0.2))continue;
+      let best=null,bd=1e9;for(const q of r.texts){const dd=Math.hypot(q.x-t[4],q.y-t[5]);if(dd<bd){bd=dd;best=q;}}
+      const ref=bd<Math.max(4,Math.hypot(t[2],t[3])*1.5)?best:null;const fo=fontOf(page,it,tc.styles);
+      const pt=new P.Point((t[4]-geo.x0)*geo.K,(geo.y1-t[5])*geo.K);
+      const tx=new P.PointText({point:pt,content:it.str,fontSize:size,fontFamily:fo.family,fontWeight:fo.weight,fillColor:new P.Color(ref?ref.fill:'#000000'),insert:false});
+      const ang=Math.atan2(t[1],t[0])*180/Math.PI;if(Math.abs(ang)>0.05)tx.rotate(-ang,pt);
+      if(it.width>0&&tx.bounds.width>0&&Math.abs(ang)<0.05){const k=it.width*geo.K/tx.bounds.width;if(k>0.6&&k<1.6&&Math.abs(k-1)>0.03)tx.scale(k,1,pt);}
+      tx.data.pdfText=true;const l=lay(ref&&ref.oc);if(!per.has(l))per.set(l,[]);per.get(l).push(tx);nT++;}
+    for(const [l,arr] of per)l.addChildren(arr);
+    activeLayer=[...layers.values()].pop();
+    showDoc();drawPage();setSel([]);renderLayers();fitView();resetHistory();commit();setTool('select');
+    $('#hint').textContent=`Ouvert : ${r.shapes.length.toLocaleString('fr-FR')} formes, ${nT} textes${layers.size>1?', '+layers.size+' calques':''} · double-clic sur un texte pour le modifier`;
+  }finally{busy();}
+}
+async function openVectorFile(f){
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  if(ext==='eps'||ext==='ps')return alert('Les fichiers EPS ne peuvent pas être ouverts directement.\n\nDans Illustrator : Fichier › Enregistrer sous… › format PDF (ou AI en cochant « Créer un fichier compatible PDF »), puis ouvre ce fichier ici.');
+  if(ext==='pdf'||ext==='ai'||f.type==='application/pdf')return openPdfFile(f);
+  importSVGText(await f.text(),f.name.replace(/\.[^.]+$/,''));
+}
+/* double-clic sur un texte : le modifier sur place */
+(function(){
+  let ed=null;
+  cv.addEventListener('dblclick',e=>{
+    const r=cv.getBoundingClientRect();const pt=view.viewToProject(new P.Point(e.clientX-r.left,e.clientY-r.top));
+    const texts=[];userLayers().forEach(l=>{if(l.visible&&!l.locked)texts.push(...l.getItems({class:P.PointText}));});
+    const t=texts.reverse().find(x=>x.bounds.expand(1/view.zoom*4).contains(pt));if(!t)return;
+    if(ed)ed.remove();ed=document.createElement('textarea');ed.id='txEdit';ed.value=t.content;
+    const tl=view.projectToView(t.bounds.topLeft),br=view.projectToView(t.bounds.bottomRight);const sr=$('#stage').getBoundingClientRect();
+    ed.style.left=(r.left-sr.left+tl.x-4)+'px';ed.style.top=(r.top-sr.top+tl.y-4)+'px';ed.style.width=Math.max(140,br.x-tl.x+30)+'px';ed.style.height=Math.max(30,br.y-tl.y+12)+'px';
+    ed.style.fontSize=Math.max(11,Math.min(40,t.fontSize*view.zoom))+'px';ed.style.fontFamily=t.fontFamily;
+    $('#stage').appendChild(ed);ed.focus();ed.select();
+    const done=ok=>{if(!ed)return;const el=ed;ed=null;const v=el.value;el.remove();if(ok&&v!==t.content){if(v.trim())t.content=v;else t.remove();commit();}};
+    ed.addEventListener('keydown',k=>{k.stopPropagation();if(k.key==='Escape'){k.preventDefault();done(false);}if(k.key==='Enter'&&!k.shiftKey){k.preventDefault();done(true);}});
+    ed.addEventListener('blur',()=>done(true));
+  });
+})();
+$('#fSvg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{await openVectorFile(f);}catch(err){console.error(err);alert('Ouverture impossible : '+(err.message||err));}};
 function blankDoc(){userLayers().forEach(l=>l.remove());activeLayer=null;newLayer('Calque 1');setSel([]);renderLayers();resetHistory();S.doc={id:null,name:''};showDoc();scheduleAutosave();}
 $('#bNew').onclick=()=>{if(window.AtelierTabs)AtelierTabs.newTab();else if(confirm('Commencer un nouveau document ? Le document actuel sera effacé (pense à l’enregistrer).'))blankDoc();};
 $('#bSave').onclick=()=>saveDoc(false);
@@ -2860,7 +3038,7 @@ window.zoomAt=zoomAt;
 <script>
 /* fichiers SVG ouverts depuis l'ordinateur (« Ouvrir avec » Atelier) : chacun dans un nouvel onglet */
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;await new Promise(r=>setTimeout(r,600));
-  for(const h of p.files){try{const f=await h.getFile();if(window.AtelierTabs)await AtelierTabs.newTab();importSVGText(await f.text(),f.name.replace(/\.[^.]+$/,''));}catch(err){alert('Ouverture impossible : '+err.message);}}});
+  for(const h of p.files){try{const f=await h.getFile();if(/\.svg$/i.test(f.name)&&window.AtelierTabs)await AtelierTabs.newTab();await openVectorFile(f);}catch(err){alert('Ouverture impossible : '+err.message);}}});
 </script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init(Object.assign({app:"vecto"},{"title": "La Suite Vecto", "sections": [{"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Formes (rectangle, ellipse, rectangle arrondi)"], ["E", "Gomme"], ["F", "Forme libre (zone pleine sans contour)"], ["K", "Pot de peinture"], ["H  ou  Espace", "Main (déplacer la vue)"]]}, {"title": "Édition", "keys": [["Ctrl + Z", "Annuler"], ["Ctrl + Maj + Z  /  Ctrl + Y", "Rétablir"], ["Ctrl + V avec une image copiée", "L’ouvre directement dans la vectorisation"], ["Ctrl + C / X / V", "Copier / couper / coller (la copie se colle aussi en vectoriel dans Illustrator, Inkscape, Affinity)"], ["Clic droit", "Menu : copier en vectoriel, coller, dupliquer, supprimer"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G", "Grouper"], ["Ctrl + Maj + G", "Dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer (ou les points, en sélection directe)"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Échap", "Désélectionner / terminer la plume"], ["Entrée", "Terminer la plume"]]}, {"title": "Souris", "keys": [["Ctrl + clic", "Sélectionner une forme à l’intérieur d’un groupe"], ["Double-clic", "Entrer d’un niveau dans un groupe"], ["Maj + clic", "Ajouter / retirer de la sélection"], ["Alt + glisser", "Dupliquer en déplaçant"], ["Maj sur une poignée", "Redimensionner librement / pivoter par 15°"], ["Alt + clic (pot)", "Recolorer un trait noir"], ["Molette", "Zoom"], ["Clic molette + glisser", "Déplacer la vue"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"], ["Ctrl + 0", "Voir toute la page"], ["+  /  −", "Zoom avant / arrière"]]}, {"title": "Vectorisation", "params": [["Seuil", "Ce qui est plus foncé devient noir, le reste blanc."], ["Adoucir le grain", "Floute légèrement avant le seuil pour lisser le papier et les bords."], ["Fermer les lignes", "Relie les bouts de traits qui se font face, jusqu’à l’écart indiqué (raccords en rose dans l’aperçu Noir et blanc)."], ["Ignorer les taches", "Supprime les petites taches plus petites que la valeur."], ["Boucher les liserés fins", "Remplit les fines lignes blanches enfermées dans un aplat noir (bord du feutre plus foncé que l’intérieur, reflet…), jusqu’à la largeur indiquée. Les vrais trous, plus larges, restent."], ["Angles ↔ courbes", "Bas : dessin anguleux. Haut : tout s’arrondit."], ["Précision des courbes", "Haut : moins de points, courbes plus souples mais plus approximatives."], ["Définition de calcul", "Taille maximale de l’image utilisée (sans effet si l’image est plus petite)."], ["Zones blanches en formes", "Crée aussi les zones blanches fermées, à colorier ensuite."], ["Revectoriser…", "Reprend un dessin déjà placé avec de nouveaux réglages, au même endroit."], ["Paramètres pré-enregistrés", "Enregistre les réglages actuels sous un nom pour les réutiliser (sur tous tes appareils) ; « Mettre à jour » remplace le préréglage choisi."], ["Prendre une photo", "Sur mobile, ouvre l’appareil photo. Place ensuite les 4 coins sur le dessin ou la feuille : la photo est recadrée et redressée avant la vectorisation."]]}]}));</script>

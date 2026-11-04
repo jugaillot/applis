@@ -105,6 +105,10 @@
       "accept": {
         "image/svg+xml": [
           ".svg"
+        ],
+        "application/postscript": [
+          ".ai",
+          ".eps"
         ]
       },
       "launch_type": "single-client",
