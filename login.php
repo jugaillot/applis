@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 header('Cache-Control: no-store');
 ?><!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atelier — connexion</title>
+<title>La Suite — connexion</title>
 <meta name="theme-color" content="#fff3d6">
 <style>
 *{box-sizing:border-box}html,body{margin:0;height:100%}
@@ -35,13 +35,13 @@ button{font:inherit;font-weight:600;border:0;border-radius:9px;padding:11px;back
 .err{color:#b3261e;font-size:13px}.ok{color:#1f8a4c;font-size:13px}.muted{color:#77756f;font-size:12px}
 </style></head><body>
 <form method="post" action="<?php echo htmlspecialchars($base . '/login.php'); ?>" autocomplete="on">
-  <h1>Atelier <span>·</span></h1>
+  <h1>La Suite <span>·</span></h1>
   <?php if ($err) echo '<div class="err">' . htmlspecialchars($err) . '</div>'; ?>
   <?php if (isset($_GET['bye'])) echo '<div class="ok">Tu es déconnecté sur cet appareil.</div>'; ?>
   <input type="hidden" name="r" value="<?php echo htmlspecialchars($r); ?>">
   <label>Identifiant<input name="u" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus value="<?php echo isset($_POST['u']) ? htmlspecialchars($_POST['u']) : ''; ?>"></label>
   <label>Mot de passe<input name="p" type="password" autocomplete="current-password" required></label>
   <button type="submit">Se connecter</button>
-  <div class="muted">Une fois connecté, l’atelier reste ouvert sur cet appareil. Ton navigateur peut aussi enregistrer l’identifiant et le mot de passe.</div>
+  <div class="muted">Une fois connecté, La Suite reste ouverte sur cet appareil. Ton navigateur peut aussi enregistrer l’identifiant et le mot de passe.</div>
 </form>
 </body></html>

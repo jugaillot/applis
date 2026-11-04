@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Atelier Civco</title>
+<title>La Suite Civco</title>
 <script src="../lib/sync.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#7a8a1f;--soft:#f7f6f2;--cream:#F4EEDF;--brown:#4A3B2C}
@@ -113,7 +113,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 </head>
 <body>
 <header>
-  <h1><a href="../">Atelier</a> <span>Civco</span></h1>
+  <h1><a href="../">La Suite</a> <span>Civco</span></h1>
   <span class="muted" id="docName"></span>
   <span class="sp"></span>
   <button class="btn" id="bNew">Nouvelle partie</button>
@@ -542,7 +542,7 @@ function newGame(){genWorld((Math.random()*4294967296)>>>0);DOC={id:null,name:''
   addLog('Ton village s\'installe en terre tropicale. Trois cases produisent déjà. Ton personnage explore à pied : chaque déplacement révèle les cases autour de lui.');
   showDoc();refresh();centerOn(vAtOrigin());}
 const vAtOrigin=()=>cellAt(G.vils[0].c,G.vils[0].r);
-function showDoc(){$('#docName').textContent=DOC.name?'· '+DOC.name:'';document.title='Atelier Civco'+(DOC.name?' — '+DOC.name:'');}
+function showDoc(){$('#docName').textContent=DOC.name?'· '+DOC.name:'';document.title='La Suite Civco'+(DOC.name?' — '+DOC.name:'');}
 async function save(){if(!window.AtelierSync)return alert('Enregistrement indisponible.');
   if(!DOC.name){const n=prompt('Nom de la partie :','Partie du '+new Date().toLocaleDateString('fr-FR'));if(!n)return;DOC.name=n.trim();}
   DOC.id=await AtelierSync.save(APP,DOC.id,DOC.name,G);showDoc();toast('Partie enregistrée.');}
@@ -575,7 +575,7 @@ if(window.matchMedia('(min-width:901px)').matches)panelMin(false);
 fit();newGame();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init({app:"civco",title:"Atelier Civco",sections:[
+<script>AtelierHelp.init({app:"civco",title:"La Suite Civco",sections:[
   {title:"Outils",keys:[["V","Observer une case ou un village"],["M","Déplacer le personnage (2 cases)"],["A","Aménager : choisir la production"],["J","Jachère (gratuit)"],["R","Régénérer"],["F","Fonder un village"],["E","Échanger avec un village voisin"],["Échap","Annuler l'outil, puis désélectionner"]]},
   {title:"Partie",keys:[["Entrée","Fin du tour"],["Ctrl + S","Enregistrer la partie"]]},
   {title:"Plateau",keys:[["Glisser","Déplacer le plateau"],["Molette / pincer","Zoomer"]]}]});</script>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Atelier PDF</title>
+<title>La Suite PDF</title>
 <script src="../lib/pdf.min.js"></script>
 <script src="../lib/pdf-lib.min.js"></script>
 <style>
@@ -140,7 +140,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 </head>
 <body>
 <header>
-  <h1><a href="../">Atelier</a> <span>PDF</span></h1>
+  <h1><a href="../">La Suite</a> <span>PDF</span></h1>
   <label class="btn primary">Ajouter des fichiers…<input type="file" id="fIn" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bClear">Tout vider</button>
@@ -344,7 +344,7 @@ async function addFiles(list){
       if(ext==='pdf'||f.type==='application/pdf'){
         const doc=await pdfjsLib.getDocument({data:new Uint8Array(bytes.slice(0))}).promise;
         // PDF enregistré par l'Atelier : on peut le rouvrir avec ses pages modifiables
-        try{const att=await doc.getAttachments();if(att&&att['atelier-compil.json']&&confirm('« '+f.name+' » a été créé avec l’Atelier PDF.\n\nOK : le rouvrir modifiable (pages, textes, signatures, réglages)\nAnnuler : l’ajouter comme un PDF ordinaire')){await restoreAtelier(att,f.name);doc.destroy();continue;}}catch(e){console.error(e);}
+        try{const att=await doc.getAttachments();if(att&&att['atelier-compil.json']&&confirm('« '+f.name+' » a été créé avec La Suite (PDF).\n\nOK : le rouvrir modifiable (pages, textes, signatures, réglages)\nAnnuler : l’ajouter comme un PDF ordinaire')){await restoreAtelier(att,f.name);doc.destroy();continue;}}catch(e){console.error(e);}
         S.files.set(id,{id,name:f.name,type:'pdf',bytes,doc});
         for(let i=1;i<=doc.numPages;i++){
           await busy(`Lecture de « ${f.name} » — page ${i} / ${doc.numPages}`);
@@ -664,7 +664,7 @@ async function buildPDF(){
     }
   }
   if(!NOATT)try{await attachState(out);}catch(e){console.error(e);}
-  out.setTitle('Compilation');out.setProducer("Atelier PDF");
+  out.setTitle('Compilation');out.setProducer("La Suite PDF");
   return await out.save();
 }
 const stamp=()=>new Date().toISOString().slice(0,10);
@@ -676,7 +676,7 @@ async function rasterPdf(bytes,dpi,q){
     await page.render({canvasContext:x,viewport:v}).promise;const b=await new Promise(r=>c.toBlob(r,'image/jpeg',q));const img=await out.embedJpg(await b.arrayBuffer());
     const pg=out.addPage([v1.width,v1.height]);pg.drawImage(img,{x:0,y:0,width:v1.width,height:v1.height});}}
   finally{doc.destroy();}
-  out.setTitle('Compilation');out.setProducer('Atelier PDF');return await out.save();
+  out.setTitle('Compilation');out.setProducer('La Suite PDF');return await out.save();
 }
 const mo=n=>(n/1048576).toFixed(n<1048576?2:1).replace('.',',')+' Mo';
 async function exportPDF(){
@@ -976,7 +976,7 @@ async function attachState(out){
   for(const fd of files){const f=S.files.get(fd.id);await out.attach(new Uint8Array(f.bytes),fd.att,{mimeType:f.type==='pdf'?'application/pdf':(f.mime==='png'?'image/png':'image/jpeg'),description:'Source Atelier PDF'});}
   const st={v:1,opt:S.opt,files:files.map(({id,att,name,type,mime})=>({id,att,name,type,mime})),
     pages:S.pages.map(p=>({file:p.fileId,index:p.index,rot:p.rot,crop:p.crop||null,levels:p.levels||null,ann:p.ann||null,blank:!!p.blank,w:p.w,h:p.h}))};
-  await out.attach(new TextEncoder().encode(JSON.stringify(st)),'atelier-compil.json',{mimeType:'application/json',description:'Atelier PDF : état modifiable'});
+  await out.attach(new TextEncoder().encode(JSON.stringify(st)),'atelier-compil.json',{mimeType:'application/json',description:'La Suite PDF : état modifiable'});
 }
 async function restoreAtelier(att,fname){
   const st=JSON.parse(new TextDecoder().decode(att['atelier-compil.json'].content));
@@ -1108,6 +1108,6 @@ if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.fil
   S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();addFiles(fs);});
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "Atelier PDF", "sections": [{"title": "Pages", "keys": [["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
 </body>
 </html>
