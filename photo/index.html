@@ -156,7 +156,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <header>
   <h1><a href="../">La Suite</a> <span>Photo</span></h1>
   <button class="btn" id="bNewDoc" title="Créer une image vierge, ou à partir d’une image copiée">Nouveau…</button>
-  <label class="btn primary">Ajouter des images…<input type="file" id="fIn" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/bmp" hidden></label>
+  <label class="btn primary">Ajouter des images…<input type="file" id="fIn" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,application/pdf,.pdf" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bApplyAll" title="Copier les réglages de cette image sur les autres">Appliquer à toutes…</button>
   <button class="btn" id="bCopy" title="Copier l’image retouchée pour la coller ailleurs (Ctrl+C)">Copier</button>
@@ -187,7 +187,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   </div></nav>
   <nav id="strip"></nav>
   <div id="center">
-    <div id="stage"><div id="empty">Glisse ici tes photos (JPG, PNG, WebP),<br>colle une image avec Ctrl+V<br>ou utilise « Ajouter des images… »</div><canvas id="view" hidden></canvas><div id="cropBox" hidden></div><div id="brush" hidden></div><div id="cloneMk" hidden></div></div>
+    <div id="stage"><div id="empty">Glisse ici tes photos (JPG, PNG, WebP) ou des PDF,<br>colle une image avec Ctrl+V<br>ou utilise « Ajouter des images… »</div><canvas id="view" hidden></canvas><div id="cropBox" hidden></div><div id="brush" hidden></div><div id="cloneMk" hidden></div></div>
     <div id="bar">
       <button class="btn sm" id="bBefore" title="Maintenir pour voir l’original (touche B)">Avant / après</button>
       <button class="btn sm" id="bCrop" title="Rogner (C)">✂ Rogner</button><button class="btn sm" id="bPersp" title="Redresser la perspective (K)">Perspective</button>
@@ -319,6 +319,9 @@ async function decode(file,maxPx){
 }
 function hasAlpha(c){try{const d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height).data;for(let i=3;i<d.length;i+=16)if(d[i]<250)return true;}catch(e){}return false;}
 async function addFiles(list){
+  // les PDF sont d'abord convertis en images (une par page)
+  const pdfs=[...list].filter(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name));
+  if(pdfs.length){const out=[...list].filter(f=>!pdfs.includes(f));for(const f of pdfs){const imgs=await pdfToImages(f);if(imgs)out.push(...imgs);}list=out;}
   const files=[...list].filter(f=>/^image\//.test(f.type)||/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name));
   if(!files.length)return;
   for(let k=0;k<files.length;k++){
@@ -1224,6 +1227,45 @@ if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.fil
     dlg.close();const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');if(bg!=='transparent'){x.fillStyle=bg==='white'?'#ffffff':$('#ndCol').value;x.fillRect(0,0,w,h);}
     const blob=await new Promise(r=>c.toBlob(r,'image/png'));await addFiles([new File([blob],'nouvelle-image-'+stamp()+'.png',{type:'image/png'})]);};
 })();
+</script>
+<script src="../lib/pdf.min.js"></script>
+<dialog id="pdDlg" style="border:1px solid #e3e0d9;border-radius:12px;padding:0;width:min(620px,94vw)">
+  <div style="padding:12px 16px;border-bottom:1px solid #e3e0d9;font-weight:700" id="pdTitle">Ouvrir un PDF en image</div>
+  <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:13px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="color:#77756f">Résolution</span><select id="pdDpi" style="font:inherit;padding:5px;border:1px solid #e3e0d9;border-radius:6px"><option value="150">150 dpi (écran, mail)</option><option value="300" selected>300 dpi (impression)</option><option value="600">600 dpi (très fin)</option></select><span class="muted" id="pdSize"></span></div>
+    <div style="display:flex;align-items:center;gap:8px"><span style="color:#77756f;flex:1">Pages à ouvrir</span><button class="btn sm" id="pdAll">Toutes</button><button class="btn sm" id="pdNone">Aucune</button></div>
+    <div id="pdPages" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;max-height:46vh;overflow:auto"></div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:6px;padding:10px 16px;border-top:1px solid #e3e0d9"><button class="btn" id="pdCancel">Annuler</button><button class="btn primary" id="pdOk">Ouvrir</button></div>
+</dialog>
+<style>#pdPages label{display:flex!important;flex-direction:column!important;align-items:center;gap:4px;border:1px solid #e3e0d9;border-radius:8px;padding:6px;cursor:pointer;font-size:12px;color:#77756f;margin:0}#pdPages label:has(input:checked){border-color:#f08a4b;box-shadow:0 0 0 1px #f08a4b}#pdPages canvas{max-width:100%;box-shadow:0 1px 4px rgba(0,0,0,.15);background:#fff}</style>
+<script>
+/* ---------- PDF → images (une par page, à la résolution choisie) ---------- */
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='../lib/pdf.worker.min.js';
+async function pdfToImages(file){
+  if(!window.pdfjsLib){alert('Lecture des PDF indisponible.');return null;}
+  let pdf;try{pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}).promise;}catch(e){alert('« '+file.name+' » n’est pas lisible : '+(e.message||e));return null;}
+  const dlg=$('#pdDlg'),L=$('#pdPages');L.innerHTML='';$('#pdTitle').textContent='Ouvrir « '+file.name+' » en image';
+  const p1=await pdf.getPage(1);const v1=p1.getViewport({scale:1});
+  const info=()=>{const d=+$('#pdDpi').value;const k=Math.min(d/72,10000/Math.max(v1.width,v1.height));$('#pdSize').textContent='page 1 : '+Math.round(v1.width*k)+' × '+Math.round(v1.height*k)+' px';};$('#pdDpi').onchange=info;info();
+  const choice=new Promise(res=>{let done=false;
+    $('#pdCancel').onclick=()=>{done=true;dlg.close();res(null);};
+    $('#pdOk').onclick=()=>{done=true;const ns=[...L.querySelectorAll('input:checked')].map(i=>+i.value);dlg.close();res(ns);};
+    dlg.onclose=()=>{if(!done)res(null);};});
+  $('#pdAll').onclick=()=>L.querySelectorAll('input').forEach(i=>i.checked=true);$('#pdNone').onclick=()=>L.querySelectorAll('input').forEach(i=>i.checked=false);
+  dlg.showModal();
+  (async()=>{for(let n=1;n<=pdf.numPages&&dlg.open;n++){const lb=document.createElement('label');const c=document.createElement('canvas');const cb=document.createElement('input');cb.type='checkbox';cb.value=n;cb.checked=true;lb.append(c,cb,'Page '+n);L.appendChild(lb);
+    try{const pg=await pdf.getPage(n);const v=pg.getViewport({scale:1});const k=110/Math.max(v.width,v.height);const vp=pg.getViewport({scale:k});c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;}catch(e){}}})();
+  const ns=await choice;if(!ns||!ns.length){try{pdf.destroy();}catch(e){}return null;}
+  const dpi=+$('#pdDpi').value;const base=file.name.replace(/\.pdf$/i,'');const out=[];
+  try{for(let i=0;i<ns.length;i++){const n=ns[i];await busy('Conversion du PDF — page '+n+' ('+(i+1)+' / '+ns.length+')');
+    const pg=await pdf.getPage(n);const v=pg.getViewport({scale:1});const k=Math.min(dpi/72,10000/Math.max(v.width,v.height));const vp=pg.getViewport({scale:k});
+    const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+    await pg.render({canvasContext:x,viewport:vp}).promise;const blob=await new Promise(r=>c.toBlob(r,'image/png'));c.width=c.height=1;pg.cleanup();
+    out.push(new File([blob],base+(pdf.numPages>1?'-p'+String(n).padStart(2,'0'):'')+'.png',{type:'image/png'}));}}
+  finally{await busy();try{pdf.destroy();}catch(e){}}
+  return out;
+}
 </script>
 </body>
 </html>
