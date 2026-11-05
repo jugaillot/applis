@@ -155,6 +155,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <body>
 <header>
   <h1><a href="../">La Suite</a> <span>Photo</span></h1>
+  <button class="btn" id="bNewDoc" title="Créer une image vierge, ou à partir d’une image copiée">Nouveau…</button>
   <label class="btn primary">Ajouter des images…<input type="file" id="fIn" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/bmp" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bApplyAll" title="Copier les réglages de cette image sur les autres">Appliquer à toutes…</button>
@@ -1191,5 +1192,38 @@ if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.fil
 </script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "La Suite Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["M / A / W", "Sélection rectangle, lasso libre, baguette magique : crée une zone (Maj : ajouter, Alt : retirer). Les réglages et retouches ne changent alors que la zone ; Échap : revenir à toute l’image"], ["K", "Perspective : placer les 4 coins d’un document photographié de biais pour le remettre à plat (Entrée : appliquer, Échap : annuler)"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
+<dialog id="ndDlg" style="border:1px solid #e3e0d9;border-radius:12px;padding:0;width:min(440px,94vw)">
+  <div style="padding:12px 16px;border-bottom:1px solid #e3e0d9;font-weight:700">Nouvelle image</div>
+  <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:13px">
+    <div id="ndClip" hidden style="display:flex;align-items:center;gap:10px;background:#f1f7ff;border:1px solid #b7d4fb;border-radius:8px;padding:8px"><canvas id="ndClipCv" width="64" height="64" style="border-radius:4px;background:#fff;max-width:64px;max-height:64px"></canvas><div style="flex:1"><b>Une image est dans le presse-papier</b><div class="muted" id="ndClipInfo"></div></div><button class="btn primary" id="ndClipOk">Créer à partir du presse-papier</button></div>
+    <button class="btn" id="ndClipTry" hidden>Coller l’image du presse-papier…</button>
+    <label style="display:flex;flex-direction:column;gap:3px;color:#77756f">Format<select id="ndFmt" style="font:inherit;padding:5px;border:1px solid #e3e0d9;border-radius:6px">
+      <option value="1080x1080">Carré réseaux sociaux — 1080 × 1080 px</option><option value="1080x1350">Portrait réseaux sociaux — 1080 × 1350 px</option><option value="1080x1920">Story — 1080 × 1920 px</option>
+      <option value="1920x1080">Écran / bannière — 1920 × 1080 px</option><option value="2480x3508">A4 à 300 dpi — 2480 × 3508 px</option><option value="3508x4961">A3 à 300 dpi — 3508 × 4961 px</option><option value="1748x1240">Carte postale 15 × 10 cm à 300 dpi</option><option value="custom">Personnalisé</option></select></label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label style="display:flex;flex-direction:column;gap:3px;color:#77756f">Largeur (px)<input type="number" id="ndW" min="1" max="12000" value="1080" style="font:inherit;padding:5px;border:1px solid #e3e0d9;border-radius:6px"></label><label style="display:flex;flex-direction:column;gap:3px;color:#77756f">Hauteur (px)<input type="number" id="ndH" min="1" max="12000" value="1080" style="font:inherit;padding:5px;border:1px solid #e3e0d9;border-radius:6px"></label></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="color:#77756f">Fond</span><label style="display:flex;flex-direction:row;align-items:center;gap:4px;color:inherit;margin:0"><input type="radio" name="ndBg" value="white" checked> Blanc</label><label style="display:flex;flex-direction:row;align-items:center;gap:4px;color:inherit;margin:0"><input type="radio" name="ndBg" value="transparent"> Transparent</label><label style="display:flex;flex-direction:row;align-items:center;gap:4px;color:inherit;margin:0"><input type="radio" name="ndBg" value="color"> Couleur <input type="color" id="ndCol" value="#f08a4b"></label></div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:6px;padding:10px 16px;border-top:1px solid #e3e0d9"><button class="btn" id="ndCancel">Annuler</button><button class="btn primary" id="ndOk">Créer l’image vierge</button></div>
+</dialog>
+<script>
+/* ---------- nouvelle image : vierge, ou à partir du presse-papier ---------- */
+(function(){
+  const dlg=$('#ndDlg');let clipBlob=null;
+  async function readClip(){clipBlob=null;$('#ndClip').hidden=true;
+    try{const items=await navigator.clipboard.read();for(const it of items){const t=it.types.find(x=>/^image\//.test(x));if(t){clipBlob=await it.getType(t);break;}}}catch(e){$('#ndClipTry').hidden=false;return;}
+    $('#ndClipTry').hidden=true;
+    if(clipBlob){try{const bm=await createImageBitmap(clipBlob);$('#ndClipInfo').textContent=bm.width+' × '+bm.height+' px';const c=$('#ndClipCv');const k=Math.min(64/bm.width,64/bm.height);c.width=Math.max(1,Math.round(bm.width*k));c.height=Math.max(1,Math.round(bm.height*k));c.getContext('2d').drawImage(bm,0,0,c.width,c.height);$('#ndClip').hidden=false;}catch(e){clipBlob=null;}}}
+  $('#bNewDoc').onclick=()=>{dlg.showModal();readClip();};
+  $('#ndClipTry').onclick=readClip;
+  $('#ndCancel').onclick=()=>dlg.close();
+  $('#ndFmt').onchange=()=>{const v=$('#ndFmt').value;if(v!=='custom'){const [w,h]=v.split('x');$('#ndW').value=w;$('#ndH').value=h;}};
+  $('#ndW').oninput=$('#ndH').oninput=()=>{$('#ndFmt').value='custom';};
+  const stamp=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0');};
+  $('#ndClipOk').onclick=async()=>{if(!clipBlob)return;dlg.close();const ext=(clipBlob.type.split('/')[1]||'png').replace('jpeg','jpg');await addFiles([new File([clipBlob],'presse-papier-'+stamp()+'.'+ext,{type:clipBlob.type})]);};
+  $('#ndOk').onclick=async()=>{const w=Math.max(1,Math.min(12000,+$('#ndW').value||1080)),h=Math.max(1,Math.min(12000,+$('#ndH').value||1080));const bg=document.querySelector('input[name=ndBg]:checked').value;
+    dlg.close();const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');if(bg!=='transparent'){x.fillStyle=bg==='white'?'#ffffff':$('#ndCol').value;x.fillRect(0,0,w,h);}
+    const blob=await new Promise(r=>c.toBlob(r,'image/png'));await addFiles([new File([blob],'nouvelle-image-'+stamp()+'.png',{type:'image/png'})]);};
+})();
+</script>
 </body>
 </html>
