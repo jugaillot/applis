@@ -165,6 +165,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <button class="tool" id="zIn" title="Agrandir les feuilles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg></button>
 <button class="tool" id="zOut" title="Réduire les feuilles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M7.5 10.5h6"/></svg></button>
 <button class="tool" id="pFold" title="Replier / déplier la liste des pages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+<button class="tool" id="bFull" title="Voir le document en plein écran (F) — flèches : page suivante / précédente, Échap : sortir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg></button>
   </div></nav>
   <aside>
     <div id="asideTop"><button type="button" id="asideTg" title="Réduire le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l6 6-6 6M12 6l6 6-6 6"/></svg></button></div>
@@ -505,7 +506,7 @@ function renderPages(){
 function updateButtons(){
   const has=S.sel.size>0;
   ['#pRotL','#pRotR','#pDup','#pDel'].forEach(s=>$(s).disabled=!has);
-  ['#bPdf','#bPrint','#bClear','#pAll','#pText'].forEach(s=>$(s).disabled=!S.pages.length);
+  ['#bPdf','#bPrint','#bClear','#pAll','#pText','#bFull'].forEach(s=>$(s).disabled=!S.pages.length);
 }
 
 /* ---------- aperçu des feuilles ---------- */
@@ -1129,6 +1130,64 @@ if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.fil
   S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();addFiles(fs);});
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["F", "Voir le document en plein écran (flèches : pages, Z : largeur / page entière, Échap : sortir)"], ["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
+<div id="fsView" hidden><div id="fsPages"></div><div id="fsBar"><button id="fsPrev" title="Page précédente (←)">‹</button><span id="fsNum"></span><button id="fsNext" title="Page suivante (→)">›</button><button id="fsFit" title="Ajuster : page entière / largeur (Z)">Largeur</button><button id="fsClose" title="Quitter (Échap)">✕</button></div></div>
+<style>
+#fsView{position:fixed;inset:0;z-index:200;background:#2a2b2e}
+#fsView[hidden]{display:none}
+#fsPages{position:absolute;inset:0;overflow:auto;scroll-snap-type:y mandatory}
+#fsPages .fp{height:100vh;display:flex;align-items:center;justify-content:center;scroll-snap-align:start;padding:2vh 0}
+#fsView.wide #fsPages{scroll-snap-type:none}
+#fsView.wide #fsPages .fp{height:auto;padding:12px 0}
+#fsPages canvas{max-height:96vh;max-width:98vw;background:#fff;box-shadow:0 4px 30px rgba(0,0,0,.5)}
+#fsView.wide #fsPages canvas{max-height:none;width:min(98vw,1400px);height:auto}
+#fsBar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:rgba(20,20,22,.85);color:#fff;border-radius:22px;padding:5px 8px;font:13px system-ui,sans-serif;opacity:.25;transition:opacity .2s}
+#fsBar:hover,#fsView.show #fsBar{opacity:1}
+#fsBar button{border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:16px;min-width:32px;height:30px;padding:0 10px;font:inherit;cursor:pointer}
+#fsBar button:hover{background:rgba(255,255,255,.25)}
+#fsNum{min-width:64px;text-align:center}
+</style>
+<script>
+/* ---------- plein écran : tout le document, une feuille par écran ---------- */
+(function(){
+  const V=$('#fsView'),P=$('#fsPages');let pdf=null,obs=null,hideT=0;
+  async function open(){
+    if(!S.pages.length)return;
+    let bytes;try{bytes=await buildPDF();}catch(e){alert('Plein écran impossible : '+(e.message||e));return;}
+    await busy('Ouverture en plein écran…');
+    try{pdf=await pdfjsLib.getDocument({data:bytes.slice?bytes.slice(0):bytes,isEvalSupported:false}).promise;}catch(e){await busy();alert('Plein écran impossible : '+(e.message||e));return;}
+    P.innerHTML='';
+    for(let n=1;n<=pdf.numPages;n++){const d=document.createElement('div');d.className='fp';d.dataset.n=n;const c=document.createElement('canvas');d.appendChild(c);P.appendChild(d);
+      const pg=await pdf.getPage(n);const v=pg.getViewport({scale:1});c.width=v.width;c.height=v.height;c.style.aspectRatio=v.width+'/'+v.height;}
+    V.hidden=false;await busy();
+    try{if(document.documentElement.requestFullscreen&&!document.fullscreenElement)await V.requestFullscreen();}catch(e){}
+    // rendu net des feuilles quand elles arrivent à l'écran
+    obs=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting)draw(en.target);}),{root:P,rootMargin:'100% 0px'});
+    P.querySelectorAll('.fp').forEach(d=>obs.observe(d));
+    P.scrollTop=0;num();flash();
+  }
+  async function draw(d){const n=+d.dataset.n;const c=d.querySelector('canvas');const w=Math.round(c.getBoundingClientRect().width*(devicePixelRatio||1));if(!pdf||d._w>=w)return;d._w=w;
+    try{const pg=await pdf.getPage(n);const v=pg.getViewport({scale:1});const vp=pg.getViewport({scale:Math.min(6,w/v.width)});const t=document.createElement('canvas');t.width=Math.round(vp.width);t.height=Math.round(vp.height);
+      const x=t.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,t.width,t.height);await pg.render({canvasContext:x,viewport:vp}).promise;
+      c.width=t.width;c.height=t.height;c.getContext('2d').drawImage(t,0,0);}catch(e){}}
+  function cur(){const ds=[...P.querySelectorAll('.fp')];const mid=P.scrollTop+P.clientHeight/2;let i=0;ds.forEach((d,k)=>{if(d.offsetTop<=mid)i=k;});return i;}
+  function num(){if(!pdf)return;$('#fsNum').textContent=(cur()+1)+' / '+pdf.numPages;}
+  function go(k){const ds=P.querySelectorAll('.fp');const i=Math.max(0,Math.min(ds.length-1,cur()+k));ds[i].scrollIntoView({behavior:'smooth',block:'start'});}
+  async function close(){if(V.hidden)return;V.hidden=true;if(obs)obs.disconnect();P.innerHTML='';try{if(pdf)pdf.destroy();}catch(e){}pdf=null;try{if(document.fullscreenElement)await document.exitFullscreen();}catch(e){}}
+  function flash(){V.classList.add('show');clearTimeout(hideT);hideT=setTimeout(()=>V.classList.remove('show'),1800);}
+  $('#bFull').onclick=open;$('#fsClose').onclick=close;$('#fsPrev').onclick=()=>go(-1);$('#fsNext').onclick=()=>go(1);
+  $('#fsFit').onclick=()=>{V.classList.toggle('wide');$('#fsFit').textContent=V.classList.contains('wide')?'Page entière':'Largeur';P.querySelectorAll('.fp').forEach(d=>{d._w=0;});setTimeout(()=>P.querySelectorAll('.fp').forEach(d=>{const r=d.getBoundingClientRect();if(r.bottom>-innerHeight&&r.top<2*innerHeight)draw(d);}),50);};
+  P.addEventListener('scroll',()=>{num();flash();});V.addEventListener('mousemove',flash);
+  document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&!V.hidden)close();});
+  document.addEventListener('keydown',e=>{
+    if(V.hidden){if(e.key.toLowerCase()==='f'&&!e.ctrlKey&&!e.metaKey&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)&&!document.querySelector('dialog[open]')&&!document.activeElement.isContentEditable){e.preventDefault();open();}return;}
+    e.stopImmediatePropagation();
+    if(e.key==='Escape'){e.preventDefault();close();}
+    else if(['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)){e.preventDefault();if(V.classList.contains('wide')&&(e.key==='ArrowDown'||e.key===' '))P.scrollBy({top:P.clientHeight*.8,behavior:'smooth'});else go(1);}
+    else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();if(V.classList.contains('wide')&&e.key==='ArrowUp')P.scrollBy({top:-P.clientHeight*.8,behavior:'smooth'});else go(-1);}
+    else if(e.key==='Home'){e.preventDefault();P.scrollTo({top:0});}else if(e.key==='End'){e.preventDefault();P.scrollTo({top:P.scrollHeight});}
+    else if(e.key.toLowerCase()==='z')$('#fsFit').click();},true);
+})();
+</script>
 </body>
 </html>
