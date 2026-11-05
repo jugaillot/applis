@@ -124,6 +124,23 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
 
 /* réglages de l'outil : bande au-dessus de l'image (ne recouvre jamais l'image) */
 #toolBar{left:auto!important;right:auto!important;top:auto!important;position:static!important;max-width:none!important;border-radius:0!important;border:0!important;border-bottom:1px solid var(--line)!important;box-shadow:none!important;background:var(--panel,#fff)!important;flex:none}
+
+#zoneBan{position:sticky;top:33px;z-index:3;margin:0 -12px;padding:6px 12px;background:#e6f1ff;border-bottom:1px solid #b7d4fb;font-size:12px;display:flex;align-items:center;gap:8px}
+#zoneBan[hidden]{display:none}
+#zoneBan b{flex:1;font-weight:600}
+#zoneList{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+.zr{border:1px solid var(--line);border-radius:7px;padding:5px 7px;display:flex;flex-direction:column;gap:5px;cursor:pointer}
+.zr.on{border-color:#1e88ff;box-shadow:0 0 0 1px #1e88ff}
+.zr .zh{display:flex;align-items:center;gap:6px}
+.zr .zh b{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zr .zh button{border:0;background:none;cursor:pointer;color:var(--mute);padding:0 3px;font:inherit}
+.zr .zb{display:none;flex-direction:column;gap:4px}
+.zr.on .zb{display:flex}
+.zr .zb label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
+.zr .zb input[type=range]{flex:1}
+#zoneOv{position:absolute;pointer-events:none;z-index:4}
+#zoneDraw{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;overflow:visible}
+#stage.zsel{cursor:crosshair}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
@@ -150,6 +167,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <nav id="tools"><div class="tgrid">
 <button class="tool" type="button" data-pt="none" title="Sélection : aucun outil (Échap)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor" stroke="none"/></svg></button>
 <button class="tool" type="button" data-px="#bCrop" title="Rogner (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14h14"/><path d="M2 6h14v14"/></svg></button>
+<button class="tool" type="button" data-tool="zrect" title="Sélection rectangle (M) — Maj : ajouter à la zone, Alt : retirer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="1" stroke-dasharray="3 2.2"/></svg></button><button class="tool" type="button" data-tool="zlasso" title="Lasso libre (A) — Maj : ajouter à la zone, Alt : retirer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17c-3-1.5-4-4.5-2.5-7.5C6.5 5.5 12 4 16 5.5s4.5 5.5 2 8-7 3-10.5 2.5" stroke-dasharray="3 2.2"/><path d="M7 17l-1.5 3.5M7 17c.5 1.5-.5 3-2 3.5"/></svg></button><button class="tool" type="button" data-tool="zwand" title="Baguette magique (W) : clic sur une couleur — Maj : ajouter, Alt : retirer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L15 9M14 4v3M18.5 5.5l-2 2M20 10h-3M12 5.5l1.2 1.2"/></svg></button>
 <button class="tool" type="button" data-px="#bPersp" title="Redresser la perspective (K) : place les 4 coins du document photographié de biais"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l14-2 1 16-16-2z"/><circle cx="5" cy="6" r="1.4" fill="currentColor"/><circle cx="19" cy="4" r="1.4" fill="currentColor"/><circle cx="20" cy="20" r="1.4" fill="currentColor"/><circle cx="4" cy="18" r="1.4" fill="currentColor"/></svg></button>
 <button class="tool" type="button" data-px="#bar [data-tool=stamp]" title="Tampon (S) — Alt + clic pour choisir la zone à copier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v5l3 3H6l3-3z"/><path d="M5 14h14v3H5z"/><path d="M4 21h16"/></svg></button>
 <button class="tool" type="button" data-px="#bar [data-tool=fill]" title="Pot de peinture (G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l7-7 7 7-7 7z"/><path d="M11 6L9 4"/><path d="M19 15c1 1.6 1.5 2.6 1.5 3.3a1.5 1.5 0 0 1-3 0c0-.7.5-1.7 1.5-3.3z" fill="currentColor"/></svg></button>
@@ -181,6 +199,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   </div>
   <aside>
     <div id="asideTop"><button type="button" id="asideTg" title="Réduire le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l6 6-6 6M12 6l6 6-6 6"/></svg></button></div>
+    <div id="zoneBan" hidden></div>
+    <details data-sec="zones" open><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Zones</span></summary><div class="sec"><div id="zoneList"></div><div class="muted">Dessine une zone avec les outils de sélection (rectangle, lasso, baguette). Les réglages et retouches faits quand une zone est choisie ne changent qu’elle.</div></div></details>
     <details data-sec="filtres"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Filtres</span></summary><div class="sec"><div id="presets"></div>
       <div class="row"><button class="btn sm" id="bSavePreset">+ Enregistrer mes réglages comme filtre</button></div></div></details>
     <details data-sec="lumiere"><summary draggable="true" title="Cliquer pour ouvrir / fermer — glisser pour changer l’ordre"><span><i class="grip">⋮⋮</i>Lumière</span></summary><div class="sec" id="secLight"></div></details>
@@ -387,17 +407,22 @@ function floodFill(c,op){
 }
 function applyOp(c,op,from){const x=c.getContext('2d');if(op.t==='fill')floodFill(c,op);else strokeSeg(x,c,op,0,from||snapshot(c));}
 function snapshot(c){const t=document.createElement('canvas');t.width=c.width;t.height=c.height;t.getContext('2d').drawImage(c,0,0);return t;}
-function applyPaint(src,ops){
+function applyPaint(src,ops,st){
   if(!ops||!ops.length)return src;const c=snapshot(src);
-  for(const op of ops)applyOp(c,op,op.t==='stamp'?snapshot(c):null);
+  for(const op of ops){const z=op.zone&&st&&(st.zones||[]).find(q=>q.id===op.zone);
+    if(!z){applyOp(c,op,op.t==='stamp'?snapshot(c):null);continue;}
+    // retouche limitée à la zone
+    const t=snapshot(c);applyOp(t,op,op.t==='stamp'?snapshot(c):null);const m=zoneMaskSrc(z,src);
+    const tx=t.getContext('2d');tx.globalCompositeOperation='destination-in';tx.drawImage(m,0,0,t.width,t.height);
+    const x=c.getContext('2d');x.globalCompositeOperation='destination-out';x.drawImage(m,0,0,c.width,c.height);x.globalCompositeOperation='source-over';x.drawImage(t,0,0);}
   return c;
 }
 /* image d'aperçu avec les retouches (gardée en cache) */
 function paintedPrev(it){
   const ops=it.st.paint||[];if(!ops.length)return it.prev;
   if(it.pcache&&it.pcache.live&&it.pcache.base===it.prev)return it.pcache.c;
-  const sig=JSON.stringify(ops);if(it.pcache&&it.pcache.sig===sig&&it.pcache.base===it.prev)return it.pcache.c;
-  const c=applyPaint(it.prev,ops);it.pcache={sig,c,base:it.prev};return c;
+  const sig=JSON.stringify(ops)+JSON.stringify((it.st.zones||[]).map(z=>[z.id,z.parts,z.inv,z.feather]));if(it.pcache&&it.pcache.sig===sig&&it.pcache.base===it.prev)return it.pcache.c;
+  const c=applyPaint(it.prev,ops,it.st);it.pcache={sig,c,base:it.prev};return c;
 }
 /* courbe monotone (Fritsch-Carlson) → table 256 valeurs */
 function curveLUT(pts){
@@ -488,12 +513,12 @@ async function renderPreview(){
     // en mode rognage : on montre le cadre entier (sans rognage) avec les réglages
     const s2=Object.assign(clone(it.st),{crop:{x:0,y:0,w:1,h:1}});const [W1,H1]=frameSize(src.width,src.height,s2);
     const k=Math.min((st.width-40)/W1,(st.height-40)/H1,1)*dpr;c=geom(src,s2,Math.max(1,Math.round(W1*k)),Math.max(1,Math.round(H1*k)));
-    if(!S.before)pixels(c,it.st);
+    if(!S.before)pixelsZ(c,it.st,src0,s2);
   }else{
     const [W1,H1]=frameSize(src.width,src.height,it.st);const cw=it.st.crop.w*W1,ch=it.st.crop.h*H1;
     const k=Math.min((st.width-30)/cw,(st.height-30)/ch,1.5)*dpr;
     c=geom(src,S.before?Object.assign(clone(it.st),{}):it.st,Math.max(1,Math.round(cw*k)),Math.max(1,Math.round(ch*k)));
-    if(!S.before)pixels(c,it.st);
+    if(!S.before)pixelsZ(c,it.st,src0,it.st);
   }
   view.width=c.width;view.height=c.height;view.style.width=Math.round(c.width/dpr)+'px';view.style.height=Math.round(c.height/dpr)+'px';
   view.getContext('2d').drawImage(c,0,0);lastPreview=c;
@@ -577,7 +602,7 @@ $('#secDetail').innerHTML=SLIDERS.detail.map(sliderHTML).join('');
 const ALLDEF=Object.fromEntries(Object.values(SLIDERS).flat().map(d=>[d[0],d]));
 function fmtVal(k,v){if(k==='gamma')return (+v).toFixed(2);if(k==='posterize')return v<2?'non':v;if(k==='threshold')return v>0?v:'non';if(k==='hue')return v+'°';return v>0&&ALLDEF[k][2]<0?'+'+v:String(v);}
 function syncPanel(){
-  const it=cur();const st=it?it.st:DEF();
+  const it=cur();const st=it?effSt(it):DEF();
   document.querySelectorAll('[data-k]').forEach(i=>{i.value=st[i.dataset.k];const b=i.parentElement.querySelector('b');b.textContent=fmtVal(i.dataset.k,st[i.dataset.k]);});
   $('#fBw').checked=st.bw;$('#fDuo').checked=st.duo;$('#fDuoA').value=st.duoA;$('#fDuoB').value=st.duoB;$('#fSplitA').value=st.splitA;$('#fSplitB').value=st.splitB;$('#duoBox').hidden=!st.duo;
   $('#gRatio').value=st.ratio;$('#gStraight').value=st.straight;$('#vStraight').textContent=(+st.straight).toFixed(1)+'°';
@@ -592,9 +617,9 @@ function updateExportInfo(){const it=cur();if(!it)return;const [w,h]=outDims(it)
 /* historique par image */
 function pushHist(it){it.hist.push(JSON.stringify(it.st));if(it.hist.length>80)it.hist.shift();it.fut=[];}
 let histT=0,histPending=false;
-function change(fn,live){const it=cur();if(!it)return;if(!histPending){pushHist(it);histPending=true;}clearTimeout(histT);histT=setTimeout(()=>{histPending=false;},500);fn(it.st);it.st.preset=live===true?it.st.preset:null;schedule();syncLabels();clearTimeout(thT);thT=setTimeout(()=>{refreshThumb(it);renderPresets();},400);}
+function change(fn,live){const it=cur();if(!it)return;if(!histPending){pushHist(it);histPending=true;}clearTimeout(histT);histT=setTimeout(()=>{histPending=false;},500);zoneApply(it,fn);it.st.preset=live===true?it.st.preset:null;schedule();syncLabels();clearTimeout(thT);thT=setTimeout(()=>{refreshThumb(it);renderPresets();},400);}
 let thT=0;
-function syncLabels(){const it=cur();if(!it)return;document.querySelectorAll('[data-k]').forEach(i=>{i.parentElement.querySelector('b').textContent=fmtVal(i.dataset.k,it.st[i.dataset.k]);});document.querySelectorAll('.pr').forEach(p=>p.classList.toggle('on',it.st.preset===p.dataset.name));}
+function syncLabels(){const it=cur();if(!it)return;const es=effSt(it);document.querySelectorAll('[data-k]').forEach(i=>{i.parentElement.querySelector('b').textContent=fmtVal(i.dataset.k,es[i.dataset.k]);});document.querySelectorAll('.pr').forEach(p=>p.classList.toggle('on',it.st.preset===p.dataset.name));}
 $('aside').addEventListener('input',e=>{const t=e.target;if(t.dataset.k){change(st=>{st[t.dataset.k]=+t.value;});}});
 $('aside').addEventListener('dblclick',e=>{const b=e.target.closest('[data-reset]');if(!b)return;const k=b.dataset.reset;change(st=>{st[k]=ALLDEF[k][5];});syncPanel();});
 $('#fBw').onchange=e=>change(st=>{st.bw=e.target.checked;});
@@ -603,19 +628,19 @@ $('#fDuo').onchange=e=>{change(st=>{st.duo=e.target.checked;});$('#duoBox').hidd
 /* courbe */
 const curveCv=$('#curve');let cDrag=-1;
 function drawCurve(){
-  const it=cur(),pts=it?it.st.curve:[[0,0],[255,255]],x=curveCv.getContext('2d'),W=curveCv.width,H=curveCv.height;
+  const it=cur(),pts=it?effSt(it).curve:[[0,0],[255,255]],x=curveCv.getContext('2d'),W=curveCv.width,H=curveCv.height;
   x.clearRect(0,0,W,H);x.strokeStyle='#e3e0d9';x.lineWidth=1;for(let i=1;i<4;i++){x.beginPath();x.moveTo(i*W/4,0);x.lineTo(i*W/4,H);x.moveTo(0,i*H/4);x.lineTo(W,i*H/4);x.stroke();}
   x.strokeStyle='#d0cdc5';x.beginPath();x.moveTo(0,H);x.lineTo(W,0);x.stroke();
   const t=curveLUT(pts);x.strokeStyle='#1d1d1f';x.lineWidth=2;x.beginPath();for(let i=0;i<256;i++){const px=i/255*W,py=H-t[i]/255*H;i?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();
   x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--acc')||'#f08a4b';for(const p of pts){x.beginPath();x.arc(p[0]/255*W,H-p[1]/255*H,6,0,Math.PI*2);x.fill();}
 }
 function cPos(e){const r=curveCv.getBoundingClientRect();return [Math.max(0,Math.min(255,(e.clientX-r.left)/r.width*255)),Math.max(0,Math.min(255,(1-(e.clientY-r.top)/r.height)*255))];}
-curveCv.addEventListener('pointerdown',e=>{const it=cur();if(!it)return;const [x,y]=cPos(e);const pts=it.st.curve;let best=-1,bd=14;pts.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-y);if(d<bd){bd=d;best=i;}});
-  if(best<0){change(st=>{st.curve.push([x,y]);st.curve.sort((a,b)=>a[0]-b[0]);});best=it.st.curve.findIndex(p=>p[0]===x&&p[1]===y);}
+curveCv.addEventListener('pointerdown',e=>{const it=cur();if(!it)return;const [x,y]=cPos(e);const pts=effSt(it).curve;let best=-1,bd=14;pts.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-y);if(d<bd){bd=d;best=i;}});
+  if(best<0){change(st=>{st.curve.push([x,y]);st.curve.sort((a,b)=>a[0]-b[0]);});best=effSt(it).curve.findIndex(p=>p[0]===x&&p[1]===y);}
   cDrag=best;curveCv.setPointerCapture(e.pointerId);drawCurve();});
 curveCv.addEventListener('pointermove',e=>{if(cDrag<0)return;const it=cur();const [x,y]=cPos(e);change(st=>{const pts=st.curve;const isEnd=cDrag===0||cDrag===pts.length-1;const lo=cDrag>0?pts[cDrag-1][0]+1:0,hi=cDrag<pts.length-1?pts[cDrag+1][0]-1:255;pts[cDrag]=[isEnd?(cDrag===0?Math.min(x,hi):Math.max(x,lo)):Math.max(lo,Math.min(hi,x)),y];});drawCurve();});
 curveCv.addEventListener('pointerup',()=>{cDrag=-1;});
-curveCv.addEventListener('dblclick',e=>{const it=cur();if(!it)return;const [x,y]=cPos(e);const pts=it.st.curve;const i=pts.findIndex(p=>Math.hypot(p[0]-x,p[1]-y)<14);if(i>0&&i<pts.length-1){change(st=>{st.curve.splice(i,1);});drawCurve();}});
+curveCv.addEventListener('dblclick',e=>{const it=cur();if(!it)return;const [x,y]=cPos(e);const pts=effSt(it).curve;const i=pts.findIndex(p=>Math.hypot(p[0]-x,p[1]-y)<14);if(i>0&&i<pts.length-1){change(st=>{st.curve.splice(i,1);});drawCurve();}});
 $('#bCurveReset').onclick=()=>{change(st=>{st.curve=[[0,0],[255,255]];});drawCurve();};
 $('#bAutoLv').onclick=async()=>{const it=cur();if(!it)return;await ensurePrev(it);const src=gsrc(paintedPrev(it),it.st);const c=geom(src,Object.assign(clone(it.st)),200,Math.max(1,Math.round(200*outCrop(it)[1]/outCrop(it)[0])));const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;const h=new Uint32Array(256);let n=0;for(let i=0;i<d.length;i+=4){h[Math.round(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])]++;n++;}let a=0,lo=0,hi=255;for(let i=0;i<256;i++){a+=h[i];if(a>n*0.004){lo=i;break;}}a=0;for(let i=255;i>=0;i--){a+=h[i];if(a>n*0.004){hi=i;break;}}change(st=>{st.black=Math.min(lo,hi-1);st.white=Math.max(hi,lo+1);st.gamma=1;});syncPanel();};
 /* géométrie */
@@ -693,10 +718,11 @@ $('#stage').addEventListener('pointerdown',e=>{
   if(TOOL.tool==='stamp'&&e.altKey){TOOL.cloneSrc=p;TOOL.cloneOff=null;placeCloneMk();$('#info').textContent='Zone source choisie — peins maintenant là où tu veux la recopier';return;}
   if(TOOL.tool==='stamp'&&!TOOL.cloneSrc){$('#info').textContent='Tampon : fais d’abord Alt + clic sur la zone à recopier';return;}
   pushHist(it);
-  if(TOOL.tool==='fill'){it.st.paint=it.st.paint.concat([{t:'fill',x:R5(p[0]),y:R5(p[1]),tol:TOOL.tol,color:TOOL.fillColor}]);schedule();setTimeout(()=>refreshThumb(it),50);return;}
+  if(TOOL.tool==='fill'){const fo={t:'fill',x:R5(p[0]),y:R5(p[1]),tol:TOOL.tol,color:TOOL.fillColor};if(curZone(it))fo.zone=S.zone;it.st.paint=it.st.paint.concat([fo]);it.pcache=null;schedule();setTimeout(()=>refreshThumb(it),50);return;}
   const M=Math.max(S.viewSrc[0],S.viewSrc[1]);const r=R5(TOOL.size/2/screenPerSrc()/M);
   const op={t:TOOL.tool,r,hard:TOOL.hard,pts:[[R5(p[0]),R5(p[1])]]};
   if(TOOL.tool==='erase')op.color=TOOL.eraseColor;
+  if(curZone(it))op.zone=S.zone;
   if(TOOL.tool==='stamp'){if(!TOOL.cloneOff)TOOL.cloneOff=[TOOL.cloneSrc[0]-p[0],TOOL.cloneSrc[1]-p[1]];op.dx=R5(TOOL.cloneOff[0]);op.dy=R5(TOOL.cloneOff[1]);}
   // dessin direct sur l'aperçu en cache pendant le trait
   const base=paintedPrev(it);const c=base===it.prev?snapshot(it.prev):base;
@@ -704,7 +730,7 @@ $('#stage').addEventListener('pointerdown',e=>{
   const from=op.t==='stamp'?snapshot(c):null;strokeSeg(c.getContext('2d'),c,op,0,from);
   stroke={op,c,from};$('#stage').setPointerCapture(e.pointerId);schedule();
 });
-$('#stage').addEventListener('pointerup',()=>{if(!stroke)return;const it=cur();if(it&&it.pcache)it.pcache={sig:JSON.stringify(it.st.paint),c:stroke.c,base:it.prev};stroke=null;placeCloneMk();const t=it;setTimeout(()=>{refreshThumb(t);},30);});
+$('#stage').addEventListener('pointerup',()=>{if(!stroke)return;const it=cur();if(it&&it.pcache)it.pcache=stroke.op.zone?null:{sig:JSON.stringify(it.st.paint),c:stroke.c,base:it.prev};if(stroke.op.zone)schedule();stroke=null;placeCloneMk();const t=it;setTimeout(()=>{refreshThumb(t);},30);});
 
 /* ---------- menus : ordre par glisser-déposer (mémorisé) ---------- */
 (function(){
@@ -720,7 +746,7 @@ $('#stage').addEventListener('pointerup',()=>{if(!stroke)return;const it=cur();i
 /* ---------- préréglages ---------- */
 function userPresets(){try{return JSON.parse(localStorage.getItem('atelierPhoto.presets')||'[]');}catch(e){return [];}}
 function allPresets(){return PRESETS.concat(userPresets().map(p=>[p.name,p.v,true]));}
-function applyPreset(name){const p=allPresets().find(x=>x[0]===name);if(!p)return;change(st=>{const keep={paint:st.paint,persp:st.persp,crop:st.crop,ratio:st.ratio,rot:st.rot,flipH:st.flipH,flipV:st.flipV,straight:st.straight,out:st.out};Object.assign(st,DEF(),clone(p[1]),keep);st.preset=name;},true);syncPanel();}
+function applyPreset(name){const p=allPresets().find(x=>x[0]===name);if(!p)return;change(st=>{const keep={paint:st.paint,zones:st.zones,persp:st.persp,crop:st.crop,ratio:st.ratio,rot:st.rot,flipH:st.flipH,flipV:st.flipV,straight:st.straight,out:st.out};Object.assign(st,DEF(),clone(p[1]),keep);st.preset=name;},true);syncPanel();}
 let presetBusy=false;
 async function renderPresets(){
   const box=$('#presets');const it=cur();const list=allPresets();
@@ -740,7 +766,7 @@ $('#bSavePreset').onclick=()=>{const it=cur();if(!it)return;const n=prompt('Nom 
 /* =====================================================================
    Bande d'images (lot)
    ===================================================================== */
-function refreshThumb(it){if(!it||!it.prev)return;const [cw,ch]=outCrop(it);const k=Math.min(1,160/Math.max(cw,ch));const c=geom(gsrc(paintedPrev(it),it.st),it.st,Math.max(1,Math.round(cw*k*(it.prev.width/it.W))),Math.max(1,Math.round(ch*k*(it.prev.width/it.W))));pixels(c,it.st);it.thumb=c;const el=document.querySelector(`.th[data-id="${it.id}"] canvas`);if(el){el.width=c.width;el.height=c.height;el.getContext('2d').drawImage(c,0,0);}}
+function refreshThumb(it){if(!it||!it.prev)return;const [cw,ch]=outCrop(it);const k=Math.min(1,160/Math.max(cw,ch));const c=geom(gsrc(paintedPrev(it),it.st),it.st,Math.max(1,Math.round(cw*k*(it.prev.width/it.W))),Math.max(1,Math.round(ch*k*(it.prev.width/it.W))));pixelsZ(c,it.st,paintedPrev(it),it.st);it.thumb=c;const el=document.querySelector(`.th[data-id="${it.id}"] canvas`);if(el){el.width=c.width;el.height=c.height;el.getContext('2d').drawImage(c,0,0);}}
 function renderStrip(){
   const s=$('#strip');
   s.innerHTML=S.items.map(it=>`<div class="th${it.id===S.cur?' on':''}${S.sel.has(it.id)?' sel':''}" data-id="${it.id}" title="${it.name.replace(/"/g,'&quot;')} — Ctrl+clic : sélection multiple"><canvas></canvas><button class="x" data-x="${it.id}" title="Retirer">✕</button></div>`).join('')+`<div class="muted" style="text-align:center">${S.items.length} image${S.items.length>1?'s':''}</div>`;
@@ -775,9 +801,9 @@ $('#bApplyAll').onclick=()=>{
    Export JPG / ZIP
    ===================================================================== */
 async function renderFull(it){
-  const full=gsrc(applyPaint(await decode(it.file,0),it.st.paint),it.st);
+  const raw=applyPaint(await decode(it.file,0),it.st.paint,it.st);const full=gsrc(raw,it.st);
   const [w,h]=outDims(it);
-  let c=geom(full,it.st,w,h);pixels(c,it.st);return c;
+  let c=geom(full,it.st,w,h);pixelsZ(c,it.st,raw,it.st);return c;
 }
 /* JPG : les zones transparentes deviennent blanches */
 function onWhite(c){const n=document.createElement('canvas');n.width=c.width;n.height=c.height;const x=n.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,n.width,n.height);x.drawImage(c,0,0);return n;}
@@ -1014,6 +1040,127 @@ function togglePersp(on,cancel){
   const _sel=select;select=async function(id,force){if(S.perspMode)togglePersp(false,true);return _sel(id,force);};
 })();
 
+
+/* =====================================================================
+   Zones : sélections (rectangle, lasso, baguette) avec leurs propres réglages
+   ===================================================================== */
+const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ADJ_KEYS=new Set([...Object.keys(ALLDEF),'bw','duo','duoA','duoB','splitA','splitB','curve']);
+S.zone=null;TOOL.wtol=32;
+function curZone(it){it=it||cur();return it&&S.zone?(it.st.zones||[]).find(z=>z.id===S.zone)||null:null;}
+function effSt(it){const z=curZone(it);return z?Object.assign(clone(it.st),clone(z.adj||{})):it.st;}
+/* applique une modification : à l'image entière, ou à la zone choisie (réglages seulement) */
+function zoneApply(it,fn){const z=curZone(it);if(!z){fn(it.st);return;}
+  const eff=Object.assign(clone(it.st),clone(z.adj||{}));const zonesBefore=it.st.zones;fn(eff);
+  for(const k of Object.keys(eff)){if(k==='zones')continue;
+    if(ADJ_KEYS.has(k)){const g=JSON.stringify(it.st[k]),v=JSON.stringify(eff[k]);if(g===v)delete z.adj[k];else z.adj[k]=clone(eff[k]);}
+    else if(k!=='preset'&&JSON.stringify(it.st[k])!==JSON.stringify(eff[k]))it.st[k]=eff[k];}
+  it.st.zones=zonesBefore;renderZones();}
+/* masque d'une zone, dans les pixels de l'image d'origine (blanc = dans la zone) */
+const ZM=new WeakMap();
+function zoneMaskSrc(z,src){
+  const sig=JSON.stringify([z.parts,z.inv,z.feather]);let m=ZM.get(src);if(!m){m=new Map();ZM.set(src,m);}const hit=m.get(z.id);if(hit&&hit.sig===sig)return hit.c;
+  const W=src.width,H=src.height;const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  for(const p of z.parts||[]){x.globalCompositeOperation=p.op==='sub'?'destination-out':'source-over';x.fillStyle='#fff';
+    if(p.t==='poly'&&p.pts&&p.pts.length>2){x.beginPath();p.pts.forEach(([u,v],i)=>i?x.lineTo(u*W,v*H):x.moveTo(u*W,v*H));x.closePath();x.fill();}
+    else if(p.t==='wand')x.drawImage(wandMask(src,p),0,0);}
+  x.globalCompositeOperation='source-over';
+  let out=c;
+  if(z.inv){const t=document.createElement('canvas');t.width=W;t.height=H;const tx=t.getContext('2d');tx.fillStyle='#fff';tx.fillRect(0,0,W,H);tx.globalCompositeOperation='destination-out';tx.drawImage(c,0,0);out=t;}
+  if(z.feather>0){const r=z.feather/100*0.04*Math.max(W,H);const t=document.createElement('canvas');t.width=W;t.height=H;const tx=t.getContext('2d');tx.filter=`blur(${r}px)`;tx.drawImage(out,0,0);out=t;}
+  m.set(z.id,{sig,c:out});return out;
+}
+const WM=new WeakMap();
+function wandMask(src,p){
+  const sig=[p.x,p.y,p.tol].join(',');let m=WM.get(src);if(!m){m=new Map();WM.set(src,m);}if(m.has(sig))return m.get(sig);
+  const W=src.width,H=src.height;const sc=src.getContext?src:snapshot(src);const d=sc.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
+  const sx=Math.min(W-1,Math.max(0,Math.floor(p.x*W))),sy=Math.min(H-1,Math.max(0,Math.floor(p.y*H)));const i0=(sy*W+sx)*4;const r0=d[i0],g0=d[i0+1],b0=d[i0+2];
+  const tol=(p.tol||32)*2.55,t2=tol*tol*3;const seen=new Uint8Array(W*H);const st=new Int32Array(W*H);let n=0;st[n++]=sy*W+sx;seen[sy*W+sx]=1;
+  const out=document.createElement('canvas');out.width=W;out.height=H;const ox=out.getContext('2d');const im=ox.createImageData(W,H),od=im.data;
+  while(n){const q=st[--n];const i=q*4;const dr=d[i]-r0,dg=d[i+1]-g0,db=d[i+2]-b0;if(dr*dr+dg*dg+db*db>t2)continue;
+    od[i]=od[i+1]=od[i+2]=od[i+3]=255;const x=q%W,y=(q-x)/W;
+    if(x>0&&!seen[q-1]){seen[q-1]=1;st[n++]=q-1;}if(x<W-1&&!seen[q+1]){seen[q+1]=1;st[n++]=q+1;}if(y>0&&!seen[q-W]){seen[q-W]=1;st[n++]=q-W;}if(y<H-1&&!seen[q+W]){seen[q+W]=1;st[n++]=q+W;}}
+  ox.putImageData(im,0,0);m.set(sig,out);return out;
+}
+/* masque ramené dans l'image affichée / exportée (rotation, perspective, rognage…) */
+function zoneMaskOut(z,src0,stG,w,h){const ms=zoneMaskSrc(z,src0);return geom(gsrc(ms,stG),stG,w,h);}
+function pixelsZ(c,st,src0,stG){
+  const zs=(st.zones||[]).filter(z=>z.adj&&Object.keys(z.adj).length&&(z.parts||[]).length);
+  if(!zs.length||!src0){pixels(c,st);return c;}
+  const base=snapshot(c);pixels(c,st);const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);x.globalCompositeOperation='source-over';
+  for(const z of zs){const zc=snapshot(base);pixels(zc,Object.assign({},st,z.adj));const m=zoneMaskOut(z,src0,stG,c.width,c.height);
+    const zx=zc.getContext('2d');zx.globalCompositeOperation='destination-in';zx.drawImage(m,0,0,zc.width,zc.height);x.drawImage(zc,0,0);}
+  return c;
+}
+/* contour de la zone choisie, par-dessus l'aperçu */
+function drawZoneOv(){
+  let ov=$('#zoneOv');if(!ov){ov=document.createElement('canvas');ov.id='zoneOv';$('#stage').appendChild(ov);}
+  const it=cur(),z=curZone(it);if(!z||!it||!it.prev||S.before||!(z.parts||[]).length){ov.hidden=true;return;}
+  const v=$('#view');ov.hidden=false;ov.width=v.width;ov.height=v.height;ov.style.left=v.offsetLeft+'px';ov.style.top=v.offsetTop+'px';ov.style.width=v.style.width;ov.style.height=v.style.height;
+  const src0=paintedPrev(it);const stG=S.cropMode?Object.assign(clone(it.st),{crop:{x:0,y:0,w:1,h:1}}):it.st;
+  const m=zoneMaskOut(Object.assign({},z,{feather:0}),src0,stG,v.width,v.height);const W=v.width,H=v.height;
+  const md=m.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;const x=ov.getContext('2d');const im=x.createImageData(W,H),o=im.data;
+  const A=i=>md[i*4+3]>127;
+  for(let y=0;y<H;y++)for(let xx=0;xx<W;xx++){const i=y*W+xx;const a=A(i);let edge=false;
+    if(xx>0&&A(i-1)!==a)edge=true;else if(y>0&&A(i-W)!==a)edge=true;
+    const k=i*4;if(edge){const on=((xx+y)>>2)&1;o[k]=o[k+1]=o[k+2]=on?255:0;o[k+3]=255;}else if(a){o[k]=30;o[k+1]=136;o[k+2]=255;o[k+3]=34;}}
+  x.putImageData(im,0,0);
+}
+/* liste des zones (panneau de droite) */
+function renderZones(){
+  const it=cur();const zs=it?(it.st.zones||[]):[];const z=curZone(it);
+  $('#zoneList').innerHTML=`<div class="zr${!z?' on':''}" data-z=""><div class="zh"><b>Toute l’image</b></div></div>`+zs.map(q=>`<div class="zr${z&&z.id===q.id?' on':''}" data-z="${q.id}"><div class="zh"><b title="Double-clic : renommer">${esc(q.name)}</b><span class="muted">${Object.keys(q.adj||{}).length?Object.keys(q.adj).length+' réglage'+(Object.keys(q.adj).length>1?'s':''):''}</span><button data-za="del" title="Supprimer la zone">✕</button></div>
+    <div class="zb"><label><input type="checkbox" data-za="inv"${q.inv?' checked':''}> Inverser (tout sauf la zone)</label><label>Contour progressif<input type="range" min="0" max="100" step="1" data-za="feather" value="${q.feather||0}"></label>
+    <div class="row" style="display:flex;gap:5px"><button class="btn sm" data-za="reset">Réglages de la zone à zéro</button></div></div></div>`).join('');
+  const ban=$('#zoneBan');ban.hidden=!z;if(z)ban.innerHTML=`<span>Réglages appliqués à :</span><b>${esc(z.name)}</b><button class="btn sm" data-za="all">Toute l’image</button>`;
+  $('#stage').classList.toggle('zsel',/^z/.test(TOOL.tool||''));
+}
+function setZone(id){S.zone=id||null;syncPanel();renderZones();schedule();}
+function zoneChange(fn){const it=cur();if(!it)return;pushHist(it);it.st.zones=it.st.zones||[];fn(it);it.pcache=null;renderZones();schedule();clearTimeout(thT);thT=setTimeout(()=>refreshThumb(it),300);}
+$('#zoneList').addEventListener('click',e=>{const row=e.target.closest('[data-z]');if(!row)return;const a=e.target.closest('[data-za]');const id=row.dataset.z;
+  if(a&&a.dataset.za==='del'){zoneChange(it=>{it.st.zones=it.st.zones.filter(q=>q.id!==id);it.st.paint=(it.st.paint||[]).map(o=>o.zone===id?Object.assign({},o,{zone:undefined}):o);});if(S.zone===id)setZone(null);return;}
+  if(a&&a.dataset.za==='reset'){zoneChange(it=>{const q=it.st.zones.find(x=>x.id===id);if(q)q.adj={};});syncPanel();return;}
+  if(a)return;if((S.zone||'')!==id)setZone(id);});
+$('#zoneList').addEventListener('change',e=>{const a=e.target.closest('[data-za]');if(!a)return;const id=e.target.closest('[data-z]').dataset.z;
+  zoneChange(it=>{const q=it.st.zones.find(x=>x.id===id);if(!q)return;if(a.dataset.za==='inv')q.inv=a.checked;if(a.dataset.za==='feather')q.feather=+a.value;});});
+$('#zoneList').addEventListener('dblclick',e=>{const b=e.target.closest('.zh b');const row=e.target.closest('[data-z]');if(!b||!row||!row.dataset.z)return;const it=cur();const q=it&&it.st.zones.find(x=>x.id===row.dataset.z);if(!q)return;const n=prompt('Nom de la zone :',q.name);if(n&&n.trim()){q.name=n.trim();renderZones();}});
+$('#zoneBan').addEventListener('click',e=>{if(e.target.closest('[data-za=all]'))setZone(null);});
+/* outils de sélection sur l'image */
+(function(){
+  const stage=$('#stage');const NS='http://www.w3.org/2000/svg';const svg=document.createElementNS(NS,'svg');svg.id='zoneDraw';stage.appendChild(svg);
+  const sp=(e)=>{const r=stage.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
+  function addPart(part,e){const it=cur();if(!it)return;const z=curZone(it);
+    if(z&&(e.shiftKey||e.altKey)){part.op=e.altKey?'sub':'add';zoneChange(()=>{z.parts=z.parts.concat([part]);});return;}
+    part.op='add';const n=(it.st.zones||[]).length+1;const id='z'+Date.now().toString(36);
+    zoneChange(it=>{it.st.zones=(it.st.zones||[]).concat([{id,name:'Zone '+n,parts:[part],inv:false,feather:0,adj:{}}]);});setZone(id);}
+  stage.addEventListener('pointerdown',e=>{
+    const t=TOOL.tool;if(!/^z/.test(t||''))return;const it=cur();if(!it||e.button!==0||!S.viewM||S.cropMode)return;
+    e.preventDefault();e.stopImmediatePropagation();
+    if(t==='zwand'){const p=toImg(e);if(!p||p[0]<0||p[1]<0||p[0]>1||p[1]>1)return;addPart({t:'wand',x:R5(p[0]),y:R5(p[1]),tol:TOOL.wtol},e);return;}
+    const a=sp(e);const pts=[a],img=[toImg(e)];stage.setPointerCapture(e.pointerId);
+    const draw=()=>{const P=t==='zrect'?(()=>{const b=pts[pts.length-1];return [a,[b[0],a[1]],b,[a[0],b[1]]];})():pts;
+      svg.innerHTML=`<polygon points="${P.map(q=>q.join(',')).join(' ')}" fill="rgba(30,136,255,.12)" stroke="#fff" stroke-width="1.5"/><polygon points="${P.map(q=>q.join(',')).join(' ')}" fill="none" stroke="#1e88ff" stroke-width="1.5" stroke-dasharray="5 4"/>`;};
+    const mv=ev=>{if(t==='zrect'){let b=sp(ev);if(ev.shiftKey){const d=Math.max(Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]));b=[a[0]+Math.sign(b[0]-a[0]||1)*d,a[1]+Math.sign(b[1]-a[1]||1)*d];}pts[1]=b;pts.length=2;}else{pts.push(sp(ev));img.push(toImg(ev));}draw();};
+    const up=ev=>{stage.removeEventListener('pointermove',mv);stage.removeEventListener('pointerup',up);svg.innerHTML='';
+      const r=stage.getBoundingClientRect();const toI=([x,y])=>toImg({clientX:x+r.left,clientY:y+r.top});
+      let poly;if(t==='zrect'){if(pts.length<2)return;const b=pts[1];if(Math.abs(b[0]-a[0])<3||Math.abs(b[1]-a[1])<3)return;poly=[a,[b[0],a[1]],b,[a[0],b[1]]].map(toI);}
+      else{if(img.length<3)return;poly=img.filter(Boolean);const step=Math.max(1,Math.floor(poly.length/400));poly=poly.filter((q,i)=>i%step===0);}
+      addPart({t:'poly',pts:poly.map(q=>[R5(q[0]),R5(q[1])])},e.shiftKey||e.altKey?e:ev);};
+    stage.addEventListener('pointermove',mv);stage.addEventListener('pointerup',up);
+  },true);
+  document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)&&document.activeElement.type!=='range')return;if(e.ctrlKey||e.metaKey)return;const k=e.key.toLowerCase();
+    if(k==='m'){setTool(TOOL.tool==='zrect'?'':'zrect');e.stopImmediatePropagation();return;}
+    if(k==='a'){setTool(TOOL.tool==='zlasso'?'':'zlasso');e.stopImmediatePropagation();return;}
+    if(k==='w'){setTool(TOOL.tool==='zwand'?'':'zwand');e.stopImmediatePropagation();return;}
+    if(k==='escape'&&S.zone&&!TOOL.tool&&!S.cropMode&&!S.perspMode){setZone(null);e.stopImmediatePropagation();}},true);
+  // affichage
+  const _rp=renderPreview;renderPreview=async function(){const r=await _rp.apply(this,arguments);try{drawZoneOv();}catch(err){console.error(err);}return r;};
+  const _sel=select;select=async function(id,force){S.zone=null;const r=await _sel(id,force);renderZones();return r;};
+  const _st=setTool;setTool=function(t){_st(t);$('#stage').classList.toggle('zsel',/^z/.test(TOOL.tool||''));$('#stage').classList.toggle('tooling',TOOL.tool==='stamp'||TOOL.tool==='erase');};
+  Object.assign(HINTS,{zrect:'Trace un rectangle : c’est une nouvelle zone. Maj : ajouter à la zone choisie, Alt : en retirer.',zlasso:'Dessine le contour à main levée. Maj : ajouter à la zone choisie, Alt : en retirer.',zwand:'Clique sur une couleur : la zone de couleur proche est choisie. Maj : ajouter, Alt : retirer.'});
+  renderZones();
+})();
+
 /* ---------- réglages de l'outil : petit bloc en haut à gauche de l'image (comme Vecto) ---------- */
 (function(){
   const tb=document.createElement('div');tb.id='toolBar';tb.hidden=true;$('#stage').parentNode.insertBefore(tb,$('#stage'));new ResizeObserver(()=>schedule()).observe($('#stage'));
@@ -1027,8 +1174,11 @@ function togglePersp(on,cancel){
   const d=$('#dTool');if(d)d.style.display='none';// la rubrique de droite n'a plus lieu d'être
   const geo=document.querySelector('details[data-sec="rognage"] summary span');if(geo)geo.innerHTML='<i class="grip">⋮⋮</i>Rotation et miroir';
   const mini=document.querySelector('#mini [data-open=retouche]');if(mini)mini.remove();const mr=document.querySelector('#mini [data-open=rognage]');if(mr)mr.title='Rotation et miroir';
-  const NAMES={stamp:'Tampon',fill:'Pot de peinture',erase:'Gomme'};
-  function tbSync(){const crop=!!S.cropMode,t=TOOL.tool,pm=!!S.perspMode;tb.hidden=!(crop||t||pm);gC.hidden=!crop;gP.hidden=!pm;gT.hidden=crop||pm||!t;tT.textContent=NAMES[t]||'';}
+  const NAMES={stamp:'Tampon',fill:'Pot de peinture',erase:'Gomme',zrect:'Sélection rectangle',zlasso:'Lasso libre',zwand:'Baguette magique'};
+  const gZ=document.createElement('div');gZ.className='tbg';gZ.innerHTML='<b id="zTitle"></b><label id="zTolBox">Tolérance<input type="range" id="zTol" min="1" max="100" value="'+TOOL.wtol+'"><span id="vZTol">'+TOOL.wtol+'</span></label><span class="muted" id="zHint"></span>';tb.appendChild(gZ);
+  gZ.querySelector('#zTol').oninput=e=>{TOOL.wtol=+e.target.value;gZ.querySelector('#vZTol').textContent=TOOL.wtol;};
+  function tbSync(){const crop=!!S.cropMode,t=TOOL.tool,pm=!!S.perspMode,zt=/^z/.test(t||'');tb.hidden=!(crop||t||pm);gC.hidden=!crop;gP.hidden=!pm;gT.hidden=crop||pm||!t||zt;gZ.hidden=!zt||crop||pm;tT.textContent=NAMES[t]||'';
+    if(zt){gZ.querySelector('#zTitle').textContent=NAMES[t];gZ.querySelector('#zTolBox').hidden=t!=='zwand';gZ.querySelector('#zHint').textContent=HINTS[t]||'';}}
   window.tbSync=tbSync;
   const _st=setTool;setTool=function(x){_st(x);tbSync();};
   const _tc=toggleCrop;toggleCrop=function(on){_tc(on);tbSync();};
@@ -1040,6 +1190,6 @@ function togglePersp(on,cancel){
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;addFiles(await Promise.all(p.files.map(h=>h.getFile())));});
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "La Suite Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["K", "Perspective : placer les 4 coins d’un document photographié de biais pour le remettre à plat (Entrée : appliquer, Échap : annuler)"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "La Suite Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["M / A / W", "Sélection rectangle, lasso libre, baguette magique : crée une zone (Maj : ajouter, Alt : retirer). Les réglages et retouches ne changent alors que la zone ; Échap : revenir à toute l’image"], ["K", "Perspective : placer les 4 coins d’un document photographié de biais pour le remettre à plat (Entrée : appliquer, Échap : annuler)"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
 </body>
 </html>
