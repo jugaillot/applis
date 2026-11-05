@@ -705,15 +705,36 @@ async function exportPDF(){
 }
 async function printPDF(){
   if(!S.pages.length)return;
+  /* on imprime des images haute définition des feuilles, depuis la page elle-même :
+     fiable quel que soit le nombre de pages (l'aperçu PDF dans un cadre caché ne l'est pas) */
+  let box=$('#printBox');if(box)box.remove();
   try{
-    const bytes=await buildPDF();await busy('Ouverture de l’impression…');
-    const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
-    let fr=$('#printFrame');if(fr)fr.remove();
-    fr=document.createElement('iframe');fr.id='printFrame';fr.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0';
-    fr.src=url;document.body.appendChild(fr);
-    fr.onload=()=>{setTimeout(()=>{try{fr.contentWindow.focus();fr.contentWindow.print();}catch(e){window.open(url,'_blank');}},300);};
-  }catch(e){console.error(e);alert('Impression impossible : '+(e.message||e));}
-  await busy();
+    const bytes=await buildPDF();
+    const pdf=await pdfjsLib.getDocument({data:bytes.slice?bytes.slice(0):bytes,isEvalSupported:false}).promise;
+    box=document.createElement('div');box.id='printBox';document.body.appendChild(box);
+    let css='@media print{body>*:not(#printBox){display:none!important}#printBox{display:block!important}html,body{background:#fff!important;height:auto!important;overflow:visible!important}}#printBox{display:none}#printBox img{display:block;break-after:page;page-break-after:always}#printBox img:last-child{break-after:auto;page-break-after:auto}';
+    const sizes=new Map();
+    for(let n=1;n<=pdf.numPages;n++){
+      await busy('Préparation de l’impression… '+n+' / '+pdf.numPages);
+      const pg=await pdf.getPage(n);const v1=pg.getViewport({scale:1});
+      const k=Math.min(250/72,6000/Math.max(v1.width,v1.height));const vp=pg.getViewport({scale:k});
+      const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+      await pg.render({canvasContext:x,viewport:vp}).promise;
+      const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));c.width=c.height=1;
+      const wmm=(v1.width*25.4/72).toFixed(2),hmm=(v1.height*25.4/72).toFixed(2);const key=wmm+'x'+hmm;
+      if(!sizes.has(key)){const nm='pg'+sizes.size;sizes.set(key,nm);css+=`@page ${nm}{size:${wmm}mm ${hmm}mm;margin:0}.${nm}{page:${nm};width:${wmm}mm;height:${hmm}mm}`;}
+      const im=document.createElement('img');im.className=sizes.get(key);im.src=URL.createObjectURL(blob);box.appendChild(im);
+      pg.cleanup();
+    }
+    const first=[...sizes.keys()][0].split('x');css+=`@page{size:${first[0]}mm ${first[1]}mm;margin:0}`;
+    const st=document.createElement('style');st.textContent=css;box.appendChild(st);
+    await Promise.all([...box.querySelectorAll('img')].map(im=>im.decode?im.decode().catch(()=>{}):0));
+    try{pdf.destroy();}catch(e){}
+    await busy();
+    window.print();
+  }catch(e){console.error(e);await busy();alert('Impression impossible : '+(e.message||e));}
+  const clean=()=>{const b=$('#printBox');if(b){b.querySelectorAll('img').forEach(im=>URL.revokeObjectURL(im.src));b.remove();}};
+  window.addEventListener('afterprint',()=>setTimeout(clean,500),{once:true});setTimeout(clean,120000);
 }
 
 /* ---------- interactions pages ---------- */
