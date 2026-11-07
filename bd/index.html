@@ -172,27 +172,44 @@ async function scan(){
  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})}catch(e){$('hint').textContent='Accès à la caméra refusé.';return}
  $('hint').textContent='Place le code-barres devant la caméra…';
  const v=$('vid');v.srcObject=stream;v.hidden=false;await v.play();
- const det=new BarcodeDetector({formats:['ean_13','ean_8']});
- timer=setInterval(async()=>{try{const c=await det.detect(v);if(c.length){const x=c[0].rawValue;stop();$('hint').textContent='';check(x)}}catch(e){}},300);
+ let fm=['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','codabar'];
+ try{const sup=await BarcodeDetector.getSupportedFormats();fm=fm.filter(x=>sup.includes(x));if(!fm.length)fm=undefined}catch(e){}
+ const det=fm?new BarcodeDetector({formats:fm}):new BarcodeDetector();
+ timer=setInterval(async()=>{try{const c=await det.detect(v);if(c.length){const x=c[0].rawValue.replace(/[^0-9Xx]/g,'');stop();$('hint').textContent='';check(x)}}catch(e){}},300);
 }
 $('go').onclick=()=>{stop();scan()};
 $('ok').onclick=()=>{const v=$('man').value.replace(/[^0-9Xx]/g,'');if(v)check(v)};
+const i10=e=>{if(e.length!==10)return e;const c='978'+e.slice(0,9);let t=0;for(let i=0;i<12;i++)t+=+c[i]*(i%2?3:1);return c+(10-t%10)%10};
+const i13to10=e=>{if(!/^978\d{10}$/.test(e))return null;const c=e.slice(3,12);let t=0;for(let i=0;i<9;i++)t+=+c[i]*(10-i);const k=(11-t%11)%11;return c+(k==10?'X':k)};
+async function titre(ean){
+ const J=u=>fetch(u).then(r=>r.ok?r.json():null).catch(()=>null);
+ const ids=[ean];const t=i13to10(ean);if(t)ids.push(t);
+ for(const q of ids){
+  let j=await J('https://www.googleapis.com/books/v1/volumes?q=isbn:'+q);
+  let v=j&&j.items&&j.items[0]&&j.items[0].volumeInfo;if(v)return v.title+(v.subtitle?' – '+v.subtitle:'')+(v.authors?' — '+v.authors.join(', '):'');
+  j=await J('https://openlibrary.org/api/books?bibkeys=ISBN:'+q+'&format=json&jscmd=data');
+  v=j&&j['ISBN:'+q];if(v)return v.title+(v.authors?' — '+v.authors.map(x=>x.name).join(', '):'');
+ }
+ let j=await J('https://www.googleapis.com/books/v1/volumes?q='+ean);
+ let v=j&&j.items&&j.items[0]&&j.items[0].volumeInfo;if(v)return v.title+(v.authors?' — '+v.authors.join(', '):'');
+ return null;
+}
 function check(ean){
+ ean=i10(String(ean).replace(/[^0-9Xx]/g,'').toUpperCase());
  $('man').value=ean;
- const f=D().find(x=>x[3]===ean);
+ const f=D().find(x=>x[3]===ean||(x[3]&&x[3].replace(/\D/g,'')===ean.replace(/\D/g,'')));
  if(f){
   const a=analyse().find(x=>x.s===f[0]);
   $('res').innerHTML=`<details class="res ok"><summary style="cursor:pointer;list-style:none"><h3>Tu l’as déjà ✓</h3>${esc(f[0])}${f[1]!=null?' — tome '+f[1]:''}<br>${esc(f[2])}<div class="m">${a?info(a):''}${a&&a.miss.length?'. Manque : tome'+(a.miss.length>1?'s ':' ')+a.miss.join(', '):''}</div><div class="m"><u>Voir la série ▾</u></div></summary>${a?lines(a.it):''}</details>`;
   return}
  $('res').innerHTML=`<div class="res no"><h3>Pas dans ta collection</h3><span id="inf">Recherche du titre…</span><div id="add"></div></div>`;
- fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:'+ean).then(r=>r.json()).then(j=>{
-  const v=j.items&&j.items[0]&&j.items[0].volumeInfo;
-  $('inf').innerHTML=v?esc(v.title+(v.authors?' — '+v.authors.join(', '):'')):'Titre introuvable pour ce code ('+esc(ean)+').';
-  const sg=v?v.title:'';
+ titre(ean).then(tt=>{
+  $('inf').innerHTML=tt?esc(tt):'Titre introuvable pour ce code ('+esc(ean)+').';
+  const sg=tt?tt.split(' — ')[0]:'';
   $('add').innerHTML=`<div class="m">Série et tome, pour voir où tu en es et l’ajouter :</div><div class="row"><input id="ns" list="dl" placeholder="Série"><input id="nt" inputmode="numeric" placeholder="Tome" style="max-width:80px"></div><div class="row"><button class="btn" id="chk">Voir la série</button><button class="btn pri" id="addb">Ajouter</button></div><div id="sr"></div>`;
   $('chk').onclick=()=>{const a=analyse().find(x=>norm(x.s)===norm($('ns').value.trim()));$('sr').innerHTML=a?`<div class="m">${info(a)}${a.miss.length?'. Manque : '+a.miss.join(', '):''}</div>`:'<div class="m">Série inconnue.</div>'};
   $('addb').onclick=()=>{const s=$('ns').value.trim()||sg,t=parseInt($('nt').value)||null;ST.ajouts.push([s,t,sg||s,ean,'']);persist();$('res').innerHTML='<div class="res ok"><h3>Ajouté ✓</h3>'+esc(s)+(t?' — tome '+t:'')+'</div>';render()};
- }).catch(()=>{$('inf').textContent='Pas de réseau : titre non vérifié.'});
+ });
 }
 
 let deferred=null;
