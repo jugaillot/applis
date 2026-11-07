@@ -101,14 +101,17 @@ function analyse(){
  const m=new Map();D().forEach(x=>{if(!m.has(x[0]))m.set(x[0],[]);m.get(x[0]).push(x)});
  const out=[];
  for(const[s,it]of m){
-  const owned=new Set(it.map(x=>x[1]).filter(n=>Number.isInteger(n)&&n>0&&n<=150));
+  const owned=new Set(it.map(x=>x[1]).filter(n=>Number.isInteger(n)&&n>=-150&&n<=150));
   let mt=Object.assign({},META[s],ST.meta[s]);
   let supp=false;
   if(mt.total==null&&it.length===1&&it[0][1]==null){mt={total:1,finis:mt.finis==null?true:mt.finis};supp=true}
-  const total=Number.isInteger(mt.total)?mt.total:null;
+  const liste=Array.isArray(mt.liste)&&mt.liste.length?mt.liste:null;
+  const total=liste?liste.length:Number.isInteger(mt.total)?mt.total:null;
   const maxo=owned.size?Math.max(...owned):0;
   const top=Math.max(total||0,maxo);
-  const miss=[];for(let i=1;i<=top;i++)if(!owned.has(i))miss.push(i);
+  const miss=[];
+  if(liste){liste.forEach(i=>{if(!owned.has(i))miss.push(i)})}
+  else for(let i=1;i<=top;i++)if(!owned.has(i))miss.push(i);
   let cls='inconnu';
   if(miss.length)cls='rouge';
   else if(total!=null){cls=mt.finis===true?'vert':mt.finis===false?'orange':'inconnu'}
@@ -117,7 +120,7 @@ function analyse(){
  return out;
 }
 function lines(items){return items.slice().sort(cmpT).map(x=>`<div class="al"><b>${x[1]??''}</b><span>${esc(x[2])}</span></div>`).join('')}
-function info(a){const n=a.owned.size||a.it.length;return (a.total?n+'/'+a.total:String(a.it.length))+(a.miss.length?' · manque '+a.miss.length:'')}
+function info(a){const n=a.total?a.total-a.miss.length:(a.owned.size||a.it.length);return (a.total?n+'/'+a.total:String(a.it.length))+(a.miss.length?' · manque '+a.miss.length:'')}
 const OPEN=new Set();
 document.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.s!=null){d.open?OPEN.add(d.dataset.s):OPEN.delete(d.dataset.s)}},true);
 function missHtml(a){

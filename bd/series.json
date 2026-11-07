@@ -60,5 +60,36 @@
  },
  "Aya de Yopougon": {
   "total": 8
+ },
+ "Donjon Crépuscule": {
+  "liste": [
+   101,
+   102,
+   103,
+   104,
+   105,
+   106,
+   110,
+   111,
+   112,
+   113
+  ]
+ },
+ "Donjon Potron-Minet": {
+  "liste": [
+   -99,
+   -98,
+   -97,
+   -84,
+   -83,
+   -82
+  ]
+ },
+ "Donjon Zénith": {
+  "total": 11,
+  "finis": false
+ },
+ "Donjon Bonus": {
+  "total": 3
  }
 }
