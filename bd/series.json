@@ -130,7 +130,9 @@
  },
  "L'Incal": {
   "total": 6,
-  "finis": true
+  "finis": true,
+  "source": "https://franco.wiki/fr/L'Incal.html",
+  "maj": "2026-11-07"
  },
  "Avant l'Incal": {
   "total": 6,
@@ -138,46 +140,70 @@
  },
  "Les Cahiers d'Esther": {
   "total": 9,
-  "finis": true
+  "finis": true,
+  "source": "https://fr.vikidia.org/wiki/Les_Cahiers_d%27Esther",
+  "maj": "2026-11-07"
  },
  "De Cape et de Crocs": {
   "total": 12,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-3-BD-.html",
+  "maj": "2026-11-07"
  },
  "Seuls": {
-  "total": 14
+  "total": 14,
+  "source": "https://livraddict.com/biblio/auteur/fabien-vehlmann.html",
+  "maj": "2026-11-07"
  },
  "Luuna": {
-  "total": 9
+  "total": 9,
+  "source": "https://www.bedetheque.com/BD-Luuna-INT2-Integrale-2-357566.html",
+  "maj": "2026-11-07"
  },
  "Arq": {
   "total": 18,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-1824-BD-Arq.html",
+  "maj": "2026-11-07"
  },
  "Garulfo": {
   "total": 6,
-  "finis": true
+  "finis": true,
+  "source": "https://fr.vikidia.org/wiki/Garulfo",
+  "maj": "2026-11-07"
  },
  "Finkel": {
-  "total": 7
+  "total": 7,
+  "source": "https://www.comicbooks.com/series/finkel-1994",
+  "maj": "2026-11-07"
  },
  "Gilgamesh": {
   "total": 2,
-  "finis": true
+  "finis": true,
+  "source": "https://bibliotheques.paris.fr/doc/SYRACUSE/276259",
+  "maj": "2026-11-07"
  },
  "Altor": {
   "total": 7,
-  "finis": true
+  "finis": true,
+  "source": "https://www.mediatoon-foreignrights.com/serie/altor",
+  "maj": "2026-11-07"
  },
  "Alef-Thau": {
   "total": 8,
-  "finis": true
+  "finis": true,
+  "source": "https://en.whakoom.com/ediciones/472006/les_aventures_dalef-thau-cartone_56-48_pp",
+  "maj": "2026-11-07"
  },
  "Alban": {
   "total": 6,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-1174-BD-Alban.html",
+  "maj": "2026-11-07"
  },
  "Aquablue": {
-  "total": 20
+  "total": 20,
+  "source": "https://en.wikipedia.org/wiki/Aquablue",
+  "maj": "2026-11-07"
  }
 }
