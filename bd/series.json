@@ -99,5 +99,17 @@
  "Lanfeust des Étoiles": {
   "total": 8,
   "finis": true
+ },
+ "Gorn": {
+  "total": 11,
+  "finis": true
+ },
+ "Sardine de l'Espace (Bayard)": {
+  "total": 10,
+  "finis": true
+ },
+ "Les Cités Obscures": {
+  "total": 12,
+  "finis": false
  }
 }
