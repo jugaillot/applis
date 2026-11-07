@@ -91,5 +91,13 @@
  },
  "Donjon Bonus": {
   "total": 3
+ },
+ "Lanfeust de Troy ": {
+  "total": 8,
+  "finis": true
+ },
+ "Lanfeust des Étoiles": {
+  "total": 8,
+  "finis": true
  }
 }
