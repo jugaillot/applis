@@ -111,5 +111,21 @@
  "Les Cités Obscures": {
   "total": 12,
   "finis": false
+ },
+ "Calvin et Hobbes": {
+  "total": 24,
+  "finis": true
+ },
+ "Demon Slayer": {
+  "total": 23,
+  "finis": true
+ },
+ "Hunter X Hunter": {
+  "total": 38,
+  "finis": false
+ },
+ "Mortelle Adèle": {
+  "total": 23,
+  "finis": false
  }
 }
