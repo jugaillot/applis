@@ -127,5 +127,27 @@
  "Mortelle Adèle": {
   "total": 23,
   "finis": false
+ },
+ "L'Incal": {
+  "total": 6,
+  "finis": true
+ },
+ "Avant l'Incal": {
+  "total": 6,
+  "finis": true
+ },
+ "Les Cahiers d'Esther": {
+  "total": 9,
+  "finis": true
+ },
+ "De Cape et de Crocs": {
+  "total": 12,
+  "finis": true
+ },
+ "Seuls": {
+  "total": 14
+ },
+ "Luuna": {
+  "total": 9
  }
 }
