@@ -1,0 +1,42 @@
+{
+ "My Hero Academia": {
+  "total": 42,
+  "finis": true
+ },
+ "Sillage": {
+  "total": 25,
+  "finis": false
+ },
+ "Radiant": {
+  "total": 19,
+  "finis": false
+ },
+ "Mashle": {
+  "total": 18,
+  "finis": true
+ },
+ "L'Atelier des Sorciers": {
+  "total": 16,
+  "finis": false
+ },
+ "Undead Unluck": {
+  "total": 27,
+  "finis": true
+ },
+ "Dr. Stone": {
+  "total": 26,
+  "finis": true
+ },
+ "The Promised Neverland": {
+  "total": 20,
+  "finis": true
+ },
+ "Valérian": {
+  "total": 21,
+  "finis": true
+ },
+ "Gunnm - Last Order - édition originale": {
+  "total": 12,
+  "finis": true
+ }
+}
