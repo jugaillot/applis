@@ -574,6 +574,13 @@ if(window.AtelierSync)$('#syncBadge').appendChild(AtelierSync.badge());
 if(window.matchMedia('(min-width:901px)').matches)panelMin(false);
 fit();newGame();
 </script>
+<script src="../lib/drop.js"></script>
+<script>
+/* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
+(function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
+const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
+AtelierDrop.init({app:'civco',accept:()=>false});})();
+</script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init({app:"civco",title:"La Suite Civco",sections:[
   {title:"Outils",keys:[["V","Observer une case ou un village"],["M","Déplacer le personnage (2 cases)"],["A","Aménager : choisir la production"],["J","Jachère (gratuit)"],["R","Régénérer"],["F","Fonder un village"],["E","Échanger avec un village voisin"],["Échap","Annuler l'outil, puis désélectionner"]]},

@@ -1002,6 +1002,13 @@ $('#bPrint').onclick=printDoc;$('#xPrint').onclick=printDoc;
   window.addEventListener('resize',()=>applyZoom());
 })();
 </script>
+<script src="../lib/drop.js"></script>
+<script>
+/* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
+(function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
+const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
+AtelierDrop.init({app:'mise',own:true,accept:f=>isImg(f)||ext(f)==='svg'||f.type==='image/svg+xml',open:fs=>addImageFiles(fs)});})();
+</script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init({app:"mise",title:"La Suite Mise en page",sections:[
 {title:"Outils",keys:[["V","Sélection"],["H ou Espace","Main : déplacer la vue"],["T","Cadre de texte"],["I","Cadre d’image"],["R / E / L","Rectangle, ellipse, ligne"],["Molette","Zoom (Maj + molette : défiler)"],["Ctrl 0","Voir la page entière"],[";","Afficher / masquer les repères"]]},

@@ -390,16 +390,21 @@ function cropSize(p){const c=cropOf(p);return [p.w*(1-c.l-c.r),p.h*(1-c.t-c.b)];
 function effSize(p){const r=effRot(p),[w,h]=cropSize(p);return r%180?[h,w]:[w,h];}
 const hasLevels=p=>!!(p.levels&&(p.levels.black>0||p.levels.white<255||Math.abs(p.levels.gamma-1)>1e-3||p.levels.gray));
 const annOn=p=>!!(p.ann&&p.ann.length);
-const editSig=p=>JSON.stringify([cropOf(p),hasLevels(p)?p.levels:null,annOn(p)?p.ann.map(a=>[a.type,a.fx,a.fy,a.rot,a.fs,a.sw,a.txt,a.col,a.src?a.src.length:0]):null,ANNV.n]);
+const editSig=p=>JSON.stringify([cropOf(p),hasLevels(p)?p.levels:null,annOn(p)?p.ann.map(a=>a.type==='sign'?[a.type,a.fx,a.fy,a.rot,a.sw,a.src?a.src.length:0]:JSON.stringify(a)):null,ANNV.n]);
 /* ---------- annotations (texte, signature) : posées sur la page non tournée, en fractions de la page ---------- */
 const ANNV={n:0};const IMGC=new Map();
 function annImg(src){let i=IMGC.get(src);if(!i){i=new Image();i.onload=()=>{ANNV.n++;renderPages();renderSheets();if($('#edDlg').open)edAnnRender();};i.src=src;IMGC.set(src,i);}return i.complete&&i.naturalWidth?i:null;}
 /* l'élément dessiné à k pixels par point */
-function annCanvas(a,k){
+function annCanvas(a,k,noCov){
   const c=document.createElement('canvas');
   if(a.type==='sign'){const im=annImg(a.src);if(!im){c.width=c.height=1;return c;}const w=Math.max(1,Math.round(a.sw*k)),h=Math.max(1,Math.round(w*im.naturalHeight/im.naturalWidth));c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);return c;}
-  const lines=String(a.txt||' ').split('\n'),fpx=Math.max(1,a.fs*k),lh=fpx*1.2,font=fpx+'px Helvetica, Arial, sans-serif';
+  const lines=String(a.txt||' ').split('\n'),fpx=Math.max(1,a.fs*k),lh=fpx*1.2,font=(a.it?'italic ':'')+(a.bd?'bold ':'')+fpx+'px '+(a.font||'Helvetica, Arial, sans-serif');
   const x0=c.getContext('2d');x0.font=font;const mw=Math.max(1,...lines.map(l=>x0.measureText(l).width));
+  if(a.cov){// texte d'origine remplacé : un cache de la couleur du papier, le nouveau texte aligné à gauche sur l'ancien
+    const cw=a.cov.w*k,ch=a.cov.h*k,tw=mw+a.cov.lx*k+2,th=a.cov.bl*k+lh*(lines.length-1)+fpx*0.3;
+    const L=Math.max(cw/2,tw-cw/2),M=Math.max(ch/2,th-ch/2);c.width=Math.max(1,Math.ceil(2*L)+6);c.height=Math.max(1,Math.ceil(2*M)+6);
+    const x=c.getContext('2d');const ox=3+L-cw/2,oy=3+M-ch/2;if(!noCov){x.fillStyle=a.bg||'#fff';x.fillRect(Math.floor(ox)-1,Math.floor(oy)-1,Math.ceil(cw)+3,Math.ceil(ch)+3);}
+    x.font=font;x.fillStyle=a.col||'#000';x.textBaseline='alphabetic';lines.forEach((l,i)=>x.fillText(l,ox+a.cov.lx*k,oy+a.cov.bl*k+i*lh));return c;}
   c.width=Math.ceil(mw+fpx*0.1)+2;c.height=Math.ceil(lh*lines.length)+2;const x=c.getContext('2d');x.font=font;x.fillStyle=a.col||'#000';x.textBaseline='top';
   lines.forEach((l,i)=>x.fillText(l,1,1+i*lh+fpx*0.08));return c;
 }
@@ -409,8 +414,11 @@ function withAnn(src,p){const c=document.createElement('canvas');c.width=src.wid
 /* dans le PDF : chaque annotation devient une image (transparente) posée sur la page source */
 async function drawAnnPdf(doc,page,p){
   const {degrees}=PDFLib;const cb=page.getCropBox();const K=6;
-  for(const a of p.ann||[]){const c=annCanvas(a,K);if(c.width<2)continue;const b=await new Promise(r=>c.toBlob(r,'image/png'));const img=await doc.embedPng(await b.arrayBuffer());
+  for(const a of p.ann||[]){const c=annCanvas(a,K,true);if(c.width<2)continue;const b=await new Promise(r=>c.toBlob(r,'image/png'));const img=await doc.embedPng(await b.arrayBuffer());
     const w=c.width/K*(cb.width/p.w),h=c.height/K*(cb.width/p.w);const X=cb.x+a.fx*cb.width,Y=cb.y+(1-a.fy)*cb.height;const th=-a.rot*Math.PI/180;
+    if(a.cov){// cache vectoriel de la couleur du papier sous un texte d'origine modifié
+      const cw=a.cov.w*(cb.width/p.w)+0.6,ch=a.cov.h*(cb.width/p.w)+0.6;const hx=(a.bg||'#ffffff').replace('#','');
+      page.drawRectangle({x:X-(cw/2*Math.cos(th)-ch/2*Math.sin(th)),y:Y-(cw/2*Math.sin(th)+ch/2*Math.cos(th)),width:cw,height:ch,rotate:degrees(-a.rot),color:PDFLib.rgb(parseInt(hx.slice(0,2),16)/255,parseInt(hx.slice(2,4),16)/255,parseInt(hx.slice(4,6),16)/255),borderWidth:0});}
     page.drawImage(img,{x:X-(w/2*Math.cos(th)-h/2*Math.sin(th)),y:Y-(w/2*Math.sin(th)+h/2*Math.cos(th)),width:w,height:h,rotate:degrees(-a.rot)});}
   await doc.flush();// les images doivent être écrites avant de recopier la page
 }
@@ -1066,14 +1074,85 @@ function annEdit(el){const a=el._a,p=el._p;ANSEL={p,a};
   if(a.type==='sign'){openSign(src=>{a.src=src;annChanged();});return;}
   const g=el._g,k=g.disp*g.q.s/PT,w=el.parentNode;const r=el.getBoundingClientRect(),wr=w.getBoundingClientRect();
   const ta=document.createElement('textarea');ta.value=a.txt||'';const fpx=a.fs*k;
-  ta.style.cssText=`position:absolute;z-index:5;left:${r.left-wr.left+w.offsetLeft-4}px;top:${r.top-wr.top+w.offsetTop-4}px;min-width:${Math.max(80,r.width+40)}px;min-height:${r.height+8}px;font:${fpx}px/1.2 Helvetica,Arial,sans-serif;color:${a.col||'#000'};background:rgba(255,255,255,.95);border:1.5px solid var(--acc);border-radius:4px;padding:3px;resize:both;outline:none`;
+  ta.style.cssText=`position:absolute;z-index:5;left:${r.left-wr.left+w.offsetLeft-4}px;top:${r.top-wr.top+w.offsetTop-4}px;min-width:${Math.max(80,r.width+40)}px;min-height:${r.height+8}px;font:${a.it?'italic ':''}${a.bd?'bold ':''}${fpx}px/1.2 ${a.font||'Helvetica,Arial,sans-serif'};color:${a.col||'#000'};background:${a.bg||'rgba(255,255,255,.95)'};border:1.5px solid var(--acc);border-radius:4px;padding:3px;resize:both;outline:none`;
   el.style.visibility='hidden';w.parentNode.appendChild(ta);ta.focus();ta.select();
   const done=()=>{if(!ta.isConnected)return;a.txt=ta.value;ta.remove();if(!a.txt.trim()){p.ann=p.ann.filter(x=>x!==a);if(!p.ann.length)p.ann=null;ANSEL=null;}annChanged();};
   ta.addEventListener('input',()=>{a.txt=ta.value;if(document.activeElement!==$('#nTxt'))$('#nTxt').value=ta.value;});
   ta.addEventListener('blur',done);ta.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'||(e.key==='Enter'&&(e.ctrlKey||e.metaKey))){e.preventDefault();ta.blur();}});
   annPanel();}
+
+/* =====================================================================
+   Modifier un texte d'origine du PDF (double-clic dessus, comme dans Vecto) :
+   l'ancien texte est recouvert de la couleur du papier, le nouveau s'écrit par-dessus
+   ===================================================================== */
+const TXC=new Map();// page → lignes de texte (dans la page non tournée, en points)
+async function pageLines(p){
+  if(TXC.has(p))return TXC.get(p);const f=S.files.get(p.fileId);if(!f||f.type!=='pdf'||p.blank)return null;
+  const pr=(async()=>{const page=await f.doc.getPage(p.index+1);const tc=await page.getTextContent();const vp=page.getViewport({scale:1,rotation:0});
+    const its=[];for(const it of tc.items){if(!it.str)continue;const m=pdfjsLib.Util.transform(vp.transform,it.transform);const fs=Math.hypot(m[2],m[3]);if(!(fs>0.5))continue;
+      const ang=Math.atan2(m[1],m[0]);let w=it.width*vp.scale;if(!(w>0))w=it.str.length*fs*0.5;
+      its.push({str:it.str,x:m[4],y:m[5],fs,ang,w,fontName:it.fontName,eol:it.hasEOL});}
+    // on regroupe les morceaux d'une même ligne
+    const lines=[];for(const it of its){const L=lines[lines.length-1];
+      if(L&&Math.abs(L.ang-it.ang)<0.01&&Math.abs(L.fs-it.fs)<L.fs*0.15){const ca=Math.cos(L.ang),sa=Math.sin(L.ang);const dx=it.x-L.x,dy=it.y-L.y;const along=dx*ca+dy*sa,across=-dx*sa+dy*ca;
+        const gap=along-L.w;if(Math.abs(across)<L.fs*0.25&&gap>-L.fs*0.3&&gap<L.fs*1.2&&!L.eol){if(!it.str.trim()&&gap>L.fs*0.8){}L.str+=(gap>L.fs*0.15&&!/\s$/.test(L.str)&&!/^\s/.test(it.str)?' ':'')+it.str;L.w=Math.max(L.w,along+it.w);L.eol=it.eol;continue;}}
+      lines.push(Object.assign({},it));}
+    const out=lines.filter(l=>l.str.trim());out.forEach(l=>{l.str=l.str.replace(/\s+$/,'');});
+    out.page=page;out.tc=tc;return out;})();
+  TXC.set(p,pr);return pr;
+}
+function lineAt(lines,X,Y){let best=null;for(const l of lines){const ca=Math.cos(l.ang),sa=Math.sin(l.ang);const dx=X-l.x,dy=Y-l.y;const u=dx*ca+dy*sa,v=-dx*sa+dy*ca;
+  if(u>=-l.fs*0.2&&u<=l.w+l.fs*0.2&&v>=-l.fs*0.95&&v<=l.fs*0.3){if(!best||l.fs<best.fs)best=l;}}return best;}
+function fontOfItem(page,tc,name){let n='';try{const fo=page.commonObjs.get(name);n=(fo&&(fo.name||fo.loadedName))||'';}catch(e){}
+  const gen=(tc.styles[name]&&tc.styles[name].fontFamily)||'sans-serif';const raw=n.replace(/^[A-Z]{6}\+/,'');
+  const fam=raw.split(/[-,]/)[0].replace(/(MT|PS|Std|Pro)$/,'').replace(/([a-z])([A-Z])/g,'$1 $2').trim();
+  const generic=/serif/i.test(gen)&&!/sans/i.test(gen)?'serif':/mono/i.test(gen)?'monospace':'Helvetica, Arial, sans-serif';
+  return {font:(fam?`"${fam}", `:'')+generic,bd:/bold|black|heavy|semibold|demi/i.test(raw),it:/italic|oblique/i.test(raw)};}
+/* couleur du papier et de l'encre sous la ligne */
+async function lineColors(page,l,box){
+  try{const K=3,ca=Math.cos(l.ang),sa=Math.sin(l.ang);const pts=[[box.x0,box.y0],[box.x1,box.y0],[box.x1,box.y1],[box.x0,box.y1]].map(([u,v])=>[l.x+u*ca-v*sa,l.y+u*sa+v*ca]);
+    const xs=pts.map(q=>q[0]),ys=pts.map(q=>q[1]);const X0=Math.min(...xs),Y0=Math.min(...ys),W=Math.max(2,Math.ceil((Math.max(...xs)-X0)*K)),H=Math.max(2,Math.ceil((Math.max(...ys)-Y0)*K));
+    const c=document.createElement('canvas');c.width=Math.min(W,4000);c.height=Math.min(H,2000);const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+    const vp=page.getViewport({scale:K,rotation:0});await page.render({canvasContext:x,viewport:vp,transform:[1,0,0,1,-X0*K,-Y0*K]}).promise;
+    const d=x.getImageData(0,0,c.width,c.height).data;const cnt=new Map();const key=i=>((d[i]>>4)<<8)|((d[i+1]>>4)<<4)|(d[i+2]>>4);
+    for(let i=0;i<d.length;i+=4){const k=key(i);cnt.set(k,(cnt.get(k)||0)+1);}
+    let bk=0,bn=-1;for(const [k,n] of cnt)if(n>bn){bn=n;bk=k;}
+    let br=0,bg=0,bb=0,n=0;for(let i=0;i<d.length;i+=4)if(key(i)===bk){br+=d[i];bg+=d[i+1];bb+=d[i+2];n++;}br/=n;bg/=n;bb/=n;
+    let best=0,ir=0,ig=0,ib=0;for(let i=0;i<d.length;i+=4){const dd=(d[i]-br)**2+(d[i+1]-bg)**2+(d[i+2]-bb)**2;if(dd>best){best=dd;ir=d[i];ig=d[i+1];ib=d[i+2];}}
+    const hx=(r,g,b)=>'#'+[r,g,b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+    return {bg:hx(br,bg,bb),col:best>900?hx(ir,ig,ib):'#000000'};}catch(e){return {bg:'#ffffff',col:'#000000'};}
+}
+async function editPdfText(p,X,Y){
+  const lines=await pageLines(p);if(!lines)return false;const l=lineAt(lines,X,Y);if(!l)return false;
+  const {font,bd,it}=fontOfItem(lines.page,lines.tc,l.fontName);
+  const pad=l.fs*0.12;const box={x0:-pad,x1:l.w+pad,y0:-l.fs*0.95,y1:l.fs*0.3};
+  const {bg,col}=await lineColors(lines.page,l,box);
+  const cw=box.x1-box.x0,ch=box.y1-box.y0;const cu=(box.x0+box.x1)/2,cv=(box.y0+box.y1)/2;const ca=Math.cos(l.ang),sa=Math.sin(l.ang);
+  const cx=l.x+cu*ca-cv*sa,cy=l.y+cu*sa+cv*ca;
+  const a={type:'text',fx:cx/p.w,fy:cy/p.h,fs:l.fs,col,txt:l.str,rot:((l.ang*180/Math.PI)%360+360)%360,font,bd,it,bg,cov:{w:cw,h:ch,lx:pad,bl:-box.y0},orig:l.str};
+  (p.ann=p.ann||[]).push(a);ANSEL={p,a};lines.splice(lines.indexOf(l),1);// ce texte est maintenant modifiable comme un texte ajouté
+  annChanged();
+  setTimeout(()=>{const el=[...document.querySelectorAll('#sheets .an')].find(x=>x._a===a);if(el)annEdit(el);},30);
+  return true;
+}
+(function(){
+  const box=$('#sheets');
+  // dès le premier clic, on prépare le texte de la page (pour que le double-clic réponde tout de suite)
+  box.addEventListener('pointerdown',e=>{if(TOOL!=='select'&&TOOL!=='text')return;const h=sheetHit(e);if(h&&!h.p.blank)pageLines(h.p);},true);
+  box.addEventListener('dblclick',e=>{
+    if(TOOL!=='select'&&TOOL!=='text')return;if(e.target.closest('.an')||e.target.tagName==='TEXTAREA')return;
+    const h=sheetHit(e);if(!h||h.p.blank)return;const pr=TXC.get(h.p);if(!pr)return;
+    let ready=null;pr.then(v=>{ready=v;});
+    // le texte est déjà lu (cas normal) : on décide tout de suite
+    e.stopImmediatePropagation();e.preventDefault();
+    const X=h.fx*h.p.w,Y=h.fy*h.p.h;
+    Promise.resolve(pr).then(async lines=>{const hit=lines&&lineAt(lines,X,Y);
+      if(hit){try{getSelection().removeAllRanges();}catch(err){}await editPdfText(h.p,X,Y);}
+      else openEditor(h.p,'crop');});
+  },true);
+})();
 /* ---------- barre d'outils ---------- */
-const TH={select:'Clic sur une vignette pour la choisir · double-clic sur une page pour la modifier',text:'Surligne du texte sur les feuilles, puis Ctrl+C',addtext:'Clique sur une page à l’endroit où mettre le texte',sign:'Clique sur une page à l’endroit où signer',crop:'Clique sur une page pour la rogner ou régler ses niveaux'};
+const TH={select:'Double-clic sur un texte du PDF : le modifier · double-clic ailleurs sur une page : l’ouvrir (rogner, annoter)',text:'Surligne du texte puis Ctrl+C pour le copier · double-clic sur un texte du PDF pour le modifier',addtext:'Clique sur une page à l’endroit où mettre le texte',sign:'Clique sur une page à l’endroit où signer',crop:'Clique sur une page pour la rogner ou régler ses niveaux'};
 let TOOL='select';
 function setTool(t){TOOL=t;document.querySelectorAll('#tools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
   ['select','text','addtext','sign','crop'].forEach(k=>document.body.classList.toggle('t-'+k,k===t));$('#toolHint').textContent='';tbSync();}
@@ -1129,8 +1208,15 @@ renderPages();renderSheets();
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;const fs=await Promise.all(p.files.map(h=>h.getFile()));
   S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();addFiles(fs);});
 </script>
+<script src="../lib/drop.js"></script>
+<script>
+/* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
+(function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
+const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
+AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='application/pdf'||isImg(f),open:fs=>addFiles(fs)});})();
+</script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["F", "Voir le document en plein écran (flèches : pages, Z : largeur / page entière, Échap : sortir)"], ["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["Double-clic sur un texte du PDF", "Le modifier : l’ancien texte est recouvert de la couleur du papier, le nouveau s’écrit à sa place"], ["F", "Voir le document en plein écran (flèches : pages, Z : largeur / page entière, Échap : sortir)"], ["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
 <div id="fsView" hidden><div id="fsPages"></div><div id="fsBar"><button id="fsPrev" title="Page précédente (←)">‹</button><span id="fsNum"></span><button id="fsNext" title="Page suivante (→)">›</button><button id="fsFit" title="Ajuster : page entière / largeur (Z)">Largeur</button><button id="fsClose" title="Quitter (Échap)">✕</button></div></div>
 <style>
 #fsView{position:fixed;inset:0;z-index:200;background:#2a2b2e}

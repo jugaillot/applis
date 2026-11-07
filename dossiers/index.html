@@ -925,6 +925,14 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLower
   pull();
 })();
 </script>
+<script src="../lib/drop.js"></script>
+<script>
+/* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
+(function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
+const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
+AtelierDrop.init({app:'dossiers',accept:f=>['md','markdown','txt'].includes(ext(f)),
+  open:async fs=>{for(const f of fs){const t=(await f.text()).replace(/\r/g,'');const m=t.match(/^#\s+(.+)\n/);const titre=(m?m[1]:f.name.replace(/\.[^.]+$/,'')).trim();await createDoc('dossier',{titre,body:m?t.slice(m[0].length).replace(/^\n+/,''):t});}}});})();
+</script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init({app:"dossiers",title:"La Suite Dossiers",sections:[
 {title:"Documents",keys:[["Ctrl + S","Enregistrer et envoyer tout de suite sur GitHub"],["Ctrl + P","PDF / imprimer"],["Glisser une ligne sur un classeur","Ranger le document"],["Coller ou glisser une image","L’ajouter au document"]]},
