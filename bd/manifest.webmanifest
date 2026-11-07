@@ -3,6 +3,7 @@
   "short_name": "BD",
   "description": "Ma collection de BD : parcourir, scanner, suivre les tomes manquants.",
   "lang": "fr",
+  "id": "/bd/",
   "start_url": "/bd/",
   "scope": "/bd/",
   "display": "standalone",
@@ -10,17 +11,17 @@
   "theme_color": "#2b2a33",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/bd/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/bd/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-maskable-512.png",
+      "src": "/bd/icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
