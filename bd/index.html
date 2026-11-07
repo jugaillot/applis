@@ -106,8 +106,9 @@ function analyse(){
   let supp=false;
   if(mt.total==null&&it.length===1&&it[0][1]==null){mt={total:1,finis:mt.finis==null?true:mt.finis};supp=true}
   const liste=Array.isArray(mt.liste)&&mt.liste.length?mt.liste:null;
-  const total=liste?liste.length:Number.isInteger(mt.total)?mt.total:null;
   const maxo=owned.size?Math.max(...owned):0;
+  let total=liste?liste.length:Number.isInteger(mt.total)?mt.total:null;
+  if(total==null&&mt.finis===true&&maxo>0)total=maxo;
   const top=Math.max(total||0,maxo);
   const miss=[];
   if(liste){liste.forEach(i=>{if(!owned.has(i))miss.push(i)})}
