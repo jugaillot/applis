@@ -1307,5 +1307,28 @@
   "finis": true,
   "source": "https://www.bedetheque.com/serie-14132-BD-Sorcieres-Igarashi.html",
   "maj": "2026-11-07"
+ },
+ "Aweto": {
+  "total": 2,
+  "finis": true,
+  "source": "réponse Julien + bedetheque 66332",
+  "maj": "2026-11-07"
+ },
+ "Geist Maschine": {
+  "total": 1,
+  "finis": true,
+  "source": "réponse Julien",
+  "maj": "2026-11-07"
+ },
+ "La Brigade des Cauchemars": {
+  "total": 10,
+  "source": "https://www.bedetheque.com/serie-58315-BD-Brigade-des-cauchemars.html",
+  "maj": "2026-11-07"
+ },
+ "Le Concombre Masqué": {
+  "total": null,
+  "finis": true,
+  "source": "réponse Julien",
+  "maj": "2026-11-07"
  }
 }
