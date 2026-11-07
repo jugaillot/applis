@@ -181,7 +181,7 @@ function check(ean){
  const f=D().find(x=>x[3]===ean);
  if(f){
   const a=analyse().find(x=>x.s===f[0]);
-  $('res').innerHTML=`<div class="res ok"><h3>Tu l’as déjà ✓</h3>${esc(f[0])}${f[1]!=null?' — tome '+f[1]:''}<br>${esc(f[2])}<div class="m">${a?info(a):''}${a&&a.miss.length?'. Manque : tome'+(a.miss.length>1?'s ':' ')+a.miss.join(', '):''}</div></div>`;
+  $('res').innerHTML=`<details class="res ok"><summary style="cursor:pointer;list-style:none"><h3>Tu l’as déjà ✓</h3>${esc(f[0])}${f[1]!=null?' — tome '+f[1]:''}<br>${esc(f[2])}<div class="m">${a?info(a):''}${a&&a.miss.length?'. Manque : tome'+(a.miss.length>1?'s ':' ')+a.miss.join(', '):''}</div><div class="m"><u>Voir la série ▾</u></div></summary>${a?lines(a.it):''}</details>`;
   return}
  $('res').innerHTML=`<div class="res no"><h3>Pas dans ta collection</h3><span id="inf">Recherche du titre…</span><div id="add"></div></div>`;
  fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:'+ean).then(r=>r.json()).then(j=>{
