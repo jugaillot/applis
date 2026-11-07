@@ -102,6 +102,8 @@ function analyse(){
  const out=[];
  for(const[s,it]of m){
   const owned=new Set(it.map(x=>x[1]).filter(n=>Number.isInteger(n)&&n>=-150&&n<=150));
+  const nn=it.filter(x=>!Number.isInteger(x[1])).length;
+  if(nn){let k=1;for(let c=0;c<nn;c++){while(owned.has(k))k++;owned.add(k)}}
   let mt=Object.assign({},META[s],ST.meta[s]);
   let supp=false;
   if(mt.total==null&&it.length===1&&it[0][1]==null){mt={total:1,finis:mt.finis==null?true:mt.finis};supp=true}
