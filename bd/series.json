@@ -599,5 +599,41 @@
   "finis": true,
   "source": "choix Julien",
   "maj": "2026-11-07"
+ },
+ "Lanfeust Odyssey": {
+  "total": 10,
+  "finis": true,
+  "source": "https://comicbooks.com/series/lanfeust-odyssey-2009",
+  "maj": "2026-11-07"
+ },
+ "Wizz et Buzz": {
+  "total": 2,
+  "finis": true,
+  "source": "https://www.bedetheque.com/BD-Wizz-et-Buzz-Tome-2-67765.html",
+  "maj": "2026-11-07"
+ },
+ "Péchés Mignons": {
+  "total": 4,
+  "finis": true,
+  "source": "https://www.senscritique.com/groupe/Peches_mignons/49477",
+  "maj": "2026-11-07"
+ },
+ "Les Ostings": {
+  "total": 2,
+  "finis": true,
+  "source": "https://comicbooks.com/series/les-ostings-2001",
+  "maj": "2026-11-07"
+ },
+ "Kookaburra Universe": {
+  "total": 16,
+  "finis": true,
+  "source": "https://comicbooks.com/series/kookaburra-universe-2002",
+  "maj": "2026-11-07"
+ },
+ "Chi - une Vie de Chat": {
+  "total": 12,
+  "finis": true,
+  "source": "https://www.anisearch.fr/manga/1631,chi-une-vie-de-chat",
+  "maj": "2026-11-07"
  }
 }
