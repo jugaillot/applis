@@ -149,5 +149,35 @@
  },
  "Luuna": {
   "total": 9
+ },
+ "Arq": {
+  "total": 18,
+  "finis": true
+ },
+ "Garulfo": {
+  "total": 6,
+  "finis": true
+ },
+ "Finkel": {
+  "total": 7
+ },
+ "Gilgamesh": {
+  "total": 2,
+  "finis": true
+ },
+ "Altor": {
+  "total": 7,
+  "finis": true
+ },
+ "Alef-Thau": {
+  "total": 8,
+  "finis": true
+ },
+ "Alban": {
+  "total": 6,
+  "finis": true
+ },
+ "Aquablue": {
+  "total": 20
  }
 }
