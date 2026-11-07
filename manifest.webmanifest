@@ -66,23 +66,23 @@
   ],
   "file_handlers": [
     {
-      "action": "/compil/",
+      "action": "/",
       "accept": {
         "application/pdf": [
           ".pdf"
         ]
       },
-      "launch_type": "single-client",
       "icons": [
         {
           "src": "/icons/file-pdf.png",
           "sizes": "256x256",
           "type": "image/png"
         }
-      ]
+      ],
+      "launch_type": "single-client"
     },
     {
-      "action": "/photo/",
+      "action": "/",
       "accept": {
         "image/jpeg": [
           ".jpg",
@@ -93,19 +93,22 @@
         ],
         "image/webp": [
           ".webp"
+        ],
+        "image/gif": [
+          ".gif"
         ]
       },
-      "launch_type": "single-client",
       "icons": [
         {
           "src": "/icons/file-image.png",
           "sizes": "256x256",
           "type": "image/png"
         }
-      ]
+      ],
+      "launch_type": "single-client"
     },
     {
-      "action": "/vecto/",
+      "action": "/",
       "accept": {
         "image/svg+xml": [
           ".svg"
@@ -115,14 +118,65 @@
           ".eps"
         ]
       },
-      "launch_type": "single-client",
       "icons": [
         {
           "src": "/icons/file-svg.png",
           "sizes": "256x256",
           "type": "image/png"
         }
-      ]
+      ],
+      "launch_type": "single-client"
+    },
+    {
+      "action": "/",
+      "accept": {
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+          ".pptx"
+        ]
+      },
+      "icons": [
+        {
+          "src": "/icons/file-pptx.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    },
+    {
+      "action": "/",
+      "accept": {
+        "text/markdown": [
+          ".md"
+        ],
+        "text/plain": [
+          ".txt"
+        ]
+      },
+      "icons": [
+        {
+          "src": "/icons/file-doc.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    },
+    {
+      "action": "/",
+      "accept": {
+        "image/vnd.dxf": [
+          ".dxf"
+        ]
+      },
+      "icons": [
+        {
+          "src": "/icons/file-dxf.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
     }
   ]
 }

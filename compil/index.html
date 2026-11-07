@@ -141,7 +141,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <body>
 <header>
   <h1><a href="../">La Suite</a> <span>PDF</span></h1>
-  <label class="btn primary">Ajouter des fichiers…<input type="file" id="fIn" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp" hidden></label>
+  <label class="btn primary">Ajouter des fichiers…<input type="file" id="fIn" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.pptx" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bClear">Tout vider</button>
   <button class="btn" id="bPrint">Imprimer…</button>
@@ -335,6 +335,8 @@ function saveOpt(){try{localStorage.setItem('atelierCompil.opt',JSON.stringify(S
 
 /* ---------- import ---------- */
 async function addFiles(list){
+  // présentations PowerPoint : converties en PDF (une page par diapo)
+  if([...list].some(f=>/\.pptx$/i.test(f.name))){const out=[];for(const f of list){if(!/\.pptx$/i.test(f.name)){out.push(f);continue;}try{out.push(await pptxToPdf(f));}catch(e){alert('« '+f.name+' » : '+(e.message||e));}finally{await busy();}}list=out;}
   const files=[...list];if(!files.length)return;
   for(const f of files){
     try{
@@ -1208,12 +1210,23 @@ renderPages();renderSheets();
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;const fs=await Promise.all(p.files.map(h=>h.getFile()));
   S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();addFiles(fs);});
 </script>
+<script src="../lib/pptx.js"></script>
+<script>
+async function pptxToPdf(file){
+  await busy('Lecture de « '+file.name+' »…');const d=await AtelierPPTX.read(file);
+  const doc=await PDFLib.PDFDocument.create();const PTMM=72/25.4;
+  for(let i=0;i<d.slides.length;i++){await busy('Conversion de « '+file.name+' » — diapo '+(i+1)+' / '+d.slides.length);
+    const c=await AtelierPPTX.render(d,i,250/25.4);const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));c.width=c.height=1;
+    const img=await doc.embedJpg(await b.arrayBuffer());const pg=doc.addPage([d.w*PTMM,d.h*PTMM]);pg.drawImage(img,{x:0,y:0,width:d.w*PTMM,height:d.h*PTMM});}
+  const bytes=await doc.save();return new File([bytes],d.name+'.pdf',{type:'application/pdf'});
+}
+</script>
 <script src="../lib/drop.js"></script>
 <script>
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
 const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
-AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='application/pdf'||isImg(f),open:fs=>addFiles(fs)});})();
+AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='application/pdf'||isImg(f)||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:fs=>addFiles(fs)});})();
 </script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["Double-clic sur un texte du PDF", "Le modifier : l’ancien texte est recouvert de la couleur du papier, le nouveau s’écrit à sa place"], ["F", "Voir le document en plein écran (flèches : pages, Z : largeur / page entière, Échap : sortir)"], ["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>

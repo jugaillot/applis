@@ -156,7 +156,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <header>
   <h1><a href="../">La Suite</a> <span>Photo</span></h1>
   <button class="btn" id="bNewDoc" title="Créer une image vierge, ou à partir d’une image copiée">Nouveau…</button>
-  <label class="btn primary">Ajouter des images…<input type="file" id="fIn" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,application/pdf,.pdf" hidden></label>
+  <label class="btn primary">Ajouter des images…<input type="file" id="fIn" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,application/pdf,.pdf,.pptx" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bApplyAll" title="Copier les réglages de cette image sur les autres">Appliquer à toutes…</button>
   <button class="btn" id="bCopy" title="Copier l’image retouchée pour la coller ailleurs (Ctrl+C)">Copier</button>
@@ -320,6 +320,7 @@ async function decode(file,maxPx){
 function hasAlpha(c){try{const d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height).data;for(let i=3;i<d.length;i+=16)if(d[i]<250)return true;}catch(e){}return false;}
 async function addFiles(list){
   // les PDF sont d'abord convertis en images (une par page)
+  if([...list].some(f=>/\.pptx$/i.test(f.name))){const o2=[];for(const f of list){if(!/\.pptx$/i.test(f.name)){o2.push(f);continue;}const im=await pptxToImages(f);if(im)o2.push(...im);}list=o2;}
   const pdfs=[...list].filter(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name));
   if(pdfs.length){const out=[...list].filter(f=>!pdfs.includes(f));for(const f of pdfs){const imgs=await pdfToImages(f);if(imgs)out.push(...imgs);}list=out;}
   const files=[...list].filter(f=>/^image\//.test(f.type)||/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name));
@@ -1193,12 +1194,30 @@ $('#zoneBan').addEventListener('click',e=>{if(e.target.closest('[data-za=all]'))
 /* fichiers ouverts depuis l'ordinateur (« Ouvrir avec » Atelier) */
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;addFiles(await Promise.all(p.files.map(h=>h.getFile())));});
 </script>
+<script src="../lib/pptx.js"></script>
+<script>
+/* présentation → images : même fenêtre de choix que pour les PDF */
+async function pptxToImages(file){
+  let d;try{await busy('Lecture de « '+file.name+' »…');d=await AtelierPPTX.read(file);}catch(e){await busy();alert('« '+file.name+' » n’est pas lisible : '+(e.message||e));return null;}finally{await busy();}
+  const dlg=$('#pdDlg'),L=$('#pdPages');L.innerHTML='';$('#pdTitle').textContent='Ouvrir « '+file.name+' » en images';
+  const info=()=>{const k=Math.min(+$('#pdDpi').value/25.4,10000/Math.max(d.w,d.h));$('#pdSize').textContent='diapo : '+Math.round(d.w*k)+' × '+Math.round(d.h*k)+' px';};$('#pdDpi').onchange=info;info();
+  const choice=new Promise(res=>{let done=false;$('#pdCancel').onclick=()=>{done=true;dlg.close();res(null);};$('#pdOk').onclick=()=>{done=true;const ns=[...L.querySelectorAll('input:checked')].map(i=>+i.value);dlg.close();res(ns);};dlg.onclose=()=>{if(!done)res(null);};});
+  $('#pdAll').onclick=()=>L.querySelectorAll('input').forEach(i=>i.checked=true);$('#pdNone').onclick=()=>L.querySelectorAll('input').forEach(i=>i.checked=false);
+  dlg.showModal();
+  (async()=>{for(let n=0;n<d.slides.length&&dlg.open;n++){const lb=document.createElement('label');const cb=document.createElement('input');cb.type='checkbox';cb.value=n;cb.checked=true;
+    const t=await AtelierPPTX.render(d,n,110/Math.max(d.w,d.h));lb.append(t,cb,'Diapo '+(n+1));L.appendChild(lb);}})();
+  const ns=await choice;if(!ns||!ns.length)return null;const out=[];
+  try{for(let i=0;i<ns.length;i++){await busy('Conversion — diapo '+(ns[i]+1)+' ('+(i+1)+' / '+ns.length+')');const k=Math.min(+$('#pdDpi').value/25.4,10000/Math.max(d.w,d.h));
+    const c=await AtelierPPTX.render(d,ns[i],k);const b=await new Promise(r=>c.toBlob(r,'image/png'));c.width=c.height=1;out.push(new File([b],d.name+'-diapo'+String(ns[i]+1).padStart(2,'0')+'.png',{type:'image/png'}));}}
+  finally{await busy();}return out;
+}
+</script>
 <script src="../lib/drop.js"></script>
 <script>
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
 const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
-AtelierDrop.init({app:'photo',own:true,accept:f=>isImg(f)||ext(f)==='pdf'||f.type==='application/pdf',open:fs=>addFiles(fs)});})();
+AtelierDrop.init({app:'photo',own:true,accept:f=>isImg(f)||ext(f)==='pdf'||f.type==='application/pdf'||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:fs=>addFiles(fs)});})();
 </script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "La Suite Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["M / A / W", "Sélection rectangle, lasso libre, baguette magique : crée une zone (Maj : ajouter, Alt : retirer). Les réglages et retouches ne changent alors que la zone ; Échap : revenir à toute l’image"], ["K", "Perspective : placer les 4 coins d’un document photographié de biais pour le remettre à plat (Entrée : appliquer, Échap : annuler)"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>

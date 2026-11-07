@@ -33,5 +33,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(()=>{document
 <script src="lib/help.js"></script>
 <script>AtelierHelp.init(Object.assign({app:"home"},{"title": "La Suite", "sections": [{"title": "Les outils", "params": [["Riso", "Séparation des couleurs pour la risographie, une page PDF par encre."], ["Vecto", "Vectoriser et retoucher des dessins, export PDF ou vers Riso."], ["PDF", "Assembler PDF et images, plusieurs pages par feuille."], ["CAD", "Dessin technique 2D, DXF et PDF à l’échelle."]]}, {"title": "Partout", "keys": [["Ctrl + S", "Enregistrer (Riso, Vecto, Plan) : sur l’appareil puis sur le serveur"], ["Roue crantée", "Raccourcis et réglages de l’outil ouvert"]]}, {"title": "Hors connexion", "text": "Une fois ouvert avec une connexion, La Suite fonctionne sans réseau. Les projets enregistrés hors connexion partent sur le serveur au retour du réseau (voyant en haut de chaque outil)."}]}));</script>
 <script src="lib/drop.js"></script>
-<script>AtelierDrop.init({accept:()=>false});</script>
+<script>AtelierDrop.init({accept:()=>false});
+/* « Ouvrir avec » La Suite : on demande avec quelle appli ouvrir le fichier */
+if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;const fs=await Promise.all(p.files.map(h=>h.getFile()));AtelierDrop.route(fs,null);});</script>
 </body></html>

@@ -925,13 +925,14 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLower
   pull();
 })();
 </script>
+<script src="../lib/pptx.js"></script>
 <script src="../lib/drop.js"></script>
 <script>
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
 const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
-AtelierDrop.init({app:'dossiers',accept:f=>['md','markdown','txt'].includes(ext(f)),
-  open:async fs=>{for(const f of fs){const t=(await f.text()).replace(/\r/g,'');const m=t.match(/^#\s+(.+)\n/);const titre=(m?m[1]:f.name.replace(/\.[^.]+$/,'')).trim();await createDoc('dossier',{titre,body:m?t.slice(m[0].length).replace(/^\n+/,''):t});}}});})();
+AtelierDrop.init({app:'dossiers',accept:f=>['md','markdown','txt','pptx'].includes(ext(f)),
+  open:async fs=>{for(const f of fs){if(ext(f)==='pptx'){const d=await AtelierPPTX.read(f);await createDoc('dossier',{titre:d.name,body:AtelierPPTX.toMarkdown(d)});continue;}const t=(await f.text()).replace(/\r/g,'');const m=t.match(/^#\s+(.+)\n/);const titre=(m?m[1]:f.name.replace(/\.[^.]+$/,'')).trim();await createDoc('dossier',{titre,body:m?t.slice(m[0].length).replace(/^\n+/,''):t});}}});})();
 </script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init({app:"dossiers",title:"La Suite Dossiers",sections:[
