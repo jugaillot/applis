@@ -359,5 +359,23 @@
   "total": 5,
   "source": "https://www.comicbooks.com/series/isaac-le-pirate-2001",
   "maj": "2026-11-07"
+ },
+ "Les Olives Noires": {
+  "total": 3,
+  "finis": true,
+  "source": "https://www.bnf.fr/fr/mediatheque/emmanuel-guibert",
+  "maj": "2026-11-07"
+ },
+ "Rouge de Chine": {
+  "total": 4,
+  "finis": true,
+  "source": "https://www.bedetheque.com/BD-Rouge-de-Chine-Tome-2-Masques-5440.html",
+  "maj": "2026-11-07"
+ },
+ "Yojimbot": {
+  "total": 4,
+  "finis": true,
+  "source": "https://comicsbeat.com/dark-horse-brings-sylvain-repos-robo-dystopian-series-yojimbot-to-english-in-december",
+  "maj": "2026-11-07"
  }
 }
