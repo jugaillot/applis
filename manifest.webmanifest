@@ -3,6 +3,7 @@
   "short_name": "La Suite",
   "description": "Outils d'atelier : séparation riso, vectorisation, compilation de PDF.",
   "lang": "fr",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
