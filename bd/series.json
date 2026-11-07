@@ -205,5 +205,29 @@
   "total": 20,
   "source": "https://en.wikipedia.org/wiki/Aquablue",
   "maj": "2026-11-07"
+ },
+ "Lou !": {
+  "total": 8,
+  "finis": true,
+  "source": "https://leclaireur.fnac.com/selection/cp41856-7-choses-a-savoir-sur-lou/",
+  "maj": "2026-11-07"
+ },
+ "La Horde du Contrevent": {
+  "total": 4,
+  "finis": false,
+  "source": "https://livraddict.com/biblio/auteur/eric-henninot.html",
+  "maj": "2026-11-07"
+ },
+ "Les Technopères": {
+  "total": 8,
+  "finis": true,
+  "source": "https://www.comicbooks.com/series/les-technop-res-1998",
+  "maj": "2026-11-07"
+ },
+ "Dofus": {
+  "total": 30,
+  "finis": true,
+  "source": "https://www.laprocure.com/product/1345517/tot-dofus-vol-30",
+  "maj": "2026-11-07"
  }
 }
