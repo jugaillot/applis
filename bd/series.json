@@ -2,7 +2,18 @@
  "My Hero Academia": {
   "total": 42,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-51637-BD-My-Hero-Academia.html"
+  "source": "https://www.bedetheque.com/serie-51637-BD-My-Hero-Academia.html",
+  "titres": {
+   "40": "The end of an era, and...",
+   "41": "Overlay",
+   "42": "La cavalerie est là"
+  },
+  "eans": {
+   "40": "9791032716946",
+   "41": "9791032719640",
+   "42": "9791032719657"
+  },
+  "maj": "2026-11-08"
  },
  "Sillage": {
   "total": 25,
@@ -17,12 +28,29 @@
  "Mashle": {
   "total": 18,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-74374-BD-Mashle.html"
+  "source": "https://www.bedetheque.com/serie-74374-BD-Mashle.html",
+  "titres": {
+   "10": "Mash Burnedead et l'armure d'aimants",
+   "16": "Max Burnedead et la magie réfléchissante",
+   "17": "Max Burnedead et la magie qui ralentit le temps"
+  },
+  "eans": {
+   "10": "9782820343833",
+   "16": "9782820346391",
+   "17": "9782820346506"
+  },
+  "maj": "2026-11-08"
  },
  "L'Atelier des Sorciers": {
   "total": 16,
   "finis": false,
-  "source": "https://www.bedetheque.com/serie-60298-BD-Atelier-des-sorciers.html"
+  "source": "https://www.bedetheque.com/serie-60298-BD-Atelier-des-sorciers.html",
+  "titres": {},
+  "eans": {
+   "14": "9791043301773",
+   "15": "9791043307751"
+  },
+  "maj": "2026-11-08"
  },
  "Undead Unluck": {
   "total": 26,
@@ -43,7 +71,12 @@
  "Dr. Stone": {
   "total": 27,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-60578-BD-Dr-Stone.html"
+  "source": "https://www.bedetheque.com/serie-60578-BD-Dr-Stone.html",
+  "titres": {
+   "27": "Future Science"
+  },
+  "eans": {},
+  "maj": "2026-11-08"
  },
  "The Promised Neverland": {
   "total": 20,
@@ -650,8 +683,12 @@
  "Gunnm - Mars Chronicle": {
   "total": 11,
   "finis": true,
-  "source": "https://livraddict.com/biblio/auteur/yukito-kishiro.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-54051-BD-Gunnm-Mars-Chronicle.html",
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "11": "9782344072226"
+  }
  },
  "Le Grand Mort": {
   "total": 8,
@@ -1126,8 +1163,20 @@
  "Low": {
   "total": 5,
   "finis": true,
-  "source": "https://en.wikipedia.org/wiki/Low_(comics)",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-51405-BD-Low.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Optimisme de surface",
+   "3": "Les Rivages de l'espérance",
+   "4": "Derrière le brouillard",
+   "5": "La Lumière des profondeurs"
+  },
+  "eans": {
+   "2": "9782365778381",
+   "3": "9791026811022",
+   "4": "9791026811909",
+   "5": "9791026820826"
+  }
  },
  "Les Naufragés d'Ythaq": {
   "total": 17,
@@ -1311,8 +1360,12 @@
  "Absurdus Delirium": {
   "total": 3,
   "finis": true,
-  "source": "https://www.comicbooks.com/series/absurdus-d-lirium-1989",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-1873-BD-Absurdus-Delirium.html",
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "2": "9782858151530"
+  }
  },
  "Les Chercheurs de Trésor": {
   "total": 2,
@@ -1323,8 +1376,14 @@
  "Super Caca": {
   "total": 3,
   "finis": true,
-  "source": "https://www.tebeosfera.com/numeros/super_caca_2018_b_1.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-54157-BD-Super-Caca.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "3": "Le temple de Seth"
+  },
+  "eans": {
+   "3": "9782413003779"
+  }
  },
  "Ultralazer": {
   "total": 2,
@@ -1339,10 +1398,18 @@
   "maj": "2026-11-07"
  },
  "Supermurgeman": {
-  "total": 3,
-  "finis": true,
-  "source": "https://www.livreshebdo.fr/sites/default/files/classified_ad/dargaud_11.pdf",
-  "maj": "2026-11-07"
+  "total": 4,
+  "finis": false,
+  "source": "https://www.bedetheque.com/serie-9928-BD-Supermurgeman.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "La menace communiste",
+   "4": "Opération Sheila"
+  },
+  "eans": {
+   "2": "9782205057096",
+   "4": "9782205078329"
+  }
  },
  "Assassination Classroom": {
   "total": 21,
@@ -1788,13 +1855,23 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-14859-BD-Passeurs-Roux.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "2": "9782351003923"
+  }
  },
  "Les Entremondes": {
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-1561-BD-Entremondes.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Les eaux lourdes"
+  },
+  "eans": {
+   "2": "9782205050790"
+  }
  },
  "Les Lumières de la France": {
   "total": 1,
@@ -1865,8 +1942,17 @@
  "The Promised Neverland (Light Novel)": {
   "total": 4,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-60827-BD-Promised-Neverland__10000.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-60827-BD-Promised-Neverland.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "La Lettre de Norman",
+   "3": "Mémoires de compagnon d'armes",
+   "4": "Au fil des souvenirs"
+  },
+  "eans": {
+   "1": "9782820336057",
+   "3": "9782820340894"
+  }
  },
  "Les Enfants d'Ailleurs": {
   "total": 6,
@@ -2071,8 +2157,14 @@
  "Les Fables Autonomes": {
   "total": 2,
   "finis": true,
-  "source": "https://www.bedetheque.com",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-5180-BD-Fables-autonomes.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Les fables autonomes 2"
+  },
+  "eans": {
+   "2": "9782858152483"
+  }
  },
  "Les Monstres de Mayuko": {
   "total": 1,
@@ -2117,8 +2209,14 @@
  "Meurtres Fatals": {
   "total": 2,
   "finis": true,
-  "source": "https://www.bedetheque.com",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-935-BD-Meurtres-fatals.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Meurtres fatals 002"
+  },
+  "eans": {
+   "2": "9782858152698"
+  }
  },
  "MIL": {
   "total": 1,
@@ -2362,7 +2460,13 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-2217-BD-Faces-de-rat.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Le retour"
+  },
+  "eans": {
+   "2": "9782869676121"
+  }
  },
  "Frontier": {
   "total": 1,
@@ -2406,7 +2510,11 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-26997-BD-Magasin-Sexuel.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "2": "9782756027135"
+  }
  },
  "Raiders": {
   "total": 1,
@@ -2430,7 +2538,13 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-26850-BD-Steve-Angie.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Grillades romantiques"
+  },
+  "eans": {
+   "2": "9782205066524"
+  }
  },
  "Karma": {
   "total": 3,
@@ -2450,7 +2564,11 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-14132-BD-Sorcieres-Igarashi.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "2": "9782203373884"
+  }
  },
  "Aweto": {
   "total": 2,
@@ -2666,7 +2784,13 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-13021-BD-Hommes-rats-Les-semi-aventures-des.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Monsieur Lafleur"
+  },
+  "eans": {
+   "2": "9782244497181"
+  }
  },
  "L'Oiseau Noir": {
   "total": 1,
@@ -2678,7 +2802,13 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-29513-BD-Lolika.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Hel"
+  },
+  "eans": {
+   "2": "9782803630882"
+  }
  },
  "Louis": {
   "total": 2,
@@ -3150,7 +3280,11 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-4806-BD-Rubrique-scientifique.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "3": "9782723450942"
+  }
  },
  "Les Kids Halloween": {
   "total": 2,
@@ -3240,7 +3374,13 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-19330-BD-Autobiography-of-a-Mitroll-The.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Is dad a troll ?"
+  },
+  "eans": {
+   "2": "9782205063806"
+  }
  },
  "Le Petit Rien Tout Neuf avec un Ventre Jaune": {
   "total": 1,
@@ -3778,7 +3918,13 @@
   "total": 4,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-15225-BD-Foret.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "4": "La Veuve noire"
+  },
+  "eans": {
+   "4": "9782203030084"
+  }
  },
  "Le Livre de ...": {
   "total": 2,
