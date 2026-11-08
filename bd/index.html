@@ -69,7 +69,7 @@ button.btn.pri{background:#2b2a33;color:#fff;border-color:#2b2a33}
 <main>
 <section id="v1">
  <div class="bar"><input id="q" type="search" placeholder="Rechercher un titre, une série, un éditeur…"></div>
- <div class="seg"><button id="m1" class="on">A → Z</button><button id="m2">Éditeur</button><button id="m3">Manques</button><button id="m4">Blocs</button></div>
+ <div class="seg"><button id="m1" class="on">A → Z</button><button id="m2">Éditeur</button><button id="m3">Manques</button></div>
  <div class="count" id="cnt"></div>
  <div id="list"></div>
 </section>
@@ -175,14 +175,14 @@ function render(){
  const n=list.reduce((t,a)=>t+a.it.length,0);
  $('cnt').innerHTML=`<span>${n} albums · ${list.length} séries</span><span><i class="dot rouge"></i>${cnt.rouge}</span><span><i class="dot vert"></i>${cnt.vert}</span><span><i class="dot" style="background:#fff"></i>${cnt.inconnu}</span>`;
  let h='';
- if(mode==='blocs'){
+ if(mode==='az'||mode==='manques'){
   if(BS){const a=all.find(x=>x.s===BS);
    h=a?`<button class="btn" data-back="1" style="margin-bottom:8px">← Toutes les séries</button><details class="s ${a.cls}" open><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`:'';
   }else{
-   list=list.slice().sort((a,b)=>a.s.localeCompare(b.s,'fr'));
+   list=list.slice().sort(mode==='manques'?(a,b)=>b.miss.length-a.miss.length||a.s.localeCompare(b.s,'fr'):(a,b)=>a.s.localeCompare(b.s,'fr'));
    h='<div class="grid">'+list.map(a=>{const eans=a.it.slice().sort(cmpT).map(x=>x[3]).filter(x=>String(x||'').replace(/\D/g,'').length>=10).slice(0,4);const tot=a.total?a.total-a.ex:null;const nb=tot?(tot-a.miss.length)+'/'+tot:String(a.it.length);return `<div class="bk ${a.cls}" data-bs="${esc(a.s)}"><span class="im">${cvImg(eans)}</span><div class="t">${esc(a.s)}</div><div class="n">${nb}</div></div>`}).join('')+'</div>';
   }
- }else if(mode==='az'||mode==='manques'){
+ }else if(false){
   list=list.slice().sort(mode==='manques'?(a,b)=>b.miss.length-a.miss.length||a.s.localeCompare(b.s,'fr'):(a,b)=>a.s.localeCompare(b.s,'fr'));
   for(const a of list){
    h+=`<details class="s ${a.cls}" data-s="${esc(a.s)}"${(q||OPEN.has(a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`;
@@ -229,8 +229,8 @@ $('list').addEventListener('change',e=>{
  else if(t.dataset.fs!=null){ST.meta[t.dataset.fs]=Object.assign({},ST.meta[t.dataset.fs],{finis:t.checked});persist();render()}
 });
 $('q').oninput=render;
-const setMode=(m,b)=>{mode=m;BS=null;['m1','m2','m3','m4'].forEach(i=>$(i).className=i===b?'on':'');render()};
-$('m1').onclick=()=>setMode('az','m1');$('m2').onclick=()=>setMode('ed','m2');$('m3').onclick=()=>setMode('manques','m3');$('m4').onclick=()=>setMode('blocs','m4');
+const setMode=(m,b)=>{mode=m;BS=null;['m1','m2','m3'].forEach(i=>$(i).className=i===b?'on':'');render()};
+$('m1').onclick=()=>setMode('az','m1');$('m2').onclick=()=>setMode('ed','m2');$('m3').onclick=()=>setMode('manques','m3');
 $('t1').onclick=()=>{$('t1').className='on';$('t2').className='';$('v1').hidden=false;$('v2').hidden=true;stop()};
 $('t2').onclick=()=>{$('t2').className='on';$('t1').className='';$('v2').hidden=false;$('v1').hidden=true};
 let stream=null,timer=null;
