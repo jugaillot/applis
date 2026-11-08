@@ -366,14 +366,16 @@
    "34": "Combat à mort",
    "35": "Bête de nen",
    "36": "Équilibre",
-   "37": "La fuite"
+   "37": "La fuite",
+   "38": "Tome 38"
   },
   "eans": {
    "1": "9782871292661",
    "2": "9782871292678",
    "3": "9782871292685",
    "4": "9782871292692",
-   "5": "9782871292708"
+   "5": "9782871292708",
+   "38": "9782505122470"
   },
   "maj": "2026-11-08"
  },
@@ -449,7 +451,7 @@
  },
  "Seuls": {
   "total": 16,
-  "source": "https://livraddict.com/biblio/auteur/fabien-vehlmann.html",
+  "source": "https://www.bedetheque.com/albums-12709-BD-Seuls.html",
   "maj": "2026-11-08",
   "titres": {
    "4": "Les Cairns rouges",
@@ -465,6 +467,11 @@
    "14": "Les Protecteurs",
    "15": "L'hôtel au bord du monde",
    "16": "La prisonnière d'Antésalem"
+  },
+  "eans": {
+   "6": "9782800150246",
+   "16": "9782810206162",
+   "12": "9791034733583"
   }
  },
  "Luuna": {
@@ -525,8 +532,8 @@
  "Altor": {
   "total": 7,
   "finis": true,
-  "source": "https://www.mediatoon-foreignrights.com/serie/altor",
-  "maj": "2026-11-07",
+  "source": "https://www.bedetheque.com/serie-84-BD-Altor.html",
+  "maj": "2026-11-08",
   "titres": {
    "1": "Le cristal majeur",
    "2": "Sur l'île de la licorne - Le cristal majeur 2",
@@ -537,7 +544,7 @@
    "7": "Les aventuriers du Trou Blanc"
   },
   "eans": {
-   "7": "9782205050338"
+   "7": "9782205050332"
   }
  },
  "Alef-Thau": {
@@ -554,7 +561,7 @@
  },
  "Aquablue": {
   "total": 21,
-  "source": "https://en.wikipedia.org/wiki/Aquablue",
+  "source": "https://www.bedetheque.com/albums-48-BD-Aquablue.html",
   "maj": "2026-11-08",
   "titres": {
    "12": "Retour aux sources",
@@ -567,13 +574,16 @@
    "19": "Clandestin",
    "20": "L'Œuf de Lochshore",
    "21": "L'antre du psychoderme"
+  },
+  "eans": {
+   "12": "9782756012636"
   }
  },
  "Lou !": {
   "total": 8,
   "finis": true,
-  "source": "https://leclaireur.fnac.com/selection/cp41856-7-choses-a-savoir-sur-lou/",
-  "maj": "2026-11-07",
+  "source": "https://www.bedetheque.com/serie-9623-BD-Lou.html",
+  "maj": "2026-11-08",
   "titres": {
    "1": "Journal Infime",
    "2": "Mortebouse",
@@ -583,7 +593,8 @@
    "6": "L'âge de cristal",
    "7": "La Cabane",
    "8": "En route vers de nouvelles aventures"
-  }
+  },
+  "eans": {}
  },
  "La Horde du Contrevent": {
   "total": 4,
@@ -770,8 +781,8 @@
  "Adèle Blanc-Sec": {
   "total": 10,
   "finis": true,
-  "source": "https://leclaireur.fnac.com/article/cp57453-jacques-tardi-en-rencontre-fnac-au-jardin-des-plantes/",
-  "maj": "2026-11-07",
+  "source": "https://www.bedetheque.com/serie-177-BD-Adele-Blanc-Sec-Les-Aventures-Extraordinaires-d.html",
+  "maj": "2026-11-08",
   "titres": {
    "1": "Adèle et la Bête",
    "2": "Le Démon de la Tour Eiffel",
@@ -783,7 +794,8 @@
    "8": "Le Mystère des Profondeurs",
    "9": "Le Labyrinthe infernal",
    "10": "Le Bébé des Buttes-Chaumont"
-  }
+  },
+  "eans": {}
  },
  "Zorn & Dirna": {
   "total": 6,
@@ -882,11 +894,15 @@
  },
  "Le Retour à la Terre": {
   "total": 6,
-  "source": "https://www.livreshebdo.fr/article/un-retour-reussi",
-  "maj": "2026-11-07",
+  "source": "https://www.bedetheque.com/serie-4491-BD-Retour-a-la-terre.html",
+  "maj": "2026-11-08",
   "titres": {
    "5": "Les révolutions",
    "6": "Les métamorphoses"
+  },
+  "eans": {
+   "5": "9782205062359",
+   "6": "9782205067668"
   }
  },
  "Les Compagnons du Crépuscule": {
@@ -897,8 +913,8 @@
  },
  "Pacush Blues": {
   "total": 13,
-  "source": "https://side-ecom-prod-export.cdi.ch/en/9782749304908-pacush-blues-tome-13",
-  "maj": "2026-11-07",
+  "source": "https://www.bedetheque.com/albums-118-BD-Pacush-Blues.html",
+  "maj": "2026-11-08",
   "titres": {
    "1": "Premières mesures",
    "3": "Troisième zone : l'importance majeure des accords mineurs",
@@ -908,6 +924,10 @@
    "10": "Décimation : Remords - Relecture du mythe de Frankenstein: remords",
    "12": "Douzième véhicule : Autopsie de Mondes en Déroute",
    "13": "Treizième porte : Correspondance avec les corps obscurs"
+  },
+  "eans": {
+   "1": "9782869670013",
+   "8": "9782869672468"
   }
  },
  "Le Monde d'Arkadi": {
@@ -1066,7 +1086,7 @@
  },
  "Game Over": {
   "total": 25,
-  "source": "https://www.laprocure.com/product/439027/midam-game-over-vol-5-walking-blork",
+  "source": "https://www.bedetheque.com/albums-10237-BD-Game-over.html",
   "maj": "2026-11-08",
   "titres": {
    "1": "Blork Raider",
@@ -1091,6 +1111,9 @@
    "23": "Rest in pieces",
    "24": "Fish & ships",
    "25": "The snow must go on"
+  },
+  "eans": {
+   "2": "9782800136950"
   }
  },
  "Les Contes de l'ère du Cobra": {
@@ -1199,8 +1222,8 @@
  "Les Naufragés d'Ythaq": {
   "total": 17,
   "finis": true,
-  "source": "choix Julien",
-  "maj": "2026-11-07",
+  "source": "https://www.bedetheque.com/serie-11901-BD-Naufrages-d-Ythaq.html",
+  "maj": "2026-11-08",
   "titres": {
    "1": "Terra Incognita",
    "2": "Ophyde La Géminée",
@@ -1219,7 +1242,8 @@
    "15": "Imperator Express - La Caravane de l'étrange",
    "16": "Les Assiégés de Glèbe",
    "17": "La Grotte des faces"
-  }
+  },
+  "eans": {}
  },
  "Goblin's": {
   "total": 11,
@@ -1354,8 +1378,32 @@
  "Chi - une Vie de Chat": {
   "total": 12,
   "finis": true,
-  "source": "https://www.anisearch.fr/manga/1631,chi-une-vie-de-chat",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-26048-BD-Chi-Une-vie-de-chat-format-manga.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Tome 1",
+   "4": "Tome 4",
+   "5": "Tome 5",
+   "6": "Tome 6",
+   "7": "Tome 7",
+   "8": "Tome 8",
+   "9": "Tome 9",
+   "10": "Tome 10",
+   "11": "Tome 11",
+   "12": "Tome 12"
+  },
+  "eans": {
+   "6": "9782723483636",
+   "10": "9782723497503",
+   "1": "9782723478380",
+   "4": "9782723478472",
+   "5": "9782723478489",
+   "7": "9782723483643",
+   "8": "9782723486354",
+   "9": "9782723491938",
+   "11": "9782344004517",
+   "12": "9782344010754"
+  }
  },
  "La Graine de Folie": {
   "total": 4,
@@ -1450,7 +1498,11 @@
    "14": "Fin du deuxième trimestre",
    "15": "Tempête",
    "16": "Passé",
-   "20": "Fin de l'année scolaire"
+   "20": "Fin de l'année scolaire",
+   "17": "Tome 17",
+   "18": "Tome 18",
+   "19": "Tome 19",
+   "21": "Tome 21"
   },
   "eans": {
    "2": "9782505019459",
@@ -1469,7 +1521,8 @@
    "15": "9782505065449",
    "16": "9782505068839",
    "21": "9782505069577",
-   "18": "9782505068853"
+   "18": "9782505068853",
+   "17": "9782505068846"
   }
  },
  "Le Dernier Templier": {
@@ -1761,7 +1814,11 @@
   "total": 38,
   "finis": true,
   "source": "https://franco.wiki/fr/Negima_!_Le_Ma%C3%AEtre_magicien.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "eans": {
+   "3": "9782845995628",
+   "8": "9782845996861"
+  }
  },
  "Pascal Brutal": {
   "total": 4,
@@ -2090,7 +2147,9 @@
   "titres": {
    "4": "Avant Naguère",
    "5": "Avant Naguère",
-   "6": "Avant naguère"
+   "6": "Avant naguère",
+   "2": "Tome 2",
+   "3": "Tome 3"
   },
   "eans": {
    "1": "9782756018560",
