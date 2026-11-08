@@ -56,13 +56,20 @@ button.btn.pri{background:#2b2a33;color:#fff;border-color:#2b2a33}
 .hint{font-size:13px;color:#777;margin:8px 0}
 .exb{margin-left:auto;background:none;border:1px solid #c33;color:#c33;border-radius:6px;padding:2px 8px;font-size:12px}
 #lb{position:fixed;inset:0;background:#000d;display:flex;align-items:center;justify-content:center;z-index:99}#lb[hidden]{display:none}#lb img{max-width:92vw;max-height:92vh;border-radius:6px;background:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.bk{border-radius:10px;overflow:hidden;background:#fff;border:2px solid #cfc7b5;cursor:pointer}
+.bk.rouge{border-color:#d9857b}.bk.vert{border-color:#7cc08a}
+.bk .im{aspect-ratio:2/3;background:#e9e4d6;display:block}.bk .im img{width:100%;height:100%;object-fit:cover;display:block}
+.bk .t{font-size:12px;font-weight:600;padding:5px 6px 2px;line-height:1.2;height:2.6em;overflow:hidden}
+.bk .n{margin:0 6px 6px;padding:2px 6px;border-radius:6px;font-size:12px;font-weight:700;text-align:center;background:#eee}
+.bk.rouge .n{background:#f6c9c3;color:#8a2a20}.bk.vert .n{background:#cdeccf;color:#1f6b33}
 </style></head><body>
 <header><div class="tabs"><a href="../" title="La Suite">←</a><button id="t1" class="on">Collection</button><button id="t2">Scanner</button><span id="bdg"></span><button id="gear" title="Réglages" style="flex:0 0 auto;padding:10px 14px;font-size:20px">⚙</button></div></header>
 <div id="menu" hidden style="position:fixed;right:8px;top:calc(env(safe-area-inset-top) + 52px);z-index:9;background:#fff;color:#26242c;border:1px solid #cfc7b5;border-radius:10px;padding:8px;min-width:240px;box-shadow:0 6px 20px #0003"><button class="btn pri" id="inst" style="width:100%">Installer l’appli sur ce téléphone</button><p class="hint" id="instInfo" style="margin:8px 4px 2px"></p></div>
 <main>
 <section id="v1">
  <div class="bar"><input id="q" type="search" placeholder="Rechercher un titre, une série, un éditeur…"></div>
- <div class="seg"><button id="m1" class="on">A → Z</button><button id="m2">Éditeur</button><button id="m3">Manques</button></div>
+ <div class="seg"><button id="m1" class="on">A → Z</button><button id="m2">Éditeur</button><button id="m3">Manques</button><button id="m4">Blocs</button></div>
  <div class="count" id="cnt"></div>
  <div id="list"></div>
 </section>
@@ -134,7 +141,12 @@ function analyse(){
  return out;
 }
 function lines(items){return items.slice().sort(cmpT).map(x=>`<div class="al"><b>${x[1]??''}</b><span>${esc(x[2])}</span><button class="rm" data-rm="${esc(JSON.stringify(x))}" title="Retirer de la collection" style="margin-left:auto;background:none;border:1px solid #c33;color:#c33;border-radius:6px;padding:2px 8px;font-size:12px">Retirer</button></div>`).join('')}
-function cv(e){e=String(e||'').replace(/\D/g,'');return e.length>=10?`<i class="cv"><img loading="lazy" alt="" src="https://covers.openlibrary.org/b/isbn/${e}-S.jpg?default=false" onerror="this.remove()" onload="if(this.naturalWidth<5)this.remove()"></i>`:'<i class="cv"></i>'}
+function isb10(e){if(e.length!==13||e.slice(0,3)!=='978')return '';const b=e.slice(3,12);let t=0;for(let i=0;i<9;i++)t+=(10-i)*+b[i];const c=(11-t%11)%11;return b+(c===10?'X':c)}
+function srcs(eans,big){const o=[];for(const e of eans){o.push(`https://covers.openlibrary.org/b/isbn/${e}-${big?'L':'M'}.jpg?default=false`);const t=isb10(e);if(t)o.push(`https://images-na.ssl-images-amazon.com/images/P/${t}.01.${big?'L':'M'}.jpg`);o.push(`https://books.google.com/books/content?vid=ISBN${e}&printsec=frontcover&img=1&zoom=${big?2:1}`)}return o}
+function cvNext(im){const u=srcs(JSON.parse(im.dataset.q),false);const k=+im.dataset.k+1;if(k<u.length){im.dataset.k=k;im.src=u[k]}else im.remove()}
+function cvImg(eans){eans=eans.map(x=>String(x||'').replace(/\D/g,'')).filter(x=>x.length>=10);if(!eans.length)return '';return `<img loading="lazy" alt="" data-q="${esc(JSON.stringify(eans))}" data-k="0" src="${srcs(eans,false)[0]}" onerror="cvNext(this)" onload="if(this.naturalWidth<5)cvNext(this)">`}
+function cv(e){return `<i class="cv">${cvImg([e])}</i>`}
+function loadBig(e){const lb=$('lb'),im=lb.firstChild,msg=lb.lastChild;const u=srcs([e],true);let k=0;msg.textContent='';im.hidden=false;const nx=()=>{k++;if(k<u.length)im.src=u[k];else{im.hidden=true;msg.textContent='Pas de couverture disponible'}};im.onerror=nx;im.onload=()=>{if(im.naturalWidth<5)nx()};im.src=u[0];lb.hidden=false}
 function listeHtml(a){
  const rows=a.it.map(x=>({n:x[1],o:x})).concat(a.miss.map(t=>({n:t,m:t})));
  rows.sort((p,q)=>(p.n??1e9)-(q.n??1e9)||(p.o?0:1)-(q.o?0:1)||(p.o?p.o[2].localeCompare(q.o?q.o[2]:'','fr'):0));
@@ -152,7 +164,7 @@ function missHtml(a){
  const ab=(a.miss.length||a.abandon)?`<div class="meta"><button class="btn" data-ab="${esc(a.s)}">${a.abandon?'Suivre à nouveau':'Ne plus suivre'}</button><span>${a.abandon?'Série ignorée : comptée en vert malgré les manques.':'Je ne cherche pas à compléter : passe la série en vert.'}</span></div>`:'';
  return chk+meta+ab;
 }
-let mode='az';
+let mode='az',BS=null;
 function render(){
  const q=norm($('q').value.trim());
  let all=analyse();
@@ -163,7 +175,14 @@ function render(){
  const n=list.reduce((t,a)=>t+a.it.length,0);
  $('cnt').innerHTML=`<span>${n} albums · ${list.length} séries</span><span><i class="dot rouge"></i>${cnt.rouge}</span><span><i class="dot vert"></i>${cnt.vert}</span><span><i class="dot" style="background:#fff"></i>${cnt.inconnu}</span>`;
  let h='';
- if(mode==='az'||mode==='manques'){
+ if(mode==='blocs'){
+  if(BS){const a=all.find(x=>x.s===BS);
+   h=a?`<button class="btn" data-back="1" style="margin-bottom:8px">← Toutes les séries</button><details class="s ${a.cls}" open><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`:'';
+  }else{
+   list=list.slice().sort((a,b)=>a.s.localeCompare(b.s,'fr'));
+   h='<div class="grid">'+list.map(a=>{const eans=a.it.slice().sort(cmpT).map(x=>x[3]).filter(x=>String(x||'').replace(/\D/g,'').length>=10).slice(0,4);const tot=a.total?a.total-a.ex:null;const nb=tot?(tot-a.miss.length)+'/'+tot:String(a.it.length);return `<div class="bk ${a.cls}" data-bs="${esc(a.s)}"><span class="im">${cvImg(eans)}</span><div class="t">${esc(a.s)}</div><div class="n">${nb}</div></div>`}).join('')+'</div>';
+  }
+ }else if(mode==='az'||mode==='manques'){
   list=list.slice().sort(mode==='manques'?(a,b)=>b.miss.length-a.miss.length||a.s.localeCompare(b.s,'fr'):(a,b)=>a.s.localeCompare(b.s,'fr'));
   for(const a of list){
    h+=`<details class="s ${a.cls}" data-s="${esc(a.s)}"${(q||OPEN.has(a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`;
@@ -178,8 +197,11 @@ function render(){
  $('dl').innerHTML=all.map(a=>`<option value="${esc(a.s)}">`).join('');
 }
 $('list').addEventListener('click',e=>{
+ const bk=e.target.closest('[data-bs]');
+ if(bk){BS=bk.dataset.bs;render();window.scrollTo(0,0);return}
+ if(e.target.closest('[data-back]')){BS=null;render();return}
  const row=e.target.closest('.al[data-e]');
- if(row&&!e.target.closest('input,button')){const q=row.dataset.e;if(q.length>=10){const lb=$('lb'),im=lb.firstChild;im.hidden=false;lb.lastChild.textContent='';im.onerror=()=>{im.hidden=true;lb.lastChild.textContent='Pas de couverture disponible'};im.src='https://covers.openlibrary.org/b/isbn/'+q+'-L.jpg?default=false';lb.hidden=false}return}
+ if(row&&!e.target.closest('input,button')){const q=row.dataset.e;if(q.length>=10)loadBig(q);return}
  const ex=e.target.closest('[data-ex]');
  if(ex){e.preventDefault();const i=ex.dataset.ex.lastIndexOf('|');const sr=ex.dataset.ex.slice(0,i),t=+ex.dataset.ex.slice(i+1);
   if(!confirm('Retirer le tome '+t+' de « '+sr+' » ?\n\nIl n\'existe pas / ne compte pas : il disparaît des manques et du total.'))return;
@@ -207,8 +229,8 @@ $('list').addEventListener('change',e=>{
  else if(t.dataset.fs!=null){ST.meta[t.dataset.fs]=Object.assign({},ST.meta[t.dataset.fs],{finis:t.checked});persist();render()}
 });
 $('q').oninput=render;
-const setMode=(m,b)=>{mode=m;['m1','m2','m3'].forEach(i=>$(i).className=i===b?'on':'');render()};
-$('m1').onclick=()=>setMode('az','m1');$('m2').onclick=()=>setMode('ed','m2');$('m3').onclick=()=>setMode('manques','m3');
+const setMode=(m,b)=>{mode=m;BS=null;['m1','m2','m3','m4'].forEach(i=>$(i).className=i===b?'on':'');render()};
+$('m1').onclick=()=>setMode('az','m1');$('m2').onclick=()=>setMode('ed','m2');$('m3').onclick=()=>setMode('manques','m3');$('m4').onclick=()=>setMode('blocs','m4');
 $('t1').onclick=()=>{$('t1').className='on';$('t2').className='';$('v1').hidden=false;$('v2').hidden=true;stop()};
 $('t2').onclick=()=>{$('t2').className='on';$('t1').className='';$('v2').hidden=false;$('v1').hidden=true};
 let stream=null,timer=null;
