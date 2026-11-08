@@ -1,7 +1,7 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Scripts de l'atelier : réseau d'abord aussi. Grosses bibliothèques et polices : copie locale d'abord. */
-const VERSION = 'atelier-v217';
+const VERSION = 'atelier-v218';
 const PRECACHE = [
   '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/', '/paysage/', '/civco/', '/mise/', '/bd/', '/bd/series.json', '/bd/manifest.webmanifest','/icons/bd-icon-192.png',
   '/vecto/potrace-worker.js', '/lib/sync.js','/lib/tabs.js', '/lib/help.js', '/lib/drop.js', '/lib/pptx.js',
