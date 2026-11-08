@@ -2759,6 +2759,10 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-66936-BD-Nippon-folklore.html",
-  "maj": "2026-11-08"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Nippon folklore",
+   "2": "Nippon Yokai"
+  }
  }
 }
