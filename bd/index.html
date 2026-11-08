@@ -136,7 +136,7 @@ function analyse(){
   if(miss.length&&!mt.abandon)cls='rouge';
   else if(miss.length&&mt.abandon)cls='vert';
   else if(total!=null){cls=(mt.finis===true||mt.finis===false)?'vert':'inconnu'}
-  out.push({s,it,owned,total,ex:exl.length,exall:(mt.exclus||[]).length,titres:mt.titres||{},finis:mt.finis,abandon:!!mt.abandon,miss,cls,supp,ed:(it.find(x=>x[4])||[])[4]||''});
+  out.push({s,it,owned,total,ex:exl.length,exall:(mt.exclus||[]).length,titres:mt.titres||{},eans:mt.eans||{},enr:((ENR[s]||{}).d)||{},finis:mt.finis,abandon:!!mt.abandon,miss,cls,supp,ed:(it.find(x=>x[4])||[])[4]||''});
  }
  return out;
 }
@@ -152,10 +152,39 @@ function listeHtml(a){
  rows.sort((p,q)=>(p.n??1e9)-(q.n??1e9)||(p.o?0:1)-(q.o?0:1)||(p.o?p.o[2].localeCompare(q.o?q.o[2]:'','fr'):0));
  return rows.map(r=>r.o
   ?`<div class="al" data-e="${esc(String(r.o[3]||'').replace(/\D/g,''))}"><input type="checkbox" class="rm" checked data-rm="${esc(JSON.stringify(r.o))}" title="Décocher = retirer de la collection"><b>${r.o[1]??''}</b>${cv(r.o[3])}<span>${esc(r.o[2])}</span></div>`
-  :`<div class="al no"><input type="checkbox" data-s="${esc(a.s)}" data-t="${r.m}"><b>${r.m}</b><i class="cv"></i><span>${a.titres[r.m]?esc(a.titres[r.m]):'Tome '+r.m}</span><button class="exb" data-ex="${esc(a.s)}|${r.m}" title="Ce tome n'existe pas">Retirer</button></div>`).join('');
+  :(()=>{const en=a.enr[r.m]||{},ean=String(a.eans[r.m]||en.e||'').replace(/\D/g,''),ti=a.titres[r.m]||en.t||'';return `<div class="al no"${ean?` data-e="${ean}"`:''}><input type="checkbox" data-s="${esc(a.s)}" data-t="${r.m}"><b>${r.m}</b>${cv(ean)}<span>${ti?esc(ti):'Tome '+r.m}</span><button class="exb" data-ex="${esc(a.s)}|${r.m}" title="Ce tome n'existe pas">Retirer</button></div>`})()).join('');
 }
 function head(a){const eds=[...new Set(a.it.map(x=>x[4]).filter(Boolean))].join(', ');const au=AUT[a.s]||'';if(!au&&!eds)return '';return `<div style="font-size:13px;color:#555;padding:4px 12px">${au?'Auteur(s) : '+esc(au):''}${au&&eds?' · ':''}${eds?'Éditeur : '+esc(eds):''}</div>`}
 function info(a){const n=a.total?a.total-a.ex-a.miss.length:(a.owned.size||a.it.length);return (a.total?n+'/'+(a.total-a.ex):String(a.it.length))+(a.miss.length?' · manque '+a.miss.length:'')}
+const ENR=(()=>{try{return JSON.parse(localStorage.getItem('bd_enr')||'{}')}catch(e){return{}}})();
+const ENRP=new Set();
+async function enrich(a){
+ if(ENRP.has(a.s)||!a.miss.length)return;
+ const rec=ENR[a.s];if(rec&&Date.now()-rec.t<30*864e5)return;
+ ENRP.add(a.s);
+ const base=a.s.trim(),sn=norm(base),out={};
+ try{
+  for(let st=0;st<80;st+=40){
+   const r=await fetch('https://www.googleapis.com/books/v1/volumes?q='+encodeURIComponent('intitle:"'+base+'"')+'&maxResults=40&startIndex='+st+'&printType=books&langRestrict=fr');
+   if(!r.ok)break;const j=await r.json();
+   for(const it of j.items||[]){
+    const v=it.volumeInfo||{};const nf=norm((v.title||'')+' '+(v.subtitle||''));
+    if(!nf.includes(sn))continue;
+    const m=nf.match(/(?:tome|t\.?|vol\.?|volume|n°|#)\s*0*(\d{1,3})\b/)||nf.match(/\s0*(\d{1,3})\s*$/);
+    if(!m)continue;const n=+m[1];
+    if(!a.miss.includes(n)||out[n])continue;
+    const id=(v.industryIdentifiers||[]).find(x=>x.type==='ISBN_13');if(!id)continue;
+    let t=(v.subtitle||'').trim();
+    if(!t){t=(v.title||'').replace(new RegExp(base.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'),'').replace(/(?:tome|t\.?|vol\.?|volume|n°|#)\s*0*\d{1,3}/i,'').replace(/^[\s:\-–—,.]+|[\s:\-–—,.]+$/g,'')}
+    out[n]={e:id.identifier,t:t.length>2?t:''};
+   }
+   if((j.items||[]).length<40)break;
+  }
+  ENR[a.s]={t:Date.now(),d:out};
+  try{localStorage.setItem('bd_enr',JSON.stringify(ENR))}catch(e){}
+  if(Object.keys(out).length&&BS===a.s)render();
+ }catch(e){}
+}
 const OPEN=new Set();
 document.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.s!=null){d.open?OPEN.add(d.dataset.s):OPEN.delete(d.dataset.s)}},true);
 function missHtml(a){
@@ -176,7 +205,7 @@ function render(){
  $('cnt').innerHTML=`<span>${n} albums · ${list.length} séries</span><span><i class="dot rouge"></i>${cnt.rouge}</span><span><i class="dot vert"></i>${cnt.vert}</span><span><i class="dot" style="background:#fff"></i>${cnt.inconnu}</span>`;
  let h='';
  if(mode==='az'||mode==='manques'){
-  if(BS){const a=all.find(x=>x.s===BS);
+  if(BS){const a=all.find(x=>x.s===BS);if(a)setTimeout(()=>enrich(a),0);
    h=a?`<button class="btn" data-back="1" style="margin-bottom:8px">← Toutes les séries</button><details class="s ${a.cls}" open><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`:'';
   }else{
    list=list.slice().sort((a,b)=>a.s.localeCompare(b.s,'fr'));
@@ -193,7 +222,7 @@ function render(){
    h+=`<details class="s" data-s="ed:${esc(e)}"${(q||OPEN.has('ed:'+e))?' open':''}><summary><span>${esc(e)}</span><small>${ss.reduce((t,a)=>t+a.it.length,0)}</small></summary>`+ss.sort((a,b)=>a.s.localeCompare(b.s,'fr')).map(a=>`<details class="s ${a.cls}" data-s="ed:${esc(e)}|${esc(a.s)}"${(q||OPEN.has('ed:'+e+'|'+a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`).join('')+`</details>`;
   }
  }
- $('list').innerHTML=h||'<p class="hint">Rien trouvé.</p>'+'<p class="hint" style="text-align:center;font-size:11px">version v239</p>';
+ $('list').innerHTML=h||'<p class="hint">Rien trouvé.</p>'+'<p class="hint" style="text-align:center;font-size:11px">version v240</p>';
  $('dl').innerHTML=all.map(a=>`<option value="${esc(a.s)}">`).join('');
 }
 $('list').addEventListener('click',e=>{

@@ -327,7 +327,19 @@
   "total": 7,
   "finis": true,
   "source": "https://www.mediatoon-foreignrights.com/serie/altor",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Le cristal majeur",
+   "2": "Sur l'île de la licorne - Le cristal majeur 2",
+   "3": "Le secret d'Aurelys - Le cristal majeur 3",
+   "4": "Les immortels de Shinkara",
+   "5": "Les seigneurs force",
+   "6": "Les voies du temps",
+   "7": "Les aventuriers du Trou Blanc"
+  },
+  "eans": {
+   "7": "9782205050338"
+  }
  },
  "Alef-Thau": {
   "total": 8,
