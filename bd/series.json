@@ -1537,5 +1537,28 @@
   "total": 10,
   "source": "https://www.bedetheque.com/serie-84913-BD-Tsugai-Daemons-of-the-Shadow-Realm.html",
   "maj": "2026-11-07"
+ },
+ "Menji": {
+  "total": 2,
+  "source": "https://www.bedetheque.com/serie-78138-BD-Menji.html",
+  "maj": "2026-11-07"
+ },
+ "Reines & Dragons": {
+  "total": 1,
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-89087-BD-Reines-dragons-La-petite-reine.html",
+  "maj": "2026-11-07"
+ },
+ "Silence": {
+  "total": 1,
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-5569-BD-Silence-Comes.html",
+  "maj": "2026-11-07"
+ },
+ "Tokyo": {
+  "total": 1,
+  "finis": true,
+  "source": "réponse utilisateur",
+  "maj": "2026-11-07"
  }
 }
