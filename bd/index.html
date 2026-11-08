@@ -63,13 +63,15 @@ button.btn.pri{background:#2b2a33;color:#fff;border-color:#2b2a33}
 .bk .t{flex:1;align-self:center;font-size:16px;font-weight:600;padding:6px 10px;line-height:1.25}
 .bk .n{flex:none;align-self:center;margin:0 12px;padding:4px 10px;border-radius:8px;font-size:15px;font-weight:700;text-align:center;background:#eee}
 .bk.rouge .n{background:#f6c9c3;color:#8a2a20}.bk.vert .n{background:#cdeccf;color:#1f6b33}
+.st{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.st div.c{background:#fff;border:1px solid #cfc7b5;border-radius:10px;padding:10px;text-align:center}.st b{display:block;font-size:24px}.st span{font-size:12px;color:#666}
+.stl{background:#fff;border:1px solid #cfc7b5;border-radius:10px;padding:10px 12px;margin-bottom:12px}.stl h3{margin:0 0 8px;font-size:15px}.stl .r{display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0}.stl .r i{flex:none;width:90px;height:8px;background:#eee;border-radius:4px;overflow:hidden}.stl .r i u{display:block;height:100%;background:#7cc08a}.stl .r em{flex:1;font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stl .r small{flex:none;font-weight:700}
 </style></head><body>
 <header><div class="tabs"><a href="../" title="La Suite">←</a><button id="t1" class="on">Collection</button><button id="t2">Scanner</button><span id="bdg"></span><button id="gear" title="Réglages" style="flex:0 0 auto;padding:10px 14px;font-size:20px">⚙</button></div></header>
 <div id="menu" hidden style="position:fixed;right:8px;top:calc(env(safe-area-inset-top) + 52px);z-index:9;background:#fff;color:#26242c;border:1px solid #cfc7b5;border-radius:10px;padding:8px;min-width:240px;box-shadow:0 6px 20px #0003"><button class="btn pri" id="inst" style="width:100%">Installer l’appli sur ce téléphone</button><p class="hint" id="instInfo" style="margin:8px 4px 2px"></p></div>
 <main>
 <section id="v1">
  <div class="bar"><input id="q" type="search" placeholder="Rechercher un titre, une série, un éditeur…"></div>
- <div class="seg"><button id="m1" class="on">A → Z</button><button id="m2">Éditeur</button><button id="m3">Manques</button></div>
+ <div class="seg"><button id="m1" class="on">A → Z</button><button id="m2">Éditeur</button><button id="m3">Manques</button><button id="m4">Stats</button></div>
  <div class="count" id="cnt"></div>
  <div id="list"></div>
 </section>
@@ -146,7 +148,7 @@ function srcs(eans,big){const o=[];for(const e of eans){o.push(`https://covers.o
 function cvNext(im){const u=srcs(JSON.parse(im.dataset.q),false);const k=+im.dataset.k+1;if(k<u.length){im.dataset.k=k;im.src=u[k]}else im.remove()}
 function cvImg(eans){eans=eans.map(x=>String(x||'').replace(/\D/g,'')).filter(x=>x.length>=10);if(!eans.length)return '';return `<img loading="lazy" alt="" data-q="${esc(JSON.stringify(eans))}" data-k="0" src="${srcs(eans,false)[0]}" onerror="cvNext(this)" onload="if(this.naturalWidth<5)cvNext(this)">`}
 function cv(e){return `<i class="cv">${cvImg([e])}</i>`}
-function loadBig(e){const lb=$('lb'),im=lb.firstChild,msg=lb.lastChild;const u=srcs([e],true);let k=0;msg.textContent='';im.hidden=false;const nx=()=>{k++;if(k<u.length)im.src=u[k];else{im.hidden=true;msg.textContent='Pas de couverture disponible'}};im.onerror=nx;im.onload=()=>{if(im.naturalWidth<5)nx()};im.src=u[0];lb.hidden=false}
+function loadBig(e){const lb=$('lb'),im=lb.firstChild,msg=lb.lastChild;const u=srcs([e],true);let k=0;msg.textContent='';im.hidden=false;const nx=()=>{k++;if(k<u.length)im.src=u[k];else{im.hidden=true;msg.textContent='Pas de couverture disponible'}};im.onerror=nx;im.onload=()=>{if(im.naturalWidth<5)nx()};im.src=u[0];lb.hidden=false;history.pushState({lb:1,bs:BS},'')}
 function listeHtml(a){
  const rows=a.it.map(x=>({n:x[1],o:x})).concat(a.miss.map(t=>({n:t,m:t})));
  rows.sort((p,q)=>(p.n??1e9)-(q.n??1e9)||(p.o?0:1)-(q.o?0:1)||(p.o?p.o[2].localeCompare(q.o?q.o[2]:'','fr'):0));
@@ -193,6 +195,23 @@ function missHtml(a){
  const ab=(a.miss.length||a.abandon)?`<div class="meta"><button class="btn" data-ab="${esc(a.s)}">${a.abandon?'Suivre à nouveau':'Ne plus suivre'}</button><span>${a.abandon?'Série ignorée : comptée en vert malgré les manques.':'Je ne cherche pas à compléter : passe la série en vert.'}</span></div>`:'';
  return chk+meta+ab;
 }
+function statsHtml(all){
+ const top=(m,n)=>[...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'fr')).slice(0,n);
+ const bars=(t,rows,u)=>{const mx=Math.max(1,...rows.map(r=>r[1]));return `<div class="stl"><h3>${t}</h3>${rows.map(r=>`<div class="r"><em>${esc(r[0])}</em><i><u style="width:${Math.round(r[1]/mx*100)}%"></u></i><small>${r[1]}${u||''}</small></div>`).join('')||'<p class="hint">Aucune donnée</p>'}</div>`};
+ const alb=all.reduce((t,a)=>t+a.it.length,0);
+ const mq=all.filter(a=>!a.abandon).reduce((t,a)=>t+a.miss.length,0);
+ const comp=all.filter(a=>a.cls==='vert'&&!a.miss.length).length,inc=all.filter(a=>a.cls==='rouge').length,aband=all.filter(a=>a.abandon).length,inco=all.filter(a=>a.cls==='inconnu').length;
+ const fin=all.filter(a=>a.finis===true).length,enc=all.filter(a=>a.finis===false).length;
+ const kn=all.filter(a=>a.total&&!a.abandon);const have=kn.reduce((t,a)=>t+(a.total-a.ex-a.miss.length),0),tt=kn.reduce((t,a)=>t+(a.total-a.ex),0);
+ const pct=tt?Math.round(have/tt*100):0;
+ const ed=new Map(),au=new Map();
+ all.forEach(a=>{a.it.forEach(x=>{const e=x[4]||'Éditeur inconnu';ed.set(e,(ed.get(e)||0)+1)});
+  (AUT[a.s]||'').split(/\s*,\s*/).filter(n=>n&&n!=='Collectif').forEach(n=>au.set(n,(au.get(n)||0)+a.it.length))});
+ const lg=new Map(all.map(a=>[a.s,a.it.length])),ms=new Map(all.filter(a=>!a.abandon&&a.miss.length).map(a=>[a.s,a.miss.length]));
+ const c=(n,l)=>`<div class="c"><b>${n}</b><span>${l}</span></div>`;
+ return `<div class="st">${c(alb,'albums possédés')}${c(all.length,'séries')}${c(comp,'séries complètes')}${c(inc,'séries incomplètes')}${c(mq,'tomes manquants')}${c(pct+' %','de complétion (séries connues)')}${c(fin,'séries terminées')}${c(enc,'séries en cours')}${c(aband,'séries abandonnées')}${c(inco,'total inconnu')}</div>`
+ +bars('Séries les plus fournies',top(lg,8))+bars('Plus de tomes manquants',top(ms,8))+bars('Éditeurs',top(ed,8))+bars('Auteurs (albums)',top(au,8));
+}
 let mode='az',BS=null;
 function render(){
  const q=norm($('q').value.trim());
@@ -204,7 +223,8 @@ function render(){
  const n=list.reduce((t,a)=>t+a.it.length,0);
  $('cnt').innerHTML=`<span>${n} albums · ${list.length} séries</span><span><i class="dot rouge"></i>${cnt.rouge}</span><span><i class="dot vert"></i>${cnt.vert}</span><span><i class="dot" style="background:#fff"></i>${cnt.inconnu}</span>`;
  let h='';
- if(mode==='az'||mode==='manques'){
+ if(mode==='stats'){h=statsHtml(all)}
+ else if(mode==='az'||mode==='manques'){
   if(BS){const a=all.find(x=>x.s===BS);if(a)setTimeout(()=>enrich(a),0);
    h=a?`<button class="btn" data-back="1" style="margin-bottom:8px">← Toutes les séries</button><details class="s ${a.cls}" open><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`:'';
   }else{
@@ -222,13 +242,13 @@ function render(){
    h+=`<details class="s" data-s="ed:${esc(e)}"${(q||OPEN.has('ed:'+e))?' open':''}><summary><span>${esc(e)}</span><small>${ss.reduce((t,a)=>t+a.it.length,0)}</small></summary>`+ss.sort((a,b)=>a.s.localeCompare(b.s,'fr')).map(a=>`<details class="s ${a.cls}" data-s="ed:${esc(e)}|${esc(a.s)}"${(q||OPEN.has('ed:'+e+'|'+a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`).join('')+`</details>`;
   }
  }
- $('list').innerHTML=h||'<p class="hint">Rien trouvé.</p>'+'<p class="hint" style="text-align:center;font-size:11px">version v241</p>';
+ $('list').innerHTML=h||'<p class="hint">Rien trouvé.</p>'+'<p class="hint" style="text-align:center;font-size:11px">version v245</p>';
  $('dl').innerHTML=all.map(a=>`<option value="${esc(a.s)}">`).join('');
 }
 $('list').addEventListener('click',e=>{
  const bk=e.target.closest('[data-bs]');
- if(bk){BS=bk.dataset.bs;render();window.scrollTo(0,0);return}
- if(e.target.closest('[data-back]')){BS=null;render();return}
+ if(bk){BS=bk.dataset.bs;history.pushState({bs:BS},'');render();window.scrollTo(0,0);return}
+ if(e.target.closest('[data-back]')){if(history.state&&history.state.bs)history.back();else{BS=null;render()}return}
  const row=e.target.closest('.al[data-e]');
  if(row&&!e.target.closest('input,button')){const q=row.dataset.e;if(q.length>=10)loadBig(q);return}
  const ex=e.target.closest('[data-ex]');
@@ -258,10 +278,12 @@ $('list').addEventListener('change',e=>{
  else if(t.dataset.fs!=null){ST.meta[t.dataset.fs]=Object.assign({},ST.meta[t.dataset.fs],{finis:t.checked});persist();render()}
 });
 $('q').oninput=render;
-const setMode=(m,b)=>{mode=m;BS=null;['m1','m2','m3'].forEach(i=>$(i).className=i===b?'on':'');render()};
-$('m1').onclick=()=>setMode('az','m1');$('m2').onclick=()=>setMode('ed','m2');$('m3').onclick=()=>setMode('manques','m3');
-$('t1').onclick=()=>{$('t1').className='on';$('t2').className='';$('v1').hidden=false;$('v2').hidden=true;stop()};
-$('t2').onclick=()=>{$('t2').className='on';$('t1').className='';$('v2').hidden=false;$('v1').hidden=true};
+const setMode=(m,b)=>{mode=m;BS=null;['m1','m2','m3','m4'].forEach(i=>$(i).className=i===b?'on':'');render()};
+$('m1').onclick=()=>setMode('az','m1');$('m2').onclick=()=>setMode('ed','m2');$('m3').onclick=()=>setMode('manques','m3');$('m4').onclick=()=>setMode('stats','m4');
+const showTab=n=>{$('t1').className=n===1?'on':'';$('t2').className=n===2?'on':'';$('v1').hidden=n!==1;$('v2').hidden=n!==2;if(n===1)stop()};
+$('t1').onclick=()=>{if(history.state&&history.state.tab===2)history.back();else showTab(1)};
+$('t2').onclick=()=>{if(!(history.state&&history.state.tab===2))history.pushState({tab:2},'');showTab(2)};
+window.addEventListener('popstate',e=>{const st=e.state||{},lb=$('lb');if(!lb.hidden){lb.hidden=true;lb.firstChild.removeAttribute('src')}BS=st.bs||null;showTab(st.tab===2?2:1);render()});
 let stream=null,timer=null;
 function stop(){clearInterval(timer);timer=null;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('vid').hidden=true}
 async function scan(){
@@ -329,5 +351,5 @@ refreshInst();
 window.addEventListener('atelier-docs',async()=>{await loadState();render()});
 (async()=>{await Promise.all([loadMeta(),loadState()]);if(window.AtelierSync)$('bdg').appendChild(AtelierSync.badge());render()})();
 </script><div id="lb" hidden><img alt=""><span style="color:#fff"></span></div>
-<script>document.getElementById('lb').onclick=function(){this.hidden=true;this.firstChild.removeAttribute('src')}</script>
+<script>document.getElementById('lb').onclick=function(){if(history.state&&history.state.lb)history.back();else{this.hidden=true;this.firstChild.removeAttribute('src')}}</script>
 </body></html>
