@@ -1075,8 +1075,24 @@
  "Le Dernier Templier": {
   "total": 6,
   "finis": true,
-  "source": "https://www.comicbooks.com/series/le-dernier-templier-2009",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-20149-BD-Dernier-Templier.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "L'encodeur",
+   "2": "Le chevalier de la crypte",
+   "3": "L'Église engloutie",
+   "4": "Le faucon du temple",
+   "5": "L'œuvre du démon",
+   "6": "Le Chevalier manchot"
+  },
+  "eans": {
+   "1": "9782205060607",
+   "2": "9782205063059",
+   "3": "9782205065275",
+   "4": "9782205067729",
+   "5": "9782205070088",
+   "6": "9782205072938"
+  }
  },
  "Le Codex Angélique": {
   "total": 3,
@@ -1303,8 +1319,24 @@
  "Les Enfants d'Ailleurs": {
   "total": 6,
   "finis": true,
-  "source": "https://mediatoon-foreignrights.com/serie/les-enfants-dailleurs/?pdf=22434",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-14638-BD-Enfants-d-ailleurs.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Le passage",
+   "2": "Les ombres",
+   "3": "Le maître des ombres",
+   "4": "L'appel",
+   "5": "Les larmes de l'Autre Monde",
+   "6": "Confrontation"
+  },
+  "eans": {
+   "1": "9782800138978",
+   "2": "9782800139043",
+   "3": "9782800141305",
+   "4": "9782800144252",
+   "5": "9782800147512",
+   "6": "9782800154350"
+  }
  },
  "Le Vent dans les Saules": {
   "total": 4,
@@ -1355,8 +1387,21 @@
  "Naguère les Etoiles": {
   "total": 6,
   "finis": true,
-  "source": "https://comicbooks.com/series/nagu-re-les-toiles-2010",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-25236-BD-Naguere-les-etoiles.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "4": "Avant Naguère",
+   "5": "Avant Naguère",
+   "6": "Avant naguère"
+  },
+  "eans": {
+   "1": "9782756018560",
+   "2": "9782756021782",
+   "3": "9782756021799",
+   "4": "9782756080536",
+   "5": "9782756080543",
+   "6": "9782756080550"
+  }
  },
  "Octave": {
   "total": 4,
@@ -1445,8 +1490,24 @@
  "Maurice et Patapon": {
   "total": 6,
   "finis": true,
-  "source": "https://www.bedetheque.com",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-3576-BD-Maurice-et-Patapon.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Coupables, forcément coupables",
+   "2": "Ça rafraichit",
+   "3": "La France qui se lèche tôt",
+   "4": "Hausse du pouvoir d'un chat",
+   "5": "Ni dieu ni maître !",
+   "6": "Mariage pour tous !"
+  },
+  "eans": {
+   "1": "9782842302238",
+   "2": "9782842302467",
+   "3": "9782842303051",
+   "4": "9782842303471",
+   "5": "9782357660519",
+   "6": "9782357660632"
+  }
  },
  "Meurtres Fatals": {
   "total": 2,
@@ -1469,8 +1530,24 @@
  "Pépé Malin": {
   "total": 6,
   "finis": true,
-  "source": "https://www.bedetheque.com",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-4052-BD-Pepe-Malin.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Les trucs de Pépé Malin",
+   "2": "Les nouveaux trucs de Pépé Malin",
+   "3": "Les urgences de Clairette et Lison",
+   "4": "Pépé Malin va bien",
+   "5": "Le mariage de Pépé Malin",
+   "6": "7 d'un coup !"
+  },
+  "eans": {
+   "1": "9782858153008",
+   "2": "9782858153459",
+   "3": "9782858153732",
+   "4": "9782858154760",
+   "5": "9782858159628",
+   "6": "9782352075844"
+  }
  },
  "Piège sur Zarkass": {
   "total": 2,
@@ -2225,7 +2302,25 @@
   "total": 7,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-139-BD-Guerriers.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "La forteresse de Cormandel",
+   "2": "Le cœur de Ten-Rau",
+   "3": "Le secret des Tekuits",
+   "4": "Le crépuscule des hommes",
+   "5": "Le trône des Salens",
+   "6": "Les Maîtres de Kelhîn",
+   "7": "Le joug de l'infamie"
+  },
+  "eans": {
+   "1": "9782877645621",
+   "2": "9782877645874",
+   "3": "9782877646635",
+   "4": "9782877647380",
+   "5": "9782877649018",
+   "6": "9782845651937",
+   "7": "9782845654686"
+  }
  },
  "Mécanique Céleste": {
   "total": 2,
@@ -2454,8 +2549,26 @@
  "Slaine": {
   "total": 11,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-2213-BD-Slaine__10000.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-2213-BD-Slaine.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Le Dieu Cornu",
+   "2": "Les Armes Sacrées",
+   "3": "Le Roi des Celtes",
+   "4": "La déesse blanche",
+   "5": "Tueur de démon",
+   "6": "La reine des sorcières",
+   "7": "Le nom de l'épée",
+   "8": "Le seigneur du chaos",
+   "9": "Le trésor des Anglais (1)",
+   "10": "Le trésor des Anglais (2)",
+   "11": "Le roi de cœur"
+  },
+  "eans": {
+   "1": "9782876870253",
+   "4": "9782876870628",
+   "6": "9782723419864"
+  }
  },
  "Bouncer": {
   "total": 12,
@@ -2993,7 +3106,25 @@
   "total": 6,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-1926-BD-Jerome-Moucherot-Les-Aventures-de.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "0": "Un Point c'est tout !",
+   "1": "Les dents du recoin",
+   "2": "Sus à l'imprévu !",
+   "3": "Le péril pied-de-poule",
+   "4": "J'assure !",
+   "5": "Le manifeste du mâle dominant",
+   "6": "Une quête intérieure tout en extérieur, histoire de pas salir chez soi"
+  },
+  "eans": {
+   "0": "9782203343108",
+   "1": "9782203388666",
+   "2": "9782203389021",
+   "3": "9782203389151",
+   "4": "9782203389274",
+   "5": "9782803630851",
+   "6": "9782803674718"
+  }
  },
  "Corto Maltese - couleur (2015)": {
   "total": 17,
