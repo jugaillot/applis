@@ -62,28 +62,14 @@
   "total": 8
  },
  "Donjon Crépuscule": {
-  "liste": [
-   101,
-   102,
-   103,
-   104,
-   105,
-   106,
-   110,
-   111,
-   112,
-   113
-  ]
+  "total": 10,
+  "source": "https://www.bedetheque.com/serie-2326-BD-Donjon-Crepuscule.html",
+  "maj": "2026-11-07"
  },
  "Donjon Potron-Minet": {
-  "liste": [
-   -99,
-   -98,
-   -97,
-   -84,
-   -83,
-   -82
-  ]
+  "total": 6,
+  "source": "https://www.bedetheque.com/serie-2325-BD-Donjon-Potron-Minet.html",
+  "maj": "2026-11-07"
  },
  "Donjon Zénith": {
   "total": 11,
@@ -829,39 +815,39 @@
   "maj": "2026-11-07"
  },
  "Lone Sloane": {
-  "total": null,
+  "total": 8,
   "finis": true,
-  "source": "https://www.bedetheque.com/auteur-765-BD-.html",
+  "source": "https://www.bedetheque.com/serie-660-BD-Lone-Sloane__1.html",
   "maj": "2026-11-07"
  },
  "Les Remèdes de l'Ouest": {
-  "total": null,
+  "total": 2,
   "finis": true,
-  "source": "https://www.livraddict.com/biblio/auteur/jerome-brizard.html",
+  "source": "https://www.bedetheque.com/BD-Remedes-de-l-Ouest-Tome-2-Remous-dans-le-Bayou-344006.html",
   "maj": "2026-11-07"
  },
  "Les Passeurs": {
-  "total": null,
+  "total": 2,
   "finis": true,
-  "source": "https://livraddict.com/biblio/auteur/martin-vidberg.html",
+  "source": "https://www.bedetheque.com/serie-14859-BD-Passeurs-Roux.html",
   "maj": "2026-11-07"
  },
  "Les Entremondes": {
-  "total": null,
+  "total": 2,
   "finis": true,
-  "source": "https://www.comicbooks.com/series/les-entremondes-2000",
+  "source": "https://www.bedetheque.com/serie-1561-BD-Entremondes.html",
   "maj": "2026-11-07"
  },
  "Les Lumières de la France": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://mediatoon-foreignrights.com/serie/les-lumieres-de-la-france/?pdf=22184",
+  "source": "https://www.bedetheque.com/serie-29599-BD-Lumieres-de-la-France.html",
   "maj": "2026-11-07"
  },
  "Titania (Gimenez)": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com/auteur-639-BD-.html",
+  "source": "https://www.bedetheque.com/serie-601-BD-Titania-Gimenez.html",
   "maj": "2026-11-07"
  },
  "Samedi et Dimanche": {
@@ -889,21 +875,21 @@
   "maj": "2026-11-07"
  },
  "Nikopol (Int. 3T)": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://en.wikipedia.org/wiki/The_Nikopol_Trilogy",
+  "source": "https://www.bedetheque.com/serie-210-BD-Nikopol.html",
   "maj": "2026-11-07"
  },
  "Raiju": {
-  "total": null,
+  "total": 2,
   "finis": true,
-  "source": "https://www.senscritique.com/bd/raiju_tome_1/268474/actualites",
+  "source": "https://www.bedetheque.com/serie-19740-BD-Raiju.html",
   "maj": "2026-11-07"
  },
  "The Promised Neverland (Light Novel)": {
-  "total": null,
+  "total": 4,
   "finis": true,
-  "source": "https://www.manga-news.com/index.php/serie/The-Promised-Neverland-romans",
+  "source": "https://www.bedetheque.com/serie-60827-BD-Promised-Neverland__10000.html",
   "maj": "2026-11-07"
  },
  "Les Enfants d'Ailleurs": {
@@ -925,15 +911,15 @@
   "maj": "2026-11-07"
  },
  "Mémoires du Xxe Ciel 1998": {
-  "total": null,
+  "total": 5,
   "finis": true,
-  "source": "https://livraddict.com/biblio/saga-xxe-cielcom.html",
+  "source": "https://www.bedetheque.com/serie-1523-BD-XXe-cielcom.html",
   "maj": "2026-11-07"
  },
  "Monsieur Ferraille": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://catalogue.bnf.fr/ark:/12148/cb452736788",
+  "source": "https://www.bedetheque.com/serie-5153-BD-Monsieur-Ferraille.html",
   "maj": "2026-11-07"
  },
  "Naguère les Etoiles": {
@@ -949,33 +935,33 @@
   "maj": "2026-11-07"
  },
  "Pinocchio version redux (Winshluss)": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://bibliotheques.paris.fr/doc/SYRACUSE/640897",
+  "source": "https://www.bedetheque.com/serie-19406-BD-Pinocchio-Winshluss.html",
   "maj": "2026-11-07"
  },
  "Professeur Stigmatus": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com/ventes-BD-1288544.html",
+  "source": "https://www.bedetheque.com/serie-3742-BD-Professeur-Stigmatus.html",
   "maj": "2026-11-07"
  },
  "Rha-Gnagna - intégrale": {
-  "total": null,
+  "total": 2,
   "finis": true,
-  "source": "https://www.senscritique.com/bd/rhaaaaa_lovely_gnagna_l_integrale/critique/156260802",
+  "source": "https://www.bedetheque.com/serie-200-BD-Rha-Gnagna.html",
   "maj": "2026-11-07"
  },
  "Satanie": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://www.senscritique.com/bd/satanie/23061594/actualites",
+  "source": "https://www.bedetheque.com/serie-96381-BD-Satanie-Voyage-en.html",
   "maj": "2026-11-07"
  },
  "Scènes de la vie de Banlieue ": {
-  "total": null,
+  "total": 3,
   "finis": true,
-  "source": "https://www.fnac.com/a1061760/Philippe-Caza-Scenes-vie-banlieue-2-accroche-toi-au-balai",
+  "source": "https://www.bedetheque.com/serie-5195-BD-Scenes-de-la-vie-de-banlieue.html",
   "maj": "2026-11-07"
  },
  "Sillage - Premières Armes": {
@@ -985,9 +971,9 @@
   "maj": "2026-11-07"
  },
  "Soyons Fous": {
-  "total": null,
+  "total": 2,
   "finis": true,
-  "source": "https://www.goodreads.com/work/editions/424800-soyons-fous-dans-la-dignit-tome-2",
+  "source": "https://www.bedetheque.com/serie-3196-BD-Soyons-fous.html",
   "maj": "2026-11-07"
  },
  "Le Roman de Renart (mathis)": {
@@ -997,9 +983,9 @@
   "maj": "2026-11-07"
  },
  "Adrastée (Intégrale)": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://mediatoon-foreignrights.com/fr/serie/adrastee/?pdf=123607",
+  "source": "https://www.bedetheque.com/serie-38218-BD-Adrastee.html",
   "maj": "2026-11-07"
  },
  "Les Fables Autonomes": {
@@ -1015,15 +1001,15 @@
   "maj": "2026-11-07"
  },
  "L'Etoile Noire": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com",
+  "source": "https://www.bedetheque.com/serie-576-BD-Etoile-noire.html",
   "maj": "2026-11-07"
  },
  "L'Histoire de Joe": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com",
+  "source": "https://www.bedetheque.com/serie-4574-BD-Joe.html",
   "maj": "2026-11-07"
  },
  "Maurice et Patapon": {
@@ -1039,9 +1025,9 @@
   "maj": "2026-11-07"
  },
  "MIL": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com",
+  "source": "https://www.bedetheque.com/auteur-267-BD-Andreas.html",
   "maj": "2026-11-07"
  },
  "Nocturno": {
@@ -1063,15 +1049,15 @@
   "maj": "2026-11-07"
  },
  "Raffington Event": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com",
+  "source": "https://www.bedetheque.com/serie-5217-BD-Raffington-Event-Detective.html",
   "maj": "2026-11-07"
  },
  "Révélations Posthumes": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com",
+  "source": "https://www.bedetheque.com/biblio-auteur-267-BD-Andreas.html",
   "maj": "2026-11-07"
  },
  "Roi Rose": {
@@ -1081,9 +1067,9 @@
   "maj": "2026-11-07"
  },
  "Tu n'as Rien à Craindre de Moi": {
-  "total": null,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com",
+  "source": "https://www.bedetheque.com/serie-51771-BD-Tu-n-as-rien-a-craindre-de-moi.html",
   "maj": "2026-11-07"
  },
  "Malice et Catastrophe": {
@@ -1326,9 +1312,9 @@
   "maj": "2026-11-07"
  },
  "Le Concombre Masqué": {
-  "total": null,
+  "total": 13,
   "finis": true,
-  "source": "réponse Julien",
+  "source": "https://www.bedetheque.com/serie-3203-BD-Concombre-masque.html",
   "maj": "2026-11-07"
  },
  "Abinagouesh": {
