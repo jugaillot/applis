@@ -260,8 +260,29 @@
  "Les Cahiers d'Esther": {
   "total": 9,
   "finis": true,
-  "source": "https://fr.vikidia.org/wiki/Les_Cahiers_d%27Esther",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-50922-BD-Cahiers-d-Esther.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Histoires de mes 10 ans",
+   "2": "Histoires de mes 11 ans",
+   "3": "Histoires de mes 12 ans",
+   "4": "Histoires de mes 13 ans",
+   "5": "Histoires de mes 14 ans",
+   "6": "Histoires de mes 15 ans",
+   "7": "Histoires de mes 16 ans",
+   "8": "Histoires de mes 17 ans",
+   "9": "Histoires de mes 18 ans"
+  },
+  "eans": {
+   "1": "9782370730848",
+   "2": "9782370731142",
+   "3": "9782370731531",
+   "4": "9782370732750",
+   "5": "9782370733214",
+   "6": "9782370733689",
+   "7": "9782370734167",
+   "9": "9782370734952"
+  }
  },
  "De Cape et de Crocs": {
   "total": 12,
@@ -304,7 +325,28 @@
   "total": 18,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-1824-BD-Arq.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Ailleurs",
+   "2": "Mémoires 1",
+   "3": "Mémoires 2",
+   "4": "Racken",
+   "5": "White dust",
+   "6": "Réveil",
+   "7": "Dorro Zengu",
+   "8": "Retrouvailles",
+   "9": "Feu croisé",
+   "10": "Tehos",
+   "11": "Maître noir",
+   "12": "Mission",
+   "13": "Détectives",
+   "14": "Intrus",
+   "15": "Lune",
+   "16": "Rêves 1",
+   "17": "Rêves 2",
+   "18": "Ici"
+  },
+  "eans": {}
  },
  "Garulfo": {
   "total": 6,
@@ -858,8 +900,27 @@
  "Goblin's": {
   "total": 11,
   "finis": true,
-  "source": "choix Julien",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-14763-BD-Goblin-s.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Bêtes et méchants",
+   "2": "En vert et contre tous",
+   "3": "Sur la terre comme au ciel",
+   "4": "La Quête de la terre promise",
+   "5": "La Fleur au canon",
+   "6": "Les Imparfaits du passé",
+   "7": "Mort et vif",
+   "8": "Cthulhu, ça tangue",
+   "9": "Sable chaud et légionnaires",
+   "10": "La Révélation de l'élu",
+   "11": "La Mort du chef"
+  },
+  "eans": {
+   "1": "9782849467121",
+   "3": "9782302003071",
+   "4": "9782302010260",
+   "9": "9782302048553"
+  }
  },
  "3 Souhaits": {
   "total": 3,
@@ -886,8 +947,21 @@
  "Lanfeust Odyssey": {
   "total": 10,
   "finis": true,
-  "source": "https://comicbooks.com/series/lanfeust-odyssey-2009",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-22244-BD-Lanfeust-Odyssey.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "L'énigme Or-Azur - 1re partie",
+   "2": "L'énigme Or-Azur - 2de partie",
+   "3": "Le banni d'Eckmül",
+   "4": "La grande traque",
+   "5": "Le Piège des sables",
+   "6": "Le Delta Bilieux",
+   "7": "La Méphitique Armada",
+   "8": "Tseu-Hi la Gardienne",
+   "9": "Le Stratège ingénu",
+   "10": "Un destin karaxastin"
+  },
+  "eans": {}
  },
  "Wizz et Buzz": {
   "total": 2,
@@ -910,8 +984,33 @@
  "Kookaburra Universe": {
   "total": 16,
   "finis": true,
-  "source": "https://comicbooks.com/series/kookaburra-universe-2002",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-3982-BD-Kookaburra-Universe.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Le secret du sniper",
+   "2": "Taman Kha",
+   "3": "Mano Kha",
+   "4": "Skullface",
+   "5": "Les larmes de Gosharad",
+   "6": "Le Serment Dakoïd",
+   "7": "Le sourire de Myra",
+   "8": "Le dernier vol de l'enclume",
+   "9": "Le lamentin noir",
+   "10": "Les prêtresses d'Isis",
+   "11": "L'Île des amantes religieuses",
+   "12": "L'honneur du sniper",
+   "13": "L'appel des étoiles",
+   "14": "Lames sœurs",
+   "15": "Casus Belli Terra incognita",
+   "16": "Casus belli - invasion"
+  },
+  "eans": {
+   "1": "9782845652316",
+   "2": "9782845654716",
+   "3": "9782845657557",
+   "9": "9782302001190",
+   "13": "9782302010406"
+  }
  },
  "Chi - une Vie de Chat": {
   "total": 12,
@@ -1216,8 +1315,30 @@
  "Malika Secouss": {
   "total": 9,
   "finis": true,
-  "source": "https://www.senscritique.com/liste/tcho_la_collec/73878",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-2428-BD-Malika-Secouss.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Rêves partis",
+   "2": "Crise de têtes",
+   "3": "Crache ta joie",
+   "4": "Groove ton chemin",
+   "5": "Fais pas ta star",
+   "6": "Pulse des pieds",
+   "7": "Frais style",
+   "8": "C'est du Zouli",
+   "9": "Alcastar"
+  },
+  "eans": {
+   "1": "9782723425766",
+   "2": "9782723427715",
+   "3": "9782723429917",
+   "4": "9782723434171",
+   "5": "9782723437233",
+   "6": "9782723441827",
+   "7": "9782723444927",
+   "8": "9782723454056",
+   "9": "9782723462624"
+  }
  },
  "Mémoires du Xxe Ciel 1998": {
   "total": 5,
@@ -1492,8 +1613,22 @@
  "Carmen Cru": {
   "total": 8,
   "finis": true,
-  "source": "https://www.bedetheque.com/BD-Carmen-Cru-INT02-Integrale-volume-2-249662.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-1829-BD-Carmen-Cru.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Rencontre du 3ème âge",
+   "2": "La dame de fer",
+   "3": "Vie & mœurs",
+   "4": "Ni Dieu ni maître",
+   "5": "L'écorchée vive",
+   "6": "Et autres histoires",
+   "7": "Une cervelle de plomb dans un crâne de béton",
+   "8": "Thriller"
+  },
+  "eans": {
+   "2": "9782858150847",
+   "3": "9782858150915"
+  }
  },
  "Chasma Knights": {
   "total": 1,
@@ -2915,10 +3050,41 @@
   "maj": "2026-11-07"
  },
  "Les blagues de Toto": {
-  "total": 8,
+  "total": 19,
   "finis": true,
-  "source": "confirmé par Julien",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-8489-BD-Blagues-de-Toto.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "L'école des vannes",
+   "2": "La rentrée des crasses",
+   "3": "Sous les cahiers, la plage...",
+   "4": "Tueur à gags",
+   "5": "Le maître blagueur",
+   "6": "L'as des pitres",
+   "7": "La classe qui rit",
+   "8": "L'élève dépasse le mètre",
+   "9": "Le sot à ski",
+   "10": "L'Histoire drôle",
+   "11": "L'épreuve de farce",
+   "12": "Bête de concours",
+   "13": "Super Zéro !",
+   "14": "Devoirs citoyens",
+   "15": "Le savant fou rire",
+   "16": "Blagues to school",
+   "17": "Zéro, boulot, dodo",
+   "18": "Par humour de l'art",
+   "19": "Passion clown"
+  },
+  "eans": {
+   "1": "9782847891744",
+   "3": "9782847897784",
+   "5": "9782756005683",
+   "6": "9782756011745",
+   "7": "9782756011752",
+   "9": "9782756019956",
+   "14": "9782756064741",
+   "16": "9782413013068"
+  }
  },
  "Le Petit Spirou": {
   "total": 1,
