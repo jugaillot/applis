@@ -72,7 +72,28 @@
  "Capricorne": {
   "total": 20,
   "source": "https://www.bedetheque.com/serie-1700-BD-Capricorne.html",
-  "finis": true
+  "finis": true,
+  "titres": {
+   "1": "L'objet",
+   "2": "Electricité",
+   "3": "Deliah",
+   "4": "Le cube numérique",
+   "5": "Le secret",
+   "6": "Attaque",
+   "7": "Le dragon bleu",
+   "8": "Tunnel",
+   "9": "Le passage",
+   "10": "Les chinois",
+   "11": "Patrick",
+   "13": "Rêve en cage",
+   "14": "L'opération",
+   "15": "New York",
+   "16": "Vu de près",
+   "17": "Les Cavaliers",
+   "18": "Zarkan",
+   "19": "Terminus",
+   "20": "Maître"
+  }
  },
  "Aya de Yopougon": {
   "total": 8,
@@ -341,7 +362,17 @@
   "total": 8,
   "finis": true,
   "source": "https://leclaireur.fnac.com/selection/cp41856-7-choses-a-savoir-sur-lou/",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Journal Infime",
+   "2": "Mortebouse",
+   "3": "Le cimetière des autobus",
+   "4": "Idylles",
+   "5": "Laser Ninja",
+   "6": "L'âge de cristal",
+   "7": "La Cabane",
+   "8": "En route vers de nouvelles aventures"
+  }
  },
  "La Horde du Contrevent": {
   "total": 4,
@@ -460,7 +491,19 @@
   "total": 10,
   "finis": true,
   "source": "https://leclaireur.fnac.com/article/cp57453-jacques-tardi-en-rencontre-fnac-au-jardin-des-plantes/",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Adèle et la Bête",
+   "2": "Le Démon de la Tour Eiffel",
+   "3": "Le Savant Fou",
+   "4": "Momies en folie",
+   "5": "Le secret de la salamandre",
+   "6": "Le noyé à deux têtes",
+   "7": "Tous des monstres !",
+   "8": "Le Mystère des Profondeurs",
+   "9": "Le Labyrinthe infernal",
+   "10": "Le Bébé des Buttes-Chaumont"
+  }
  },
  "Zorn & Dirna": {
   "total": 6,
@@ -1050,7 +1093,19 @@
   "total": 8,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-660-BD-Lone-Sloane__1.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Le mystère des abîmes",
+   "2": "Les 6 voyages de Lone Sloane",
+   "3": "Delirius",
+   "4": "Gaïl",
+   "5": "Salammbô",
+   "6": "Salammbô 2 : Carthage",
+   "7": "Salammbô 3 : Matho",
+   "8": "Chaos",
+   "9": "Delirius 2",
+   "10": "Babel"
+  }
  },
  "Les Remèdes de l'Ouest": {
   "total": 2,
