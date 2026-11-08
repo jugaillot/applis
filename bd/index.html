@@ -37,7 +37,7 @@ summary small{font-weight:400;color:#555;text-align:right}
 .al b{min-width:30px;color:#a0620e}
 .sub{padding:8px 12px 4px;font-weight:600;font-size:14px;color:#444}
 .miss{padding:8px 12px;font-size:14px;border-top:1px solid #0000000f}
-.miss label{display:inline-flex;align-items:center;gap:6px;margin:3px 10px 3px 0;padding:6px 10px;background:#fff;border:1px solid #d9857b;border-radius:8px}
+.miss label{max-width:100%;display:inline-flex;align-items:center;gap:6px;margin:3px 10px 3px 0;padding:6px 10px;background:#fff;border:1px solid #d9857b;border-radius:8px}
 .miss input,.meta input[type=checkbox]{flex:none;width:20px;height:20px}
 .meta{padding:8px 12px 12px;font-size:13px;color:#444;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid #0000000f}
 .meta input[type=number]{width:70px;padding:6px;font-size:15px;flex:none}
@@ -122,7 +122,7 @@ function analyse(){
   if(miss.length&&!mt.abandon)cls='rouge';
   else if(miss.length&&mt.abandon)cls='vert';
   else if(total!=null){cls=(mt.finis===true||mt.finis===false)?'vert':'inconnu'}
-  out.push({s,it,owned,total,finis:mt.finis,abandon:!!mt.abandon,miss,cls,supp,ed:(it.find(x=>x[4])||[])[4]||''});
+  out.push({s,it,owned,total,titres:mt.titres||{},finis:mt.finis,abandon:!!mt.abandon,miss,cls,supp,ed:(it.find(x=>x[4])||[])[4]||''});
  }
  return out;
 }
@@ -132,7 +132,7 @@ function info(a){const n=a.total?a.total-a.miss.length:(a.owned.size||a.it.lengt
 const OPEN=new Set();
 document.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.s!=null){d.open?OPEN.add(d.dataset.s):OPEN.delete(d.dataset.s)}},true);
 function missHtml(a){
- const chk=a.miss.length?`<div class="miss">Manque : ${a.miss.map(t=>`<label><input type="checkbox" data-s="${esc(a.s)}" data-t="${t}"> T${t}</label>`).join('')}</div>`:'';
+ const chk=a.miss.length?`<div class="miss">Manque : ${a.miss.map(t=>`<label><input type="checkbox" data-s="${esc(a.s)}" data-t="${t}"> <span>T${t}${a.titres[t]?' – '+esc(a.titres[t]):''}</span></label>`).join('')}</div>`:'';
  const meta=`<div class="meta"><span>Tomes parus</span><input type="number" min="1" inputmode="numeric" data-ms="${esc(a.s)}" value="${a.total??''}" placeholder="?"><label><input type="checkbox" data-fs="${esc(a.s)}"${a.finis===true?' checked':''}> terminée</label>${a.supp?'<span>(album unique supposé)</span>':''}</div>`;
  const ab=(a.miss.length||a.abandon)?`<div class="meta"><button class="btn" data-ab="${esc(a.s)}">${a.abandon?'Suivre à nouveau':'Ne plus suivre'}</button><span>${a.abandon?'Série ignorée : comptée en vert malgré les manques.':'Je ne cherche pas à compléter : passe la série en vert.'}</span></div>`:'';
  return chk+meta+ab;

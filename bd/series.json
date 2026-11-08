@@ -82,22 +82,49 @@
  "Donjon Crépuscule": {
   "total": 10,
   "source": "https://www.bedetheque.com/serie-2326-BD-Donjon-Crepuscule.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "liste": [
+   101,
+   102,
+   103,
+   104,
+   105,
+   106,
+   110,
+   111,
+   112,
+   113
+  ]
  },
  "Donjon Potron-Minet": {
   "total": 6,
   "source": "https://www.bedetheque.com/serie-2325-BD-Donjon-Potron-Minet.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "liste": [
+   -99,
+   -98,
+   -97,
+   -84,
+   -83,
+   -82
+  ]
  },
  "Donjon Zénith": {
   "total": 11,
   "finis": false,
-  "source": "https://www.bedetheque.com/serie-2324-BD-Donjon-Zenith.html"
+  "source": "https://www.bedetheque.com/serie-2324-BD-Donjon-Zenith.html",
+  "titres": {
+   "11": "Les Méandres du pouvoir"
+  }
  },
  "Donjon Bonus": {
   "total": 3,
   "source": "https://www.bedetheque.com/serie-1656-BD-Donjon-Bonus.html",
-  "finis": false
+  "finis": false,
+  "titres": {
+   "1": "Clefs en mains",
+   "3": "Dynasties et magiciens"
+  }
  },
  "Lanfeust de Troy ": {
   "total": 9,
@@ -122,7 +149,14 @@
  "Les Cités Obscures": {
   "total": 12,
   "finis": false,
-  "source": "https://www.bedetheque.com/serie-414-BD-Cites-obscures.html"
+  "source": "https://www.bedetheque.com/serie-414-BD-Cites-obscures.html",
+  "titres": {
+   "4": "La route d'Armilia",
+   "6": "L'enfant penchée",
+   "10": "La théorie du grain de sable - Tome 1",
+   "11": "La théorie du grain de sable - Tome 2",
+   "12": "Le Retour du Capitaine Nemo"
+  }
  },
  "Calvin et Hobbes": {
   "total": 24,
@@ -142,7 +176,28 @@
  "Mortelle Adèle": {
   "total": 23,
   "finis": false,
-  "source": "https://www.bedetheque.com/serie-37716-BD-Mortelle-Adele.html"
+  "source": "https://www.bedetheque.com/serie-37716-BD-Mortelle-Adele.html",
+  "titres": {
+   "2": "L'enfer, c'est les autres",
+   "3": "C'est pas ma faute !",
+   "4": "J'aime pas l'amour",
+   "5": "Poussez-vous, les moches !",
+   "6": "Un talent monstre !",
+   "7": "Pas de pitié pour les nazebroques !",
+   "8": "Parents à vendre",
+   "9": "La rentrée des claques",
+   "10": "Choubidoulove",
+   "11": "Ça sent la croquette !",
+   "12": "À la pêche aux nouilles !",
+   "16": "Jurassic Mamie",
+   "17": "Karmastrophique !",
+   "18": "Toi, je te Zut !",
+   "19": "Face de Beurk !",
+   "20": "J'apocalypse grave !",
+   "21": "RécréAction Générale !",
+   "22": "Bande de compotes !",
+   "23": "Nazebrocadabra !"
+  }
  },
  "L'Incal": {
   "total": 6,
@@ -168,14 +223,35 @@
   "maj": "2026-11-07"
  },
  "Seuls": {
-  "total": 14,
+  "total": 16,
   "source": "https://livraddict.com/biblio/auteur/fabien-vehlmann.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "4": "Les Cairns rouges",
+   "5": "Au cœur du Maelström",
+   "6": "La quatrième dimension et demie.",
+   "7": "Les Terres Basses",
+   "8": "Les Arènes",
+   "9": "Avant l'Enfant-Minuit",
+   "10": "La machine à Démourir",
+   "11": "Les Cloueurs de Nuit",
+   "12": "Les révoltés de Néosalem",
+   "13": "Les âmes tigrées",
+   "14": "Les Protecteurs",
+   "15": "L'hôtel au bord du monde",
+   "16": "La prisonnière d'Antésalem"
+  }
  },
  "Luuna": {
   "total": 9,
   "source": "https://www.bedetheque.com/BD-Luuna-INT2-Integrale-2-357566.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "6": "La Reine des loups",
+   "7": "La Source du temps",
+   "8": "L'Attrapeur de rêves",
+   "9": "À contre-courant"
+  }
  },
  "Arq": {
   "total": 18,
@@ -219,9 +295,21 @@
   "maj": "2026-11-07"
  },
  "Aquablue": {
-  "total": 20,
+  "total": 21,
   "source": "https://en.wikipedia.org/wiki/Aquablue",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "12": "Retour aux sources",
+   "13": "Septentrion",
+   "14": "Standard-Island",
+   "15": "Gan Eden",
+   "16": "Rakahanga !",
+   "17": "La Nuit de la miséricorde",
+   "18": "Stromboli Reloaded",
+   "19": "Clandestin",
+   "20": "L'Œuf de Lochshore",
+   "21": "L'antre du psychoderme"
+  }
  },
  "Lou !": {
   "total": 8,
@@ -404,7 +492,11 @@
  "Le Retour à la Terre": {
   "total": 6,
   "source": "https://www.livreshebdo.fr/article/un-retour-reussi",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "5": "Les révolutions",
+   "6": "Les métamorphoses"
+  }
  },
  "Les Compagnons du Crépuscule": {
   "total": 3,
@@ -415,7 +507,17 @@
  "Pacush Blues": {
   "total": 13,
   "source": "https://side-ecom-prod-export.cdi.ch/en/9782749304908-pacush-blues-tome-13",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Premières mesures",
+   "3": "Troisième zone : l'importance majeure des accords mineurs",
+   "4": "Quatrième dimension : Destin farceur crescendo",
+   "7": "Septième saut : Variations sur un thème imposé",
+   "8": "Sentence huitième : La logique du pire",
+   "10": "Décimation : Remords - Relecture du mythe de Frankenstein: remords",
+   "12": "Douzième véhicule : Autopsie de Mondes en Déroute",
+   "13": "Treizième porte : Correspondance avec les corps obscurs"
+  }
  },
  "Le Monde d'Arkadi": {
   "total": 9,
@@ -535,9 +637,33 @@
   "maj": "2026-11-07"
  },
  "Game Over": {
-  "total": 24,
+  "total": 25,
   "source": "https://www.laprocure.com/product/439027/midam-game-over-vol-5-walking-blork",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Blork Raider",
+   "2": "No Problemo",
+   "3": "Gouzi Gouzi Gouzi",
+   "4": "Oups !",
+   "5": "Walking Blork",
+   "6": "Sound of silence",
+   "7": "Only for your eyes",
+   "8": "Cold case affaires glacées",
+   "10": "Watergate",
+   "13": "Toxic affair",
+   "14": "Fatal attraction",
+   "15": "Very bad trip",
+   "16": "Aïe aïe eye",
+   "17": "Dark Web",
+   "18": "Bad cave",
+   "19": "Beauty Trap",
+   "20": "Deep impact",
+   "21": "Rap incident",
+   "22": "Road Tripes",
+   "23": "Rest in pieces",
+   "24": "Fish & ships",
+   "25": "The snow must go on"
+  }
  },
  "Les Contes de l'ère du Cobra": {
   "total": 2,
@@ -1340,7 +1466,18 @@
  "La Brigade des Cauchemars": {
   "total": 10,
   "source": "https://www.bedetheque.com/serie-58315-BD-Brigade-des-cauchemars.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "2": "Nicolas",
+   "3": "Esteban",
+   "4": "Mélissandre",
+   "5": "Léonard",
+   "6": "Ariane",
+   "7": "Sofiane",
+   "8": "Jane",
+   "9": "Elisa",
+   "10": "Mordicus"
+  }
  },
  "Le Concombre Masqué": {
   "total": 13,
@@ -1471,7 +1608,16 @@
  "Blacksad": {
   "total": 7,
   "source": "https://www.bedetheque.com/serie-500-BD-Blacksad__10000.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Quelque part entre les ombres",
+   "2": "Arctic-Nation",
+   "3": "Âme Rouge",
+   "4": "L'Enfer, le silence",
+   "5": "Amarillo",
+   "6": "Alors, tout tombe - Première partie",
+   "7": "Alors, tout tombe - Seconde partie"
+  }
  },
  "Halloween": {
   "total": 1,
@@ -1558,7 +1704,10 @@
  "Menji": {
   "total": 2,
   "source": "https://www.bedetheque.com/serie-78138-BD-Menji.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "2": "Menji et les ruines du Mont-Mystère"
+  }
  },
  "Reines & Dragons": {
   "total": 1,
@@ -1641,7 +1790,21 @@
  "Ekhö - Monde Miroir": {
   "total": 13,
   "source": "https://www.bedetheque.com/albums-37355-BD-Ekho-monde-miroir.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "2": "Paris Empire",
+   "3": "Hollywood Boulevard",
+   "4": "Barcelona",
+   "5": "Le Secret des Preshauns",
+   "6": "Deep South",
+   "7": "Swinging London",
+   "8": "La Sirène de Manhattan",
+   "9": "Abidjan-Nairobi Express",
+   "10": "Un Fantôme à Pékin",
+   "11": "Hot Tabaaasco !",
+   "12": "La Walkyrie des fjords",
+   "13": "Les Chimères de Venise"
+  }
  },
  "Encyclomerveille d'un Tueur": {
   "total": 1,
@@ -1818,7 +1981,18 @@
  "Animal Jack": {
   "total": 11,
   "source": "https://www.bedetheque.com/serie-64777-BD-Animal-Jack.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "3": "La planète du singe",
+   "4": "Le réveil des dodos",
+   "5": "Revoir un printemps",
+   "6": "Face à la meute",
+   "7": "Le plein d'aventures",
+   "8": "Un tout petit monde",
+   "9": "Terre des dragons",
+   "10": "Horizons perdus",
+   "11": "Nuit sans sommeil"
+  }
  },
  "Chagall en Russie": {
   "total": 2,
@@ -1985,47 +2159,129 @@
  "Bouncer": {
   "total": 12,
   "source": "https://www.bedetheque.com/serie-663-BD-Bouncer.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "6": "La Veuve noire",
+   "7": "Cœur double",
+   "8": "To hell",
+   "9": "And back",
+   "10": "L'Or maudit",
+   "11": "L'Échine du dragon",
+   "12": "Hécatombe"
+  }
  },
  "Kid Paddle": {
   "total": 22,
   "source": "https://www.bedetheque.com/serie-910-BD-Kid-Paddle.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "11": "Le retour de la momie qui pue qui tue",
+   "12": "Panik Room",
+   "14": "Serial Player",
+   "16": "Kid N'Roses",
+   "17": "Tattoo compris",
+   "18": "Silence of the Lamps",
+   "19": "Love, death and roblorks",
+   "20": "Blork chef",
+   "21": "Zombie or not to be",
+   "22": "Ice scream"
+  }
  },
  "Le Chat du Rabbin": {
   "total": 13,
   "source": "https://www.bedetheque.com/serie-2313-BD-Chat-du-Rabbin.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "13": "L'arbre de la connaissance"
+  }
  },
  "Les Chroniques de la Lune Noire": {
   "total": 23,
   "source": "https://www.bedetheque.com/serie-61-BD-Chroniques-de-la-Lune-Noire.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "13": "La Prophétie",
+   "14": "La Fin des Temps",
+   "15": "Terra Secunda (Livre 1/2)",
+   "16": "Terra Secunda (Livre 2/2)",
+   "17": "Guerres ophidiennes",
+   "18": "Le trône d'Opale",
+   "19": "Une semaine ordinaire",
+   "20": "Une porte sur l'Enfer",
+   "21": "Sic Transit Gloria Mundi",
+   "22": "La forteresse d'Opale",
+   "23": "Qualis Pater, Talis Filius"
+  }
  },
  "Percevan": {
   "total": 18,
   "source": "https://www.bedetheque.com/serie-24-BD-Percevan.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "12": "Le Septième Sceau",
+   "13": "Les Terres sans Retour",
+   "14": "Les Marches d'Eliandysse",
+   "15": "Le Huitième Royaume",
+   "16": "La Magicienne Des Eaux Profondes",
+   "17": "La Couronne du Crépuscule",
+   "18": "Les miroirs du ciel"
+  }
  },
  "Travis": {
   "total": 18,
   "source": "https://www.bedetheque.com/BD-Travis-Tome-17-Les-pluies-seches-491224.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "7": "La Tarentule",
+   "9": "Dommy",
+   "10": "New York Delaware",
+   "11": "Les Enfants de Marcos",
+   "12": "Les Tueurs de fer",
+   "13": "Serpent à plumes",
+   "14": "Europe",
+   "15": "La Femme qui en savait trop",
+   "16": "Opération Gorgone",
+   "17": "Les Pluies sèches",
+   "18": "Bleu hydrogène"
+  }
  },
  "Donjon Monsters": {
   "total": 19,
   "source": "https://www.bedetheque.com/serie-544-BD-Donjon-Monsters.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "19": "La Dernière Heure"
+  }
  },
  "Donjon Parade": {
   "total": 12,
   "source": "https://www.bedetheque.com/serie-482-BD-Donjon-Parade.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "7": "Le sirop des costauds",
+   "8": "L'hostellerie des impôts",
+   "11": "Éternel Repos",
+   "12": "Chaos crescendo"
+  }
  },
  "Titeuf": {
   "total": 18,
   "source": "https://www.bedetheque.com/serie-82-BD-Titeuf.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "2": "L'Amour, c'est pô propre...",
+   "4": "C'est pô juste...",
+   "5": "et le derrière des choses",
+   "9": "La loi du préau",
+   "10": "Nadia se marie",
+   "11": "Mes meilleurs copains",
+   "12": "Le sens de la vie",
+   "13": "à la folie !",
+   "14": "Bienvenue en adolescence !",
+   "15": "À fond le slip !",
+   "17": "La grande aventure",
+   "18": "Suivez la mèche"
+  }
  },
  "Made In Abyss": {
   "total": 14,
@@ -2196,7 +2452,10 @@
  "Lightfall": {
   "total": 4,
   "source": "https://www.bedetheque.com/serie-73801-BD-Lightfall.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "4": "L'Entre-deux-Mondes"
+  }
  },
  "Lomm": {
   "total": 3,
@@ -2350,7 +2609,15 @@
  "La Nef des Fous": {
   "total": 14,
   "source": "https://www.bedetheque.com/serie-36-BD-Nef-des-fous__1.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "9": "Walking dindes",
+   "10": "La faille",
+   "11": "Coup de théâtre",
+   "12": "À peu près preux",
+   "13": "À hue et à dia",
+   "14": "L'être anonyme"
+  }
  },
  "Gabrielle": {
   "total": 1,
@@ -2379,7 +2646,11 @@
  "Valérian Par...": {
   "total": 3,
   "source": "https://www.bedetheque.com/serie-29668-BD-Valerian-par.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "2": "Shingouzlooz Inc.",
+   "3": "Là où naissent les histoires"
+  }
  },
  "La Petite Faiseuse de Livres": {
   "total": 7,
@@ -2395,7 +2666,11 @@
  "Donjon Antipodes + ": {
   "total": 5,
   "source": "https://www.bedetheque.com/BD-Donjon-Antipodes-Tome-10004-Un-projet-qui-se-trame-536278.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "2": "Le coffre aux âmes",
+   "4": "Retour de flamme"
+  }
  },
  "Les Aventures de Jérôme Moucherot": {
   "total": 6,
@@ -2406,7 +2681,20 @@
  "Corto Maltese - couleur (2015)": {
   "total": 17,
   "source": "https://www.bedetheque.com/serie-48285-BD-Corto-Maltese-Couleur-Format-Normal-2015.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "La Ballade de la mer salée",
+   "4": "Les Celtiques",
+   "5": "Les Éthiopiques",
+   "9": "La Jeunesse",
+   "10": "Tango",
+   "12": "Mû la cité perdue",
+   "13": "Sous le soleil de minuit",
+   "14": "Équatoria",
+   "15": "Le Jour de Tarowean",
+   "16": "Nocturnes berlinois",
+   "17": "La Ligne de vie"
+  }
  },
  "Petit Vampire": {
   "total": 7,
