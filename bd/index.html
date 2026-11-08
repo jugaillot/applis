@@ -56,12 +56,12 @@ button.btn.pri{background:#2b2a33;color:#fff;border-color:#2b2a33}
 .hint{font-size:13px;color:#777;margin:8px 0}
 .exb{margin-left:auto;background:none;border:1px solid #c33;color:#c33;border-radius:6px;padding:2px 8px;font-size:12px}
 #lb{position:fixed;inset:0;background:#000d;display:flex;align-items:center;justify-content:center;z-index:99}#lb[hidden]{display:none}#lb img{max-width:92vw;max-height:92vh;border-radius:6px;background:#fff}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
-.bk{border-radius:10px;overflow:hidden;background:#fff;border:2px solid #cfc7b5;cursor:pointer}
+.grid{display:flex;flex-direction:column;gap:8px}
+.bk{display:flex;align-items:stretch;border-radius:10px;overflow:hidden;background:#fff;border:2px solid #cfc7b5;cursor:pointer}
 .bk.rouge{border-color:#d9857b}.bk.vert{border-color:#7cc08a}
-.bk .im{aspect-ratio:2/3;background:#e9e4d6;display:block}.bk .im img{width:100%;height:100%;object-fit:cover;display:block}
-.bk .t{font-size:12px;font-weight:600;padding:5px 6px 2px;line-height:1.2;height:2.6em;overflow:hidden}
-.bk .n{margin:0 6px 6px;padding:2px 6px;border-radius:6px;font-size:12px;font-weight:700;text-align:center;background:#eee}
+.bk .im{flex:none;width:64px;height:92px;background:#e9e4d6;display:block}.bk .im img{width:100%;height:100%;object-fit:cover;display:block}
+.bk .t{flex:1;align-self:center;font-size:16px;font-weight:600;padding:6px 10px;line-height:1.25}
+.bk .n{flex:none;align-self:center;margin:0 12px;padding:4px 10px;border-radius:8px;font-size:15px;font-weight:700;text-align:center;background:#eee}
 .bk.rouge .n{background:#f6c9c3;color:#8a2a20}.bk.vert .n{background:#cdeccf;color:#1f6b33}
 </style></head><body>
 <header><div class="tabs"><a href="../" title="La Suite">←</a><button id="t1" class="on">Collection</button><button id="t2">Scanner</button><span id="bdg"></span><button id="gear" title="Réglages" style="flex:0 0 auto;padding:10px 14px;font-size:20px">⚙</button></div></header>
@@ -193,7 +193,7 @@ function render(){
    h+=`<details class="s" data-s="ed:${esc(e)}"${(q||OPEN.has('ed:'+e))?' open':''}><summary><span>${esc(e)}</span><small>${ss.reduce((t,a)=>t+a.it.length,0)}</small></summary>`+ss.sort((a,b)=>a.s.localeCompare(b.s,'fr')).map(a=>`<details class="s ${a.cls}" data-s="ed:${esc(e)}|${esc(a.s)}"${(q||OPEN.has('ed:'+e+'|'+a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`).join('')+`</details>`;
   }
  }
- $('list').innerHTML=h||'<p class="hint">Rien trouvé.</p>'+'<p class="hint" style="text-align:center;font-size:11px">version v237</p>';
+ $('list').innerHTML=h||'<p class="hint">Rien trouvé.</p>'+'<p class="hint" style="text-align:center;font-size:11px">version v238</p>';
  $('dl').innerHTML=all.map(a=>`<option value="${esc(a.s)}">`).join('');
 }
 $('list').addEventListener('click',e=>{
