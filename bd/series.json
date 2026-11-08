@@ -864,8 +864,18 @@
  "3 Souhaits": {
   "total": 3,
   "finis": true,
-  "source": "https://livraddict.com/biblio/saga-3-souhaits.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-24282-BD-3-souhaits.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "L'assassin et la lampe",
+   "2": "La cité aux mille colonnes",
+   "3": "La Tombe de Salomon"
+  },
+  "eans": {
+   "1": "9782356261090",
+   "2": "9782723479295",
+   "3": "9782723487122"
+  }
  },
  "Braise": {
   "total": 3,
