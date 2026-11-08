@@ -208,7 +208,13 @@
  "Gorn": {
   "total": 11,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-134-BD-Gorn.html"
+  "source": "https://www.bedetheque.com/serie-134-BD-Gorn.html",
+  "titres": {
+   "9": "Le chant des elfes",
+   "10": "Les Yeux de Brume"
+  },
+  "eans": {},
+  "maj": "2026-11-08"
  },
  "Sardine de l'Espace (Bayard)": {
   "total": 10,
@@ -1045,8 +1051,13 @@
  "Beyond the clouds": {
   "total": 5,
   "finis": true,
-  "source": "https://manga-passion.de/news/10476/lizenz-beyond-the-clouds-erscheint-bei-carlsen-manga-auf-deutsch",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-61769-BD-Beyond-the-Clouds-La-Fillette-tombee-du-ciel.html",
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "4": "9791032705889",
+   "5": "9791032706800"
+  }
  },
  "Low": {
   "total": 5,
@@ -1323,8 +1334,16 @@
  "Le Codex Angélique": {
   "total": 3,
   "finis": true,
-  "source": "https://www.laprocure.com/product/1259491/gloris-thierry-le-codex-angelique-edition-integrale",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-13423-BD-Codex-Angelique.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Lisa",
+   "3": "Thomas"
+  },
+  "eans": {
+   "2": "9782756005737",
+   "3": "9782756012575"
+  }
  },
  "Crystal Girls": {
   "total": 5,
@@ -1341,8 +1360,16 @@
  "Agathe Saugrenu": {
   "total": 3,
   "finis": true,
-  "source": "https://mediatoon-foreignrights.com/serie/agathe-saugrenu/?pdf=17293",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-14991-BD-Agathe-Saugrenu.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Masques et visages",
+   "3": "Ça va péter !"
+  },
+  "eans": {
+   "2": "9782800141268",
+   "3": "9782800143750"
+  }
  },
  "Sky Doll": {
   "total": 4,
@@ -1429,8 +1456,16 @@
  "Dwarf": {
   "total": 4,
   "finis": true,
-  "source": "https://www.bedetheque.com/avis?u=quentjoss",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-25234-BD-Dwarf.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "3": "Tach'Nemlig",
+   "4": "Éra Drakka"
+  },
+  "eans": {
+   "3": "9782756028002",
+   "4": "9782756040301"
+  }
  },
  "Léo Roa": {
   "total": 2,
@@ -1932,8 +1967,16 @@
  "Le Roman de Renart (mathis)": {
   "total": 3,
   "finis": true,
-  "source": "https://bibliotheques.paris.fr/2019/doc/SYRACUSE/727076",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-14825-BD-Roman-de-Renart-Martin.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Le puits",
+   "3": "Le Jugement de Renart"
+  },
+  "eans": {
+   "2": "9782756009452",
+   "3": "9782756015002"
+  }
  },
  "Adrastée (Intégrale)": {
   "total": 1,
@@ -2309,7 +2352,15 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-13008-BD-Karma.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Les rivières du temps",
+   "3": "La fleur du bouffange"
+  },
+  "eans": {
+   "2": "9782800139104",
+   "3": "9782800140285"
+  }
  },
  "Sorcières": {
   "total": 2,
@@ -2677,7 +2728,15 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-1213-BD-Coeur-couronne.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "La folle du Sacré-Cœur",
+   "2": "Le piège de l'irrationnel"
+  },
+  "eans": {
+   "1": "9782731609899",
+   "2": "9782731610055"
+  }
  },
  "Le Regard de l'Apocalypse": {
   "total": 1,
@@ -2689,7 +2748,15 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-13885-BD-Fille-du-savant-fou.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "La machine à détraquer le temps",
+   "3": "L'équation inconnue"
+  },
+  "eans": {
+   "2": "9782756005959",
+   "3": "9782756014555"
+  }
  },
  "L'Afrique de Papa": {
   "total": 1,
@@ -2846,7 +2913,14 @@
   "total": 4,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-1883-BD-Atlantis.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "3": "Mormo",
+   "4": "Mars"
+  },
+  "eans": {
+   "3": "9782723427128"
+  }
  },
  "Les Guerriers": {
   "total": 7,
@@ -2881,7 +2955,15 @@
   "total": 4,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-592-BD-Quatrieme-pouvoir.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Meurtres sur Antiplona",
+   "4": "L'île D-7"
+  },
+  "eans": {
+   "2": "9782731616224",
+   "4": "9782731621518"
+  }
  },
  "Le Miroir des Alices": {
   "total": 2,
@@ -3449,7 +3531,15 @@
   "total": 5,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-58817-BD-Boite-a-musique.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "3": "À la recherche des origines",
+   "5": "Les plumes d'aigle douce"
+  },
+  "eans": {
+   "3": "9791034736904",
+   "5": "9791034753031"
+  }
  },
  "La Voleuse du Père-Fauteuil": {
   "total": 3,
