@@ -27,7 +27,18 @@
  "Undead Unluck": {
   "total": 26,
   "finis": false,
-  "source": "https://www.bedetheque.com/serie-76312-BD-Undead-Unluck.html"
+  "source": "https://www.bedetheque.com/serie-76312-BD-Undead-Unluck.html",
+  "titres": {},
+  "eans": {
+   "11": "9782505116721",
+   "12": "9782505116691",
+   "13": "9782505116738",
+   "14": "9782505116745",
+   "15": "9782505122142",
+   "16": "9782505122715",
+   "17": "9782505124023"
+  },
+  "maj": "2026-11-08"
  },
  "Dr. Stone": {
   "total": 27,
@@ -1211,8 +1222,44 @@
  "Assassination Classroom": {
   "total": 21,
   "finis": true,
-  "source": "https://en.wikipedia.org/wiki/Assassination_Classroom",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-40190-BD-Assassination-classroom.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Adultes",
+   "3": "La nouvelle élève",
+   "4": "Stupeur",
+   "5": "Talent",
+   "6": "Natation",
+   "7": "Une île paradisiaque",
+   "8": "Occasion",
+   "9": "Choc",
+   "10": "Voleurs",
+   "11": "Victoire !!",
+   "12": "Shinigami",
+   "13": "Orientation",
+   "14": "Fin du deuxième trimestre",
+   "15": "Tempête",
+   "16": "Passé",
+   "20": "Fin de l'année scolaire"
+  },
+  "eans": {
+   "2": "9782505019459",
+   "3": "9782505060055",
+   "4": "9782505060413",
+   "5": "9782505060420",
+   "6": "9782505060437",
+   "7": "9782505061724",
+   "8": "9782505063216",
+   "9": "9782505063322",
+   "10": "9782505062653",
+   "11": "9782505064374",
+   "12": "9782505064381",
+   "13": "9782505064893",
+   "14": "9782505064909",
+   "15": "9782505065449",
+   "16": "9782505068839",
+   "21": "9782505069577"
+  }
  },
  "Le Dernier Templier": {
   "total": 6,
@@ -1329,8 +1376,18 @@
  "La Marche du Crabe": {
   "total": 3,
   "finis": true,
-  "source": "https://comicbooks.com/series/la-marche-du-crabe-2010",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-26132-BD-Marche-du-crabe.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "La condition des crabes",
+   "2": "L'empire des crabes",
+   "3": "La révolution des crabes"
+  },
+  "eans": {
+   "1": "9782302012660",
+   "2": "9782302018679",
+   "3": "9782302024496"
+  }
  },
  "Dwarf": {
   "total": 4,
@@ -1426,9 +1483,37 @@
    "69": "Un printemps écarlate",
    "70": "Naruto et l'ermite Rikudô",
    "71": "Je vous adore !",
-   "72": "Naruto uzumaki !!"
+   "72": "Naruto uzumaki !!",
+   "29": "Kakashi versus Itachi!!",
+   "30": "Chiyo et Sakura",
+   "31": "Testament !!",
+   "32": "Sur les traces de Sasuke !!",
+   "52": "Réalités multiples",
+   "53": "La naissance de Naruto",
+   "54": "Un pont pour la paix",
+   "55": "Le début de la grande guerre !",
+   "56": "L'équipe asuna de nouveau réunie !",
+   "57": "Naruto part en guerre...!!",
+   "58": "Naruto vs Itachi!!",
+   "59": "Côte à côte...!!",
+   "60": "Kurama",
+   "61": "Frères unis dans le combat !!",
+   "62": "Fissure",
+   "27": "Le jour du départ !!",
+   "28": "Le retour au pays !!",
+   "51": "Sasuke vs danzô...!!",
+   "63": "Monde onirique",
+   "64": "Jubi",
+   "65": "Hashirama et Madara"
   },
-  "eans": {}
+  "eans": {
+   "30": "9782505001522",
+   "55": "9782505014287",
+   "60": "9782505018438",
+   "27": "9782505000310",
+   "63": "9782505060833",
+   "65": "9782505061267"
+  }
  },
  "Negima! Le Maître Magicien": {
   "total": 38,
@@ -1457,8 +1542,16 @@
  "Mutafukaz - Loba Loca": {
   "total": 6,
   "finis": true,
-  "source": "https://www.senscritique.com/groupe/Mutafukaz/2608",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-67273-BD-Mutafukaz-Loba-Loca.html",
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "2": "9791033509592",
+   "3": "9791033509615",
+   "4": "9791033509707",
+   "5": "9791033509745",
+   "6": "9791033509752"
+  }
  },
  "Nomen Omen": {
   "total": 3,
@@ -1563,7 +1656,17 @@
   "total": 4,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-3812-BD-Samedi-et-Dimanche.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Cœurs de palmier",
+   "3": "Le profil du pingouin",
+   "4": "L'odyssée aux allumettes"
+  },
+  "eans": {
+   "2": "9782205051957",
+   "3": "9782205053906",
+   "4": "9782205055696"
+  }
  },
  "Sacrées Sorcières": {
   "total": 1,
@@ -1661,7 +1764,26 @@
   "total": 5,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-1523-BD-XXe-cielcom.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "liste": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "titres": {
+   "0": "Introduction au XXe Ciel",
+   "1": "Mémoires du XXe ciel 98",
+   "2": "http://www.xxeciel.com/mémoires99",
+   "3": "http://www.xxeciel.com/mémoires<19>00",
+   "4": "http://www.xxeciel.com/mémoires<20>00"
+  },
+  "eans": {
+   "0": "9782840551690",
+   "3": "9782731615548",
+   "4": "9782731614596"
+  }
  },
  "Monsieur Ferraille": {
   "total": 1,
@@ -2345,7 +2467,21 @@
  "Mission - Yozakura Family": {
   "total": 27,
   "source": "https://www.bedetheque.com/serie-73926-BD-Mission-Yozakura-Family.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "2": "9782505089971",
+   "3": "9782505089988",
+   "4": "9782505089995",
+   "5": "9782505112075",
+   "6": "9782505115304",
+   "7": "9782505115434",
+   "9": "9782505115458",
+   "10": "9782505115465",
+   "11": "9782505115533",
+   "12": "9782505116462",
+   "25": "9782505129387"
+  }
  },
  "Morgane": {
   "total": 1,
@@ -2386,7 +2522,13 @@
  "Tsugai - Daemons of the Shadow Realm": {
   "total": 10,
   "source": "https://www.bedetheque.com/serie-84913-BD-Tsugai-Daemons-of-the-Shadow-Realm.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "4": "9791042014308",
+   "6": "9791042018740",
+   "7": "9791042018757"
+  }
  },
  "Menji": {
   "total": 2,
@@ -2418,7 +2560,19 @@
   "total": 4,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-25170-BD-Reve-du-papillon.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Lapins sur la Lune",
+   "2": "Stupides ! Stupides espions !",
+   "3": "Les ficelles du cordonnier",
+   "4": "Hamster au printemps"
+  },
+  "eans": {
+   "1": "9782205061154",
+   "2": "9782205062908",
+   "3": "9782205064544",
+   "4": "9782205068368"
+  }
  },
  "La Révolte D'Hop-Frog": {
   "total": 2,
@@ -3009,7 +3163,19 @@
  "Made In Abyss": {
   "total": 14,
   "source": "https://www.bedetheque.com/serie-61206-BD-Made-in-Abyss.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "1": "9782377171170",
+   "2": "9782377171248",
+   "4": "9782377171743",
+   "8": "9782377172870",
+   "9": "9782377173662",
+   "10": "9782377174072",
+   "11": "9782377175437",
+   "12": "9782377175802",
+   "13": "9782377176625"
+  }
  },
  "Ingmar": {
   "total": 4,
@@ -3156,8 +3322,19 @@
  },
  "Kindergarten Wars": {
   "total": 16,
-  "source": "https://www.bedetheque.com/BD-Kindergarten-Wars-Tome-16-543486.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-88475-BD-Kindergarten-Wars.html",
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "4": "9791032718117",
+   "5": "9791032718131",
+   "6": "9791032719176",
+   "7": "9791032719183",
+   "13": "9791032724323",
+   "14": "9791032724033",
+   "15": "9791032723791",
+   "16": "9791032723395"
+  }
  },
  "La Boîte à Musique": {
   "total": 5,
