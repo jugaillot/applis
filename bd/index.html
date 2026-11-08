@@ -139,8 +139,8 @@ function listeHtml(a){
  const rows=a.it.map(x=>({n:x[1],o:x})).concat(a.miss.map(t=>({n:t,m:t})));
  rows.sort((p,q)=>(p.n??1e9)-(q.n??1e9)||(p.o?0:1)-(q.o?0:1)||(p.o?p.o[2].localeCompare(q.o?q.o[2]:'','fr'):0));
  return rows.map(r=>r.o
-  ?`<label class="al"><input type="checkbox" class="rm" checked data-rm="${esc(JSON.stringify(r.o))}" title="Décocher = retirer de la collection"><b>${r.o[1]??''}</b>${cv(r.o[3])}<span>${esc(r.o[2])}</span></label>`
-  :`<label class="al no"><input type="checkbox" data-s="${esc(a.s)}" data-t="${r.m}"><b>${r.m}</b><i class="cv"></i><span>${a.titres[r.m]?esc(a.titres[r.m]):'Tome '+r.m}</span><button class="exb" data-ex="${esc(a.s)}|${r.m}" title="Ce tome n'existe pas">Retirer</button></label>`).join('');
+  ?`<div class="al" data-e="${esc(String(r.o[3]||'').replace(/\D/g,''))}"><input type="checkbox" class="rm" checked data-rm="${esc(JSON.stringify(r.o))}" title="Décocher = retirer de la collection"><b>${r.o[1]??''}</b>${cv(r.o[3])}<span>${esc(r.o[2])}</span></div>`
+  :`<div class="al no"><input type="checkbox" data-s="${esc(a.s)}" data-t="${r.m}"><b>${r.m}</b><i class="cv"></i><span>${a.titres[r.m]?esc(a.titres[r.m]):'Tome '+r.m}</span><button class="exb" data-ex="${esc(a.s)}|${r.m}" title="Ce tome n'existe pas">Retirer</button></div>`).join('');
 }
 function head(a){const eds=[...new Set(a.it.map(x=>x[4]).filter(Boolean))].join(', ');const au=AUT[a.s]||'';if(!au&&!eds)return '';return `<div style="font-size:13px;color:#555;padding:4px 12px">${au?'Auteur(s) : '+esc(au):''}${au&&eds?' · ':''}${eds?'Éditeur : '+esc(eds):''}</div>`}
 function info(a){const n=a.total?a.total-a.ex-a.miss.length:(a.owned.size||a.it.length);return (a.total?n+'/'+(a.total-a.ex):String(a.it.length))+(a.miss.length?' · manque '+a.miss.length:'')}
@@ -178,8 +178,8 @@ function render(){
  $('dl').innerHTML=all.map(a=>`<option value="${esc(a.s)}">`).join('');
 }
 $('list').addEventListener('click',e=>{
- const im=e.target.closest('.cv img');
- if(im){e.preventDefault();e.stopPropagation();const lb=$('lb');lb.firstChild.src=im.src.replace('-S.jpg','-L.jpg');lb.hidden=false;return}
+ const row=e.target.closest('.al[data-e]');
+ if(row&&!e.target.closest('input,button')){const q=row.dataset.e;if(q.length>=10){const lb=$('lb'),im=lb.firstChild;im.hidden=false;lb.lastChild.textContent='';im.onerror=()=>{im.hidden=true;lb.lastChild.textContent='Pas de couverture disponible'};im.src='https://covers.openlibrary.org/b/isbn/'+q+'-L.jpg?default=false';lb.hidden=false}return}
  const ex=e.target.closest('[data-ex]');
  if(ex){e.preventDefault();const i=ex.dataset.ex.lastIndexOf('|');const sr=ex.dataset.ex.slice(0,i),t=+ex.dataset.ex.slice(i+1);
   if(!confirm('Retirer le tome '+t+' de « '+sr+' » ?\n\nIl n\'existe pas / ne compte pas : il disparaît des manques et du total.'))return;
@@ -277,6 +277,6 @@ document.addEventListener('click',e=>{if(!$('menu').hidden&&!e.target.closest('#
 refreshInst();
 window.addEventListener('atelier-docs',async()=>{await loadState();render()});
 (async()=>{await Promise.all([loadMeta(),loadState()]);if(window.AtelierSync)$('bdg').appendChild(AtelierSync.badge());render()})();
-</script><div id="lb" hidden><img alt=""></div>
-<script>document.getElementById('lb').onclick=function(){this.hidden=true;this.firstChild.src=''}</script>
+</script><div id="lb" hidden><img alt=""><span style="color:#fff"></span></div>
+<script>document.getElementById('lb').onclick=function(){this.hidden=true;this.firstChild.removeAttribute('src')}</script>
 </body></html>
