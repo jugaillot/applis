@@ -1,65 +1,83 @@
 {
  "My Hero Academia": {
   "total": 42,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-51637-BD-My-Hero-Academia.html"
  },
  "Sillage": {
   "total": 25,
-  "finis": false
+  "finis": false,
+  "source": "https://www.bedetheque.com/serie-18-BD-Sillage__10000.html"
  },
  "Radiant": {
   "total": 19,
-  "finis": false
+  "finis": false,
+  "source": "https://www.bedetheque.com/serie-38404-BD-Radiant.html"
  },
  "Mashle": {
   "total": 18,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-74374-BD-Mashle.html"
  },
  "L'Atelier des Sorciers": {
   "total": 16,
-  "finis": false
+  "finis": false,
+  "source": "https://www.bedetheque.com/serie-60298-BD-Atelier-des-sorciers.html"
  },
  "Undead Unluck": {
-  "total": 27,
-  "finis": true
+  "total": 26,
+  "finis": false,
+  "source": "https://www.bedetheque.com/serie-76312-BD-Undead-Unluck.html"
  },
  "Dr. Stone": {
-  "total": 26,
-  "finis": true
+  "total": 27,
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-60578-BD-Dr-Stone.html"
  },
  "The Promised Neverland": {
   "total": 20,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-60827-BD-Promised-Neverland__10000.html"
  },
  "Valérian": {
   "total": 21,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-174-BD-Valerian.html"
  },
  "Gunnm - Last Order - édition originale": {
   "total": 12,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-64026-BD-Gunnm-Last-Order-Edition-Originale.html"
  },
  "Ralph Azham": {
   "total": 12,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-26985-BD-Ralph-Azham.html"
  },
  "Les Eaux de Mortelune": {
   "total": 10,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-132-BD-Eaux-de-Mortelune.html"
  },
  "L'Attaque des Titans": {
   "total": 34,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-39078-BD-Attaque-des-Titans.html"
  },
  "L'Arabe du Futur": {
   "total": 6,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-43032-BD-Arabe-du-futur.html"
  },
  "Capricorne": {
-  "total": 20
+  "total": 20,
+  "source": "https://www.bedetheque.com/serie-1700-BD-Capricorne.html",
+  "finis": true
  },
  "Aya de Yopougon": {
-  "total": 8
+  "total": 8,
+  "source": "https://www.bedetheque.com/serie-12737-BD-Aya-de-Yopougon.html",
+  "finis": false
  },
  "Donjon Crépuscule": {
   "total": 10,
@@ -73,46 +91,58 @@
  },
  "Donjon Zénith": {
   "total": 11,
-  "finis": false
+  "finis": false,
+  "source": "https://www.bedetheque.com/serie-2324-BD-Donjon-Zenith.html"
  },
  "Donjon Bonus": {
-  "total": 3
+  "total": 3,
+  "source": "https://www.bedetheque.com/serie-1656-BD-Donjon-Bonus.html",
+  "finis": false
  },
  "Lanfeust de Troy ": {
   "total": 8,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-6-BD-Lanfeust-de-Troy.html"
  },
  "Lanfeust des Étoiles": {
   "total": 8,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-1757-BD-Lanfeust-des-Etoiles.html"
  },
  "Gorn": {
   "total": 11,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-134-BD-Gorn.html"
  },
  "Sardine de l'Espace (Bayard)": {
   "total": 10,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-2156-BD-Sardine-de-l-espace-Bayard.html"
  },
  "Les Cités Obscures": {
   "total": 12,
-  "finis": false
+  "finis": false,
+  "source": "https://www.bedetheque.com/serie-414-BD-Cites-obscures.html"
  },
  "Calvin et Hobbes": {
   "total": 24,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-566-BD-Calvin-et-Hobbes.html"
  },
  "Demon Slayer": {
   "total": 23,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-67044-BD-Demon-Slayer-Kimetsu-no-yaiba.html"
  },
  "Hunter X Hunter": {
   "total": 38,
-  "finis": false
+  "finis": false,
+  "source": "https://www.bedetheque.com/serie-5676-BD-Hunter-X-Hunter.html"
  },
  "Mortelle Adèle": {
   "total": 23,
-  "finis": false
+  "finis": false,
+  "source": "https://www.bedetheque.com/serie-37716-BD-Mortelle-Adele.html"
  },
  "L'Incal": {
   "total": 6,
@@ -122,7 +152,8 @@
  },
  "Avant l'Incal": {
   "total": 6,
-  "finis": true
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-16-BD-Incal-Avant-l.html"
  },
  "Les Cahiers d'Esther": {
   "total": 9,
