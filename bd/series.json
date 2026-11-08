@@ -213,7 +213,18 @@
  "Sardine de l'Espace (Bayard)": {
   "total": 10,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-2156-BD-Sardine-de-l-espace-Bayard.html"
+  "source": "https://www.bedetheque.com/serie-2156-BD-Sardine-de-l-espace-Bayard.html",
+  "titres": {
+   "3": "La machine à laver la cervelle",
+   "7": "La grande Sardine",
+   "9": "La montagne électorale"
+  },
+  "eans": {
+   "3": "9782747001595",
+   "7": "9782747008921",
+   "9": "9782747010443"
+  },
+  "maj": "2026-11-08"
  },
  "Les Cités Obscures": {
   "total": 12,
@@ -859,8 +870,16 @@
  "Rapaces": {
   "total": 4,
   "finis": true,
-  "source": "https://www.senscritique.com/bd/rapaces_tome_4/critique/93680689",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-264-BD-Rapaces-Marini-Dufaux.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "3": "Rapaces III",
+   "4": "Rapaces IV"
+  },
+  "eans": {
+   "3": "9782505064459",
+   "4": "9782505064466"
+  }
  },
  "Terre Mécanique": {
   "total": 3,
@@ -1004,8 +1023,18 @@
  "Spoon & White": {
   "total": 9,
   "finis": true,
-  "source": "choix Julien",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-316-BD-Spoon-White.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "7": "Manhattan Kaputt",
+   "8": "Neverland",
+   "9": "Road'n'trip"
+  },
+  "eans": {
+   "7": "9782749303062",
+   "8": "9782749304397",
+   "9": "9782818977101"
+  }
  },
  "Bayou Bastardise": {
   "total": 3,
@@ -1125,8 +1154,16 @@
  "Péchés Mignons": {
   "total": 4,
   "finis": true,
-  "source": "https://www.senscritique.com/groupe/Peches_mignons/49477",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-14064-BD-Peches-Mignons.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Chasse à l'homme !",
+   "4": "Péchés mignons 4"
+  },
+  "eans": {
+   "2": "9782858150380",
+   "4": "9782352070252"
+  }
  },
  "Les Ostings": {
   "total": 2,
@@ -1677,8 +1714,16 @@
  "Salammbô": {
   "total": 3,
   "finis": true,
-  "source": "https://riviste.unige.it/index.php/publifarum/article/download/1942/2478",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-660-BD-Lone-Sloane.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Carthage",
+   "3": "Matho"
+  },
+  "eans": {
+   "2": "9782205022537",
+   "3": "9782205027440"
+  }
  },
  "Salammbô - intégrale": {
   "total": 1,
@@ -1729,8 +1774,18 @@
  "Le Vent dans les Saules": {
   "total": 4,
   "finis": true,
-  "source": "https://www.livreshebdo.fr/article/les-saules-pleurent-le-dessinateur-de-bande-dessinee-michel-plessix",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-155-BD-Vent-dans-les-Saules.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Auto, Crapaud, Blaireau",
+   "3": "L'échappée belle",
+   "4": "Foutoir au manoir"
+  },
+  "eans": {
+   "2": "9782840551683",
+   "3": "9782840552529",
+   "4": "9782840555803"
+  }
  },
  "Malika Secouss": {
   "total": 9,
@@ -1813,8 +1868,16 @@
  "Octave": {
   "total": 4,
   "finis": true,
-  "source": "https://bibliotheques.paris.fr/doc/SYRACUSE/271423",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-5720-BD-Octave-Chauvel-Alfred.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Octave et la daurade royale",
+   "3": "Octave et le manchot papou",
+   "4": "Octave et le fou de bassan"
+  },
+  "eans": {
+   "3": "9782847899221"
+  }
  },
  "Pinocchio version redux (Winshluss)": {
   "total": 1,
@@ -1844,7 +1907,15 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-5195-BD-Scenes-de-la-vie-de-banlieue.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Accroche-toi au balai, j'enlève le plafond !",
+   "3": "L'hachélème que j'aime"
+  },
+  "eans": {
+   "2": "9782205012859",
+   "3": "9782205015775"
+  }
  },
  "Sillage - Premières Armes": {
   "total": 2,
@@ -1997,8 +2068,16 @@
  "Malice et Catastrophe": {
   "total": 3,
   "finis": true,
-  "source": "https://www.bedetheque.com",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-31500-BD-Malice-et-Catastrophe.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "La guerre des yokaï",
+   "3": "Histoire de yokaï chinois"
+  },
+  "eans": {
+   "2": "9782505012962",
+   "3": "9782505019190"
+  }
  },
  "Shaolin Moussaka": {
   "total": 3,
@@ -2186,7 +2265,15 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-19375-BD-Tykko-des-sables.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "La Cité engloutie",
+   "3": "La Colline des cent temples"
+  },
+  "eans": {
+   "2": "9782302008779",
+   "3": "9782302042025"
+  }
  },
  "Magasin Sexuel": {
   "total": 2,
@@ -2823,13 +2910,25 @@
   "total": 4,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-2389-BD-Omaha-Les-mesaventures-de.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "3": "9782876951952",
+   "4": "9782876952003"
+  }
  },
  "Alice au Royaume de Coeur": {
   "total": 6,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-24223-BD-Alice-au-royaume-de-Coeur.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "3": "9782355921988",
+   "4": "9782355922220",
+   "5": "9782355922473",
+   "6": "9782355922763"
+  }
  },
  "Allez Raconte": {
   "total": 2,
@@ -2983,7 +3082,17 @@
   "total": 4,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-419-BD-Monstrueux.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Monstrueux Noël",
+   "3": "Monstrueux dindon",
+   "4": "Monstrueux Dinosaure"
+  },
+  "eans": {
+   "2": "9782840554196",
+   "3": "9782840554851",
+   "4": "9782840555865"
+  }
  },
  "Le Niçois - Fashion Week": {
   "total": 1,
@@ -3279,10 +3388,10 @@
   }
  },
  "La Quête de l'Oiseau du Temps (Avant la Quête)": {
-  "total": 12,
+  "total": 8,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-5-BD-Quete-de-l-oiseau-du-temps.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08"
  },
  "Cromwell Stone": {
   "total": 3,
