@@ -218,6 +218,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oPx"> Exporter en pixels (images)</label>
       <div id="oPxBox" hidden style="margin:4px 0 8px"><label>Résolution<select id="oPxDpi"><option value="150">150 dpi (léger)</option><option value="200">200 dpi</option><option value="300">300 dpi (impression)</option><option value="600">600 dpi (très fin)</option></select></label>
         <div class="muted" style="margin-top:4px">Chaque feuille devient une image : rendu identique partout, mais le texte n’est plus sélectionnable.</div></div>
+      <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oSplit"> Une page par fichier</label>
+      <div id="oSplitBox" hidden class="muted" style="margin:2px 0 8px">Chaque feuille est enregistrée dans un PDF séparé (compil-date-01.pdf, -02…). Sur ordinateur, tu choisis le dossier où les ranger ; sinon, le navigateur peut demander d’autoriser plusieurs téléchargements.</div>
       <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oRed"> Réduire le poids du fichier</label>
       <div id="oRedBox" hidden style="margin-top:6px"><label>Poids maximum (Mo)<input type="number" id="oRedMb" min="0.1" step="0.1" value="2"></label>
         <div class="muted" style="margin-top:4px">Si le PDF dépasse ce poids, ses pages sont converties en images de plus en plus légères jusqu’à passer en dessous. S’il est déjà plus léger, il est gardé tel quel. Un PDF réduit ne se rouvre pas modifiable.</div></div>
@@ -239,6 +241,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="mlab">Export</div>
 <button type="button" class="mb" data-px="#oBook" title="Format livret (recto verso, plié au centre)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 6c-2.5-1.6-5.5-2-9-1.5v14c3.5-.5 6.5-.1 9 1.5 2.5-1.6 5.5-2 9-1.5v-14c-3.5-.5-6.5-.1-9 1.5zM12 6v14"/></svg></button>
 <button type="button" class="mb" data-px="#oPx" title="Exporter en pixels (images)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16"/></svg></button>
+<button type="button" class="mb" data-px="#oSplit" title="Une page par fichier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="5" width="8" height="12" rx="1"/><rect x="13" y="7" width="8" height="12" rx="1"/></svg></button>
 <button type="button" class="mb" data-px="#oRed" title="Réduire le poids du fichier (poids maximum dans le panneau déplié)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v7M9 7l3 3 3-3M12 21v-7M9 17l3-3 3 3M4 12h16"/></svg></button>
 <button type="button" class="mb" data-px="#bPrint" title="Imprimer…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/></svg></button>
 <button type="button" class="mb" data-px="#bPdf" title="Exporter PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg></button>
@@ -690,6 +693,17 @@ async function rasterPdf(bytes,dpi,q){
   out.setTitle('Compilation');out.setProducer('La Suite PDF');return await out.save();
 }
 const mo=n=>(n/1048576).toFixed(n<1048576?2:1).replace('.',',')+' Mo';
+function dl(bytes,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+/* une page par fichier : le PDF final est découpé feuille par feuille */
+async function saveSplit(bytes){
+  const src=await PDFLib.PDFDocument.load(bytes);const n=src.getPageCount();const w=String(n).length<2?2:String(n).length;
+  let dir=null;if(window.showDirectoryPicker&&n>1){try{dir=await showDirectoryPicker({mode:'readwrite',id:'compil-split'});}catch(e){if(e.name==='AbortError')return;}}
+  for(let i=0;i<n;i++){await busy(`Enregistrement — fichier ${i+1} / ${n}`);
+    const d=await PDFLib.PDFDocument.create();const [pg]=await d.copyPages(src,[i]);d.addPage(pg);d.setTitle('Compilation — page '+(i+1));d.setProducer('La Suite PDF');
+    const b=await d.save();const name=`compil-${stamp()}-${String(i+1).padStart(w,'0')}.pdf`;
+    if(dir){const fh=await dir.getFileHandle(name,{create:true});const ws=await fh.createWritable();await ws.write(b);await ws.close();}
+    else{dl(b,name);await new Promise(r=>setTimeout(r,350));}}
+}
 async function exportPDF(){
   if(!S.pages.length)return;let note='';
   try{
@@ -708,7 +722,7 @@ async function exportPDF(){
           bytes=best;note=fit?'PDF allégé : '+mo(bytes.length)+' au lieu de '+mo(orig)+' (pages converties en images à '+fit+' dpi).':'Impossible de descendre sous '+mo(lim)+' : la version la plus légère ('+mo(bytes.length)+') a été enregistrée.';}
       }
     }
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));a.download=`compil-${stamp()}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    if(S.opt.split)await saveSplit(bytes);else dl(bytes,`compil-${stamp()}.pdf`);
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
   const msgs=[];if(RASTERED)msgs.push(RASTERED+' page'+(RASTERED>1?'s':'')+' de ce PDF n’a pas pu être recopiée telle quelle (fichier un peu abîmé) : '+(RASTERED>1?'elles sont passées':'elle est passée')+' en image haute définition (300 dpi).');if(note)msgs.push(note);
@@ -979,6 +993,8 @@ $('#oBook').onchange=e=>{S.opt.book=e.target.checked;$('#oBookBox').hidden=!S.op
 $('#oPx').checked=!!S.opt.px;$('#oPxBox').hidden=!S.opt.px;$('#oPxDpi').value=String(S.opt.pxDpi||300);
 $('#oPx').onchange=e=>{S.opt.px=e.target.checked;$('#oPxBox').hidden=!S.opt.px;saveOpt();};
 $('#oPxDpi').onchange=e=>{S.opt.pxDpi=+e.target.value;saveOpt();};
+$('#oSplit').checked=!!S.opt.split;$('#oSplitBox').hidden=!S.opt.split;
+$('#oSplit').onchange=e=>{S.opt.split=e.target.checked;$('#oSplitBox').hidden=!S.opt.split;saveOpt();};
 $('#oRed').checked=!!S.opt.red;$('#oRedBox').hidden=!S.opt.red;$('#oRedMb').value=S.opt.redMb||2;
 $('#oRed').onchange=e=>{S.opt.red=e.target.checked;$('#oRedBox').hidden=!S.opt.red;saveOpt();};
 $('#oRedMb').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0){S.opt.redMb=v;saveOpt();}});
@@ -1229,7 +1245,7 @@ const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^
 AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='application/pdf'||isImg(f)||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:fs=>addFiles(fs)});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["Double-clic sur un texte du PDF", "Le modifier : l’ancien texte est recouvert de la couleur du papier, le nouveau s’écrit à sa place"], ["F", "Voir le document en plein écran (flèches : pages, Z : largeur / page entière, Échap : sortir)"], ["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["Double-clic sur un texte du PDF", "Le modifier : l’ancien texte est recouvert de la couleur du papier, le nouveau s’écrit à sa place"], ["F", "Voir le document en plein écran (flèches : pages, Z : largeur / page entière, Échap : sortir)"], ["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. « Une page par fichier » enregistre chaque feuille dans un PDF séparé. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
 <div id="fsView" hidden><div id="fsPages"></div><div id="fsBar"><button id="fsPrev" title="Page précédente (←)">‹</button><span id="fsNum"></span><button id="fsNext" title="Page suivante (→)">›</button><button id="fsFit" title="Ajuster : page entière / largeur (Z)">Largeur</button><button id="fsClose" title="Quitter (Échap)">✕</button></div></div>
 <style>
 #fsView{position:fixed;inset:0;z-index:200;background:#2a2b2e}
