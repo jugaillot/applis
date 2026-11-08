@@ -103,13 +103,25 @@
    "17": "Les Cavaliers",
    "18": "Zarkan",
    "19": "Terminus",
-   "20": "Maître"
-  }
+   "20": "Maître",
+   "12": "Tome 12"
+  },
+  "eans": {
+   "12": "9782803622993"
+  },
+  "maj": "2026-11-08"
  },
  "Aya de Yopougon": {
   "total": 8,
   "source": "https://www.bedetheque.com/serie-12737-BD-Aya-de-Yopougon.html",
-  "finis": false
+  "finis": false,
+  "titres": {
+   "8": "Volume 8"
+  },
+  "eans": {
+   "8": "9782075193108"
+  },
+  "maj": "2026-11-08"
  },
  "Donjon Crépuscule": {
   "total": 10,
@@ -555,8 +567,8 @@
  "Dofus": {
   "total": 30,
   "finis": true,
-  "source": "https://www.laprocure.com/product/1345517/tot-dofus-vol-30",
-  "maj": "2026-11-07",
+  "source": "https://www.bedetheque.com/albums-13943-BD-Dofus.html",
+  "maj": "2026-11-08",
   "titres": {
    "1": "Le Péril Gelées",
    "2": "La passion du Crail",
@@ -585,7 +597,13 @@
    "25": "Je suis Ignemikhal",
    "26": "Prédestination Finale",
    "27": "Arakné Kid",
-   "28": "Mourir ne peut plus attendre"
+   "28": "Mourir ne peut plus attendre",
+   "29": "Armaguedin",
+   "30": "M le Mollu"
+  },
+  "eans": {
+   "29": "9791033513575",
+   "30": "9791033517054"
   }
  },
  "La Caste des Meta-Barons": {
@@ -721,8 +739,14 @@
  "Zorn & Dirna": {
   "total": 6,
   "finis": true,
-  "source": "https://catalogue.bnf.fr/ark:/12148/cb43530604d",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-536-BD-Zorn-Dirna.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "6": "Notre père qui êtes odieux"
+  },
+  "eans": {
+   "6": "9782302020672"
+  }
  },
  "Le Monde d'Edena": {
   "total": 6,
@@ -798,8 +822,14 @@
  "Le Combat Ordinaire": {
   "total": 4,
   "finis": true,
-  "source": "https://www.ludum.fr/bd/planter-des-clous-1009941",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-5874-BD-Combat-ordinaire.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Les quantités négligeables"
+  },
+  "eans": {
+   "2": "9782205055894"
+  }
  },
  "Le Retour à la Terre": {
   "total": 6,
@@ -870,8 +900,14 @@
  "Niourk": {
   "total": 3,
   "finis": true,
-  "source": "https://www.bedetheque.com/BD-NiourK-Tome-3-Alpha-253242.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-35353-BD-NiourK.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "3": "Alpha"
+  },
+  "eans": {
+   "3": "9782359105452"
+  }
  },
  "Rapaces": {
   "total": 4,
@@ -896,8 +932,14 @@
  "Zita, la Fille de l'Espace": {
   "total": 3,
   "finis": true,
-  "source": "https://www.fnac.com/n19307/BD-et-Humour/BD-Jeunesse/Zita-la-fille-de-l-espace",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-39678-BD-Zita-la-fille-de-l-espace.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "La Fille de l'Espace T2"
+  },
+  "eans": {
+   "2": "9782810203079"
+  }
  },
  "Hammerdam": {
   "total": 2,
@@ -1023,8 +1065,24 @@
  "Rork": {
   "total": 8,
   "finis": true,
-  "source": "choix Julien",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-519-BD-Rork.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "0": "Les fantômes"
+  },
+  "eans": {
+   "0": "9782803630936"
+  },
+  "liste": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ]
  },
  "Spoon & White": {
   "total": 9,
@@ -1045,8 +1103,14 @@
  "Bayou Bastardise": {
   "total": 3,
   "finis": true,
-  "source": "https://www.ankama-shop.com/en/label-619/3933-bayou-bastardise-complete-edition-neyef-armand-brard.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-48485-BD-Bayou-Bastardise.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "3": "Voodoo u luv ?"
+  },
+  "eans": {
+   "3": "9791033512509"
+  }
  },
  "Beyond the clouds": {
   "total": 5,
@@ -1134,8 +1198,15 @@
  "Braise": {
   "total": 3,
   "finis": true,
-  "source": "choix Julien",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-22743-BD-Braise.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Enfants indignes",
+   "3": "Papa n'est pas là"
+  },
+  "eans": {
+   "3": "9782205067217"
+  }
  },
  "Lanfeust Odyssey": {
   "total": 10,
@@ -1228,8 +1299,14 @@
  "Anita Bomba (Casterman )": {
   "total": 4,
   "finis": true,
-  "source": "https://comicbooks.com/series/anita-bomba-1994",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-206-BD-Anita-Bomba.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "4": "La vie est trop courte..."
+  },
+  "eans": {
+   "4": "9782203365049"
+  }
  },
  "Absurdus Delirium": {
   "total": 3,
@@ -1348,8 +1425,15 @@
  "Crystal Girls": {
   "total": 5,
   "finis": true,
-  "source": "https://www.comicbooks.com/series/crystal-girls-2015",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-49587-BD-Crystal-Girls.html",
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "2": "9782811627126",
+   "3": "9782811627324",
+   "4": "9782811627331",
+   "5": "9782811630805"
+  }
  },
  "Chroniques de la Terre Fixe": {
   "total": 9,
@@ -2895,7 +2979,11 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-9677-BD-Redhand.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "3": "Le crépuscule des Dieux"
+  },
+  "eans": {}
  },
  "Semio": {
   "total": 2,
@@ -3448,7 +3536,13 @@
   "total": 4,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-87921-BD-Birdking.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "4": "Tome 4"
+  },
+  "eans": {
+   "4": "9782731624274"
+  }
  },
  "Gunnm - Grand Format": {
   "total": 6,
@@ -3660,7 +3754,13 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-6663-BD-Ninja.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "3": "Contre la femme la plus intelligente du monde"
+  },
+  "eans": {
+   "3": "9782913825062"
+  }
  },
  "Redhand (Intégrale)": {
   "total": 1,
@@ -3816,7 +3916,12 @@
   "total": 7,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-68899-BD-Petite-Faiseuse-de-Livres.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "5": "9782377173471",
+   "6": "9782377173785"
+  }
  },
  "Donjon Antipodes -": {
   "total": 2,
