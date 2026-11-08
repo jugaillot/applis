@@ -515,8 +515,28 @@
  "Le Grand Mort": {
   "total": 8,
   "finis": true,
-  "source": "https://side-ecom-prod-export.cdi.ch/en/9782749308685-le-grand-mort-tome-08",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-16623-BD-Grand-Mort.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Larmes d'abeille",
+   "2": "Pauline...",
+   "3": "Blanche",
+   "4": "Sombre",
+   "5": "Panique",
+   "6": "Brèche",
+   "7": "Dernières migrations",
+   "8": "Renaissance"
+  },
+  "eans": {
+   "1": "9782749302683",
+   "2": "9782749303949",
+   "3": "9782749305950",
+   "4": "9782749306896",
+   "5": "9782749307800",
+   "6": "9782749307961",
+   "7": "9782749308371",
+   "8": "9782749308685"
+  }
  },
  "Le Lama blanc (Cycle 1)": {
   "total": 6,
@@ -527,8 +547,24 @@
  "Les passagers du vent": {
   "total": 9,
   "finis": true,
-  "source": "https://unidivers.fr/bd-sang-cerises-passagers-du-vent-francois-bourgeon/",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-108-BD-Passagers-du-vent.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "La fille sous la dunette",
+   "2": "Le ponton",
+   "3": "Le comptoir de Juda",
+   "4": "L'heure du serpent",
+   "5": "Le bois d'ébène",
+   "6": "La Petite Fille Bois-Caïman - Livre 1",
+   "7": "La Petite Fille Bois-Caïman - Livre 2",
+   "8": "Le Sang des cerises - Livre 1 - Rue de l'Abreuvoir",
+   "9": "Le Sang des cerises - Livre 2 : Rue des Martyrs"
+  },
+  "eans": {
+   "2": "9782723401647",
+   "6": "9782356480668",
+   "7": "9782356481122"
+  }
  },
  "Face de Lune": {
   "total": 5,
@@ -1169,8 +1205,16 @@
  "Le Janitor": {
   "total": 5,
   "finis": true,
-  "source": "https://www.comicbooks.com/series/le-janitor-2007",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-15039-BD-Janitor.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "L'Ange de Malte",
+   "2": "Week-end à Davos",
+   "3": "Les revenants de Porto Cervo",
+   "4": "Les Morsures du passé",
+   "5": "La Crèche de Satan"
+  },
+  "eans": {}
  },
  "Naruto": {
   "total": 72,
@@ -3022,7 +3066,23 @@
   "total": 6,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-2021-BD-Raghnarok.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Dragon junior",
+   "2": "Fées et gestes",
+   "3": "Terreurs de la nature",
+   "4": "Légendes urbaines",
+   "5": "Tempus Fugit",
+   "6": "Casus belli"
+  },
+  "eans": {
+   "1": "9782723434164",
+   "2": "9782723436953",
+   "3": "9782723441995",
+   "4": "9782723446792",
+   "5": "9782723454049",
+   "6": "9782723463096"
+  }
  },
  "Légendes d’aujourd’hui ": {
   "total": 3,
