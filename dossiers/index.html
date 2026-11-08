@@ -169,7 +169,7 @@ body.nosel #toolBar [data-h],body.nosel #toolBar [data-c]{opacity:.45}
 <link rel="icon" href="/icons/icon-192.png">
 <script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(r=>r.update()).catch(()=>{}));
 /* une nouvelle version vient d'être installée : on recharge une fois pour l'afficher */
-navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}location.reload();}});}
+navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}window.__laSuiteLeaving=1;location.reload();}});}
 /* une erreur au démarrage ne laisse plus une page vide : on l'affiche, avec un moyen de repartir */
 setTimeout(()=>{window.__bootOk=true;},10000);
 window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.message)||'erreur';const d=document.getElementById('bootErr')||document.body&&document.body.appendChild(Object.assign(document.createElement('div'),{id:'bootErr'}));if(!d)return;d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#fff3f0;border:1px solid #e3a59a;border-radius:10px;padding:10px 14px;font:13px system-ui;color:#5a1d12;box-shadow:0 6px 24px rgba(0,0,0,.15)';d.innerHTML='<b>Le démarrage a rencontré un problème</b> : '+String(m).replace(/</g,'&lt;')+'<br><button onclick="location.reload()" style="margin-top:6px">Recharger</button>';});</script>
@@ -912,6 +912,8 @@ window.addEventListener('online',()=>{pull();});
 window.addEventListener('offline',()=>setState('Hors connexion — modifications gardées ici'));
 let lastFocusPull=0;window.addEventListener('focus',()=>{if(Date.now()-lastFocusPull>20000){lastFocusPull=Date.now();pull();}});
 window.addEventListener('beforeunload',e=>{if(S.cur){clearTimeout(editT);saveCur();}});
+/* fermeture de la fenêtre alors que des modifications ne sont pas encore envoyées au dépôt : le navigateur prévient (elles restent gardées sur cet appareil) */
+addEventListener('DOMContentLoaded',()=>{if(window.AtelierUnsaved)AtelierUnsaved.watch(()=>{const d=[...S.docs.values()].some(r=>r&&r.dirty);if(d)schedulePush(0);return d;});});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();clearTimeout(editT);saveCur().then(()=>schedulePush(100));}
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'&&S.cur){e.preventDefault();$('#bPdf').click();}});
 
@@ -926,6 +928,7 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLower
 })();
 </script>
 <script src="../lib/pptx.js"></script>
+<script src="../lib/unsaved.js"></script>
 <script src="../lib/drop.js"></script>
 <script>
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */

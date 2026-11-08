@@ -9,6 +9,7 @@
 <script src="../lib/jspdf.umd.min.js"></script>
 <script src="../lib/svg2pdf.umd.min.js"></script>
 <script src="../lib/sync.js"></script>
+<script src="../lib/unsaved.js"></script>
 <script src="../lib/tabs.js"></script>
 <script src="../lib/pdf.min.js"></script>
 <style>
@@ -193,7 +194,7 @@ body.amini #mini{display:flex;flex-direction:column;align-items:stretch;gap:8px}
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(r=>r.update()).catch(()=>{}));
 /* une nouvelle version vient d'être installée : on recharge une fois pour l'afficher */
-navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}location.reload();}});}
+navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}window.__laSuiteLeaving=1;location.reload();}});}
 /* une erreur au démarrage ne laisse plus une page vide : on l'affiche, avec un moyen de repartir */
 setTimeout(()=>{window.__bootOk=true;},10000);
 window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.message)||'erreur';const d=document.getElementById('bootErr')||document.body&&document.body.appendChild(Object.assign(document.createElement('div'),{id:'bootErr'}));if(!d)return;d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#fff3f0;border:1px solid #e3a59a;border-radius:10px;padding:10px 14px;font:13px system-ui;color:#5a1d12;box-shadow:0 6px 24px rgba(0,0,0,.15)';d.innerHTML='<b>Le démarrage a rencontré un problème</b> : '+String(m).replace(/</g,'&lt;')+'<br><button onclick="location.reload()" style="margin-top:6px">Recharger</button>';});</script>
@@ -2384,7 +2385,7 @@ async function sendToRiso(){
   await IDB.set('vecto.autosave',projectData());
   await busy();
   if(!ok)return alert('Transfert impossible (stockage du navigateur indisponible). Exporte en SVG puis importe-le dans Riso.');
-  location.href='../riso/?depuis=vecto';
+  window.__laSuiteLeaving=1;location.href='../riso/?depuis=vecto';
 }
 
 /* ---------- document ---------- */
@@ -2656,7 +2657,7 @@ async function pasteClip(){
 }
 function copyTargets(){return sel.length?sel:allTop();}
 $('#bCopy').onclick=()=>{if(sel.length)clipWrite(sel);};
-$('#bToPaysage').onclick=async()=>{const t=copyTargets();if(!t.length)return alert('Le dessin est vide.');await clipWrite(t);await IDB.set('vecto.autosave',Object.assign({},projectData(),{doc:S.doc}));location.href='../paysage/?coller=1';};
+$('#bToPaysage').onclick=async()=>{const t=copyTargets();if(!t.length)return alert('Le dessin est vide.');await clipWrite(t);await IDB.set('vecto.autosave',Object.assign({},projectData(),{doc:S.doc}));window.__laSuiteLeaving=1;location.href='../paysage/?coller=1';};
 
 
 /* ---------- photo : prise de vue, recadrage et redressement ---------- */
@@ -3023,7 +3024,7 @@ window.addEventListener('storage',e=>{if(e.key==='atelierRiso.inks')renderSwatch
   showDoc();
   if(!restored){if(!userLayers().length)newLayer('Calque 1');drawPage();fitView();resetHistory();}
   renderLayers();setTool('select');syncPanel();
-  if(window.AtelierTabs)AtelierTabs.init({app:'vecto',
+  if(window.AtelierTabs)AtelierTabs.init({app:'vecto',save:()=>saveDoc(false),
     get:()=>({id:S.doc.id,name:S.doc.name,data:projectData()}),
     set:async t=>{loadProject(t.data);S.doc={id:t.id||null,name:t.name||''};showDoc();setTool('select');IDB.set('vecto.autosave',Object.assign({},t.data,{doc:S.doc}));},
     blank:async()=>{blankDoc();},

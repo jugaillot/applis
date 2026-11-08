@@ -159,7 +159,7 @@ dialog{border:1px solid var(--line);border-radius:12px;padding:0;max-width:96vw}
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(r=>r.update()).catch(()=>{}));
 /* une nouvelle version vient d'être installée : on recharge une fois pour l'afficher */
-navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}location.reload();}});}
+navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}window.__laSuiteLeaving=1;location.reload();}});}
 /* une erreur au démarrage ne laisse plus une page vide : on l'affiche, avec un moyen de repartir */
 setTimeout(()=>{window.__bootOk=true;},10000);
 window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.message)||'erreur';const d=document.getElementById('bootErr')||document.body&&document.body.appendChild(Object.assign(document.createElement('div'),{id:'bootErr'}));if(!d)return;d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#fff3f0;border:1px solid #e3a59a;border-radius:10px;padding:10px 14px;font:13px system-ui;color:#5a1d12;box-shadow:0 6px 24px rgba(0,0,0,.15)';d.innerHTML='<b>Le démarrage a rencontré un problème</b> : '+String(m).replace(/</g,'&lt;')+'<br><button onclick="location.reload()" style="margin-top:6px">Recharger</button>';});</script>
@@ -954,6 +954,11 @@ async function saveDoc(asNew){if(S.edit)endEdit();
   if(!window.AtelierSync){const b=new Blob([JSON.stringify(S.doc)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(S.name||'mise-en-page')+'.json';a.click();return;}
   if(!S.id||asNew||!S.name){const n=prompt('Nom de la mise en page :',S.name||'Affiche '+new Date().toLocaleDateString('fr-FR'));if(!n||!n.trim())return;S.name=n.trim();if(asNew)S.id=null;}
   S.id=await AtelierSync.save('mise',S.id,S.name,S.doc);autosave();syncPanels();hint('Enregistré : « '+S.name+' »');}
+/* avant de remplacer la mise en page : proposer de l'enregistrer si elle ne l'a jamais été */
+const unsavedDoc=()=>!S.id&&allItems().length>0;
+async function leaveOk(){if(!unsavedDoc())return true;if(S.edit)endEdit();const r=window.AtelierUnsaved?await AtelierUnsaved.ask(S.name||'Sans titre'):(confirm('La mise en page actuelle n’est pas enregistrée : continuer ?')?'discard':null);
+  if(!r)return false;if(r==='save'){await saveDoc(false);return !!S.id;}return true;}
+addEventListener('DOMContentLoaded',()=>{if(window.AtelierUnsaved)AtelierUnsaved.watch(unsavedDoc);});
 async function loadDoc(d,id,name){
   if(!d||d.app!=='atelier-mise')throw new Error('ce fichier n’est pas une mise en page');
   S.doc=Object.assign(newDoc(),d);S.doc.styles=Object.assign(DEF_STYLES(),d.styles||{});S.doc.exp=Object.assign({bleed:false,marks:false},d.exp||{});
@@ -962,10 +967,10 @@ async function loadDoc(d,id,name){
   render();renderStyles();resetHistory();fitPage(0);autosave();}
 $('#bSave').onclick=()=>saveDoc(false);
 $('#bOpen').onclick=()=>{if(!window.AtelierSync)return;AtelierSync.openDialog({app:'mise',title:'Mes mises en page',current:S.id,
-  onOpen:async(id,data,inf)=>{try{await loadDoc(data,id,inf?inf.name:'');}catch(e){alert('Ouverture impossible : '+e.message);}},
+  onOpen:async(id,data,inf)=>{try{if(id!==S.id&&!(await leaveOk()))return;await loadDoc(data,id,inf?inf.name:'');}catch(e){alert('Ouverture impossible : '+e.message);}},
   onRename:(id,n)=>{if(id===S.id){S.name=n;syncPanels();}},
   extra:[{label:'Enregistrer sous un autre nom…',action:()=>saveDoc(true)}]});};
-$('#bNew').onclick=()=>{if(!confirm('Commencer une nouvelle mise en page ?'+(S.id?'':' La mise en page actuelle n’est pas enregistrée.')))return;loadDoc(newDoc(),null,'');};
+$('#bNew').onclick=async()=>{if(unsavedDoc()){if(!(await leaveOk()))return;}else if(allItems().length&&!confirm('Commencer une nouvelle mise en page ?'))return;loadDoc(newDoc(),null,'');};
 if(window.AtelierSync)$('#syncBadge').appendChild(AtelierSync.badge());
 
 /* =====================================================================
@@ -1011,7 +1016,7 @@ $('#bPrint').onclick=printDoc;$('#xPrint').onclick=printDoc;
    ===================================================================== */
 async function importPPTX(file){
   let d;busy('Lecture de « '+file.name+' »…');try{d=await AtelierPPTX.read(file);}catch(e){busy();alert('« '+file.name+' » n’est pas lisible : '+(e.message||e));return;}
-  if(allItems().length&&!confirm('Ouvrir « '+file.name+' » comme nouvelle mise en page ?'+(S.id?'':'\n\nLa mise en page actuelle n’est pas enregistrée.'))){busy();return;}
+  busy();if(!(await leaveOk()))return;busy('Mise en page de « '+file.name+' »…');
   const R=v=>Math.round(v*100)/100;const AL={l:'left',ctr:'center',r:'right',just:'justify',dist:'justify'};
   const doc=newDoc();doc.page={w:R(d.w),h:R(d.h),fmt:'custom',m:[10,10,10,10],cols:1,gut:5,bg:'#ffffff'};doc.pages=[];
   const img=async(blob,name)=>{const f=new File([blob],name,{type:blob.type||'image/png'});const {key}=await storeImage(f);return key;};
@@ -1044,6 +1049,7 @@ async function importPPTX(file){
 $('#fPptx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importPPTX(f);};
 </script>
 <script src="../lib/pptx.js"></script>
+<script src="../lib/unsaved.js"></script>
 <script src="../lib/drop.js"></script>
 <script src="../lib/zoom.js"></script>
 <script>

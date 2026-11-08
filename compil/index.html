@@ -133,7 +133,7 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(r=>r.update()).catch(()=>{}));
 /* une nouvelle version vient d'être installée : on recharge une fois pour l'afficher */
-navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}location.reload();}});}
+navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}window.__laSuiteLeaving=1;location.reload();}});}
 /* une erreur au démarrage ne laisse plus une page vide : on l'affiche, avec un moyen de repartir */
 setTimeout(()=>{window.__bootOk=true;},10000);
 window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.message)||'erreur';const d=document.getElementById('bootErr')||document.body&&document.body.appendChild(Object.assign(document.createElement('div'),{id:'bootErr'}));if(!d)return;d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#fff3f0;border:1px solid #e3a59a;border-radius:10px;padding:10px 14px;font:13px system-ui;color:#5a1d12;box-shadow:0 6px 24px rgba(0,0,0,.15)';d.innerHTML='<b>Le démarrage a rencontré un problème</b> : '+String(m).replace(/</g,'&lt;')+'<br><button onclick="location.reload()" style="margin-top:6px">Recharger</button>';});</script>
@@ -326,6 +326,11 @@ const $=s=>document.querySelector(s);
 const PT=72/25.4;
 const FORMATS={A4:[210,297],A3:[297,420],A5:[148,210],'30x40':[300,400]};
 pdfjsLib.GlobalWorkerOptions.workerSrc='../lib/pdf.worker.min.js';
+/* modifications non exportées : on compare l'état des pages et des réglages à celui du dernier export */
+function stateSig(){const skip=v=>v&&typeof v==='object'&&!(Array.isArray(v)||Object.getPrototypeOf(v)===Object.prototype);
+  try{return JSON.stringify([S.pages.map(p=>Object.fromEntries(Object.entries(p).filter(([k,v])=>k!=='thumb'&&k[0]!=='_'&&!skip(v)))),S.opt],(k,v)=>skip(v)?undefined:v);}catch(e){return String(Math.random());}}
+let CLEAN='';const markClean=()=>{CLEAN=stateSig();};const unsaved=()=>S.pages.length>0&&stateSig()!==CLEAN;
+addEventListener('DOMContentLoaded',()=>{markClean();if(window.AtelierUnsaved)AtelierUnsaved.watch(unsaved);});
 const S={files:new Map(),pages:[],sel:new Set(),anchor:null,opt:{fmt:'A4',w:210,h:297,or:'auto',n:1,mode:'suite',order:'z',m:5,g:5,fit:'fit',red:false,redMb:2,px:false,pxDpi:300,book:false}};
 let uid=1;
 const ZOOM={z:1,t:0};
@@ -340,7 +345,7 @@ function saveOpt(){try{localStorage.setItem('atelierCompil.opt',JSON.stringify(S
 async function addFiles(list){
   // présentations PowerPoint : converties en PDF (une page par diapo)
   if([...list].some(f=>/\.pptx$/i.test(f.name))){const out=[];for(const f of list){if(!/\.pptx$/i.test(f.name)){out.push(f);continue;}try{out.push(await pptxToPdf(f));}catch(e){alert('« '+f.name+' » : '+(e.message||e));}finally{await busy();}}list=out;}
-  const files=[...list];if(!files.length)return;
+  const files=[...list];if(!files.length)return;const wasEmpty=!S.pages.length;
   for(const f of files){
     try{
       await busy('Lecture de « '+f.name+' »…');
@@ -371,7 +376,7 @@ async function addFiles(list){
     }catch(e){console.error(e);alert('Impossible de lire « '+f.name+' » : '+(e.message||e));}
   }
   await busy();
-  renderPages();renderSheets();
+  renderPages();renderSheets();if(wasEmpty)markClean();// ouvrir un PDF n'est pas une modification
 }
 async function renderPdfPage(page,vp){
   const k=Math.min(2.5,700/Math.max(vp.width,vp.height));
@@ -722,7 +727,7 @@ async function exportPDF(){
           bytes=best;note=fit?'PDF allégé : '+mo(bytes.length)+' au lieu de '+mo(orig)+' (pages converties en images à '+fit+' dpi).':'Impossible de descendre sous '+mo(lim)+' : la version la plus légère ('+mo(bytes.length)+') a été enregistrée.';}
       }
     }
-    if(S.opt.split)await saveSplit(bytes);else dl(bytes,`compil-${stamp()}.pdf`);
+    if(S.opt.split)await saveSplit(bytes);else dl(bytes,`compil-${stamp()}.pdf`);markClean();
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
   const msgs=[];if(RASTERED)msgs.push(RASTERED+' page'+(RASTERED>1?'s':'')+' de ce PDF n’a pas pu être recopiée telle quelle (fichier un peu abîmé) : '+(RASTERED>1?'elles sont passées':'elle est passée')+' en image haute définition (300 dpi).');if(note)msgs.push(note);
@@ -964,7 +969,7 @@ $('#pRotR').onclick=()=>{selected().forEach(p=>p.rot=(p.rot+90)%360);renderPages
 $('#pDup').onclick=()=>{const out=[];const ns=new Set();S.pages.forEach(p=>{out.push(p);if(S.sel.has(p.uid)){const c=Object.assign({},p,{uid:'p'+(uid++)});out.push(c);ns.add(c.uid);}});S.pages=out;S.sel=ns;renderPages();renderSheets();};
 $('#pDel').onclick=()=>{S.pages=S.pages.filter(p=>!S.sel.has(p.uid));S.sel.clear();cleanupFiles();renderPages();renderSheets();};
 $('#pBlank').onclick=()=>{const b=blankPage();const sel=selected();if(sel.length){const i=S.pages.indexOf(sel[sel.length-1]);S.pages.splice(i+1,0,b);}else S.pages.push(b);renderPages();renderSheets();};
-$('#bClear').onclick=()=>{if(!confirm('Retirer toutes les pages ?'))return;S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();};
+$('#bClear').onclick=async()=>{if(unsaved()){const r=window.AtelierUnsaved?await AtelierUnsaved.ask('',{title:'Exporter le PDF avant de tout vider ?',text:'Les pages ont été modifiées depuis le dernier export. Si tu vides sans exporter, ces modifications seront perdues.',verb:'Exporter le PDF…'}):'discard';if(!r)return;if(r==='save'){await exportPDF();if(unsaved())return;}}else if(!confirm('Retirer toutes les pages ?'))return;S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();};
 function cleanupFiles(){const used=new Set(S.pages.map(p=>p.fileId));for(const [id,f] of S.files)if(!used.has(id)){if(f.doc)f.doc.destroy();S.files.delete(id);}}
 document.addEventListener('keydown',e=>{
   if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;
@@ -1134,6 +1139,7 @@ async function pageLines(p){
 }
 /* ligne de texte sous le pointeur ; tol : marge en unités de la page (quelques pixels à l'écran, pour viser un petit texte) */
 let TOLX=0;
+function toast(m){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1d1d1f;color:#fff;padding:9px 14px;border-radius:9px;font-size:13px;z-index:99;max-width:90vw;box-shadow:0 4px 18px rgba(0,0,0,.25)';document.body.appendChild(t);}t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,4500);}
 function lineAt(lines,X,Y,tol){tol=tol||0;let best=null,bd=1e9;for(const l of lines){const ca=Math.cos(l.ang),sa=Math.sin(l.ang);const dx=X-l.x,dy=Y-l.y;const u=dx*ca+dy*sa,v=-dx*sa+dy*ca;
   const du=Math.max(-l.fs*0.2-u,0,u-l.w-l.fs*0.2),dv=Math.max(-l.fs*0.95-v,0,v-l.fs*0.3),d=Math.hypot(du,dv);
   if(d<=tol&&(d<bd||(d===bd&&l.fs<best.fs))){best=l;bd=d;}}return best;}
@@ -1175,12 +1181,13 @@ async function editPdfText(p,X,Y){
   box.addEventListener('pointerdown',e=>{if(TOOL!=='select'&&TOOL!=='text')return;const h=sheetHit(e);if(h&&!h.p.blank)pageLines(h.p);},true);
   box.addEventListener('dblclick',e=>{
     if(TOOL!=='select'&&TOOL!=='text')return;if(e.target.closest('.an')||e.target.tagName==='TEXTAREA')return;
-    const h=sheetHit(e);if(!h||h.p.blank)return;const pr=TXC.get(h.p);if(!pr)return;
-    let ready=null;pr.then(v=>{ready=v;});
-    // le texte est déjà lu (cas normal) : on décide tout de suite
+    const h=sheetHit(e);if(!h||h.p.blank)return;const pr=TXC.get(h.p)||pageLines(h.p);
     e.stopImmediatePropagation();e.preventDefault();
-    const X=h.fx*h.p.w,Y=h.fy*h.p.h;
-    Promise.resolve(pr).then(async lines=>{TOLX=h.spx?10*h.p.w/h.spx:0;const hit=lines&&lineAt(lines,X,Y,TOLX);
+    const X=h.fx*h.p.w,Y=h.fy*h.p.h;const px=h.spx?h.p.w/h.spx:0;// unités de page par pixel écran
+    Promise.resolve(pr).then(async lines=>{
+      if(!lines){openEditor(h.p,'crop');return;}// image : on ouvre la page (rogner, niveaux)
+      if(!lines.length){toast('Cette page ne contient pas de texte modifiable (texte transformé en dessin, ou page scannée).');return;}
+      TOLX=10*px;let hit=lineAt(lines,X,Y,TOLX);if(!hit){TOLX=40*px;hit=lineAt(lines,X,Y,TOLX);}
       if(hit){try{getSelection().removeAllRanges();}catch(err){}await editPdfText(h.p,X,Y);}
       else openEditor(h.p,'crop');});
   },true);
@@ -1253,6 +1260,7 @@ async function pptxToPdf(file){
   const bytes=await doc.save();return new File([bytes],d.name+'.pdf',{type:'application/pdf'});
 }
 </script>
+<script src="../lib/unsaved.js"></script>
 <script src="../lib/drop.js"></script>
 <script src="../lib/zoom.js"></script>
 <script>

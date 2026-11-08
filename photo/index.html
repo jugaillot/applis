@@ -148,7 +148,7 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
 <link rel="icon" href="/icons/icon-192.png">
 <script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(r=>r.update()).catch(()=>{}));
 /* une nouvelle version vient d'être installée : on recharge une fois pour l'afficher */
-navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}location.reload();}});}
+navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}window.__laSuiteLeaving=1;location.reload();}});}
 /* une erreur au démarrage ne laisse plus une page vide : on l'affiche, avec un moyen de repartir */
 setTimeout(()=>{window.__bootOk=true;},10000);
 window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.message)||'erreur';const d=document.getElementById('bootErr')||document.body&&document.body.appendChild(Object.assign(document.createElement('div'),{id:'bootErr'}));if(!d)return;d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#fff3f0;border:1px solid #e3a59a;border-radius:10px;padding:10px 14px;font:13px system-ui;color:#5a1d12;box-shadow:0 6px 24px rgba(0,0,0,.15)';d.innerHTML='<b>Le démarrage a rencontré un problème</b> : '+String(m).replace(/</g,'&lt;')+'<br><button onclick="location.reload()" style="margin-top:6px">Recharger</button>';});</script>
@@ -337,7 +337,7 @@ async function addFiles(list){
       if(hasAlpha(prev))it.st.out.fmt='png';
       // une image de plus de 2000 px n'est gardée en pleine définition qu'au moment de l'export
       if(S.items.length>=12&&S.items.length%1===0){for(const o of S.items)if(o.id!==S.cur&&o!==it)o.prev=o.prev&&o.prev.width>700?null:o.prev;}
-      S.items.push(it);
+      it.saved=stSig(it);S.items.push(it);
       if(!S.cur)S.cur=it.id;
     }catch(e){alert('Impossible de lire « '+f.name+' » : '+(e.message||e));}
   }
@@ -424,6 +424,10 @@ function applyPaint(src,ops,st){
   return c;
 }
 /* image d'aperçu avec les retouches (gardée en cache) */
+/* retouches non exportées : l'état de l'image comparé à celui du dernier export (les réglages d'export ne comptent pas) */
+function stSig(it){try{return JSON.stringify(Object.assign({},it.st,{out:0}));}catch(e){return '';}}
+const dirtyIt=it=>it.saved!=null&&stSig(it)!==it.saved;
+addEventListener('DOMContentLoaded',()=>{if(window.AtelierUnsaved)AtelierUnsaved.watch(()=>S.items.some(dirtyIt));});
 function paintedPrev(it){
   const ops=it.st.paint||[];if(!ops.length)return it.prev;
   if(it.pcache&&it.pcache.live&&it.pcache.base===it.prev)return it.pcache.c;
@@ -798,7 +802,7 @@ function renderStrip(){
   const has=S.items.length>0;['#bCopy','#bPrint','#bExportOne','#bExportAll','#bApplyAll','#bReset','#bUndo','#bRedo','#bCrop','#bPersp','#bBefore'].forEach(id=>$(id).disabled=!has);
 }
 $('#strip').addEventListener('click',e=>{
-  const x=e.target.closest('[data-x]');if(x){const id=x.dataset.x;S.items=S.items.filter(i=>i.id!==id);S.sel.delete(id);if(S.cur===id)S.cur=S.items[0]?S.items[0].id:null;renderStrip();select(S.cur,true);return;}
+  const x=e.target.closest('[data-x]');if(x){const id=x.dataset.x;{const it0=S.items.find(i=>i.id===id);if(it0&&dirtyIt(it0)){(async()=>{const r=window.AtelierUnsaved?await AtelierUnsaved.ask(it0.name,{title:'Exporter « '+it0.name+' » avant de la retirer ?',text:'Cette image a été retouchée depuis le dernier export. Si tu la retires sans l’exporter, les retouches seront perdues.',verb:'Exporter l’image…'}):'discard';if(!r)return;if(r==='save'){await exportItem(it0);if(dirtyIt(it0))return;}it0.saved=null;x.click();})();return;}}S.items=S.items.filter(i=>i.id!==id);S.sel.delete(id);if(S.cur===id)S.cur=S.items[0]?S.items[0].id:null;renderStrip();select(S.cur,true);return;}
   const t=e.target.closest('.th');if(!t)return;
   if(e.ctrlKey||e.metaKey||e.shiftKey){S.sel.has(t.dataset.id)?S.sel.delete(t.dataset.id):S.sel.add(t.dataset.id);renderStrip();return;}
   select(t.dataset.id);
@@ -855,7 +859,8 @@ async function encode(it,c){
 }
 const fname=it=>(it.name+(it.st.out.suffix||'')).replace(/[\\/:*?"<>|]/g,'_')+(it.st.out.fmt==='png'?'.png':'.jpg');
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);}
-$('#bExportOne').onclick=async()=>{const it=cur();if(!it)return;await busy('Traitement en pleine définition…');try{const c=await renderFull(it);await busy(it.st.out.fmt==='png'?'Compression PNG…':'Compression JPG…');const b=await encode(it,c);download(b,fname(it));$('#xInfo').textContent=`Exporté : ${c.width} × ${c.height} px · ${Math.round(b.size/1024)} Ko`;}catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}await busy();};
+async function exportItem(it){if(!it)return;await busy('Traitement en pleine définition…');try{const c=await renderFull(it);await busy(it.st.out.fmt==='png'?'Compression PNG…':'Compression JPG…');const b=await encode(it,c);download(b,fname(it));it.saved=stSig(it);$('#xInfo').textContent=`Exporté : ${c.width} × ${c.height} px · ${Math.round(b.size/1024)} Ko`;}catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}await busy();}
+$('#bExportOne').onclick=()=>exportItem(cur());
 $('#xEstimate').onclick=async()=>{const it=cur();if(!it)return;await busy('Estimation…');try{const c=await renderFull(it);const b=await encode(it,c);$('#xInfo').textContent=`Image exportée : ${c.width} × ${c.height} px · environ ${Math.round(b.size/1024)} Ko`;}catch(e){alert(e.message||e);}await busy();};
 /* ZIP minimal (sans compression : les JPG le sont déjà) */
 const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
@@ -878,6 +883,7 @@ $('#bExportAll').onclick=async()=>{
   const files=[];const used=new Set();let total=0;
   try{
     for(let k=0;k<list.length;k++){const it=list[k];await busy(`Image ${k+1} / ${list.length} — ${it.name}`);const c=await renderFull(it);const b=await encode(it,c);let n=fname(it);let j=2;while(used.has(n)){n=fname(it).replace(/\.(jpg|png)$/,`-${j++}.$1`);}used.add(n);files.push({name:n,data:new Uint8Array(await b.arrayBuffer())});total+=b.size;}
+    list.forEach(it=>it.saved=stSig(it));
     if(files.length===1)download(new Blob([files[0].data],{type:/\.png$/.test(files[0].name)?'image/png':'image/jpeg'}),files[0].name);
     else download(makeZip(files),'photos-'+new Date().toISOString().slice(0,10)+'.zip');
     $('#info').textContent=`${files.length} image(s) exportée(s) · ${Math.round(total/1024)} Ko au total`;
@@ -1233,6 +1239,7 @@ async function pptxToImages(file){
   finally{await busy();}return out;
 }
 </script>
+<script src="../lib/unsaved.js"></script>
 <script src="../lib/drop.js"></script>
 <script src="../lib/zoom.js"></script>
 <script>
