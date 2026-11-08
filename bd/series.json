@@ -2323,5 +2323,45 @@
   "finis": true,
   "source": "https://www.bedetheque.com/serie-5743-BD-Legendes-d-aujourd-hui.html",
   "maj": "2026-11-07"
+ },
+ "Troll": {
+  "total": 6,
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-89-BD-Troll.html",
+  "maj": "2026-11-07"
+ },
+ "La Nef des Fous": {
+  "total": 14,
+  "source": "https://www.bedetheque.com/serie-36-BD-Nef-des-fous__1.html",
+  "maj": "2026-11-07"
+ },
+ "Gabrielle": {
+  "total": 1,
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-1367-BD-Gabrielle.html",
+  "maj": "2026-11-07"
+ },
+ "Dans la Forêt": {
+  "total": 1,
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-37012-BD-Dans-la-foret-Richerand.html",
+  "maj": "2026-11-07"
+ },
+ "Opération Mort": {
+  "total": 1,
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-19616-BD-Operation-mort.html",
+  "maj": "2026-11-07"
+ },
+ "Métamorphoses (Schuiten/Renard) (Int.)": {
+  "total": 1,
+  "finis": true,
+  "source": "https://www.bedetheque.com/serie-1971-BD-Metamorphoses.html",
+  "maj": "2026-11-07"
+ },
+ "Valérian Par...": {
+  "total": 3,
+  "source": "https://www.bedetheque.com/serie-29668-BD-Valerian-par.html",
+  "maj": "2026-11-07"
  }
 }
