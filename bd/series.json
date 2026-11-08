@@ -1231,8 +1231,20 @@
  "Pascal Brutal": {
   "total": 4,
   "finis": true,
-  "source": "https://www.universalis.fr/encyclopedie/riad-sattouf/",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-13779-BD-Pascal-Brutal.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "La nouvelle virilité",
+   "2": "Le mâle dominant",
+   "3": "Plus fort que les plus forts",
+   "4": "Le Roi des hommes"
+  },
+  "eans": {
+   "1": "9782858154814",
+   "2": "9782858150366",
+   "3": "9782858159833",
+   "4": "9782352071976"
+  }
  },
  "Mutafukaz - Loba Loca": {
   "total": 6,
@@ -1568,8 +1580,16 @@
  "Nocturno": {
   "total": 2,
   "finis": true,
-  "source": "https://www.bedetheque.com",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-17087-BD-Nocturno.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Nocturno",
+   "2": "Nocturno 2"
+  },
+  "eans": {
+   "1": "9782888901914",
+   "2": "9782888901945"
+  }
  },
  "Pépé Malin": {
   "total": 6,
@@ -1971,7 +1991,23 @@
   "total": 6,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-20283-BD-HK-Nouvelle-edition.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "1.1 Avalon",
+   "2": "1.2 Elysée",
+   "3": "1.3 Caldera",
+   "4": "1.4 Paradiso",
+   "5": "1.5 Balæna Nūn",
+   "6": "2.1 Massilia"
+  },
+  "eans": {
+   "1": "9782723439459",
+   "2": "9782723439466",
+   "3": "9782723439473",
+   "4": "9782723439480",
+   "5": "9782723439497",
+   "6": "9782723431453"
+  }
  },
  "La Belle Mort": {
   "total": 1,
@@ -2774,7 +2810,23 @@
   "total": 6,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-2119-BD-Tiburce.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Îlet Titby",
+   "2": "Votez Law-Law!",
+   "3": "Chacun ses brèdes",
+   "4": "À cons. de préf. régionale",
+   "5": "Soleil Zoreil",
+   "6": "En roue libre"
+  },
+  "eans": {
+   "1": "9782912013002",
+   "2": "9782912013033",
+   "3": "9782912013071",
+   "4": "9782912013132",
+   "5": "9782723477819",
+   "6": "9782723482981"
+  }
  },
  "Trop de Bonheur": {
   "total": 4,
@@ -2857,8 +2909,14 @@
  "HK": {
   "total": 6,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-20283-BD-HK-Nouvelle-edition.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/albums-140-BD-HK.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "1.1 Avalon",
+   "2": "1.2 Paradiso",
+   "3": "1.3 Balæna Nūn"
+  },
+  "eans": {}
  },
  "Kindergarten Wars": {
   "total": 16,
