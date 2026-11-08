@@ -120,7 +120,7 @@ function analyse(){
   else for(let i=1;i<=top;i++)if(!owned.has(i))miss.push(i);
   let cls='inconnu';
   if(miss.length)cls='rouge';
-  else if(total!=null){cls=mt.finis===true?'vert':mt.finis===false?'orange':'inconnu'}
+  else if(total!=null){cls=(mt.finis===true||mt.finis===false)?'vert':'inconnu'}
   out.push({s,it,owned,total,finis:mt.finis,miss,cls,supp,ed:(it.find(x=>x[4])||[])[4]||''});
  }
  return out;
@@ -139,12 +139,12 @@ let mode='az';
 function render(){
  const q=norm($('q').value.trim());
  let all=analyse();
- const cnt={rouge:0,orange:0,vert:0,inconnu:0};all.forEach(a=>cnt[a.cls]++);
+ const cnt={rouge:0,vert:0,inconnu:0};all.forEach(a=>cnt[a.cls]++);
  let list=all;
  if(q)list=list.filter(a=>norm(a.s+' '+a.it.map(x=>x[2]+' '+x[4]).join(' ')).includes(q));
  if(mode==='manques')list=list.filter(a=>a.miss.length);
  const n=list.reduce((t,a)=>t+a.it.length,0);
- $('cnt').innerHTML=`<span>${n} albums · ${list.length} séries</span><span><i class="dot rouge"></i>${cnt.rouge}</span><span><i class="dot orange"></i>${cnt.orange}</span><span><i class="dot vert"></i>${cnt.vert}</span><span><i class="dot" style="background:#fff"></i>${cnt.inconnu}</span>`;
+ $('cnt').innerHTML=`<span>${n} albums · ${list.length} séries</span><span><i class="dot rouge"></i>${cnt.rouge}</span><span><i class="dot vert"></i>${cnt.vert}</span><span><i class="dot" style="background:#fff"></i>${cnt.inconnu}</span>`;
  let h='';
  if(mode==='az'||mode==='manques'){
   list=list.slice().sort(mode==='manques'?(a,b)=>b.miss.length-a.miss.length||a.s.localeCompare(b.s,'fr'):(a,b)=>a.s.localeCompare(b.s,'fr'));
