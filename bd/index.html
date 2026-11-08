@@ -54,6 +54,8 @@ summary small{font-weight:400;color:#555;text-align:right}
 .row{display:flex;gap:8px;margin-top:8px}
 button.btn.pri{background:#2b2a33;color:#fff;border-color:#2b2a33}
 .hint{font-size:13px;color:#777;margin:8px 0}
+.exb{margin-left:auto;background:none;border:1px solid #c33;color:#c33;border-radius:6px;padding:2px 8px;font-size:12px}
+#lb{position:fixed;inset:0;background:#000d;display:flex;align-items:center;justify-content:center;z-index:99}#lb[hidden]{display:none}#lb img{max-width:92vw;max-height:92vh;border-radius:6px;background:#fff}
 </style></head><body>
 <header><div class="tabs"><a href="../" title="La Suite">←</a><button id="t1" class="on">Collection</button><button id="t2">Scanner</button><span id="bdg"></span><button id="gear" title="Réglages" style="flex:0 0 auto;padding:10px 14px;font-size:20px">⚙</button></div></header>
 <div id="menu" hidden style="position:fixed;right:8px;top:calc(env(safe-area-inset-top) + 52px);z-index:9;background:#fff;color:#26242c;border:1px solid #cfc7b5;border-radius:10px;padding:8px;min-width:240px;box-shadow:0 6px 20px #0003"><button class="btn pri" id="inst" style="width:100%">Installer l’appli sur ce téléphone</button><p class="hint" id="instInfo" style="margin:8px 4px 2px"></p></div>
@@ -121,11 +123,13 @@ function analyse(){
   const miss=[];
   if(liste){liste.forEach(i=>{if(!owned.has(i))miss.push(i)})}
   else for(let i=1;i<=top;i++)if(!owned.has(i))miss.push(i);
+  const exl=(mt.exclus||[]).filter(i=>miss.includes(i));
+  for(const i of exl)miss.splice(miss.indexOf(i),1);
   let cls='inconnu';
   if(miss.length&&!mt.abandon)cls='rouge';
   else if(miss.length&&mt.abandon)cls='vert';
   else if(total!=null){cls=(mt.finis===true||mt.finis===false)?'vert':'inconnu'}
-  out.push({s,it,owned,total,titres:mt.titres||{},finis:mt.finis,abandon:!!mt.abandon,miss,cls,supp,ed:(it.find(x=>x[4])||[])[4]||''});
+  out.push({s,it,owned,total,ex:exl.length,exall:(mt.exclus||[]).length,titres:mt.titres||{},finis:mt.finis,abandon:!!mt.abandon,miss,cls,supp,ed:(it.find(x=>x[4])||[])[4]||''});
  }
  return out;
 }
@@ -136,15 +140,15 @@ function listeHtml(a){
  rows.sort((p,q)=>(p.n??1e9)-(q.n??1e9)||(p.o?0:1)-(q.o?0:1)||(p.o?p.o[2].localeCompare(q.o?q.o[2]:'','fr'):0));
  return rows.map(r=>r.o
   ?`<label class="al"><input type="checkbox" class="rm" checked data-rm="${esc(JSON.stringify(r.o))}" title="Décocher = retirer de la collection"><b>${r.o[1]??''}</b>${cv(r.o[3])}<span>${esc(r.o[2])}</span></label>`
-  :`<label class="al no"><input type="checkbox" data-s="${esc(a.s)}" data-t="${r.m}"><b>${r.m}</b><i class="cv"></i><span>${a.titres[r.m]?esc(a.titres[r.m]):'Tome '+r.m}</span></label>`).join('');
+  :`<label class="al no"><input type="checkbox" data-s="${esc(a.s)}" data-t="${r.m}"><b>${r.m}</b><i class="cv"></i><span>${a.titres[r.m]?esc(a.titres[r.m]):'Tome '+r.m}</span><button class="exb" data-ex="${esc(a.s)}|${r.m}" title="Ce tome n'existe pas">Retirer</button></label>`).join('');
 }
 function head(a){const eds=[...new Set(a.it.map(x=>x[4]).filter(Boolean))].join(', ');const au=AUT[a.s]||'';if(!au&&!eds)return '';return `<div style="font-size:13px;color:#555;padding:4px 12px">${au?'Auteur(s) : '+esc(au):''}${au&&eds?' · ':''}${eds?'Éditeur : '+esc(eds):''}</div>`}
-function info(a){const n=a.total?a.total-a.miss.length:(a.owned.size||a.it.length);return (a.total?n+'/'+a.total:String(a.it.length))+(a.miss.length?' · manque '+a.miss.length:'')}
+function info(a){const n=a.total?a.total-a.ex-a.miss.length:(a.owned.size||a.it.length);return (a.total?n+'/'+(a.total-a.ex):String(a.it.length))+(a.miss.length?' · manque '+a.miss.length:'')}
 const OPEN=new Set();
 document.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.s!=null){d.open?OPEN.add(d.dataset.s):OPEN.delete(d.dataset.s)}},true);
 function missHtml(a){
  const chk='';
- const meta=`<div class="meta"><span>Tomes parus</span><input type="number" min="1" inputmode="numeric" data-ms="${esc(a.s)}" value="${a.total??''}" placeholder="?"><label><input type="checkbox" data-fs="${esc(a.s)}"${a.finis===true?' checked':''}> terminée</label>${a.supp?'<span>(album unique supposé)</span>':''}</div>`;
+ const meta=`<div class="meta"><span>Tomes parus</span><input type="number" min="1" inputmode="numeric" data-ms="${esc(a.s)}" value="${a.total??''}" placeholder="?"><label><input type="checkbox" data-fs="${esc(a.s)}"${a.finis===true?' checked':''}> terminée</label>${a.supp?'<span>(album unique supposé)</span>':''}${a.exall?`<button class="btn" data-exr="${esc(a.s)}">Restaurer ${a.exall} tome${a.exall>1?'s':''} retiré${a.exall>1?'s':''}</button>`:''}</div>`;
  const ab=(a.miss.length||a.abandon)?`<div class="meta"><button class="btn" data-ab="${esc(a.s)}">${a.abandon?'Suivre à nouveau':'Ne plus suivre'}</button><span>${a.abandon?'Série ignorée : comptée en vert malgré les manques.':'Je ne cherche pas à compléter : passe la série en vert.'}</span></div>`:'';
  return chk+meta+ab;
 }
@@ -174,6 +178,14 @@ function render(){
  $('dl').innerHTML=all.map(a=>`<option value="${esc(a.s)}">`).join('');
 }
 $('list').addEventListener('click',e=>{
+ const im=e.target.closest('.cv img');
+ if(im){e.preventDefault();e.stopPropagation();const lb=$('lb');lb.firstChild.src=im.src.replace('-S.jpg','-L.jpg');lb.hidden=false;return}
+ const ex=e.target.closest('[data-ex]');
+ if(ex){e.preventDefault();const i=ex.dataset.ex.lastIndexOf('|');const sr=ex.dataset.ex.slice(0,i),t=+ex.dataset.ex.slice(i+1);
+  if(!confirm('Retirer le tome '+t+' de « '+sr+' » ?\n\nIl n\'existe pas / ne compte pas : il disparaît des manques et du total.'))return;
+  const m=ST.meta[sr]||{};ST.meta[sr]=Object.assign({},m,{exclus:(m.exclus||[]).concat([t])});persist();render();return}
+ const exr=e.target.closest('[data-exr]');
+ if(exr){e.preventDefault();ST.meta[exr.dataset.exr]=Object.assign({},ST.meta[exr.dataset.exr],{exclus:[]});persist();render();return}
  const ab=e.target.closest('[data-ab]');
  if(ab){e.preventDefault();const s=ab.dataset.ab;ST.meta[s]=Object.assign({},ST.meta[s],{abandon:!(ST.meta[s]&&ST.meta[s].abandon)});persist();render();return}
  const b=e.target.closest('.rm');if(!b)return;
@@ -265,4 +277,6 @@ document.addEventListener('click',e=>{if(!$('menu').hidden&&!e.target.closest('#
 refreshInst();
 window.addEventListener('atelier-docs',async()=>{await loadState();render()});
 (async()=>{await Promise.all([loadMeta(),loadState()]);if(window.AtelierSync)$('bdg').appendChild(AtelierSync.badge());render()})();
-</script></body></html>
+</script><div id="lb" hidden><img alt=""></div>
+<script>document.getElementById('lb').onclick=function(){this.hidden=true;this.firstChild.src=''}</script>
+</body></html>
