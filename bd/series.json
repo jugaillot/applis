@@ -161,7 +161,33 @@
  "Calvin et Hobbes": {
   "total": 24,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-566-BD-Calvin-et-Hobbes.html"
+  "source": "https://www.bedetheque.com/serie-566-BD-Calvin-et-Hobbes.html",
+  "titres": {
+   "1": "Adieu, monde cruel !",
+   "2": "En avant, tête de thon !",
+   "3": "On est fait comme des rats !",
+   "4": "Debout, tas de nouilles !",
+   "5": "Fini de rire !",
+   "6": "Allez, on se tire !",
+   "7": "Que fait la police ?",
+   "8": "Elle est pas belle, la vie ?",
+   "9": "On n'arrête pas le progrès !",
+   "10": "Tous aux abris !",
+   "11": "Chou bi dou wouah !",
+   "12": "Quelque chose bave sous le lit !",
+   "13": "Enfin seuls !",
+   "14": "Va jouer dans le mixer !",
+   "15": "Complètement surbookés !",
+   "16": "Faites place à Hyperman !",
+   "17": "La flemme du dimanche soir",
+   "18": "Gare au psychopathe à rayures !",
+   "19": "Que de misère humaine !",
+   "20": "Il y a des trésors partout !",
+   "21": "Je suis trop génial !",
+   "22": "Le monde est magique !",
+   "23": "Y a des jours comme ça !",
+   "24": "Cette fois, c'est fini !"
+  }
  },
  "Demon Slayer": {
   "total": 23,
@@ -333,7 +359,37 @@
   "total": 30,
   "finis": true,
   "source": "https://www.laprocure.com/product/1345517/tot-dofus-vol-30",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Le Péril Gelées",
+   "2": "La passion du Crail",
+   "3": "Chacun Cherche son Eca",
+   "4": "Chétif fais-moi peur !",
+   "5": "Quand Arty rencontre Many !",
+   "6": "Goultard le barbare !",
+   "7": "La cité de Djaul",
+   "8": "Rushu Hour",
+   "9": "28 morts plus tard",
+   "10": "Être bien avec un vampyre",
+   "11": "Ombrage et lumière",
+   "12": "Aurore Picture Show",
+   "13": "Baraka Royale",
+   "14": "Le bon, la brute et le Dofus",
+   "15": "Le Yen intrépide",
+   "16": "Morld Invasion",
+   "17": "Le ploc des titans",
+   "18": "Le retard du roi",
+   "19": "La Baraque dans les bois",
+   "20": "Bataille royale",
+   "21": "Peur sur le village",
+   "22": "Les merveilleuses cités gores",
+   "23": "Ala Babi et les 40 Roublards",
+   "24": "L'Antre des Frères Dragons",
+   "25": "Je suis Ignemikhal",
+   "26": "Prédestination Finale",
+   "27": "Arakné Kid",
+   "28": "Mourir ne peut plus attendre"
+  }
  },
  "La Caste des Meta-Barons": {
   "total": 8,
@@ -1502,7 +1558,21 @@
   "total": 13,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-3203-BD-Concombre-masque.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Les Aventures potagères du Concombre masqué",
+   "2": "Les aventures potagères du Concombre masqué",
+   "3": "Le retour du Concombre masqué",
+   "4": "Comment devenir maître du monde ?",
+   "5": "La vie quotidienne du Concombre masqué",
+   "6": "A la poursuite du Broutchlag mordoré",
+   "7": "Le Concombre contre le grand Patatoseur",
+   "8": "La Dimension poznave 1",
+   "9": "La Dimension poznave 2",
+   "10": "Le Concombre masqué dépasse les bornes",
+   "12": "Le Concombre masqué fait avancer les choses",
+   "13": "Le Bain de Minuit"
+  }
  },
  "Abinagouesh": {
   "total": 1,
