@@ -479,8 +479,19 @@
  "La Caste des Meta-Barons": {
   "total": 8,
   "finis": true,
-  "source": "https://www.techno-science.net/fr/definitions/la-caste-des-meta-barons",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-567-BD-Caste-des-Meta-Barons.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Othon le trisaïeul",
+   "2": "Honorata la Trisaïeule",
+   "3": "Aghnar le bisaïeul",
+   "4": "Oda la bisaïeule",
+   "5": "Tête-D'Acier l'Aïeul",
+   "6": "Doña Vicenta Gabriela de Rokha l'Aïeule",
+   "7": "Aghora le Père-mère",
+   "8": "Sans-Nom le dernier Méta-Baron"
+  },
+  "eans": {}
  },
  "Le Cycle de Tschaï": {
   "total": 8,
@@ -811,8 +822,19 @@
  "Méta-Baron": {
   "total": 8,
   "finis": true,
-  "source": "https://franco.wiki/fr/La_Caste_des_M%C3%A9ta-Barons.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-49252-BD-Meta-Baron.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Wilhelm-100, le Techno-Amiral",
+   "2": "Khonrad l'Anti-Baron",
+   "3": "Orne-8 le Techno-Cardinal",
+   "4": "Simak le Transhumain",
+   "5": "Rina la Méta-Gardienne",
+   "6": "Sans-Nom le Techno-Baron",
+   "7": "Adal le Bâtard",
+   "8": "Dargona la Proto-Gardienne"
+  },
+  "eans": {}
  },
  "U.C.C. Dolores": {
   "total": 7,
@@ -1256,7 +1278,17 @@
   "total": 3,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-68395-BD-Nomen-Omen.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Total Eclipse of the Heart",
+   "2": "Wicked Game",
+   "3": "Tome 3"
+  },
+  "eans": {
+   "1": "9782809483987",
+   "2": "9782809490053",
+   "3": "9782809498509"
+  }
  },
  "Rhapsodie En Bleu": {
   "total": 1,
@@ -1279,8 +1311,19 @@
  "Punch !": {
   "total": 4,
   "finis": true,
-  "source": "https://livraddict.com/biblio/saga-punch-saison-2.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-73126-BD-Punch.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Minimage",
+   "2": "Moineau",
+   "3": "Cratère",
+   "4": "Alma"
+  },
+  "eans": {
+   "1": "9782357990791",
+   "2": "9782357990845",
+   "3": "9782357990951"
+  }
  },
  "Lone Sloane": {
   "total": 8,
