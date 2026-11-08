@@ -41,7 +41,7 @@
  },
  "Valérian": {
   "total": 21,
-  "finis": true,
+  "finis": false,
   "source": "https://www.bedetheque.com/serie-174-BD-Valerian.html"
  },
  "Gunnm - Last Order - édition originale": {
@@ -100,8 +100,8 @@
   "finis": false
  },
  "Lanfeust de Troy ": {
-  "total": 8,
-  "finis": true,
+  "total": 9,
+  "finis": false,
   "source": "https://www.bedetheque.com/serie-6-BD-Lanfeust-de-Troy.html"
  },
  "Lanfeust des Étoiles": {
