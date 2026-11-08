@@ -487,9 +487,17 @@ function accumulate(layers,W,H,ppm,y0,trame,useCache){
 /* ---------- aperçu ---------- */
 let rq=0;function scheduleRender(){if(rq)return;rq=requestAnimationFrame(()=>{rq=0;render();});}
 let lastPPM=1;
+let lastFit=1;
+/* zoom autour d'un point de l'écran (molette, loupe) */
+function zoomBy(f,cx,cy){const cv=$('#cv'),st=$('#stage');const r=cv.getBoundingClientRect();const u=(cx-r.left)/r.width,v=(cy-r.top)/r.height;
+  const z=Math.max(0.2,Math.min(16,S.zoom*f));const k=z/S.zoom;S.zoom=z;cv.style.width=r.width*k+'px';cv.style.height=r.height*k+'px';
+  const r2=cv.getBoundingClientRect();st.scrollLeft+=r2.left+u*r2.width-cx;st.scrollTop+=r2.top+v*r2.height-cy;scheduleRender();}
+addEventListener('DOMContentLoaded',()=>{if(window.AtelierZoom)AtelierZoom.init({area:'#stage',tools:'#tools',before:'#tools .tsep',wheel:true,
+  zoomBy,panBy:(dx,dy)=>{const st=$('#stage');st.scrollLeft-=dx;st.scrollTop-=dy;},fit:()=>{S.zoom=1;scheduleRender();},
+  actual:()=>{const st=$('#stage').getBoundingClientRect();zoomBy((96/25.4)/(lastFit*S.zoom),st.left+st.width/2,st.top+st.height/2);},pct:()=>lastFit*S.zoom/(96/25.4)*100});});
 function render(){
   const[pw,ph]=pageSize(),stage=$('#stage'),cv=$('#cv');
-  const fit=Math.max(0.3,Math.min((stage.clientWidth-32)/pw,(stage.clientHeight-32)/ph));
+  const fit=Math.max(0.3,Math.min((stage.clientWidth-32)/pw,(stage.clientHeight-32)/ph));lastFit=fit;
   const cssW=pw*fit*S.zoom,cssH=ph*fit*S.zoom;
   const dpr=Math.min(window.devicePixelRatio||1,2);let W=Math.round(cssW*dpr),H=Math.round(cssH*dpr);
   const maxPx=6e6;if(W*H>maxPx){const k=Math.sqrt(maxPx/(W*H));W=Math.round(W*k);H=Math.round(H*k);}
@@ -504,7 +512,7 @@ function render(){
   ctx.putImageData(img,0,0);
   if(!S.layers.length){ctx.fillStyle='#9a978f';ctx.font=`${Math.round(5*ppm)}px system-ui,sans-serif`;ctx.textAlign='center';ctx.fillText('Importe une image, un SVG ou un PDF',W/2,H/2);}
   drawGuides(ctx,ppm,pw,ph);drawSel(ctx,ppm);
-  $('#zLab').textContent=Math.round(S.zoom*100)+' %';
+  $('#zLab').textContent=Math.round(lastFit*S.zoom/(96/25.4)*100)+' %';if(window.AtelierZoom)AtelierZoom.info();
 }
 function drawGuides(ctx,ppm,pw,ph){
   if(!S.guides.show)return;const m=S.guides.margin,t=S.guides.top;
@@ -715,8 +723,8 @@ $('#pOr').onchange=e=>{S.paper.orient=e.target.value;savePrefs();scheduleRender(
 $('#gMargin').oninput=e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.guides.margin=v;savePrefs();scheduleRender();}};
 $('#gTop').oninput=e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.guides.top=v;savePrefs();scheduleRender();}};
 $('#gShow').onchange=e=>{S.guides.show=e.target.checked;savePrefs();scheduleRender();};
-$('#zIn').onclick=()=>{S.zoom=Math.min(4,S.zoom*1.25);scheduleRender();};
-$('#zOut').onclick=()=>{S.zoom=Math.max(0.4,S.zoom/1.25);scheduleRender();};
+$('#zIn').onclick=()=>{S.zoom=Math.min(16,S.zoom*1.25);scheduleRender();};
+$('#zOut').onclick=()=>{S.zoom=Math.max(0.2,S.zoom/1.25);scheduleRender();};
 $('#zFit').onclick=()=>{S.zoom=1;scheduleRender();};
 $('#showTrame').onchange=e=>{S.showTrame=e.target.checked;scheduleRender();};
 window.addEventListener('resize',scheduleRender);
@@ -882,6 +890,7 @@ async function fromVecto(){
 }
 </script>
 <script src="../lib/drop.js"></script>
+<script src="../lib/zoom.js"></script>
 <script>
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
@@ -890,6 +899,6 @@ AtelierDrop.init({app:'riso',accept:f=>['svg','pdf','ai','json'].includes(ext(f)
   open:async fs=>{const pj=fs.filter(f=>ext(f)==='json');if(pj.length)feed('#projIn',[pj[0]]);const rest=fs.filter(f=>ext(f)!=='json');if(rest.length)feed('#fileIn',rest);}});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Glisser", "Déplacer l’élément importé sur la feuille"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Format / orientation", "A3 ou A4, portrait ou paysage."], ["Marge", "Cadre bleu non imprimé, à X mm du bord."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut (repère pour le 30 × 40)."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."], ["Intensité", "Renforce ou allège toutes les couches."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Maj / Ctrl", "Molette : zoom · Maj + molette : défiler horizontalement · Ctrl + molette : défiler verticalement · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Format / orientation", "A3 ou A4, portrait ou paysage."], ["Marge", "Cadre bleu non imprimé, à X mm du bord."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut (repère pour le 30 × 40)."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."], ["Intensité", "Renforce ou allège toutes les couches."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
 </body>
 </html>

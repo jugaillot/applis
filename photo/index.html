@@ -188,7 +188,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   </div></nav>
   <nav id="strip"></nav>
   <div id="center">
-    <div id="stage"><div id="empty">Glisse ici tes photos (JPG, PNG, WebP) ou des PDF,<br>colle une image avec Ctrl+V<br>ou utilise « Ajouter des images… »</div><canvas id="view" hidden></canvas><div id="cropBox" hidden></div><div id="brush" hidden></div><div id="cloneMk" hidden></div><button id="zoomPct" title="Molette : zoom · Maj + molette : horizontal · Ctrl + molette : vertical — clic ou Ctrl+0 : ajuster">100 %</button></div>
+    <div id="stage"><div id="empty">Glisse ici tes photos (JPG, PNG, WebP) ou des PDF,<br>colle une image avec Ctrl+V<br>ou utilise « Ajouter des images… »</div><canvas id="view" hidden></canvas><div id="cropBox" hidden></div><div id="brush" hidden></div><div id="cloneMk" hidden></div><button id="zoomPct" title="Molette : zoom · Maj + molette : horizontal · Ctrl + molette : vertical — clic ou Ctrl+0 : ajuster"></button></div>
     <div id="bar">
       <button class="btn sm" id="bBefore" title="Maintenir pour voir l’original (touche B)">Avant / après</button>
       <button class="btn sm" id="bCrop" title="Rogner (C)">✂ Rogner</button><button class="btn sm" id="bPersp" title="Redresser la perspective (K)">Perspective</button>
@@ -517,12 +517,11 @@ function setZoom(z,cx,cy){const st=$('#stage').getBoundingClientRect();z=Math.ma
   S.vx=ox-(ox-S.vx)*f;S.vy=oy-(oy-S.vy)*f;S.vz=z;view.style.left=S.vx+'px';view.style.top=S.vy+'px';schedule();zoomInfo();}
 function fitView(){S.vz=1;S.vx=0;S.vy=0;schedule();zoomInfo();}
 $('#zoomPct').onclick=fitView;
-function zoomInfo(){const b=$('#zoomPct');if(b)b.textContent=Math.round(S.vz*100)+' %';}
-$('#stage').addEventListener('wheel',e=>{if(!cur())return;e.preventDefault();
-  const d=(e.deltaMode===1?e.deltaY*16:e.deltaY)||(e.deltaMode===1?e.deltaX*16:e.deltaX);
-  if(e.shiftKey){S.vx-=d;placeOverlays();}
-  else if(e.ctrlKey||e.metaKey){S.vy-=d;placeOverlays();}
-  else setZoom(S.vz*Math.exp(-d*0.0015),e.clientX,e.clientY);},{passive:false});
+function zoomInfo(){const b=$('#zoomPct');if(b)b.textContent=Math.round(S.vK*S.vz*100)+' %';if(window.AtelierZoom)AtelierZoom.info();}
+S.vK=1;// pixels écran par pixel de l'original, à zoom 1
+function vActual(){setZoom(1/S.vK);}
+addEventListener('DOMContentLoaded',()=>{if(window.AtelierZoom)AtelierZoom.init({area:'#stage',tools:'#tools',before:'#tools .tsep',wheel:true,
+  zoomBy:(f,x,y)=>{if(cur())setZoom(S.vz*f,x,y);},panBy:(dx,dy)=>{S.vx+=dx;S.vy+=dy;placeOverlays();},fit:fitView,actual:vActual,pct:()=>S.vK*S.vz*100});});
 let rq=0,lastPreview=null;
 function schedule(){if(rq)return;rq=requestAnimationFrame(()=>{rq=0;renderPreview();});}
 async function renderPreview(){
@@ -537,11 +536,11 @@ async function renderPreview(){
   if(S.cropMode){
     // en mode rognage : on montre le cadre entier (sans rognage) avec les réglages
     const s2=Object.assign(clone(it.st),{crop:{x:0,y:0,w:1,h:1}});const [W1,H1]=frameSize(src.width,src.height,s2);
-    const kf=Math.min((st.width-40)/W1,(st.height-40)/H1,1);const k=vRes(kf,dpr);cssW=W1*kf*S.vz;cssH=H1*kf*S.vz;c=geom(src,s2,Math.max(1,Math.round(W1*k)),Math.max(1,Math.round(H1*k)));
+    const kf=Math.min((st.width-40)/W1,(st.height-40)/H1,1);S.vK=kf*src.width/(baseDims(it)[0]||1);const k=vRes(kf,dpr);cssW=W1*kf*S.vz;cssH=H1*kf*S.vz;c=geom(src,s2,Math.max(1,Math.round(W1*k)),Math.max(1,Math.round(H1*k)));
     if(!S.before)pixelsZ(c,it.st,src0,s2);
   }else{
     const [W1,H1]=frameSize(src.width,src.height,it.st);const cw=it.st.crop.w*W1,ch=it.st.crop.h*H1;
-    const kf=Math.min((st.width-30)/cw,(st.height-30)/ch,1.5);const k=vRes(kf,dpr);cssW=cw*kf*S.vz;cssH=ch*kf*S.vz;
+    const kf=Math.min((st.width-30)/cw,(st.height-30)/ch,1.5);const k=vRes(kf,dpr);cssW=cw*kf*S.vz;cssH=ch*kf*S.vz;S.vK=kf*src.width/(baseDims(it)[0]||1);
     c=geom(src,S.before?Object.assign(clone(it.st),{}):it.st,Math.max(1,Math.round(cw*k)),Math.max(1,Math.round(ch*k)));
     if(!S.before)pixelsZ(c,it.st,src0,it.st);
   }
@@ -920,8 +919,6 @@ document.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase(),ctrl=e.ctrlKey||e.metaKey;
   if(ctrl&&k==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}
   if(ctrl&&k==='y'){e.preventDefault();redo();return;}
-  if(ctrl&&k==='0'){e.preventDefault();fitView();return;}
-  if(ctrl&&k==='1'){e.preventDefault();setZoom(S.vz*2);return;}
   if(ctrl&&(k==='+'||k==='=')){e.preventDefault();setZoom(S.vz*1.25);return;}
   if(ctrl&&k==='-'){e.preventDefault();setZoom(S.vz/1.25);return;}
   if(ctrl&&k==='p'){e.preventDefault();printCurrent();return;}
@@ -1029,7 +1026,7 @@ function warpSrc(src,q){
 S.perspMode=false;S.pp=null;
 function renderPerspView(it,src){
   const st=$('#stage').getBoundingClientRect();const dpr=Math.min(2,window.devicePixelRatio||1);
-  const kf=Math.min((st.width-60)/src.width,(st.height-60)/src.height,1.5);const k=vRes(kf,dpr);const w=Math.max(1,Math.round(src.width*k)),h=Math.max(1,Math.round(src.height*k));
+  const kf=Math.min((st.width-60)/src.width,(st.height-60)/src.height,1.5);S.vK=kf*src.width/(it.W||1);const k=vRes(kf,dpr);const w=Math.max(1,Math.round(src.width*k)),h=Math.max(1,Math.round(src.height*k));
   view.width=w;view.height=h;view.style.width=Math.round(src.width*kf*S.vz)+'px';view.style.height=Math.round(src.height*kf*S.vz)+'px';clampPan();view.getContext('2d').drawImage(src,0,0,w,h);
   S.viewM=new DOMMatrix().scale(w/src.width,h/src.height);S.viewSrc=[src.width,src.height];$('#cropBox').hidden=true;
   placePersp();$('#info').textContent=`${it.name} · perspective : place les 4 coins`;
@@ -1237,6 +1234,7 @@ async function pptxToImages(file){
 }
 </script>
 <script src="../lib/drop.js"></script>
+<script src="../lib/zoom.js"></script>
 <script>
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
@@ -1244,7 +1242,7 @@ const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^
 AtelierDrop.init({app:'photo',own:true,accept:f=>isImg(f)||ext(f)==='pdf'||f.type==='application/pdf'||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:fs=>addFiles(fs)});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "La Suite Photo", "sections": [{"title": "Images", "keys": [["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["Molette", "Zoomer sur l’image (vers le pointeur)"], ["Maj + molette / Ctrl + molette", "Se déplacer horizontalement / verticalement"], ["Ctrl + 0", "Ajuster l’image à la fenêtre (ou clic sur le pourcentage en bas à droite)"], ["M / A / W", "Sélection rectangle, lasso libre, baguette magique : crée une zone (Maj : ajouter, Alt : retirer). Les réglages et retouches ne changent alors que la zone ; Échap : revenir à toute l’image"], ["K", "Perspective : placer les 4 coins d’un document photographié de biais pour le remettre à plat (Entrée : appliquer, Échap : annuler)"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "La Suite Photo", "sections": [{"title": "Images", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Maj / Ctrl", "Molette : zoom · Maj + molette : défiler horizontalement · Ctrl + molette : défiler verticalement · Ctrl + 0 : ajuster"], ["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["M / A / W", "Sélection rectangle, lasso libre, baguette magique : crée une zone (Maj : ajouter, Alt : retirer). Les réglages et retouches ne changent alors que la zone ; Échap : revenir à toute l’image"], ["K", "Perspective : placer les 4 coins d’un document photographié de biais pour le remettre à plat (Entrée : appliquer, Échap : annuler)"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
 <dialog id="ndDlg" style="border:1px solid #e3e0d9;border-radius:12px;padding:0;width:min(440px,94vw)">
   <div style="padding:12px 16px;border-bottom:1px solid #e3e0d9;font-weight:700">Nouvelle image</div>
   <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:13px">

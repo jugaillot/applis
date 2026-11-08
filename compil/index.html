@@ -254,7 +254,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <span class="muted" id="pgHelp">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : modifier la page</b></span>
     </div>
     <div id="pages"><div id="empty">Glisse ici des PDF ou des images (JPG, PNG),<br>ou utilise « Ajouter des fichiers… ».</div></div>
-    <div class="bar" id="shBar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><span class="muted" id="toolHint"></span><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="6" step="0.25" value="1" style="width:130px"></label></div>
+    <div class="bar" id="shBar" style="margin-top:14px"><h2 id="shTitle">Aperçu des feuilles</h2><span class="muted" id="toolHint"></span><label class="muted" style="display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin-left:auto" title="Agrandir les feuilles (aussi molette sur les feuilles)">Taille <input type="range" id="zoomR" min="1" max="10" step="0.25" value="1" style="width:130px"></label></div>
     <div id="tbWrap"><div id="toolBar" hidden><b id="tbName"></b><span class="muted" id="tbHint"></span><button class="btn sm" id="tbSign" type="button" hidden>Changer de signature…</button></div></div>
     <div id="sheets"></div>
   </div>
@@ -1006,10 +1006,23 @@ $('#oFmt').onchange=e=>{S.opt.fmt=e.target.value;$('#customBox').hidden=S.opt.fm
 [['oW','w'],['oH','h'],['oM','m'],['oG','g']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.opt[k]=v;saveOpt();renderSheets();}}));
 
 /* ---------- taille d'affichage des pages et des feuilles ---------- */
-function setZoom(z,save){ZOOM.z=Math.max(1,Math.min(6,z));document.documentElement.style.setProperty('--z',ZOOM.z);$('#zoomR').value=ZOOM.z;if(save)try{localStorage.setItem('atelierCompil.zoom',ZOOM.z);}catch(e){}
-  clearTimeout(ZOOM.t);ZOOM.t=setTimeout(()=>{renderSheets();},60);}
+function setZoom(z,save){ZOOM.z=Math.max(1,Math.min(10,z));document.documentElement.style.setProperty('--z',ZOOM.z);$('#zoomR').value=ZOOM.z;if(save)try{localStorage.setItem('atelierCompil.zoom',ZOOM.z);}catch(e){}
+  clearTimeout(ZOOM.t);ZOOM.t=setTimeout(()=>{renderSheets();zoomAnchor();},60);}
+/* zoom autour d'un point : la même place de la même feuille revient sous le pointeur (ou au point visé) */
+function zoomTo(f,cx,cy,tx,ty){const cs=[...document.querySelectorAll('#sheets canvas')];let a=null;
+  cs.forEach((c,k)=>{const r=c.getBoundingClientRect();const d=Math.hypot(Math.max(r.left-cx,0,cx-r.right),Math.max(r.top-cy,0,cy-r.bottom));if(!a||d<a.d)a={d,k,u:(cx-r.left)/r.width,v:(cy-r.top)/r.height};});
+  ZOOM.anchor=a?Object.assign(a,{tx:tx==null?cx:tx,ty:ty==null?cy:ty}):null;setZoom(ZOOM.z*f,true);}
+function zoomAnchor(){const a=ZOOM.anchor;ZOOM.anchor=null;if(!a)return;const c=document.querySelectorAll('#sheets canvas')[a.k];if(!c)return;const r=c.getBoundingClientRect();const w=$('#work');
+  w.scrollTop+=r.top+a.v*r.height-a.ty;w.scrollLeft+=r.left+a.u*r.width-a.tx;}
+
 $('#zoomR').addEventListener('input',e=>setZoom(+e.target.value,true));
-$('#sheets').addEventListener('wheel',e=>{e.preventDefault();/* molette = zoom ; Maj + molette : défiler */if(e.shiftKey){$('#work').scrollTop+=(e.deltaY||e.deltaX);return;}setZoom(ZOOM.z*(e.deltaY<0?1.15:1/1.15),true);},{passive:false});
+$('#sheets').addEventListener('wheel',e=>{if(window.AtelierZoom)AtelierZoom.wheel(e);},{passive:false});/* molette : zoom · Maj : horizontal · Ctrl : vertical */
+/* 100 % : la feuille à sa taille réelle à l'écran */
+function sheetMM(){const c=document.querySelector('#sheets canvas');return c&&c._sh?Math.max(c._sh.L.W,c._sh.L.H):297;}
+addEventListener('DOMContentLoaded',()=>{if(window.AtelierZoom)AtelierZoom.init({area:'#work',clipTop:()=>$('#shBar').getBoundingClientRect().bottom,tools:'#tools',before:'#tools .tsep',later:true,
+  ok:()=>$('#fsView').hidden,zoomBy:(f,x,y)=>zoomTo(f,x,y),zoomTo,panBy:(dx,dy)=>{const w=$('#work');w.scrollLeft-=dx;w.scrollTop-=dy;},
+  fit:()=>{const c=document.querySelector('#sheets canvas');if(!c||!c._sh){setZoom(1,true);return;}const L=c._sh.L,M=Math.max(L.W,L.H),r=$('#work').getBoundingClientRect();const SZ=Math.min((r.height-110)*M/L.H,(r.width-40)*M/L.W);const z=SZ/240;ZOOM.anchor={k:[...document.querySelectorAll('#sheets canvas')].indexOf(c),u:.5,v:0,tx:r.left+r.width/2,ty:r.top+70};setZoom(z,true);},actual:()=>{const r=$('#work').getBoundingClientRect();zoomTo((96/25.4*sheetMM()/240)/ZOOM.z,r.left+r.width/2,r.top+r.height/3);},
+  onEnd:()=>tbSync(),pct:()=>300*Math.max(1,ZOOM.z*0.8)/sheetMM()/(96/25.4)*100});});
 try{const z=+localStorage.getItem('atelierCompil.zoom');if(z)setZoom(z,false);}catch(e){}
 /* les deux barres restent visibles en haut quand on fait défiler : celle des feuilles se cale sous celle des pages */
 const tbTop=()=>{$('#shBar').style.top=$('#pgBar').offsetHeight+'px';};new ResizeObserver(tbTop).observe($('#pgBar'));new ResizeObserver(tbTop).observe($('#shBar'));
@@ -1119,8 +1132,11 @@ async function pageLines(p){
     out.page=page;out.tc=tc;return out;})();
   TXC.set(p,pr);return pr;
 }
-function lineAt(lines,X,Y){let best=null;for(const l of lines){const ca=Math.cos(l.ang),sa=Math.sin(l.ang);const dx=X-l.x,dy=Y-l.y;const u=dx*ca+dy*sa,v=-dx*sa+dy*ca;
-  if(u>=-l.fs*0.2&&u<=l.w+l.fs*0.2&&v>=-l.fs*0.95&&v<=l.fs*0.3){if(!best||l.fs<best.fs)best=l;}}return best;}
+/* ligne de texte sous le pointeur ; tol : marge en unités de la page (quelques pixels à l'écran, pour viser un petit texte) */
+let TOLX=0;
+function lineAt(lines,X,Y,tol){tol=tol||0;let best=null,bd=1e9;for(const l of lines){const ca=Math.cos(l.ang),sa=Math.sin(l.ang);const dx=X-l.x,dy=Y-l.y;const u=dx*ca+dy*sa,v=-dx*sa+dy*ca;
+  const du=Math.max(-l.fs*0.2-u,0,u-l.w-l.fs*0.2),dv=Math.max(-l.fs*0.95-v,0,v-l.fs*0.3),d=Math.hypot(du,dv);
+  if(d<=tol&&(d<bd||(d===bd&&l.fs<best.fs))){best=l;bd=d;}}return best;}
 function fontOfItem(page,tc,name){let n='';try{const fo=page.commonObjs.get(name);n=(fo&&(fo.name||fo.loadedName))||'';}catch(e){}
   const gen=(tc.styles[name]&&tc.styles[name].fontFamily)||'sans-serif';const raw=n.replace(/^[A-Z]{6}\+/,'');
   const fam=raw.split(/[-,]/)[0].replace(/(MT|PS|Std|Pro)$/,'').replace(/([a-z])([A-Z])/g,'$1 $2').trim();
@@ -1141,7 +1157,7 @@ async function lineColors(page,l,box){
     return {bg:hx(br,bg,bb),col:best>900?hx(ir,ig,ib):'#000000'};}catch(e){return {bg:'#ffffff',col:'#000000'};}
 }
 async function editPdfText(p,X,Y){
-  const lines=await pageLines(p);if(!lines)return false;const l=lineAt(lines,X,Y);if(!l)return false;
+  const lines=await pageLines(p);if(!lines)return false;const l=lineAt(lines,X,Y,TOLX||0);if(!l)return false;
   const {font,bd,it}=fontOfItem(lines.page,lines.tc,l.fontName);
   const pad=l.fs*0.12;const box={x0:-pad,x1:l.w+pad,y0:-l.fs*0.95,y1:l.fs*0.3};
   const {bg,col}=await lineColors(lines.page,l,box);
@@ -1164,7 +1180,7 @@ async function editPdfText(p,X,Y){
     // le texte est déjà lu (cas normal) : on décide tout de suite
     e.stopImmediatePropagation();e.preventDefault();
     const X=h.fx*h.p.w,Y=h.fy*h.p.h;
-    Promise.resolve(pr).then(async lines=>{const hit=lines&&lineAt(lines,X,Y);
+    Promise.resolve(pr).then(async lines=>{TOLX=h.spx?10*h.p.w/h.spx:0;const hit=lines&&lineAt(lines,X,Y,TOLX);
       if(hit){try{getSelection().removeAllRanges();}catch(err){}await editPdfText(h.p,X,Y);}
       else openEditor(h.p,'crop');});
   },true);
@@ -1176,7 +1192,7 @@ function setTool(t){TOOL=t;document.querySelectorAll('#tools [data-tool]').forEa
   ['select','text','addtext','sign','crop'].forEach(k=>document.body.classList.toggle('t-'+k,k===t));$('#toolHint').textContent='';tbSync();}
 const TN={text:'Copier du texte',addtext:'Ajouter du texte',sign:'Signer',crop:'Recadrer'};
 /* réglages de l'outil : petit bloc en haut à gauche des feuilles (comme Vecto) */
-function tbSync(){const a=ANSEL&&ANSEL.a,tb=$('#toolBar');if(!tb)return;let t;try{t=TOOL;}catch(e){return;}
+function tbSync(){if(window.AtelierZoom&&AtelierZoom.on)return;const a=ANSEL&&ANSEL.a,tb=$('#toolBar');if(!tb)return;let t;try{t=TOOL;}catch(e){return;}
   tb.hidden=!(a||TN[t]);$('#tbName').hidden=!!a;$('#tbHint').hidden=!!a;$('#tbSign').hidden=!!a||t!=='sign';
   $('#tbName').textContent=TN[t]||'';$('#tbHint').textContent=TH[t]||'';}
 document.querySelectorAll('#tools [data-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
@@ -1190,7 +1206,7 @@ function sheetHit(e){const iw=e.target.closest('.shw');if(!iw)return null;const 
   const r=c.getBoundingClientRect(),disp=r.width/sh.L.W,mx=(e.clientX-r.left)/disp,my=(e.clientY-r.top)/disp;
   for(let i=0;i<sh.pages.length;i++){const cell=sh.sl[i];if(!cell)continue;const p=sh.pages[i];const q=placeIn(p,cell);
     if(mx>=q.cx-q.w/2&&mx<=q.cx+q.w/2&&my>=q.cy-q.h/2&&my<=q.cy+q.h/2){const rr=effRot(p),cd=toDisp(cropOf(p),rr);
-      const uc=(mx-(q.cx-q.w/2))/q.w,vc=(my-(q.cy-q.h/2))/q.h;const u=cd.l+uc*(1-cd.l-cd.r),v=cd.t+vc*(1-cd.t-cd.b);const [fx,fy]=dispToAnn(u,v,rr);return{p,fx,fy};}}
+      const uc=(mx-(q.cx-q.w/2))/q.w,vc=(my-(q.cy-q.h/2))/q.h;const u=cd.l+uc*(1-cd.l-cd.r),v=cd.t+vc*(1-cd.t-cd.b);const [fx,fy]=dispToAnn(u,v,rr);return{p,fx,fy,spx:q.w*disp*(1-cd.l-cd.r)};}}
   return null;}
 $('#sheets').addEventListener('click',e=>{if(e.target.closest('.an'))return;
   if(TOOL==='select'){if(ANSEL){ANSEL=null;refreshAnn();}return;}
@@ -1238,6 +1254,7 @@ async function pptxToPdf(file){
 }
 </script>
 <script src="../lib/drop.js"></script>
+<script src="../lib/zoom.js"></script>
 <script>
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
@@ -1245,7 +1262,7 @@ const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^
 AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='application/pdf'||isImg(f)||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:fs=>addFiles(fs)});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["Double-clic sur un texte du PDF", "Le modifier : l’ancien texte est recouvert de la couleur du papier, le nouveau s’écrit à sa place"], ["F", "Voir le document en plein écran (flèches : pages, Z : largeur / page entière, Échap : sortir)"], ["Molette", "Zoom sur les feuilles"], ["Maj + molette", "Faire défiler les feuilles"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. « Une page par fichier » enregistre chaque feuille dans un PDF séparé. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"compil"},{"title": "La Suite PDF", "sections": [{"title": "Pages", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Maj / Ctrl", "Molette : zoom · Maj + molette : défiler horizontalement · Ctrl + molette : défiler verticalement · Ctrl + 0 : ajuster"], ["Double-clic sur un texte du PDF", "Le modifier : l’ancien texte est recouvert de la couleur du papier, le nouveau s’écrit à sa place"], ["F", "Voir le document en plein écran (flèches : pages, Z : largeur / page entière, Échap : sortir)"], ["Clic", "Sélectionner une page"], ["Maj + clic", "Sélectionner une plage"], ["Ctrl + clic", "Ajouter / retirer une page"], ["Glisser", "Réordonner les pages"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer les pages sélectionnées"], ["Déposer des fichiers", "Ajouter des PDF ou images"], ["Double-clic sur une page", "Rogner la page et régler ses niveaux"]]}, {"title": "Réglages", "params": [["Pages par feuille", "1 à 8 cases par feuille ; l’orientation automatique choisit celle qui donne les plus grandes pages."], ["Pages à la suite / Répéter", "À la suite : les pages se suivent. Répéter : chaque feuille est remplie de copies d’une même page."], ["Ordre de lecture", "En lignes (gauche → droite puis dessous) ou en colonnes."], ["Marge / espacement", "Bord de la feuille et espace entre les cases, en mm."], ["Ajuster / Taille réelle", "Ajuster remplit la case. Taille réelle garde le 100 % si la page tient (images comptées à 300 dpi)."], ["Rogner", "Double-clic sur une page : tire le cadre ou saisis les marges à enlever (en mm). Le PDF reste vectoriel."], ["Niveaux", "Noir, gris moyens (gamma) et blanc, comme dans Photoshop ; « Niveaux auto » étire le contraste ; option noir et blanc. Une page PDF retouchée est convertie en image 300 dpi."]]}, {"title": "Sortie", "text": "Exporter PDF conserve les pages des PDF d’origine en vectoriel. « Une page par fichier » enregistre chaque feuille dans un PDF séparé. Imprimer… génère le même PDF et ouvre l’impression du navigateur."}]}));</script>
 <div id="fsView" hidden><div id="fsPages"></div><div id="fsBar"><button id="fsPrev" title="Page précédente (←)">‹</button><span id="fsNum"></span><button id="fsNext" title="Page suivante (→)">›</button><button id="fsFit" title="Ajuster : page entière / largeur (Z)">Largeur</button><button id="fsClose" title="Quitter (Échap)">✕</button></div></div>
 <style>
 #fsView{position:fixed;inset:0;z-index:200;background:#2a2b2e}
