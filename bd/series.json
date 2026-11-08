@@ -103,7 +103,7 @@
  "Donjon Crépuscule": {
   "total": 10,
   "source": "https://www.bedetheque.com/serie-2326-BD-Donjon-Crepuscule.html",
-  "maj": "2026-11-07",
+  "maj": "2026-11-08",
   "liste": [
    101,
    102,
@@ -115,12 +115,33 @@
    111,
    112,
    113
-  ]
+  ],
+  "titres": {
+   "101": "Le Cimetière des dragons",
+   "102": "Le Volcan des Vaucanson",
+   "103": "Armaggedon",
+   "104": "Le Dojo du Lagon",
+   "105": "Les nouveaux centurions",
+   "106": "Révolutions",
+   "110": "Haut Septentrion",
+   "111": "La fin du Donjon",
+   "112": "Pourfendeurs de démons",
+   "113": "Passation"
+  },
+  "eans": {
+   "101": "9782840553618",
+   "102": "9782840554929",
+   "103": "9782840557319",
+   "104": "9782847897791",
+   "105": "9782756003405",
+   "106": "9782756006086",
+   "113": "9782413078227"
+  }
  },
  "Donjon Potron-Minet": {
   "total": 6,
   "source": "https://www.bedetheque.com/serie-2325-BD-Donjon-Potron-Minet.html",
-  "maj": "2026-11-07",
+  "maj": "2026-11-08",
   "liste": [
    -99,
    -98,
@@ -128,7 +149,23 @@
    -84,
    -83,
    -82
-  ]
+  ],
+  "titres": {
+   "-99": "La chemise de la nuit",
+   "-98": "Un justicier dans l'ennui",
+   "-97": "Une jeunesse qui s'enfuit",
+   "-84": "Après la pluie",
+   "-83": "Sans un bruit",
+   "-82": "Survivre aujourd'hui"
+  },
+  "eans": {
+   "-99": "9782840554233",
+   "-98": "9782840555698",
+   "-97": "9782840557326",
+   "-84": "9782756002286",
+   "-83": "9782756014418",
+   "-82": "9782413016892"
+  }
  },
  "Donjon Zénith": {
   "total": 11,
@@ -2916,8 +2953,15 @@
  "Gaston (40ème Anniversaire)": {
   "total": 19,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-1840-BD-Gaston-Edition-speciale-40e-anniversaire.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-1840-BD-Gaston-1997-40e-anniversaire.html",
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "1": "9782800126012",
+   "6": "9782800126067",
+   "10": "9782800126104",
+   "18": "9782912536105"
+  }
  },
  "La Quête de l'Oiseau du Temps (Avant la Quête)": {
   "total": 12,
