@@ -671,8 +671,20 @@
  "Gunnm Last Order": {
   "total": 19,
   "finis": true,
-  "source": "https://www.goodreads.com/series/59228",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-5075-BD-Gunnm-Last-Order.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "16": "Tome 16",
+   "17": "Tome 17",
+   "18": "Tome 18",
+   "19": "Tome 19"
+  },
+  "eans": {
+   "16": "9782723492041",
+   "17": "9782723492829",
+   "18": "9782723497480",
+   "19": "9782344002858"
+  }
  },
  "Gunnm Last Order - Nouvelle Edition": {
   "total": 19,
@@ -913,8 +925,14 @@
  "Lonely world": {
   "total": 5,
   "finis": true,
-  "source": "https://www.manga-news.com/index.php/manga/images/Lonely-World/vol-5",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-75199-BD-Lonely-World.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "5": "Tome 5"
+  },
+  "eans": {
+   "5": "9791032716311"
+  }
  },
  "Légendes des Contrées Oubliées": {
   "total": 3,
@@ -1450,7 +1468,8 @@
    "14": "9782505064909",
    "15": "9782505065449",
    "16": "9782505068839",
-   "21": "9782505069577"
+   "21": "9782505069577",
+   "18": "9782505068853"
   }
  },
  "Le Dernier Templier": {
@@ -1503,9 +1522,9 @@
   }
  },
  "Chroniques de la Terre Fixe": {
-  "total": 9,
+  "total": 1,
   "finis": true,
-  "source": "https://livraddict.com/biblio/saga-chroniques-de-la-terre-fixe.html",
+  "source": "https://www.bedetheque.com/serie-2529-BD-Chroniques-de-la-terre-fixe.html",
   "maj": "2026-11-07"
  },
  "Agathe Saugrenu": {
@@ -1849,7 +1868,13 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/BD-Remedes-de-l-Ouest-Tome-2-Remous-dans-le-Bayou-344006.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Remous dans le Bayou"
+  },
+  "eans": {
+   "2": "9782367960968"
+  }
  },
  "Les Passeurs": {
   "total": 2,
@@ -1937,7 +1962,13 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-19740-BD-Raiju.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Raiden"
+  },
+  "eans": {
+   "2": "9782070626403"
+  }
  },
  "The Promised Neverland (Light Novel)": {
   "total": 4,
@@ -2100,7 +2131,11 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-200-BD-Rha-Gnagna.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "1": "9782378780166"
+  }
  },
  "Satanie": {
   "total": 1,
@@ -2132,7 +2167,11 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-3196-BD-Soyons-fous.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {},
+  "eans": {
+   "1": "9782378782542"
+  }
  },
  "Le Roman de Renart (mathis)": {
   "total": 3,
@@ -2261,10 +2300,18 @@
   }
  },
  "Piège sur Zarkass": {
-  "total": 2,
+  "total": 3,
   "finis": true,
-  "source": "https://www.bedetheque.com",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-36598-BD-Piege-sur-Zarkass.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Une chenille pour deux",
+   "3": "Gaïa, Go Home !"
+  },
+  "eans": {
+   "1": "9782359103694",
+   "3": "9782359104769"
+  }
  },
  "Raffington Event": {
   "total": 1,
@@ -2573,8 +2620,14 @@
  "Aweto": {
   "total": 2,
   "finis": true,
-  "source": "réponse Julien + bedetheque 66332",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/serie-66332-BD-Aweto.html",
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "La chasse est ouverte"
+  },
+  "eans": {
+   "1": "9782075084376"
+  }
  },
  "Geist Maschine": {
   "total": 1,
@@ -2628,7 +2681,11 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-14123-BD-Canetor.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Brico Queen"
+  },
+  "eans": {}
  },
  "Cases en tôles": {
   "total": 1,
@@ -2664,7 +2721,13 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-5216-BD-Derives-Andreas.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "2": "Dérives 2"
+  },
+  "eans": {
+   "2": "9782840558859"
+  }
  },
  "El Borbah": {
   "total": 2,
@@ -2704,7 +2767,10 @@
   "total": 1,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-27905-BD-Belle-Mort.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "liste": [
+   0
+  ]
  },
  "La Citadelle Aveugle": {
   "total": 1,
@@ -2725,9 +2791,9 @@
   "maj": "2026-11-07"
  },
  "La Marie en Plastique": {
-  "total": 2,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-14019-BD-Marie-en-plastique.html",
+  "source": "https://www.bedetheque.com/serie-14019-BD-Marie-en-plastique.html (intégrale = T1+T2)",
   "maj": "2026-11-07"
  },
  "Le Bandard Fou": {
@@ -2814,7 +2880,13 @@
   "total": 2,
   "finis": true,
   "source": "https://www.bedetheque.com/serie-18665-BD-Louis.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-08",
+  "titres": {
+   "1": "Louis au ski"
+  },
+  "eans": {
+   "1": "9782847899702"
+  }
  },
  "Mission - Yozakura Family": {
   "total": 27,
@@ -2927,9 +2999,9 @@
   }
  },
  "La Révolte D'Hop-Frog": {
-  "total": 2,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-1358-BD-Hiram-Lowatt-Placido.html",
+  "source": "https://www.bedetheque.com/serie-1358-BD-Hiram-Lowatt-Placido.html (= Hiram Lowatt & Placido T1, éd. 1997)",
   "maj": "2026-11-07"
  },
  "La Vallée des Merveilles": {
@@ -3323,9 +3395,9 @@
   "maj": "2026-11-07"
  },
  "La Vie de Mahomet": {
-  "total": 2,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-36834-BD-Vie-de-Mahomet.html",
+  "source": "https://www.bedetheque.com/serie-36834-BD-Vie-de-Mahomet.html (intégrale T1+T2)",
   "maj": "2026-11-07"
  },
  "L'Enfer du Décor": {
@@ -3359,9 +3431,9 @@
   "maj": "2026-11-07"
  },
  "Où le Regard ne Porte pas - intégrale": {
-  "total": 2,
+  "total": 1,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-8293-BD-Ou-le-regard-ne-porte-pas.html",
+  "source": "https://www.bedetheque.com/serie-8293-BD-Ou-le-regard-ne-porte-pas.html (intégrale = T1+T2)",
   "maj": "2026-11-07"
  },
  "Samurai Gunn. Trigger Soul": {
@@ -3700,7 +3772,8 @@
    "1": "9782800126012",
    "6": "9782800126067",
    "10": "9782800126104",
-   "18": "9782912536105"
+   "18": "9782912536105",
+   "3": "9782800126036"
   }
  },
  "La Quête de l'Oiseau du Temps (Avant la Quête)": {
@@ -4138,10 +4211,19 @@
   "maj": "2026-11-07"
  },
  "Sillage (Hors série)": {
-  "total": 1,
+  "total": 2,
   "finis": true,
-  "source": "https://www.bedetheque.com/biblio-auteur-132-BD-Sfar-Joann.html",
-  "maj": "2026-11-07"
+  "source": "https://www.bedetheque.com/albums-18-BD-Sillage.html",
+  "maj": "2026-11-07",
+  "exclus": [
+   1
+  ],
+  "titres": {
+   "2": "1000 Nävis"
+  },
+  "eans": {
+   "2": "9782756010953"
+  }
  },
  "Overwatch": {
   "total": 1,
