@@ -723,7 +723,26 @@
   "total": 17,
   "finis": true,
   "source": "choix Julien",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Terra Incognita",
+   "2": "Ophyde La Géminée",
+   "3": "Le soupir des étoiles",
+   "4": "L'ombre de Khengis",
+   "5": "L'ultime arcane",
+   "6": "La révolte des pions",
+   "7": "La marque des Ythes",
+   "8": "Le miroir des mensonges",
+   "9": "L'Impossible Vérité",
+   "10": "Nehorf-Capitol Transit",
+   "11": "L'Haleine de l'Ogre",
+   "12": "Les Clefs du néant",
+   "13": "Glèbe la Singulière",
+   "14": "Le Joyau du Génie",
+   "15": "Imperator Express - La Caravane de l'étrange",
+   "16": "Les Assiégés de Glèbe",
+   "17": "La Grotte des faces"
+  }
  },
  "Goblin's": {
   "total": 11,
@@ -2574,7 +2593,23 @@
   "total": 14,
   "finis": true,
   "source": "https://www.bedetheque.com/BD-Sardine-de-l-espace-Dargaud-Tome-11-L-archipel-des-hommes-sandwichs-172931.html",
-  "maj": "2026-11-07"
+  "maj": "2026-11-07",
+  "titres": {
+   "1": "Platine laser",
+   "2": "Zacar et les zacariens",
+   "3": "Il faut éliminer Toxine",
+   "4": "Le remonte-kiki",
+   "5": "Mon œil !",
+   "6": "La cousine Manga",
+   "7": "Pizza tomik",
+   "8": "Les secrets de l'univers",
+   "9": "Loto des nombrils",
+   "10": "La reine de l'afripe",
+   "11": "L'archipel des hommes-sandwichs",
+   "12": "Môssieur Susupe et Môssieur Krokro",
+   "13": "Le mange-manga",
+   "14": "L'intelligence archificelle"
+  }
  },
  "Jonna": {
   "total": 3,
