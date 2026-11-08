@@ -35,6 +35,8 @@ summary::-webkit-details-marker{display:none}
 summary small{font-weight:400;color:#555;text-align:right}
 .al{padding:6px 12px;border-top:1px solid #0000000f;font-size:14px;display:flex;gap:8px}
 .al b{min-width:30px;color:#a0620e}
+.al{align-items:center}.al input{flex:none;width:20px;height:20px}
+.al.no{background:#fbd3cd55}.al.no span{color:#8a3a30;font-style:italic}
 .sub{padding:8px 12px 4px;font-weight:600;font-size:14px;color:#444}
 .miss{padding:8px 12px;font-size:14px;border-top:1px solid #0000000f}
 .miss label{max-width:100%;display:inline-flex;align-items:center;gap:6px;margin:3px 10px 3px 0;padding:6px 10px;background:#fff;border:1px solid #d9857b;border-radius:8px}
@@ -127,12 +129,19 @@ function analyse(){
  return out;
 }
 function lines(items){return items.slice().sort(cmpT).map(x=>`<div class="al"><b>${x[1]??''}</b><span>${esc(x[2])}</span><button class="rm" data-rm="${esc(JSON.stringify(x))}" title="Retirer de la collection" style="margin-left:auto;background:none;border:1px solid #c33;color:#c33;border-radius:6px;padding:2px 8px;font-size:12px">Retirer</button></div>`).join('')}
+function listeHtml(a){
+ const rows=a.it.map(x=>({n:x[1],o:x})).concat(a.miss.map(t=>({n:t,m:t})));
+ rows.sort((p,q)=>(p.n??1e9)-(q.n??1e9)||(p.o?0:1)-(q.o?0:1)||(p.o?p.o[2].localeCompare(q.o?q.o[2]:'','fr'):0));
+ return rows.map(r=>r.o
+  ?`<label class="al"><input type="checkbox" class="rm" checked data-rm="${esc(JSON.stringify(r.o))}" title="Décocher = retirer de la collection"><b>${r.o[1]??''}</b><span>${esc(r.o[2])}</span></label>`
+  :`<label class="al no"><input type="checkbox" data-s="${esc(a.s)}" data-t="${r.m}"><b>${r.m}</b><span>${a.titres[r.m]?esc(a.titres[r.m]):'Tome '+r.m}</span></label>`).join('');
+}
 function head(a){const eds=[...new Set(a.it.map(x=>x[4]).filter(Boolean))].join(', ');const au=AUT[a.s]||'';if(!au&&!eds)return '';return `<div style="font-size:13px;color:#555;padding:4px 12px">${au?'Auteur(s) : '+esc(au):''}${au&&eds?' · ':''}${eds?'Éditeur : '+esc(eds):''}</div>`}
 function info(a){const n=a.total?a.total-a.miss.length:(a.owned.size||a.it.length);return (a.total?n+'/'+a.total:String(a.it.length))+(a.miss.length?' · manque '+a.miss.length:'')}
 const OPEN=new Set();
 document.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.s!=null){d.open?OPEN.add(d.dataset.s):OPEN.delete(d.dataset.s)}},true);
 function missHtml(a){
- const chk=a.miss.length?`<div class="miss">Manque : ${a.miss.map(t=>`<label><input type="checkbox" data-s="${esc(a.s)}" data-t="${t}"> <span>T${t}${a.titres[t]?' – '+esc(a.titres[t]):''}</span></label>`).join('')}</div>`:'';
+ const chk='';
  const meta=`<div class="meta"><span>Tomes parus</span><input type="number" min="1" inputmode="numeric" data-ms="${esc(a.s)}" value="${a.total??''}" placeholder="?"><label><input type="checkbox" data-fs="${esc(a.s)}"${a.finis===true?' checked':''}> terminée</label>${a.supp?'<span>(album unique supposé)</span>':''}</div>`;
  const ab=(a.miss.length||a.abandon)?`<div class="meta"><button class="btn" data-ab="${esc(a.s)}">${a.abandon?'Suivre à nouveau':'Ne plus suivre'}</button><span>${a.abandon?'Série ignorée : comptée en vert malgré les manques.':'Je ne cherche pas à compléter : passe la série en vert.'}</span></div>`:'';
  return chk+meta+ab;
@@ -151,12 +160,12 @@ function render(){
  if(mode==='az'||mode==='manques'){
   list=list.slice().sort(mode==='manques'?(a,b)=>b.miss.length-a.miss.length||a.s.localeCompare(b.s,'fr'):(a,b)=>a.s.localeCompare(b.s,'fr'));
   for(const a of list){
-   h+=`<details class="s ${a.cls}" data-s="${esc(a.s)}"${(q||OPEN.has(a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${lines(a.it)}${missHtml(a)}</details>`;
+   h+=`<details class="s ${a.cls}" data-s="${esc(a.s)}"${(q||OPEN.has(a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`;
   }
  }else{
   const m=new Map();list.forEach(a=>{const e=a.ed||'Éditeur inconnu';if(!m.has(e))m.set(e,[]);m.get(e).push(a)});
   for(const[e,ss]of[...m].sort((a,b)=>a[0].localeCompare(b[0],'fr'))){
-   h+=`<details class="s" data-s="ed:${esc(e)}"${(q||OPEN.has('ed:'+e))?' open':''}><summary><span>${esc(e)}</span><small>${ss.reduce((t,a)=>t+a.it.length,0)}</small></summary>`+ss.sort((a,b)=>a.s.localeCompare(b.s,'fr')).map(a=>`<details class="s ${a.cls}" data-s="ed:${esc(e)}|${esc(a.s)}"${(q||OPEN.has('ed:'+e+'|'+a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${lines(a.it)}${missHtml(a)}</details>`).join('')+`</details>`;
+   h+=`<details class="s" data-s="ed:${esc(e)}"${(q||OPEN.has('ed:'+e))?' open':''}><summary><span>${esc(e)}</span><small>${ss.reduce((t,a)=>t+a.it.length,0)}</small></summary>`+ss.sort((a,b)=>a.s.localeCompare(b.s,'fr')).map(a=>`<details class="s ${a.cls}" data-s="ed:${esc(e)}|${esc(a.s)}"${(q||OPEN.has('ed:'+e+'|'+a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`).join('')+`</details>`;
   }
  }
  $('list').innerHTML=h||'<p class="hint">Rien trouvé.</p>';
