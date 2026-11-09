@@ -69,6 +69,7 @@ body.amini #mini{display:flex;flex-direction:column;align-items:center;gap:4px}
 .th:hover .x{display:block}
 #center{display:flex;flex-direction:column;min-width:0;min-height:0}
 #stage{flex:1;position:relative;min-height:0;display:flex;align-items:center;justify-content:center;background:#2a2b2e;overflow:hidden;user-select:none}
+#pasteBox{position:absolute;z-index:8;outline:1.5px dashed #ff48b0;cursor:move;touch-action:none}#pasteBox canvas{width:100%;height:100%;display:block;pointer-events:none}#pasteBox i{position:absolute;width:12px;height:12px;background:#fff;border:1.5px solid #ff48b0;border-radius:2px}#pasteBox i[data-c=nw]{left:-7px;top:-7px;cursor:nwse-resize}#pasteBox i[data-c=ne]{right:-7px;top:-7px;cursor:nesw-resize}#pasteBox i[data-c=sw]{left:-7px;bottom:-7px;cursor:nesw-resize}#pasteBox i[data-c=se]{right:-7px;bottom:-7px;cursor:nwse-resize}#pasteBox .pbBar{position:absolute;left:0;top:100%;margin-top:8px;display:flex;gap:6px;white-space:nowrap}#pasteBox .pbBar button{font:12px system-ui,sans-serif;border:0;border-radius:6px;padding:4px 9px;background:#1d1d1f;color:#fff;cursor:pointer}
 #zoomPct{position:absolute;right:10px;bottom:10px;z-index:6;font:600 11px system-ui,sans-serif;background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:6px;padding:3px 7px;cursor:pointer}
 #stage.light{background:#e9e7e1}
 #view{flex:none;position:relative;box-shadow:0 4px 24px rgba(0,0,0,.35);background:repeating-conic-gradient(#e6e6e6 0 25%,#fff 0 50%) 0 0/16px 16px}
@@ -411,7 +412,10 @@ function floodFill(c,op){
   for(let p=0;p<W*H;p++){const i=p*4;if(mask[p]){d[i]=fr;d[i+1]=fg;d[i+2]=fb;}else{const y=(p/W)|0,xx=p-y*W;if((xx>0&&mask[p-1])||(xx<W-1&&mask[p+1])||(y>0&&mask[p-W])||(y<H-1&&mask[p+W])){d[i]=(d[i]+fr)/2;d[i+1]=(d[i+1]+fg)/2;d[i+2]=(d[i+2]+fb)/2;}}}
   x.putImageData(im,0,0);
 }
-function applyOp(c,op,from){const x=c.getContext('2d');if(op.t==='fill')floodFill(c,op);else strokeSeg(x,c,op,0,from||snapshot(c));}
+const PASTE=new Map();// images collées (clé → image), gardées le temps de la session
+function applyOp(c,op,from){const x=c.getContext('2d');
+  if(op.t==='img'){const im=PASTE.get(op.k);if(!im)return;const m=op.m,W=c.width,H=c.height;x.save();x.setTransform(W*m[0],H*m[1],W*m[2],H*m[3],W*m[4],H*m[5]);x.imageSmoothingQuality='high';x.drawImage(im,0,0,1,1);x.restore();return;}
+  if(op.t==='fill')floodFill(c,op);else strokeSeg(x,c,op,0,from||snapshot(c));}
 function snapshot(c){const t=document.createElement('canvas');t.width=c.width;t.height=c.height;t.getContext('2d').drawImage(c,0,0);return t;}
 function applyPaint(src,ops,st){
   if(!ops||!ops.length)return src;const c=snapshot(src);
@@ -982,10 +986,49 @@ document.addEventListener('paste',e=>{
   if(/INPUT|TEXTAREA/.test(document.activeElement.tagName)&&document.activeElement.type==='text')return;
   const items=[...(e.clipboardData?e.clipboardData.items:[])].filter(i=>i.kind==='file'&&/^image\//.test(i.type));
   if(!items.length)return;e.preventDefault();
+  // une photo est ouverte : l'image collée vient dessus, à placer ; sinon elle devient un nouveau document
+  if(cur()&&S.viewM&&!S.cropMode&&!S.perspMode){pasteInto(items[0].getAsFile());return;}
   const t=new Date(),stamp=String(t.getHours()).padStart(2,'0')+'h'+String(t.getMinutes()).padStart(2,'0')+'-'+String(t.getSeconds()).padStart(2,'0');
   const files=items.map((i,k)=>{const f=i.getAsFile();const ext=(f.type.split('/')[1]||'png').replace('jpeg','jpg');return new File([f],`colle-${stamp}${items.length>1?'-'+(k+1):''}.${ext}`,{type:f.type});});
   addFiles(files);
 });
+/* ---------- coller dans la photo : cadre à déplacer / agrandir, puis Entrée (ou clic ailleurs) pour fixer, Échap pour annuler ---------- */
+let PB=null;
+function scrToImg(x,y){return toImg({clientX:x,clientY:y});}
+async function pasteInto(file){
+  if(PB)pbEnd(true);let bmp;try{bmp=await createImageBitmap(file);}catch(e){alert('Image illisible.');return;}
+  const st=$('#stage'),sr=st.getBoundingClientRect(),vr=view.getBoundingClientRect();
+  let k=(S.vK||1)*(S.vz||1);// taille réelle par rapport à la photo
+  let w=bmp.width*k,h=bmp.height*k;const f=Math.min(1,vr.width*0.8/w,vr.height*0.8/h);w*=f;h*=f;if(w<vr.width*0.25&&h<vr.height*0.25){const g=Math.min(vr.width*0.25/w,vr.height*0.25/h);w*=g;h*=g;}// trop petite pour être manipulée : un quart de la photo
+  const box=document.createElement('div');box.id='pasteBox';
+  box.innerHTML='<canvas></canvas><i data-c="nw"></i><i data-c="ne"></i><i data-c="sw"></i><i data-c="se"></i><div class="pbBar"><button type="button" data-a="ok">Fixer (Entrée)</button><button type="button" data-a="no">Annuler (Échap)</button></div>';
+  const cv=box.querySelector('canvas');cv.width=Math.min(bmp.width,1600);cv.height=Math.round(cv.width*bmp.height/bmp.width);cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);
+  st.appendChild(box);
+  PB={bmp,box,x:vr.left-sr.left+(vr.width-w)/2,y:vr.top-sr.top+(vr.height-h)/2,w,h,ratio:bmp.width/bmp.height};pbPlace();
+  $('#info').textContent='Image collée : glisse-la pour la placer, tire un coin pour la redimensionner (Maj : libre), puis Entrée pour la fixer.';
+  box.addEventListener('pointerdown',ev=>{const a=ev.target.closest('[data-a]');if(a)return;ev.preventDefault();ev.stopPropagation();box.setPointerCapture(ev.pointerId);
+    const c=ev.target.dataset&&ev.target.dataset.c,s0={x:PB.x,y:PB.y,w:PB.w,h:PB.h,mx:ev.clientX,my:ev.clientY};
+    const mv=e2=>{const dx=e2.clientX-s0.mx,dy=e2.clientY-s0.my;
+      if(!c){PB.x=s0.x+dx;PB.y=s0.y+dy;}
+      else{let w2=s0.w+(c.includes('e')?dx:-dx),h2=s0.h+(c.includes('s')?dy:-dy);w2=Math.max(10,w2);h2=Math.max(10,h2);
+        if(!e2.shiftKey){if(Math.abs(dx)>Math.abs(dy))h2=w2/PB.ratio;else w2=h2*PB.ratio;}
+        PB.x=c.includes('w')?s0.x+s0.w-w2:s0.x;PB.y=c.includes('n')?s0.y+s0.h-h2:s0.y;PB.w=w2;PB.h=h2;}
+      pbPlace();};
+    const up=()=>{box.removeEventListener('pointermove',mv);box.removeEventListener('pointerup',up);};box.addEventListener('pointermove',mv);box.addEventListener('pointerup',up);});
+  box.addEventListener('click',ev=>{const a=ev.target.closest('[data-a]');if(a){ev.stopPropagation();pbEnd(a.dataset.a==='ok');}});
+}
+function pbPlace(){if(!PB)return;Object.assign(PB.box.style,{left:PB.x+'px',top:PB.y+'px',width:PB.w+'px',height:PB.h+'px'});}
+function pbEnd(ok){
+  if(!PB)return;const P=PB;PB=null;P.box.remove();const it=cur();
+  if(ok&&it){const sr=$('#stage').getBoundingClientRect(),X=sr.left+P.x,Y=sr.top+P.y;
+    const o=scrToImg(X,Y),a=scrToImg(X+P.w,Y),b=scrToImg(X,Y+P.h);
+    if(o&&a&&b){const key='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);PASTE.set(key,P.bmp);
+      const op={t:'img',k:key,m:[a[0]-o[0],a[1]-o[1],b[0]-o[0],b[1]-o[1],o[0],o[1]].map(v=>Math.round(v*1e6)/1e6)};if(curZone(it))op.zone=S.zone;
+      pushHist(it);it.st.paint=(it.st.paint||[]).concat([op]);it.pcache=null;schedule();setTimeout(()=>refreshThumb(it),60);$('#info').textContent='Image collée dans la photo.';}}
+  else $('#info').textContent='Collage annulé.';
+}
+document.addEventListener('keydown',e=>{if(!PB)return;if(e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();pbEnd(true);}else if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();pbEnd(false);}},true);
+document.addEventListener('pointerdown',e=>{if(PB&&!e.target.closest('#pasteBox'))pbEnd(true);},true);
 $('#fIn').onchange=e=>{const f=[...e.target.files];e.target.value='';addFiles(f);};
 window.addEventListener('resize',schedule);
 // un bouton cliqué ne garde pas le focus (sinon Entrée le re-déclenche)
@@ -1262,7 +1305,7 @@ const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^
 AtelierDrop.init({app:'photo',own:true,accept:f=>isImg(f)||ext(f)==='pdf'||f.type==='application/pdf'||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:fs=>addFiles(fs)});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "La Suite Photo", "sections": [{"title": "Images", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Maj / Ctrl", "Molette : zoom · Maj + molette : défiler horizontalement · Ctrl + molette : défiler verticalement · Ctrl + 0 : ajuster"], ["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["M / A / W", "Sélection rectangle, lasso libre, baguette magique : crée une zone (Maj : ajouter, Alt : retirer). Les réglages et retouches ne changent alors que la zone ; Échap : revenir à toute l’image"], ["K", "Perspective : placer les 4 coins d’un document photographié de biais pour le remettre à plat (Entrée : appliquer, Échap : annuler)"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"photo"},{"title": "La Suite Photo", "sections": [{"title": "Images", "keys": [["Ctrl + V", "Coller une image dans la photo ouverte : glisser pour la placer, coins pour la redimensionner (Maj : libre), Entrée pour la fixer, Échap pour annuler. Sans photo ouverte, elle devient un nouveau document"], ["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Maj / Ctrl", "Molette : zoom · Maj + molette : défiler horizontalement · Ctrl + molette : défiler verticalement · Ctrl + 0 : ajuster"], ["Glisser-déposer", "Ajouter une ou plusieurs photos"], ["M / A / W", "Sélection rectangle, lasso libre, baguette magique : crée une zone (Maj : ajouter, Alt : retirer). Les réglages et retouches ne changent alors que la zone ; Échap : revenir à toute l’image"], ["K", "Perspective : placer les 4 coins d’un document photographié de biais pour le remettre à plat (Entrée : appliquer, Échap : annuler)"], ["Ctrl + C", "Copier l’image retouchée (à coller dans un mail, un document…)"], ["Ctrl + V", "Coller une image copiée (capture d’écran, image d’une page web…)"], ["↑ ↓ / ← →", "Image précédente / suivante"], ["Ctrl + clic", "Sélectionner plusieurs images (pour « Appliquer à toutes » et l’export)"], ["Ctrl + A", "Tout sélectionner"]]}, {"title": "Retouche", "keys": [["S / G / E", "Tampon / pot de peinture (remplir) / gomme ; Échap pour quitter l’outil"], ["Alt + clic", "Tampon : choisir la zone à recopier"], ["[  et  ]", "Taille du pinceau"], ["B (maintenir)", "Voir l’original (avant / après)"], ["C", "Rogner : tracer une fenêtre sur l’image ou étirer le cadre (Entrée ou Échap pour terminer)"], ["Glisser un titre de menu", "Changer l’ordre des menus (mémorisé)"], ["Double-clic sur une valeur", "Remettre le curseur à zéro"], ["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + S", "Exporter l’image en JPG"], ["Ctrl + P", "Imprimer l’image retouchée"], ["Double-clic sur la fenêtre", "Valider le rognage"], ["Clic droit sur un filtre perso", "Le supprimer"]]}, {"title": "Réglages", "params": [["Exposition / Luminosité", "L’exposition agit comme un diaphragme ; la luminosité éclaircit plus doucement."], ["Hautes lumières / Ombres", "Récupère ou assombrit seulement les zones claires ou sombres."], ["Délavé", "Relève les noirs pour un rendu mat, façon film."], ["Niveaux", "Point noir, gris moyens et point blanc ; « Niveaux auto » étale l’histogramme."], ["Vibrance", "Sature surtout les couleurs ternes, sans brûler les couleurs vives."], ["Bichromie", "Remplace l’image par un dégradé entre deux couleurs (idéal pour la riso)."], ["Virage partiel", "Teinte les ombres et les lumières de deux couleurs différentes."], ["Seuil", "Noir et blanc pur, sans gris."]]}, {"title": "Export", "params": [["Pixels", "Largeur et hauteur exactes, proportions verrouillées ou non."], ["%", "Échelle par rapport à l’image rognée."], ["Poids", "Taille de fichier maximum : la qualité baisse d’abord, puis la taille si nécessaire."], ["Lot", "« Exporter tout » produit un ZIP de JPG (ou seulement les images sélectionnées)."]]}]}));</script>
 <dialog id="ndDlg" style="border:1px solid #e3e0d9;border-radius:12px;padding:0;width:min(440px,94vw)">
   <div style="padding:12px 16px;border-bottom:1px solid #e3e0d9;font-weight:700">Nouvelle image</div>
   <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:13px">
