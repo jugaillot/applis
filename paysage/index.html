@@ -226,6 +226,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <nav id="tools"><div class="tgrid">
     <button class="tool" data-tool="select" title="Sélection (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor"/></svg></button>
     <button class="tool" data-tool="direct" title="Sélection directe — points (A)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+    <button class="tool" data-tool="curve" title="Courber — clic sur un point : angle ↔ courbe · glisser depuis un point : tirer ses poignées · glisser un segment : le courber (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19C6 9 10 6 20 5"/><path d="M8 4l-2 6 6-1"/><circle cx="4" cy="19" r="1.6" fill="currentColor"/><circle cx="20" cy="5" r="1.6" fill="currentColor"/></svg></button>
     <button class="tool" data-tool="lasso" title="Lasso — entourer des formes, même à l’intérieur d’un dessin (Q)"><svg viewBox="0 0 24 24"><path d="M12 4c5 0 8 2.2 8 5s-3.6 5-8 5-8-2.2-8-5 3-5 8-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 2"/><path d="M7 13c-1 2 0 4 2 4s2 2 1 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
     <div class="tsep"></div>
     <button class="tool" data-tool="pen" title="Plume (P)"><svg viewBox="0 0 24 24"><path d="M3 3l10 3.5 5.5 5.5-6.5 6.5-5.5-5.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 3l7.2 7.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11.3" cy="11.3" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M15.2 21.2l6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
@@ -842,6 +843,7 @@ document.addEventListener('DOMContentLoaded',()=>{const h=$('#hint');
 const HINTS={
   select:'Clic : sélectionner · Ctrl+clic : sélectionner une forme à l’intérieur d’un groupe · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : copier (le curseur le montre) · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
   lasso:'Entoure à main levée les formes à prendre (même à l’intérieur d’un dessin) · si un objet est sélectionné, seulement dans cet objet (clic dans le vide : libérer) · Maj : ajouter · glisser ensuite une forme prise pour tout déplacer · « Détacher en objet » pour en faire un objet à part',
+  curve:'Clic sur un point : angle ↔ courbe · glisser depuis un point : tirer ses poignées (Alt : un seul côté) · glisser au milieu d’un segment : le courber',
   direct:'Clic sur un tracé : voir ses points · glisser un point ou une poignée · Maj : ajouter des points · double-clic sur un point : angle ↔ courbe · Suppr : effacer les points',
   pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer',
   blob:'Dessiner à main levée une zone pleine, sans contour, de la couleur du calque actif (lissage dans la barre du haut)',
@@ -858,6 +860,7 @@ function setTool(t){
   if(typeof BK!=='undefined'&&BK.pending&&t!=='bucket')bkValidate();
   if(S.tool==='pen'&&t!=='pen')finishPen();
   // en quittant la flèche blanche, les éléments pris restent la sélection (la gomme, le pot… n'agissent que sur eux)
+  if(S.tool==='curve'&&t!=='curve')clearDirect();
   if(S.tool==='direct'&&t!=='direct'){const mv=movableSelection();clearDirect();if(mv.length&&mv.some(i=>!sel.includes(i)))setSel(mv);}
   S.tool=t;
   document.querySelectorAll('.tool[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
@@ -900,6 +903,7 @@ tool.onMouseDown=function(e){
   if(S.tool==='lasso'&&sel.length&&handleAt(e.point))return selDown(e,dbl);
   if(S.tool==='lasso'){const lf=hitLeaf(e.point);if(lf&&inSel(lf)&&!sel.some(s=>s.parent instanceof P.Layer)&&!e.modifiers.shift){if(e.modifiers.alt){const copies=relink(sel.map(s=>{const c=s.clone();c.insertAbove(s);return c;}));setSel(copies);}drag={mode:'move',start:e.point,last:e.point,moved:false};return;}return lassoDown(e);}
   if(S.tool==='direct')return dirDown(e,dbl);
+  if(S.tool==='curve')return curveDown(e);
   if(S.tool==='pen')return penDown(e);
   if(S.tool==='bucket'&&BK.drawLimit){const L=bkLayer();if(BK.limDraw)BK.limDraw.remove();BK.limDraw=new P.Path({segments:[e.point],strokeColor:'#e8457a',strokeWidth:px(1.5),data:{sys:true,limit:true}});L.addChild(BK.limDraw);if(activeLayer)activeLayer.activate();return;}
   if(S.tool==='bucket'){if(e.event&&e.event.touches){bkTap={e,t:Date.now(),p:e.point};return;}return bucketDown(e);}
@@ -917,6 +921,7 @@ tool.onMouseDrag=function(e){
   if(S.tool==='lasso')return lassoDrag(e);
   if(S.tool==='direct'&&drag&&drag.items)return selDrag(e);
   if(S.tool==='direct')return dirDrag(e);
+  if(S.tool==='curve')return curveDrag(e);
   if(S.tool==='pen')return penDragFn(e);
   if((S.tool==='pencil'||S.tool==='blob')&&pencilPath){pencilPath.add(e.point);return;}
   if(S.tool==='eraser')return erDrag(e);
@@ -940,6 +945,7 @@ tool.onMouseUp=function(e){
   if(S.tool==='lasso')return lassoUp(e);
   if(S.tool==='direct'&&drag&&drag.items){const T=drag.items;selUp(e);T.forEach(i=>{if(i.parent)i.selected=true;});drawUI();return;}
   if(S.tool==='direct'){const r=dirUp(e);drawUI();return r;}
+  if(S.tool==='curve'){curveUp(e);drawUI();return;}
   if(S.tool==='pen')return penUp(e);
   if(S.tool==='bucket'&&BK.limDraw){const d=BK.limDraw;BK.limDraw=null;BK.drawLimit=false;d.remove();if(d.segments.length<3||d.bounds.width<px(5)){renderToolBar(S.tool);return;}const lim=new P.Path({segments:d.segments.map(s=>s.point),closed:true,insert:false});lim.simplify(px(1));bkSetLimit(lim);return;}
   if(S.tool==='bucket'&&bkTap){const t=bkTap;bkTap=null;if(!pinch&&Date.now()-t.t<900&&t.p.getDistance(e.point)<px(12))bucketDown(t.e);return;}
@@ -1094,6 +1100,30 @@ function dirDown(e,dbl){
   }
   if(!e.modifiers.shift)clearDirect();
   drag={mode:'marquee',start:e.point};
+}
+/* outil Courber : transformer un point anguleux en point courbe (et inversement), tirer ses poignées, courber un segment */
+function curveHit(pt){const r=P.project.hitTest(pt,{segments:true,curves:true,stroke:true,fill:true,tolerance:px(7),match:h=>selectable(h.item)&&(h.item instanceof P.Path||h.item instanceof P.CompoundPath)});
+  if(r&&r.item instanceof P.CompoundPath){const c=(r.location&&r.location.path)||(r.segment&&r.segment.path);if(c)r.item=c;}return r;}
+function curveDown(e){
+  const r=curveHit(e.point);if(!r){clearDirect();drawUI();drag=null;return;}
+  const p=r.item;if(!p.selected){clearDirect();p.selected=true;p.segments.forEach(s=>s.selected=false);followLayer([p]);syncPanel();}
+  if(r.type==='segment'){const s=r.segment;drag={mode:'cpt',seg:s,start:e.point,hi:s.handleIn.clone(),ho:s.handleOut.clone(),moved:false};return;}
+  if((r.type==='stroke'||r.type==='curve')&&r.location&&r.location.curve){const c=r.location.curve,t=r.location.time;
+    drag={mode:'cseg',curve:c,t:Math.min(0.9,Math.max(0.1,t)),start:e.point,h1:c.segment1.handleOut.clone(),h2:c.segment2.handleIn.clone(),moved:false};return;}
+  drag=null;drawUI();
+}
+function curveDrag(e){
+  if(!drag)return;const d=e.point.subtract(drag.start);if(!drag.moved&&d.length<px(3))return;drag.moved=true;
+  if(drag.mode==='cpt'){const s=drag.seg,v=e.point.subtract(s.point);// on tire la poignée de sortie, l'autre suit en face (Alt : seulement celle-ci)
+    s.handleOut=v;if(!e.modifiers.alt)s.handleIn=v.multiply(-1);}
+  else if(drag.mode==='cseg'){const t=drag.t,k=3*t*(1-t),D=d.divide(k);// le point saisi suit la souris, les extrémités ne bougent pas
+    drag.curve.segment1.handleOut=drag.h1.add(D);drag.curve.segment2.handleIn=drag.h2.add(D);}
+  drawUI();
+}
+function curveUp(e){
+  if(!drag)return;const g=drag;drag=null;
+  if(g.mode==='cpt'&&!g.moved){const s=g.seg;if(s.handleIn.isZero()&&s.handleOut.isZero())s.smooth({type:'catmull-rom'});else{s.handleIn=null;s.handleOut=null;}commit();return;}
+  if(g.moved)commit();
 }
 function selectedSegs(){const out=[];P.project.getItems({class:P.Path,match:p=>p.selected&&selectable(p)}).forEach(p=>p.segments.forEach(s=>{if(s.selected)out.push(s);}));return out;}
 function dirDrag(e){
@@ -3064,7 +3094,7 @@ document.addEventListener('keydown',e=>{
   }
   if(k==='+'||k==='='){zoomAt(1.25);return;}
   if(k==='-'){zoomAt(0.8);return;}
-  const map={q:'lasso',v:'select',a:'direct',p:'pen',n:'pencil',m:'shape',l:'shape',h:'hand',k:'bucket',e:'eraser',f:'blob'};
+  const map={q:'lasso',v:'select',a:'direct',c:'curve',p:'pen',n:'pencil',m:'shape',l:'shape',h:'hand',k:'bucket',e:'eraser',f:'blob'};
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
@@ -3593,6 +3623,6 @@ AtelierDrop.init({app:'paysage',accept:f=>['svg','pdf','ai','json'].includes(ext
     if(e==='svg'){if(window.AtelierTabs)await AtelierTabs.newTab();feed('#fSvg',[f]);continue;}$('#impDlg').showModal();impOpen(f);}}});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "La Suite Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Formes", "Sélectionne 2 objets ou plus : Réunion, Soustraire (les formes du dessus découpent celle du fond), Intersection, Exclusion, Diviser — dans le panneau Transformation ; un dessin vectorisé est découpé avec son blanc et ses traits"], ["Envoyer un dessin", "Sur le portable, ouvre « Envoyer un dessin » (accueil de La Suite), choisis ce document, photographie et redresse. « Envoyer la photo » : un bandeau propose ici de la vectoriser. « Vectoriser avant » : aperçu et réglages sur le portable, puis « Placer » ici pose directement le dessin (recalculé en pleine définition). Le document doit être enregistré."], ["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets blancs et en couleur", "Un dessin collé ou vectorisé garde ses zones blanches (calque Blanc) et ses traits (calque Couleur) dans un seul objet. « Dissocier › par calque » les sépare en deux objets."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Formes (rectangle, ellipse, rectangle arrondi)"], ["E", "Gomme"], ["F", "Forme libre (zone pleine sans contour)"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"], ["Alt + molette", "Zoom (molette seule : défilement)"], ["Clic molette + glisser", "Déplacer la vue"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc. Ce qui est devant dépend de l’ordre des objets (Devant / Derrière), pas du calque."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "La Suite Paysage insulaire", "sections": [{"title": "Composer", "keys": [["C", "Courber : clic sur un point = angle ↔ courbe · glisser depuis un point = tirer ses poignées (Alt : un seul côté) · glisser au milieu d’un segment = le courber"], ["Formes", "Sélectionne 2 objets ou plus : Réunion, Soustraire (les formes du dessus découpent celle du fond), Intersection, Exclusion, Diviser — dans le panneau Transformation ; un dessin vectorisé est découpé avec son blanc et ses traits"], ["Envoyer un dessin", "Sur le portable, ouvre « Envoyer un dessin » (accueil de La Suite), choisis ce document, photographie et redresse. « Envoyer la photo » : un bandeau propose ici de la vectoriser. « Vectoriser avant » : aperçu et réglages sur le portable, puis « Placer » ici pose directement le dessin (recalculé en pleine définition). Le document doit être enregistré."], ["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets blancs et en couleur", "Un dessin collé ou vectorisé garde ses zones blanches (calque Blanc) et ses traits (calque Couleur) dans un seul objet. « Dissocier › par calque » les sépare en deux objets."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Formes (rectangle, ellipse, rectangle arrondi)"], ["E", "Gomme"], ["F", "Forme libre (zone pleine sans contour)"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"], ["Alt + molette", "Zoom (molette seule : défilement)"], ["Clic molette + glisser", "Déplacer la vue"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc. Ce qui est devant dépend de l’ordre des objets (Devant / Derrière), pas du calque."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
 </body>
 </html>
