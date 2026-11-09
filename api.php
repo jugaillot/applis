@@ -11,7 +11,8 @@ if (!is_dir($dir . '/docs')) out(500, array('error' => 'dossier de stockage impo
 
 function out($code, $data) { http_response_code($code); header('Content-Type: application/json; charset=utf-8'); echo json_encode($data, JSON_UNESCAPED_UNICODE); exit; }
 function okid($s) { return is_string($s) && preg_match('/^[A-Za-z0-9._-]{1,120}$/', $s); }
-function now_ms() { return (int) round(microtime(true) * 1000); }
+// en millisecondes ; nombre à virgule : sur un PHP 32 bits, un entier déborde (dates en 1969)
+function now_ms() { return floor(microtime(true) * 1000); }
 
 $lock = fopen($dir . '/.lock', 'c');
 function idx_read() { global $dir; $f = $dir . '/index.json'; if (!is_file($f)) return array('docs' => array(), 'blobs' => array()); $j = json_decode(file_get_contents($f), true); if (!is_array($j)) $j = array(); if (!isset($j['docs'])) $j['docs'] = array(); if (!isset($j['blobs'])) $j['blobs'] = array(); return $j; }
@@ -54,11 +55,11 @@ if ($a === 'put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($cur && empty($cur['deleted']) && is_file($f)) {
     $vd = $dir . '/versions/' . $id; if (!is_dir($vd)) @mkdir($vd, 0700, true);
     $vi = is_file($vd . '/index.json') ? json_decode(file_get_contents($vd . '/index.json'), true) : array(); if (!is_array($vi)) $vi = array();
-    $lastAt = 0; foreach ($vi as $v) $lastAt = max($lastAt, (int) $v['saved']);
+    $lastAt = 0; foreach ($vi as $v) $lastAt = max($lastAt, (float) $v['saved']);
     $prevDev = isset($cur['dev']) ? $cur['dev'] : '';
     if (!empty($_GET['keep']) || ($dev !== '' && $prevDev !== '' && $dev !== $prevDev) || now_ms() - $lastAt > 15 * 60 * 1000) {
       @copy($f, $vd . '/' . $rev . '.json');
-      $vi[] = array('rev' => $rev, 'updated' => (int) $cur['updated'], 'dev' => $prevDev, 'size' => (int) $cur['size'], 'saved' => now_ms());
+      $vi[] = array('rev' => $rev, 'updated' => (float) $cur['updated'], 'dev' => $prevDev, 'size' => (int) $cur['size'], 'saved' => now_ms());
       while (count($vi) > 30) { $old = array_shift($vi); @unlink($vd . '/' . $old['rev'] . '.json'); }
       file_put_contents($vd . '/index.json', json_encode($vi));
     }
@@ -148,7 +149,7 @@ if ($a === 'inbox_list') {
   if (!okid($id)) out(400, array('error' => 'identifiant invalide'));
   $d = inbox_dir($id); $l = array();
   if (is_dir($d)) foreach (scandir($d) as $f) { if (!preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) continue; $nf = $d . '/' . $f . '.name'; $vf = $d . '/' . $f . '.vx';
-    $l[] = array('f' => $f, 'size' => filesize($d . '/' . $f), 'at' => (int) $f, 'name' => is_file($nf) ? file_get_contents($nf) : '', 'vx' => is_file($vf) ? json_decode(file_get_contents($vf)) : null); }
+    $l[] = array('f' => $f, 'size' => filesize($d . '/' . $f), 'at' => (float) $f, 'name' => is_file($nf) ? file_get_contents($nf) : '', 'vx' => is_file($vf) ? json_decode(file_get_contents($vf)) : null); }
   out(200, array('items' => $l));
 }
 if ($a === 'inbox_diag') {
