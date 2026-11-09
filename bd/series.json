@@ -106,7 +106,12 @@
  "L'Attaque des Titans": {
   "total": 34,
   "finis": true,
-  "source": "https://www.bedetheque.com/serie-39078-BD-Attaque-des-Titans.html"
+  "source": "https://www.bedetheque.com/serie-39078-BD-Attaque-des-Titans.html",
+  "titres": {},
+  "eans": {
+   "5": "9782811613297"
+  },
+  "maj": "2026-11-08"
  },
  "L'Arabe du Futur": {
   "total": 6,
@@ -393,7 +398,8 @@
    "3": "9782871292685",
    "4": "9782871292692",
    "5": "9782871292708",
-   "38": "9782505122470"
+   "38": "9782505122470",
+   "6": "9782871292715"
   },
   "maj": "2026-11-08"
  },
@@ -473,7 +479,7 @@
  },
  "Seuls": {
   "total": 16,
-  "source": "https://www.bedetheque.com/albums-12709-BD-Seuls.html",
+  "source": "https://www.bedetheque.com/serie-12709-BD-Seuls.html",
   "maj": "2026-11-08",
   "titres": {
    "4": "Les Cairns rouges",
@@ -493,7 +499,12 @@
   "eans": {
    "6": "9782800150246",
    "16": "9782810206162",
-   "12": "9791034733583"
+   "12": "9791034733583",
+   "4": "9782800144139",
+   "5": "9782800146935",
+   "7": "9782800153131",
+   "8": "9782800157092",
+   "9": "9782800160948"
   }
  },
  "Luuna": {
@@ -633,7 +644,7 @@
  "Dofus": {
   "total": 30,
   "finis": true,
-  "source": "https://www.bedetheque.com/albums-13943-BD-Dofus.html",
+  "source": "https://www.bedetheque.com/serie-13943-BD-Dofus.html",
   "maj": "2026-11-08",
   "titres": {
    "1": "Le Péril Gelées",
@@ -669,7 +680,14 @@
   },
   "eans": {
    "29": "9791033513575",
-   "30": "9791033517054"
+   "30": "9791033517054",
+   "2": "9782952450928",
+   "3": "9782952450959",
+   "4": "9782952450966",
+   "5": "9782916739007",
+   "6": "9782916739052",
+   "9": "9782916739397",
+   "10": "9782916739564"
   }
  },
  "La Caste des Meta-Barons": {
@@ -1108,7 +1126,7 @@
  },
  "Game Over": {
   "total": 25,
-  "source": "https://www.bedetheque.com/albums-10237-BD-Game-over.html",
+  "source": "https://www.bedetheque.com/serie-10237-BD-Game-Over.html",
   "maj": "2026-11-08",
   "titres": {
    "1": "Blork Raider",
@@ -1135,7 +1153,19 @@
    "25": "The snow must go on"
   },
   "eans": {
-   "2": "9782800136950"
+   "2": "9782800136950",
+   "1": "9782800135922",
+   "4": "9782800145501",
+   "5": "9782960093834",
+   "6": "9782930618050",
+   "7": "9782930618142",
+   "8": "9782930618258",
+   "10": "9782930618524",
+   "13": "9782723499774",
+   "14": "9782723499781",
+   "15": "9782723499798",
+   "16": "9782723499804",
+   "17": "9782723499811"
   }
  },
  "Les Contes de l'ère du Cobra": {
@@ -1747,7 +1777,7 @@
  "Naruto": {
   "total": 72,
   "finis": true,
-  "source": "https://www.bedetheque.com/albums-5226-BD-Naruto.html",
+  "source": "https://www.bedetheque.com/serie-1022-BD-Naruto.html",
   "maj": "2026-11-08",
   "titres": {
    "1": "Naruto Uzumaki",
@@ -1829,7 +1859,8 @@
    "60": "9782505018438",
    "27": "9782505000310",
    "63": "9782505060833",
-   "65": "9782505061267"
+   "65": "9782505061267",
+   "2": "9782871294177"
   }
  },
  "Negima! Le Maître Magicien": {
