@@ -4,6 +4,7 @@
    mises à jour automatiques depuis GitHub ne les touchent jamais.
    L'accès est protégé par le même mot de passe que le reste de l'atelier (.htaccess). */
 header('Cache-Control: no-store');
+@ini_set('display_errors', '0');// un avertissement affiché casserait les réponses JSON (et leur code d'erreur)
 $dir = getenv('ATELIER_DATA') ? getenv('ATELIER_DATA') : dirname(__DIR__) . '/atelier-data';
 foreach (array($dir, $dir . '/docs', $dir . '/blobs') as $d) { if (!is_dir($d)) @mkdir($d, 0700, true); }
 if (!is_dir($dir . '/docs')) out(500, array('error' => 'dossier de stockage impossible à créer'));
@@ -120,15 +121,28 @@ function inbox_dir($id) { global $dir; return $dir . '/inbox/' . $id; }
 if ($a === 'inbox_put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!okid($id)) out(400, array('error' => 'identifiant invalide'));
   $d = inbox_dir($id); if (!is_dir($d)) @mkdir($d, 0700, true);
+  if (!is_dir($d) || !is_writable($d)) out(500, array('error' => 'dossier de réception impossible à créer sur le serveur'));
   $t = isset($_GET['type']) ? $_GET['type'] : 'image/jpeg';
   $ext = $t === 'image/png' ? 'png' : 'jpg';
-  $f = now_ms() . '-' . substr(md5(uniqid('', true)), 0, 6) . '.' . $ext;
-  $in = fopen('php://input', 'rb'); $o = fopen($d . '/' . $f, 'wb'); $n = stream_copy_to_stream($in, $o); fclose($o); fclose($in);
-  if ($n < 100) { @unlink($d . '/' . $f); out(400, array('error' => 'image vide')); }
+  $body = file_get_contents('php://input');
+  $n = ($body === false) ? 0 : strlen($body);
+  if ($n < 1) out(400, array('error' => 'envoi vide ou trop lourd pour le serveur (' . ini_get('post_max_size') . ' au plus)'));
+  // envoi en plusieurs morceaux (les hébergeurs limitent la taille d'une requête) : up = identifiant, part / of
+  $up = isset($_GET['up']) ? preg_replace('/[^a-z0-9]/', '', substr($_GET['up'], 0, 20)) : '';
+  $part = isset($_GET['part']) ? (int) $_GET['part'] : 0; $of = isset($_GET['of']) ? (int) $_GET['of'] : 1;
+  if ($up !== '' && $of > 1) {
+    $tmp = $d . '/.up-' . $up; if ($part === 0) @unlink($tmp);
+    if (@file_put_contents($tmp, $body, FILE_APPEND) === false) out(500, array('error' => 'écriture impossible sur le serveur'));
+    if ($part < $of - 1) out(200, array('ok' => true, 'part' => $part));
+    $body = file_get_contents($tmp); @unlink($tmp); $n = strlen($body);
+  }
+  if ($n < 100) out(400, array('error' => 'image vide'));
+  $f = sprintf('%.0f', microtime(true) * 1000) . '-' . substr(md5(uniqid('', true)), 0, 6) . '.' . $ext;
+  if (@file_put_contents($d . '/' . $f, $body) !== $n) { @unlink($d . '/' . $f); out(500, array('error' => 'écriture impossible sur le serveur')); }
   $name = isset($_GET['name']) ? preg_replace('/[^\p{L}\p{N} ._-]/u', '', substr($_GET['name'], 0, 80)) : '';
   if ($name !== '') file_put_contents($d . '/' . $f . '.name', $name);
   if (isset($_GET['vx']) && strlen($_GET['vx']) < 4000 && json_decode($_GET['vx']) !== null) file_put_contents($d . '/' . $f . '.vx', $_GET['vx']);
-  out(200, array('f' => $f, 'size' => $n));
+  out(200, array('ok' => true, 'f' => $f, 'size' => $n));
 }
 if ($a === 'inbox_list') {
   if (!okid($id)) out(400, array('error' => 'identifiant invalide'));
@@ -136,6 +150,11 @@ if ($a === 'inbox_list') {
   if (is_dir($d)) foreach (scandir($d) as $f) { if (!preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) continue; $nf = $d . '/' . $f . '.name'; $vf = $d . '/' . $f . '.vx';
     $l[] = array('f' => $f, 'size' => filesize($d . '/' . $f), 'at' => (int) $f, 'name' => is_file($nf) ? file_get_contents($nf) : '', 'vx' => is_file($vf) ? json_decode(file_get_contents($vf)) : null); }
   out(200, array('items' => $l));
+}
+if ($a === 'inbox_diag') {
+  $b = $dir . '/inbox'; $o = array('dir' => is_dir($b), 'writable' => is_dir($b) ? is_writable($b) : is_writable($dir), 'post_max_size' => ini_get('post_max_size'), 'upload_max_filesize' => ini_get('upload_max_filesize'), 'php' => PHP_VERSION, 'int' => PHP_INT_SIZE, 'items' => array());
+  if (is_dir($b)) foreach (scandir($b) as $d) { if ($d[0] === '.') continue; $o['items'][$d] = is_dir($b . '/' . $d) ? array_values(array_diff(scandir($b . '/' . $d), array('.', '..'))) : 'fichier'; }
+  out(200, $o);
 }
 if ($a === 'inbox_all') {
   // tous les documents qui ont des envois en attente (pour proposer une photo envoyée vers un autre document)

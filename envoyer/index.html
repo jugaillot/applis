@@ -213,8 +213,13 @@ async function send(blob,name,vx){
   const d=DOC;const tile=document.createElement('div');const im=document.createElement('img');im.src=URL.createObjectURL(blob);const tag=document.createElement('i');tag.textContent='envoi…';tile.append(im,tag);
   $('#sent').prepend(tile);$('#sentBox').hidden=false;
   busy('Envoi vers « '+(d.name||'Sans titre')+' »…');
-  try{const r=await fetch(API+'?a=inbox_put&id='+encodeURIComponent(d.id)+'&type=image/jpeg&name='+encodeURIComponent(name||'')+(vx?'&vx='+encodeURIComponent(JSON.stringify(vx)):''),{method:'POST',credentials:'same-origin',body:blob});
-    if(!r.ok)throw new Error('serveur '+r.status);tag.textContent=vx?'✓ vecto':'✓';}
+  try{// envoi par morceaux de 700 Ko : passe même si le serveur limite la taille des requêtes
+    const CH=700*1024,of=Math.max(1,Math.ceil(blob.size/CH)),up=Math.random().toString(36).slice(2,10);let j=null;
+    for(let k=0;k<of;k++){const q=API+'?a=inbox_put&id='+encodeURIComponent(d.id)+'&type=image/jpeg&name='+encodeURIComponent(name||'')+(vx?'&vx='+encodeURIComponent(JSON.stringify(vx)):'')+'&up='+up+'&part='+k+'&of='+of;
+      busy('Envoi vers « '+(d.name||'Sans titre')+' »… '+(of>1?Math.round(100*k/of)+' %':''));
+      const r=await fetch(q,{method:'POST',credentials:'same-origin',body:blob.slice(k*CH,(k+1)*CH)});j=null;try{j=await r.json();}catch(e){}
+      if(!r.ok||!j||!j.ok)throw new Error(j&&j.error?j.error:'réponse inattendue du serveur ('+r.status+')');}
+    tag.textContent=vx?'✓ vecto':'✓';}
   catch(e){tag.textContent='échec';alert('Envoi impossible : '+(e.message||e)+'\nVérifie la connexion et réessaie.');}
   busy();
 }
