@@ -140,7 +140,8 @@
    "12": "Tome 12"
   },
   "eans": {
-   "12": "9782803622993"
+   "12": "9782803622993",
+   "14": "9782803625901"
   },
   "maj": "2026-11-08"
  },
@@ -420,7 +421,11 @@
    "21": "RécréAction Générale !",
    "22": "Bande de compotes !",
    "23": "Nazebrocadabra !"
-  }
+  },
+  "eans": {
+   "2": "9782848016924"
+  },
+  "maj": "2026-11-08"
  },
  "L'Incal": {
   "total": 6,
@@ -2910,7 +2915,11 @@
    "7": "Alors, tout tombe - Seconde partie"
   },
   "eans": {
-   "2": "9782205051995"
+   "2": "9782205051995",
+   "3": "9782205055641",
+   "4": "9782205063134",
+   "5": "9782205071801",
+   "6": "9782205078046"
   }
  },
  "Halloween": {
@@ -3606,7 +3615,7 @@
  "Bouncer": {
   "total": 12,
   "source": "https://www.bedetheque.com/serie-663-BD-Bouncer.html",
-  "maj": "2026-11-07",
+  "maj": "2026-11-08",
   "titres": {
    "6": "La Veuve noire",
    "7": "Cœur double",
@@ -3615,12 +3624,17 @@
    "10": "L'Or maudit",
    "11": "L'Échine du dragon",
    "12": "Hécatombe"
+  },
+  "eans": {
+   "6": "9782731621693",
+   "7": "9782731622423",
+   "8": "9782723487009"
   }
  },
  "Kid Paddle": {
   "total": 22,
   "source": "https://www.bedetheque.com/serie-910-BD-Kid-Paddle.html",
-  "maj": "2026-11-07",
+  "maj": "2026-11-08",
   "titres": {
    "11": "Le retour de la momie qui pue qui tue",
    "12": "Panik Room",
@@ -3632,6 +3646,11 @@
    "20": "Blork chef",
    "21": "Zombie or not to be",
    "22": "Ice scream"
+  },
+  "eans": {
+   "11": "9782800139494",
+   "12": "9782930618074",
+   "16": "9791034747771"
   }
  },
  "Le Chat du Rabbin": {
@@ -3663,7 +3682,7 @@
  "Percevan": {
   "total": 18,
   "source": "https://www.bedetheque.com/serie-24-BD-Percevan.html",
-  "maj": "2026-11-07",
+  "maj": "2026-11-08",
   "titres": {
    "12": "Le Septième Sceau",
    "13": "Les Terres sans Retour",
@@ -3672,6 +3691,9 @@
    "16": "La Magicienne Des Eaux Profondes",
    "17": "La Couronne du Crépuscule",
    "18": "Les miroirs du ciel"
+  },
+  "eans": {
+   "12": "9782205052237"
   }
  },
  "Travis": {

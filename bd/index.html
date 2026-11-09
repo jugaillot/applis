@@ -242,7 +242,7 @@ function render(){
    h+=`<details class="s" data-s="ed:${esc(e)}"${(q||OPEN.has('ed:'+e))?' open':''}><summary><span>${esc(e)}</span><small>${ss.reduce((t,a)=>t+a.it.length,0)}</small></summary>`+ss.sort((a,b)=>a.s.localeCompare(b.s,'fr')).map(a=>`<details class="s ${a.cls}" data-s="ed:${esc(e)}|${esc(a.s)}"${(q||OPEN.has('ed:'+e+'|'+a.s))?' open':''}><summary><span>${esc(a.s)}</span><small>${info(a)}</small></summary>${head(a)}${listeHtml(a)}${missHtml(a)}</details>`).join('')+`</details>`;
   }
  }
- $('list').innerHTML=h||'<p class="hint">Rien trouvé.</p>'+'<p class="hint" style="text-align:center;font-size:11px">version v260</p>';
+ $('list').innerHTML=h||'<p class="hint">Rien trouvé.</p>'+'<p class="hint" style="text-align:center;font-size:11px">version v261</p>';
  $('dl').innerHTML=all.map(a=>`<option value="${esc(a.s)}">`).join('');
 }
 $('list').addEventListener('click',e=>{
