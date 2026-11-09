@@ -3664,7 +3664,7 @@
  "Les Chroniques de la Lune Noire": {
   "total": 23,
   "source": "https://www.bedetheque.com/serie-61-BD-Chroniques-de-la-Lune-Noire.html",
-  "maj": "2026-11-07",
+  "maj": "2026-11-08",
   "titres": {
    "13": "La Prophétie",
    "14": "La Fin des Temps",
@@ -3677,6 +3677,10 @@
    "21": "Sic Transit Gloria Mundi",
    "22": "La forteresse d'Opale",
    "23": "Qualis Pater, Talis Filius"
+  },
+  "eans": {
+   "13": "9782205057751",
+   "14": "9782205059601"
   }
  },
  "Percevan": {
