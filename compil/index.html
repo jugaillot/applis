@@ -1110,10 +1110,12 @@ function annEdit(el){const a=el._a,p=el._p;ANSEL={p,a};
   if(a.type==='sign'){openSign(src=>{a.src=src;annChanged();});return;}
   const g=el._g,k=g.disp*g.q.s/PT,w=el.parentNode;const r=el.getBoundingClientRect(),wr=w.getBoundingClientRect();
   const ta=document.createElement('textarea');ta.value=a.txt||'';const fpx=a.fs*k;
-  ta.style.cssText=`position:absolute;z-index:5;left:${r.left-wr.left+w.offsetLeft-4}px;top:${r.top-wr.top+w.offsetTop-4}px;min-width:${Math.max(80,r.width+40)}px;min-height:${r.height+8}px;font:${a.it?'italic ':''}${a.bd?'bold ':''}${fpx}px/1.2 ${a.font||'Helvetica,Arial,sans-serif'};color:${a.col||'#000'};background:${a.bg||'rgba(255,255,255,.95)'};border:1.5px solid var(--acc);border-radius:4px;padding:3px;resize:both;outline:none`;
-  el.style.visibility='hidden';w.parentNode.appendChild(ta);ta.focus();ta.select();
+  // l'éditeur reprend exactement la place et l'aspect du texte (pas de grand cadre blanc par-dessus le tableau)
+  ta.style.cssText=`position:absolute;z-index:5;left:${r.left-wr.left+w.offsetLeft-1}px;top:${r.top-wr.top+w.offsetTop-1}px;width:${Math.max(fpx*1.5,r.width+4)}px;height:${Math.max(fpx*1.25,r.height)+2}px;font:${a.it?'italic ':''}${a.bd?'bold ':''}${fpx}px/1.2 ${a.font||'Helvetica,Arial,sans-serif'};color:${a.col||'#000'};background:${a.bg||'transparent'};border:0;box-shadow:0 0 0 1px var(--acc);border-radius:2px;padding:0;margin:0;resize:none;outline:none;overflow:hidden;white-space:pre;box-sizing:content-box`;
+  const fit=()=>{ta.style.width='0px';ta.style.width=Math.max(fpx*1.5,r.width+4,ta.scrollWidth+2)+'px';const n=(ta.value.match(/\n/g)||[]).length+1;ta.style.height=Math.max(r.height,n*fpx*1.2)+2+'px';};
+  el.style.visibility='hidden';w.parentNode.appendChild(ta);fit();ta.focus();ta.select();
   const done=()=>{if(!ta.isConnected)return;a.txt=ta.value;ta.remove();if(!a.txt.trim()){p.ann=p.ann.filter(x=>x!==a);if(!p.ann.length)p.ann=null;ANSEL=null;}annChanged();};
-  ta.addEventListener('input',()=>{a.txt=ta.value;if(document.activeElement!==$('#nTxt'))$('#nTxt').value=ta.value;});
+  ta.addEventListener('input',()=>{fit();a.txt=ta.value;if(document.activeElement!==$('#nTxt'))$('#nTxt').value=ta.value;});
   ta.addEventListener('blur',done);ta.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'||(e.key==='Enter'&&(e.ctrlKey||e.metaKey))){e.preventDefault();ta.blur();}});
   annPanel();}
 
@@ -1131,7 +1133,10 @@ async function pageLines(p){
     // on regroupe les morceaux d'une même ligne
     const lines=[];for(const it of its){const L=lines[lines.length-1];
       if(L&&Math.abs(L.ang-it.ang)<0.01&&Math.abs(L.fs-it.fs)<L.fs*0.15){const ca=Math.cos(L.ang),sa=Math.sin(L.ang);const dx=it.x-L.x,dy=it.y-L.y;const along=dx*ca+dy*sa,across=-dx*sa+dy*ca;
-        const gap=along-L.w;if(Math.abs(across)<L.fs*0.25&&gap>-L.fs*0.3&&gap<L.fs*1.2&&!L.eol){if(!it.str.trim()&&gap>L.fs*0.8){}L.str+=(gap>L.fs*0.15&&!/\s$/.test(L.str)&&!/^\s/.test(it.str)?' ':'')+it.str;L.w=Math.max(L.w,along+it.w);L.eol=it.eol;continue;}}
+        const gap=along-L.w;
+        // un grand blanc (colonne de tableau, tabulation) sépare deux textes : on ne les réunit pas
+        if(!it.str.trim()&&Math.abs(across)<L.fs*0.25&&!L.eol&&!L.brk){if(it.w>L.fs*0.6||gap>L.fs*0.6)L.brk=true;else if(!/\s$/.test(L.str))L.str+=' ';continue;}
+        if(Math.abs(across)<L.fs*0.25&&gap>-L.fs*0.3&&gap<L.fs*0.9&&!L.eol&&!L.brk){L.str+=(gap>L.fs*0.15&&!/\s$/.test(L.str)&&!/^\s/.test(it.str)?' ':'')+it.str;L.w=Math.max(L.w,along+it.w);L.eol=it.eol;continue;}}
       lines.push(Object.assign({},it));}
     const out=lines.filter(l=>l.str.trim());out.forEach(l=>{l.str=l.str.replace(/\s+$/,'');});
     out.page=page;out.tc=tc;return out;})();
