@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>La Suite — Envoyer un dessin</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1d1d1f">
+<style>
+:root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#ff48b0;--soft:#f7f6f2}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0;flex:1}
+header a{color:var(--mute);text-decoration:none;font-size:13px}
+main{flex:1;overflow:auto;padding:14px 16px 90px}
+.seg{display:flex;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;font:inherit;font-weight:600;border:0;background:none;border-radius:8px;padding:8px;color:var(--mute)}
+.seg button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.doc{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;font:inherit;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;color:var(--ink)}
+.doc b{font-size:15px}.doc span{color:var(--mute);font-size:12.5px}
+.doc.on{border:2px solid var(--ink);padding:11px 13px}
+.muted{color:var(--mute);font-size:13px}
+.bar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line)}
+.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:12px 14px;color:var(--ink);flex:1;text-align:center}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn:disabled{opacity:.4}
+.sent{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin:12px 0}
+.sent div{position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;background:#ddd;border:1px solid var(--line)}
+.sent img{width:100%;height:100%;object-fit:cover}
+.sent i{position:absolute;right:4px;bottom:4px;font-style:normal;font-size:12px;background:rgba(0,0,0,.65);color:#fff;border-radius:6px;padding:1px 6px}
+#crop{position:fixed;inset:0;background:#111;display:flex;flex-direction:column;z-index:10}
+#crop .top{color:#ddd;font-size:13px;padding:10px 14px}
+#cBox{flex:1;position:relative;touch-action:none}
+#cCv{position:absolute;inset:0;width:100%;height:100%}
+#crop .bar{position:static;background:#1d1d1f;border-color:#333}
+#crop .btn{background:#2c2c2e;border-color:#3a3a3c;color:#fff;flex:none}
+#crop .btn.primary{background:var(--acc);border-color:var(--acc);flex:1}
+#busy{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:20;color:#fff;font-weight:600}
+</style>
+<script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}));</script>
+</head>
+<body>
+<header><h1>Envoyer un dessin</h1><a href="/">La Suite</a></header>
+<main>
+  <div class="seg"><button data-app="paysage">Paysage</button><button data-app="vecto">Vecto</button></div>
+  <p class="muted" id="hint">Choisis le document ouvert sur l’ordinateur : les photos y arriveront dans quelques secondes.</p>
+  <div id="docs"><p class="muted">Chargement…</p></div>
+  <div id="sentBox" hidden><b>Envoyées</b><div class="sent" id="sent"></div></div>
+</main>
+<div class="bar">
+  <label class="btn primary" id="bCam">📷 Photo<input type="file" id="fCam" accept="image/*" capture="environment" hidden></label>
+  <label class="btn" id="bGal">🖼 Galerie<input type="file" id="fGal" accept="image/*" multiple hidden></label>
+</div>
+
+<div id="crop" hidden>
+  <div class="top">Place les 4 coins sur les bords du dessin : il sera redressé même pris de biais.</div>
+  <div id="cBox"><canvas id="cCv"></canvas></div>
+  <div class="bar">
+    <button class="btn" id="cRot" title="Tourner">⟳</button>
+    <button class="btn" id="cAll">Tout</button>
+    <button class="btn" id="cNo">Annuler</button>
+    <button class="btn primary" id="cOk">Envoyer</button>
+  </div>
+</div>
+<div id="busy" hidden>…</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const API='/api.php';
+const ls={get:k=>{try{return localStorage.getItem(k);}catch(e){return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
+let APP=ls.get('envoyer.app')||'paysage',DOC=null,DOCS=[],QUEUE=[];
+function busy(t){$('#busy').textContent=t||'';$('#busy').hidden=!t;}
+function ago(ms){const m=Math.round((Date.now()-ms)/60000);if(m<1)return 'à l’instant';if(m<60)return 'il y a '+m+' min';const h=Math.round(m/60);if(h<24)return 'il y a '+h+' h';return new Date(ms).toLocaleDateString('fr-FR');}
+
+/* ---------- liste des documents ---------- */
+async function loadDocs(){
+  try{const r=await fetch(API+'?a=list',{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw new Error(r.status===401||r.redirected?'connecte-toi à La Suite':'serveur '+r.status);
+    const j=await r.json();DOCS=Object.entries(j.docs||{}).filter(([id,m])=>!m.deleted).map(([id,m])=>({id,app:m.app,name:m.name,updated:m.updated}));}
+  catch(e){$('#docs').innerHTML='';const p=document.createElement('p');p.className='muted';p.textContent='Liste impossible à charger : '+(e.message||e)+'.';$('#docs').appendChild(p);return;}
+  render();
+}
+function render(){
+  document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.app===APP));
+  const list=DOCS.filter(d=>d.app===APP).sort((a,b)=>b.updated-a.updated);
+  const last=ls.get('envoyer.doc.'+APP);
+  if(!DOC||DOC.app!==APP)DOC=list.find(d=>d.id===last)||list[0]||null;
+  const box=$('#docs');box.innerHTML='';
+  if(!list.length){const p=document.createElement('p');p.className='muted';p.textContent='Aucun document '+(APP==='vecto'?'Vecto':'Paysage')+' enregistré. Sur l’ordinateur, enregistre d’abord le document (il doit avoir un nom).';box.appendChild(p);}
+  list.slice(0,40).forEach(d=>{const b=document.createElement('button');b.className='doc'+(DOC&&d.id===DOC.id?' on':'');b.innerHTML='<b></b><span></span>';
+    b.firstChild.textContent=d.name||'Sans titre';b.lastChild.textContent='modifié '+ago(d.updated);
+    b.onclick=()=>{DOC=d;ls.set('envoyer.doc.'+APP,d.id);render();};box.appendChild(b);});
+  $('#bCam').classList.toggle('dis',!DOC);$('#fCam').disabled=$('#fGal').disabled=!DOC;
+}
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{APP=b.dataset.app;ls.set('envoyer.app',APP);DOC=null;render();});
+
+/* ---------- recadrage et redressement (4 coins) ---------- */
+const PH={img:null,q:null,drag:-1,k:1,ox:0,oy:0,name:''};
+async function phLoad(file){
+  busy('Lecture de la photo…');
+  try{let bmp;try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'});}catch(e){bmp=await createImageBitmap(file);}
+    const k=Math.min(1,Math.sqrt(16e6/(bmp.width*bmp.height)));
+    const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+    PH.img=c;PH.name=(file.name||'photo').replace(/\.[^.]+$/,'');phReset(0.06);busy();$('#crop').hidden=false;requestAnimationFrame(phDraw);
+  }catch(e){busy();alert('Photo illisible : '+(e.message||e));next();}
+}
+function phReset(m){const w=PH.img.width,h=PH.img.height;PH.q=[[w*m,h*m],[w*(1-m),h*m],[w*(1-m),h*(1-m)],[w*m,h*(1-m)]];}
+function phRotate(){const s=PH.img,c=document.createElement('canvas');c.width=s.height;c.height=s.width;const x=c.getContext('2d');x.translate(c.width,0);x.rotate(Math.PI/2);x.drawImage(s,0,0);
+  const H=s.height;PH.q=PH.q.map(([px,py])=>[H-py,px]);PH.q=[PH.q[3],PH.q[0],PH.q[1],PH.q[2]];PH.img=c;phDraw();}
+function phDraw(){const cv=$('#cCv'),box=$('#cBox').getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  cv.width=Math.round(box.width*dpr);cv.height=Math.round(box.height*dpr);const x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,box.width,box.height);if(!PH.img)return;
+  const pad=26,k=Math.min((box.width-2*pad)/PH.img.width,(box.height-2*pad)/PH.img.height);PH.k=k;PH.ox=(box.width-PH.img.width*k)/2;PH.oy=(box.height-PH.img.height*k)/2;
+  x.drawImage(PH.img,PH.ox,PH.oy,PH.img.width*k,PH.img.height*k);const P=PH.q.map(([a,b])=>[PH.ox+a*k,PH.oy+b*k]);
+  x.save();x.beginPath();x.rect(0,0,box.width,box.height);x.moveTo(P[0][0],P[0][1]);for(let i=3;i>=0;i--)x.lineTo(P[i][0],P[i][1]);x.closePath();x.fillStyle='rgba(0,0,0,.5)';x.fill('evenodd');x.restore();
+  x.beginPath();P.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.closePath();x.strokeStyle='#ff48b0';x.lineWidth=2;x.stroke();
+  P.forEach(p=>{x.beginPath();x.arc(p[0],p[1],15,0,Math.PI*2);x.fillStyle='rgba(255,255,255,.9)';x.fill();x.lineWidth=2.5;x.strokeStyle='#ff48b0';x.stroke();x.beginPath();x.arc(p[0],p[1],3,0,Math.PI*2);x.fillStyle='#ff48b0';x.fill();});}
+function phPt(e){const r=$('#cCv').getBoundingClientRect();return [(e.clientX-r.left-PH.ox)/PH.k,(e.clientY-r.top-PH.oy)/PH.k];}
+function phMove(e){if(PH.drag<0)return;const p=phPt(e);PH.q[PH.drag]=[Math.max(0,Math.min(PH.img.width,p[0])),Math.max(0,Math.min(PH.img.height,p[1]))];phDraw();}
+$('#cCv').addEventListener('pointerdown',e=>{if(!PH.img)return;const p=phPt(e);let bi=0,bb=Infinity;PH.q.forEach((q,i)=>{const d=(q[0]-p[0])**2+(q[1]-p[1])**2;if(d<bb){bb=d;bi=i;}});
+  PH.drag=bi;e.target.setPointerCapture(e.pointerId);if(bb>(40/PH.k)**2)phMove(e);});
+$('#cCv').addEventListener('pointermove',phMove);$('#cCv').addEventListener('pointerup',()=>{PH.drag=-1;});
+window.addEventListener('resize',()=>{if(!$('#crop').hidden)phDraw();});
+function phWarp(){
+  const [p0,p1,p2,p3]=PH.q,dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  let W=Math.max(dist(p0,p1),dist(p3,p2)),H=Math.max(dist(p0,p3),dist(p1,p2));const k=Math.min(1,Math.sqrt(12e6/(W*H)));W=Math.max(8,Math.round(W*k));H=Math.max(8,Math.round(H*k));
+  const x0=p0[0],y0=p0[1],x1=p1[0],y1=p1[1],x2=p2[0],y2=p2[1],x3=p3[0],y3=p3[1];
+  const dx1=x1-x2,dx2=x3-x2,dx3=x0-x1+x2-x3,dy1=y1-y2,dy2=y3-y2,dy3=y0-y1+y2-y3;
+  let g=0,h=0;if(Math.abs(dx3)>1e-9||Math.abs(dy3)>1e-9){const den=dx1*dy2-dx2*dy1;g=(dx3*dy2-dx2*dy3)/den;h=(dx1*dy3-dx3*dy1)/den;}
+  const a=x1-x0+g*x1,b=x3-x0+h*x3,c=x0,d=y1-y0+g*y1,e=y3-y0+h*y3,f=y0;
+  const sw=PH.img.width,sh=PH.img.height,src=PH.img.getContext('2d').getImageData(0,0,sw,sh).data;
+  const out=document.createElement('canvas');out.width=W;out.height=H;const ox=out.getContext('2d');const od=ox.createImageData(W,H),o=od.data;
+  for(let j=0;j<H;j++){const v=(j+0.5)/H;for(let i=0;i<W;i++){const u=(i+0.5)/W,z=g*u+h*v+1;let sx=(a*u+b*v+c)/z-0.5,sy=(d*u+e*v+f)/z-0.5;
+    if(sx<0)sx=0;if(sy<0)sy=0;if(sx>sw-1.001)sx=sw-1.001;if(sy>sh-1.001)sy=sh-1.001;
+    const ix=sx|0,iy=sy|0,fx=sx-ix,fy=sy-iy,q=(iy*sw+ix)*4,q2=q+sw*4,t=(j*W+i)*4;
+    for(let ch=0;ch<3;ch++){const top=src[q+ch]+(src[q+4+ch]-src[q+ch])*fx,bot=src[q2+ch]+(src[q2+4+ch]-src[q2+ch])*fx;o[t+ch]=top+(bot-top)*fy;}o[t+3]=255;}}
+  ox.putImageData(od,0,0);return out;
+}
+$('#cRot').onclick=phRotate;$('#cAll').onclick=()=>{phReset(0);phDraw();};
+$('#cNo').onclick=()=>{$('#crop').hidden=true;PH.img=null;next();};
+$('#cOk').onclick=async()=>{
+  if(!DOC)return;busy('Redressement…');await new Promise(r=>setTimeout(r,30));
+  let blob;try{const c=phWarp();blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.9));}catch(e){busy();alert('Redressement impossible : '+(e.message||e));return;}
+  $('#crop').hidden=true;PH.img=null;await send(blob,PH.name);next();
+};
+
+/* ---------- envoi ---------- */
+async function send(blob,name){
+  const d=DOC;const tile=document.createElement('div');const im=document.createElement('img');im.src=URL.createObjectURL(blob);const tag=document.createElement('i');tag.textContent='envoi…';tile.append(im,tag);
+  $('#sent').prepend(tile);$('#sentBox').hidden=false;
+  busy('Envoi vers « '+(d.name||'Sans titre')+' »…');
+  try{const r=await fetch(API+'?a=inbox_put&id='+encodeURIComponent(d.id)+'&type=image/jpeg&name='+encodeURIComponent(name||''),{method:'POST',credentials:'same-origin',body:blob});
+    if(!r.ok)throw new Error('serveur '+r.status);tag.textContent='✓';}
+  catch(e){tag.textContent='échec';alert('Envoi impossible : '+(e.message||e)+'\nVérifie la connexion et réessaie.');}
+  busy();
+}
+function next(){const f=QUEUE.shift();if(f)phLoad(f);}
+function take(files){if(!DOC){alert('Choisis d’abord un document.');return;}QUEUE.push(...files);if($('#crop').hidden&&!PH.img)next();}
+$('#fCam').onchange=e=>{const f=[...e.target.files];e.target.value='';take(f);};
+$('#fGal').onchange=e=>{const f=[...e.target.files];e.target.value='';take(f);};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('#crop').hidden)loadDocs();});
+loadDocs();
+</script>
+</body>
+</html>

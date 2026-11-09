@@ -86,4 +86,38 @@ if ($a === 'getblob') {
   readfile($f); exit;
 }
 
+/* boîte de réception d'un document : photos envoyées depuis le portable (« Envoyer un dessin ») */
+function inbox_dir($id) { global $dir; return $dir . '/inbox/' . $id; }
+if ($a === 'inbox_put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  if (!okid($id)) out(400, array('error' => 'identifiant invalide'));
+  $d = inbox_dir($id); if (!is_dir($d)) @mkdir($d, 0700, true);
+  $t = isset($_GET['type']) ? $_GET['type'] : 'image/jpeg';
+  $ext = $t === 'image/png' ? 'png' : 'jpg';
+  $f = now_ms() . '-' . substr(md5(uniqid('', true)), 0, 6) . '.' . $ext;
+  $in = fopen('php://input', 'rb'); $o = fopen($d . '/' . $f, 'wb'); $n = stream_copy_to_stream($in, $o); fclose($o); fclose($in);
+  if ($n < 100) { @unlink($d . '/' . $f); out(400, array('error' => 'image vide')); }
+  $name = isset($_GET['name']) ? preg_replace('/[^\p{L}\p{N} ._-]/u', '', substr($_GET['name'], 0, 80)) : '';
+  if ($name !== '') file_put_contents($d . '/' . $f . '.name', $name);
+  out(200, array('f' => $f, 'size' => $n));
+}
+if ($a === 'inbox_list') {
+  if (!okid($id)) out(400, array('error' => 'identifiant invalide'));
+  $d = inbox_dir($id); $l = array();
+  if (is_dir($d)) foreach (scandir($d) as $f) { if (!preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) continue; $nf = $d . '/' . $f . '.name';
+    $l[] = array('f' => $f, 'size' => filesize($d . '/' . $f), 'at' => (int) $f, 'name' => is_file($nf) ? file_get_contents($nf) : ''); }
+  out(200, array('items' => $l));
+}
+if ($a === 'inbox_get') {
+  $f = isset($_GET['f']) ? $_GET['f'] : '';
+  if (!okid($id) || !preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) out(400, array('error' => 'identifiant invalide'));
+  $p = inbox_dir($id) . '/' . $f; if (!is_file($p)) out(404, array('error' => 'introuvable'));
+  header('Content-Type: ' . (substr($f, -3) === 'png' ? 'image/png' : 'image/jpeg')); readfile($p); exit;
+}
+if ($a === 'inbox_del' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  $f = isset($_GET['f']) ? $_GET['f'] : '';
+  if (!okid($id) || !preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) out(400, array('error' => 'identifiant invalide'));
+  $p = inbox_dir($id) . '/' . $f; @unlink($p); @unlink($p . '.name'); @rmdir(inbox_dir($id));
+  out(200, array('ok' => true));
+}
+
 out(400, array('error' => 'action inconnue'));

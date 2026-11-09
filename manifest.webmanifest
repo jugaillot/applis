@@ -29,6 +29,11 @@
   ],
   "shortcuts": [
     {
+      "name": "Envoyer un dessin",
+      "short_name": "Envoyer",
+      "url": "/envoyer/"
+    },
+    {
       "name": "Riso",
       "url": "/riso/"
     },
