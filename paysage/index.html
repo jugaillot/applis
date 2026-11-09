@@ -294,6 +294,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
         <button class="btn sm ic" data-align="vcenter" title="Centre vertical">↕</button>
         <button class="btn sm ic" data-align="bottom" title="En bas">⤓</button>
       </div>
+          <div id="pfBox" hidden style="margin-top:10px"><div class="muted">Formes <span style="opacity:.7">(2 objets ou plus)</span></div><div class="row" style="margin-top:4px;flex-wrap:wrap;gap:4px"><button class="btn sm" data-pf="unite" title="Fusionner les formes en une seule"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:3px"><path d="M3 3h12v6h6v12H9v-6H3z" fill="currentColor"/></svg>Réunion</button><button class="btn sm" data-pf="subtract" title="Les formes du dessus découpent celle du fond"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:3px"><path d="M3 3h12v6H9v6H3z" fill="currentColor"/><path d="M9 9h12v12H9z" fill="none" stroke="currentColor" stroke-dasharray="2 2"/></svg>Soustraire</button><button class="btn sm" data-pf="intersect" title="Garder seulement la partie commune"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:3px"><path d="M3 3h12v12H3zM9 9h12v12H9z" fill="none" stroke="currentColor" stroke-width="1"/><path d="M9 9h6v6H9z" fill="currentColor"/></svg>Intersection</button><button class="btn sm" data-pf="exclude" title="Tout sauf la partie commune"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:3px"><path d="M3 3h12v6H9v6H3zM15 9h6v12H9v-6h6z" fill="currentColor"/></svg>Exclusion</button><button class="btn sm" data-pf="divide" title="Découper en morceaux séparés à chaque croisement"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:3px"><path d="M3 3h12v12H3zM9 9h12v12H9z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 9v6h6" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>Diviser</button></div></div>
     </section>
     <section data-sec="fill" id="fillSec">
       <h2><span class="ttl"><span class="tw">▼</span>Contour</span></h2>
@@ -785,7 +786,7 @@ function syncPanel(){
   $('#bUndo').style.opacity=S.undo.length?1:.35;$('#bRedo').style.opacity=S.redo.length?1:.35;
   if(sel.length&&S.tool!=='bucket'){currentStyleFromSel();}
   if(typeof ctSyncPanel==='function')ctSyncPanel();if(typeof fcSync==='function')fcSync();// avec le pot, la couleur choisie ne change pas en sélectionnant
-  syncChips();
+  syncChips();pfSync();
 }
 function renderLayers(){
   const A=layerByRole('aqua'),D=layerByRole('dessin');
@@ -2076,6 +2077,77 @@ function erUp(){
 
 /* ---------- commandes ---------- */
 /* les outils du panneau agissent sur ce qui est pris : l'objet, ou seulement les éléments pris à la flèche blanche / au lasso */
+/* ---------- formes : réunion, soustraction, intersection, exclusion, division (comme le Pathfinder) ----------
+   Chaque objet garde ses parties (dans un dessin vectorisé : le blanc et les traits) ; la découpe s'applique à toutes. */
+const PF={
+  leaves(it){if(!it)return[];if(it instanceof P.CompoundPath||it instanceof P.Path)return[it];return it.children?it.children.flatMap(c=>PF.leaves(c)):[];},
+  role(p){if(typeof roleUp==='function'){const r=roleUp(p);if(r)return r;}const f=p.fillColor?colorHex(p.fillColor):null;return f==='#ffffff'?'blanc':'couleur';},
+  // copie de la forme dans l'espace de la page
+  glob(p){const c=p.clone({insert:false,deep:true});if(p.parent&&p.parent.globalMatrix)c.transform(p.parent.globalMatrix);return c;},
+  filled(p){return p instanceof P.CompoundPath||!!p.closed;},
+  ok(r){if(!r)return false;try{if(r instanceof P.CompoundPath&&!r.children.length)return false;return PF.filled(r)?Math.abs(r.area)>1e-4:r.length>1e-3;}catch(e){return false;}},
+  style(dst,src,role){['fillColor','strokeColor','strokeWidth','strokeCap','strokeJoin','dashArray','opacity','blendMode'].forEach(k=>{try{if(src[k]!=null)dst[k]=src[k];}catch(e){}});
+    dst.data=Object.assign({},dst.data||{});if(role&&typeof roleUp==='function')dst.data.role=role;return dst;},
+  sil(o){let u=null;o.leaves.forEach(p=>{if(!PF.filled(p))return;const g=PF.glob(p);if(!g.strokeColor&&!g.fillColor)return;u=u?u.unite(g,{insert:false}):g;});return u;},
+  unite(list){let u=null;list.forEach(s=>{if(s)u=u?u.unite(s,{insert:false}):s;});return u;},
+  // une partie découpée par un masque (intersect / subtract)
+  cut(p,mask,op){const g=PF.glob(p);if(!mask)return op==='subtract'?g:null;let r;try{r=g[op](mask,{insert:false});}catch(e){return null;}if(!PF.ok(r))return null;return PF.style(r,p,PF.role(p));},
+  order(it){const L=it.layer;return [P.project.layers.indexOf(L),it.index];},
+  build(name,parts){parts=parts.filter(Boolean);if(!parts.length)return null;let it;
+    if(parts.length===1)it=parts[0];else{it=new P.Group({insert:false});parts.forEach(p=>it.addChild(p));}
+    it.name=name||'Forme';return it;}
+};
+function pathfinder(op){
+  let T=cmdTargets().map(topOf).filter((t,i,a)=>t&&t.parent&&a.indexOf(t)===i);
+  if(typeof roleOf==='function')T=T.filter(t=>roleOf(t.layer)!=='aqua');
+  T=T.filter(t=>!(t instanceof P.Raster)&&PF.leaves(t).length);
+  if(T.length<2){alert('Sélectionne au moins deux formes.');return;}
+  T.sort((a,b)=>{const x=PF.order(a),y=PF.order(b);return x[0]-y[0]||x[1]-y[1];});// du fond vers l'avant
+  const O=T.map(t=>({it:t,name:t.name,leaves:PF.leaves(t)}));O.forEach(o=>o.sil=PF.sil(o));
+  if(O.some(o=>!o.sil)){alert('Ces opérations demandent des formes fermées (pas de simples traits).');return;}
+  const top=O[O.length-1],back=O[0];let out=[],at=top.it;
+  if(op==='unite'){// une forme par couleur : le blanc d'un côté, la couleur de l'autre
+    const by={};O.forEach(o=>o.leaves.forEach(p=>{const r=PF.role(p);(by[r]=by[r]||[]).push(p);}));
+    const parts=['blanc','couleur'].filter(r=>by[r]).map(r=>{const L=by[r];const closed=L.filter(PF.filled),open=L.filter(p=>!PF.filled(p));
+      const u=PF.unite(closed.map(PF.glob));const res=[];if(u&&PF.ok(u))res.push(PF.style(u,closed[closed.length-1],r));open.forEach(p=>res.push(PF.style(PF.glob(p),p,r)));return res;}).flat();
+    out=[PF.build(top.name,parts)];
+  }else if(op==='subtract'){// l'objet du fond, découpé par tous les autres
+    const cutter=PF.unite(O.slice(1).map(o=>o.sil));
+    out=[PF.build(back.name,back.leaves.map(p=>PF.cut(p,cutter,'subtract')))];at=back.it;
+  }else if(op==='intersect'){// la partie commune ; un dessin (plusieurs parties) l'emporte sur une simple forme
+    let m=O[0].sil.clone({insert:false});for(let i=1;i<O.length&&m;i++)m=m.intersect(O[i].sil,{insert:false});
+    const src=[...O].reverse().find(o=>o.leaves.length>1)||top;
+    out=[m&&PF.ok(m)?PF.build(src.name,src.leaves.map(p=>PF.cut(p,m,'intersect'))):null];
+  }else if(op==='exclude'){// chaque objet perd la partie qu'il partage avec les autres
+    out=O.map((o,i)=>{const others=PF.unite(O.filter((x,j)=>j!==i).map(x=>x.sil.clone({insert:false})));const reg=o.sil.subtract(others,{insert:false});
+      return PF.ok(reg)?PF.build(o.name,o.leaves.map(p=>PF.cut(p,reg,'intersect'))):null;});
+  }else if(op==='divide'){// morceaux séparés à chaque croisement ; chaque morceau garde l'objet visible au-dessus
+    let cells=[O[0].sil.clone({insert:false})],acc=O[0].sil.clone({insert:false});
+    for(let i=1;i<O.length;i++){const s=O[i].sil,nx=[];
+      cells.forEach(c=>{const a=c.intersect(s,{insert:false}),b=c.subtract(s,{insert:false});if(PF.ok(a))nx.push(a);if(PF.ok(b))nx.push(b);});
+      const rest=s.subtract(acc,{insert:false});if(PF.ok(rest))nx.push(rest);acc=acc.unite(s,{insert:false});cells=nx;}
+    // une cellule en plusieurs îlots devient plusieurs morceaux
+    cells=cells.flatMap(c=>c instanceof P.CompoundPath?PF.islands(c):[c]);
+    out=cells.map(c=>{const pt=c.interiorPoint;const own=[...O].reverse().find(o=>o.sil.contains(pt))||top;return PF.build(own.name,own.leaves.map(p=>PF.cut(p,c,'intersect')));});
+  }
+  out=out.filter(Boolean);
+  if(!out.length){alert('Le résultat est vide : les formes ne se chevauchent pas.');return;}
+  out.forEach(r=>{r.insertAbove(at);at=r;if(r.data)delete r.data.link;});
+  O.forEach(o=>o.it.remove());
+  setSel(out);commit();if(typeof renderLayers==='function')renderLayers();
+}
+/* îlots d'une forme composée : chaque contour extérieur avec ses trous (les trous tournent dans l'autre sens) */
+PF.islands=function(c){
+  const kids=c.children.slice();if(kids.length<2)return[c];
+  const big=kids.reduce((a,b)=>Math.abs(b.area)>Math.abs(a.area)?b:a);const outer=kids.filter(k=>k.clockwise===big.clockwise);
+  if(outer.length<2)return[c];
+  const groups=outer.map(o=>({o,h:[]}));
+  kids.filter(k=>!outer.includes(k)).forEach(h=>{const pt=h.interiorPoint;const own=groups.filter(g=>g.o.contains(pt)).sort((a,b)=>Math.abs(a.o.area)-Math.abs(b.o.area))[0];if(own)own.h.push(h);});
+  return groups.map(g=>{const cp=new P.CompoundPath({insert:false});cp.addChildren([g.o.clone({insert:false}),...g.h.map(h=>h.clone({insert:false}))]);cp.style=c.style;return cp;});
+};
+function pfSync(){const box=document.getElementById('pfBox');if(!box)return;const n=new Set(cmdTargets().map(topOf).filter(Boolean)).size;box.hidden=n<2;}
+document.querySelectorAll('[data-pf]').forEach(b=>b.onclick=()=>{try{pathfinder(b.dataset.pf);}catch(e){console.error(e);alert('Opération impossible : '+(e.message||e));}});
+
 function cmdTargets(){if(S.tool==='direct'&&typeof movableSelection==='function'){const t=movableSelection();if(t.length)return t;}return sel;}
 function onTargets(fn){const T=cmdTargets();if(T===sel)return fn();const keep=sel;sel=T;try{return fn();}finally{if(sel===T){sel=keep;}syncPanel();drawUI();if(S.tool==='direct')T.forEach(i=>{if(i.parent)i.selected=true;});}}
 function cmd(name){return onTargets(()=>cmd0(name));}
@@ -3504,6 +3576,6 @@ AtelierDrop.init({app:'paysage',accept:f=>['svg','pdf','ai','json'].includes(ext
     if(e==='svg'){if(window.AtelierTabs)await AtelierTabs.newTab();feed('#fSvg',[f]);continue;}$('#impDlg').showModal();impOpen(f);}}});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "La Suite Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Envoyer un dessin", "Sur le portable, ouvre « Envoyer un dessin » (accueil de La Suite), choisis ce document, photographie et redresse : la photo arrive ici, un bandeau propose de la vectoriser (le document doit être enregistré)"], ["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Maj / Ctrl", "Molette : zoom · Maj + molette : défiler horizontalement · Ctrl + molette : défiler verticalement · Ctrl + 0 : ajuster"], ["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets blancs et en couleur", "Un dessin collé ou vectorisé garde ses zones blanches (calque Blanc) et ses traits (calque Couleur) dans un seul objet. « Dissocier › par calque » les sépare en deux objets."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Formes (rectangle, ellipse, rectangle arrondi)"], ["E", "Gomme"], ["F", "Forme libre (zone pleine sans contour)"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"], ["Molette", "Zoom"], ["Clic molette + glisser", "Déplacer la vue"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc. Ce qui est devant dépend de l’ordre des objets (Devant / Derrière), pas du calque."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"paysage"},{"title": "La Suite Paysage insulaire", "sections": [{"title": "Composer", "keys": [["Formes", "Sélectionne 2 objets ou plus : Réunion, Soustraire (les formes du dessus découpent celle du fond), Intersection, Exclusion, Diviser — dans le panneau Transformation ; un dessin vectorisé est découpé avec son blanc et ses traits"], ["Envoyer un dessin", "Sur le portable, ouvre « Envoyer un dessin » (accueil de La Suite), choisis ce document, photographie et redresse : la photo arrive ici, un bandeau propose de la vectoriser (le document doit être enregistré)"], ["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Maj / Ctrl", "Molette : zoom · Maj + molette : défiler horizontalement · Ctrl + molette : défiler verticalement · Ctrl + 0 : ajuster"], ["Ctrl + V", "Coller ce qui a été copié dans Vecto (ou ici), dans le calque actif"], ["Ctrl + C / X", "Copier / couper (se colle aussi en vectoriel dans Illustrator, Inkscape)"], ["Clic droit", "Copier en vectoriel ou en image, coller (aussi un dessin copié dans Illustrator), détacher, dupliquer, supprimer"], ["Clic sur un calque", "Choisir où l’on dessine et où l’on colle"], ["Sélection ici", "Faire passer la sélection dans le calque actif (elle prend sa couleur)"], ["Objets blancs et en couleur", "Un dessin collé ou vectorisé garde ses zones blanches (calque Blanc) et ses traits (calque Couleur) dans un seul objet. « Dissocier › par calque » les sépare en deux objets."], ["Ajuster l’image", "Déplacer, agrandir ou tourner l’aquarelle sous les formes (Échap pour finir)"]]}, {"title": "Outils", "keys": [["Q", "Lasso (entourer des formes, même dans un dessin)"], ["V", "Sélection"], ["A", "Sélection directe (points)"], ["P", "Plume"], ["N", "Crayon"], ["M", "Formes (rectangle, ellipse, rectangle arrondi)"], ["E", "Gomme"], ["F", "Forme libre (zone pleine sans contour)"], ["K", "Pot de peinture"], ["H  ou  Espace", "Déplacer la vue"], ["Molette", "Zoom"], ["Clic molette + glisser", "Déplacer la vue"], ["Ctrl / Maj + molette", "Défiler à l’horizontale / à la verticale"]]}, {"title": "Édition", "keys": [["Ctrl + Z / Ctrl + Y", "Annuler / rétablir"], ["Ctrl + D", "Dupliquer"], ["Ctrl + G / Ctrl + Maj + G", "Grouper / dissocier"], ["Ctrl + A", "Tout sélectionner"], ["Suppr", "Supprimer"], ["← ↑ → ↓", "Déplacer de 1 mm (Maj : 10 mm)"], ["Ctrl + S", "Enregistrer"], ["Ctrl + 0", "Voir toute la page"]]}, {"title": "Calques", "params": [["Blanc", "Toujours en blanc. Ce qui est devant dépend de l’ordre des objets (Devant / Derrière), pas du calque."], ["Couleur", "Prend la couleur du dessin (une par composition)."], ["Aquarelle", "Les formes laissent voir l’image choisie (aperçu de l’aquarelle sous la feuille découpée). À l’export : formes pleines noires pour la découpe laser."], ["PDF par calque", "Une page d’aperçu, puis une page par calque, au format 40 × 60 cm."], ["Importer PDF / AI", "Reprend une composition Illustrator : seuls les calques choisis sont importés, triés par couleur."]]}]}));</script>
 </body>
 </html>
