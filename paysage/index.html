@@ -219,7 +219,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bOpen">Mes compositions…</button><input type="file" id="fProj" accept=".json,application/json" hidden>
   <button class="btn" id="bSave" title="Enregistrer (Ctrl+S) — sur cet appareil et sur le serveur">Enregistrer</button>
   <button class="btn" id="bSvg">Export SVG</button>
-  <button class="btn accent" id="bPdf">PDF 40 × 60 par calque…</button>
+  <button class="btn accent" id="bPdf">PDF par calque…</button>
 </header>
 <main>
   <nav id="tools"><div class="tgrid">
@@ -433,6 +433,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <div class="dh">Format du document</div>
   <div class="db">
     <label>Format<select id="dFmt">
+      <option value="40x50">40 × 50 cm</option>
       <option value="40x60">40 × 60 cm</option>
       <option value="A3">A3 — 297 × 420 mm</option>
       <option value="A4">A4 — 210 × 297 mm</option>
@@ -483,7 +484,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 'use strict';
 const $=s=>document.querySelector(s);
 const P=paper;
-const FORMATS={'40x60':[400,600],A3:[297,420],A4:[210,297],'30x40':[300,400]};
+const FORMATS={'40x50':[400,500],'40x60':[400,600],A3:[297,420],A4:[210,297],'30x40':[300,400]};
 const DEFAULT_INKS=[
   {id:'noir',name:'Noir',hex:'#000000'},{id:'gold',name:'Or métallique',hex:'#ac936e'},{id:'bleuroi',name:'Bleu roi',hex:'#3255a4'},
   {id:'vert',name:'Vert',hex:'#00a95c'},{id:'rosefluo',name:'Rose fluo',hex:'#ff48b0'},{id:'orangefluo',name:'Orange fluo',hex:'#ff7477'},
@@ -503,7 +504,7 @@ const IDB={
 
 /* ---------- état ---------- */
 const S={
-  page:{w:400,h:600,fmt:'40x60'},
+  page:{w:400,h:500,fmt:'40x50'},
   color:'#2b3aa8',paper:'#ffffff',aqua:{key:null,m:null,name:''},aquaEdit:false,
   tool:'select',prevTool:null,
   target:'fill',
@@ -603,7 +604,7 @@ function drawPage(){
   pageRect=new P.Path.Rectangle({point:[0,0],size:[S.page.w,S.page.h],fillColor:S.paper||'white',shadowColor:new P.Color(0,0,0,0.25),shadowBlur:14,shadowOffset:new P.Point(0,2)});
   pageLayer.locked=true;
   ensureLayer();
-  $('#docInfo').textContent=`${S.page.w} × ${S.page.h} mm`+(S.page.fmt&&S.page.fmt!=='custom'?` (${S.page.fmt==='30x40'?'30 × 40 cm':S.page.fmt==='40x60'?'40 × 60 cm':S.page.fmt})`:'');
+  $('#docInfo').textContent=`${S.page.w} × ${S.page.h} mm`+(S.page.fmt&&S.page.fmt!=='custom'?` (${S.page.fmt==='30x40'?'30 × 40 cm':S.page.fmt==='40x60'?'40 × 60 cm':S.page.fmt==='40x50'?'40 × 50 cm':S.page.fmt})`:'');
 }
 function fitView(){
   const vs=view.viewSize;if(!vs.width||!vs.height)return;
@@ -2699,7 +2700,7 @@ $('#vxCancel').onclick=()=>$('#vxDlg').close();
 $('#bRevec').onclick=openRevec;
 $('#vxOk').onclick=()=>{$('#vxDlg').close();vxPlace();};
 $('#fSvg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{importSVGText(await f.text(),f.name.replace(/\.[^.]+$/,''));}catch(err){alert('Import impossible : '+err.message);}};
-function blankDoc(){exitAquaEdit();userLayers().forEach(l=>l.remove());if(aquaRaster){aquaRaster.remove();aquaRaster=null;}S.aqua={key:null,m:null,name:''};activeLayer=null;ensureRoleLayers();S.page={w:400,h:600,fmt:'40x60'};drawPage();fitView();setSel([]);renderLayers();resetHistory();S.doc={id:null,name:''};showDoc();scheduleAutosave();}
+function blankDoc(){exitAquaEdit();userLayers().forEach(l=>l.remove());if(aquaRaster){aquaRaster.remove();aquaRaster=null;}S.aqua={key:null,m:null,name:''};activeLayer=null;ensureRoleLayers();S.page={w:400,h:500,fmt:'40x50'};drawPage();fitView();setSel([]);renderLayers();resetHistory();S.doc={id:null,name:''};showDoc();scheduleAutosave();}
 $('#bNew').onclick=()=>{if(window.AtelierTabs)AtelierTabs.newTab();else if(confirm('Commencer un nouveau document ? Le document actuel sera effacé (pense à l’enregistrer).'))blankDoc();};
 $('#bSave').onclick=()=>saveDoc(false);
 $('#bOpen').onclick=()=>window.AtelierSync?openDocs():$('#fProj').click();
