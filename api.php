@@ -46,11 +46,27 @@ if ($a === 'put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   $cur = isset($j['docs'][$id]) ? $j['docs'][$id] : null;
   $rev = $cur ? (int) $cur['rev'] : 0;
   if ($cur && empty($cur['deleted']) && !$force && $base !== $rev) { flock($lock, LOCK_UN); out(409, array('error' => 'conflit', 'rev' => $rev, 'updated' => $cur['updated'])); }
-  file_put_contents($dir . '/docs/' . $id . '.json', $body);
+  // historique : on garde la version remplacée quand un autre appareil écrit par-dessus, quand on revient à une
+  // ancienne version, et au moins une toutes les 15 minutes (30 versions au plus par document)
+  $dev = isset($_GET['dev']) ? substr(preg_replace('/[^A-Za-z0-9]/', '', $_GET['dev']), 0, 20) : '';
+  $f = $dir . '/docs/' . $id . '.json';
+  if ($cur && empty($cur['deleted']) && is_file($f)) {
+    $vd = $dir . '/versions/' . $id; if (!is_dir($vd)) @mkdir($vd, 0700, true);
+    $vi = is_file($vd . '/index.json') ? json_decode(file_get_contents($vd . '/index.json'), true) : array(); if (!is_array($vi)) $vi = array();
+    $lastAt = 0; foreach ($vi as $v) $lastAt = max($lastAt, (int) $v['saved']);
+    $prevDev = isset($cur['dev']) ? $cur['dev'] : '';
+    if (!empty($_GET['keep']) || ($dev !== '' && $prevDev !== '' && $dev !== $prevDev) || now_ms() - $lastAt > 15 * 60 * 1000) {
+      @copy($f, $vd . '/' . $rev . '.json');
+      $vi[] = array('rev' => $rev, 'updated' => (int) $cur['updated'], 'dev' => $prevDev, 'size' => (int) $cur['size'], 'saved' => now_ms());
+      while (count($vi) > 30) { $old = array_shift($vi); @unlink($vd . '/' . $old['rev'] . '.json'); }
+      file_put_contents($vd . '/index.json', json_encode($vi));
+    }
+  }
+  file_put_contents($f, $body);
   $meta = array(
     'app' => isset($_GET['app']) ? substr($_GET['app'], 0, 40) : '',
     'name' => isset($_GET['name']) ? (function_exists('mb_substr') ? mb_substr($_GET['name'], 0, 200) : substr($_GET['name'], 0, 200)) : $id,
-    'rev' => $rev + 1, 'updated' => now_ms(), 'size' => strlen($body)
+    'rev' => $rev + 1, 'updated' => now_ms(), 'size' => strlen($body), 'dev' => $dev
   );
   $j['docs'][$id] = $meta; idx_write($j); flock($lock, LOCK_UN);
   out(200, $meta);
@@ -84,6 +100,19 @@ if ($a === 'getblob') {
   $t = isset($j['blobs'][$id]['type']) && $j['blobs'][$id]['type'] ? $j['blobs'][$id]['type'] : 'application/octet-stream';
   header('Content-Type: ' . $t);
   readfile($f); exit;
+}
+
+if ($a === 'versions') {
+  if (!okid($id)) out(400, array('error' => 'identifiant invalide'));
+  $vf = $dir . '/versions/' . $id . '/index.json';
+  $vi = is_file($vf) ? json_decode(file_get_contents($vf), true) : array();
+  out(200, array('items' => is_array($vi) ? $vi : array()));
+}
+if ($a === 'getver') {
+  $v = isset($_GET['v']) ? (int) $_GET['v'] : -1;
+  if (!okid($id) || $v < 0) out(400, array('error' => 'identifiant invalide'));
+  $p = $dir . '/versions/' . $id . '/' . $v . '.json'; if (!is_file($p)) out(404, array('error' => 'introuvable'));
+  header('Content-Type: application/json; charset=utf-8'); readfile($p); exit;
 }
 
 /* boîte de réception d'un document : photos envoyées depuis le portable (« Envoyer un dessin ») */
