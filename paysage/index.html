@@ -45,7 +45,8 @@ body.apv #bPreview{background:var(--ink);color:#fff}
 #cv{position:absolute;left:0;right:0;bottom:0;top:var(--tbh,0px);width:100%;height:calc(100% - var(--tbh,0px));display:block;touch-action:none}
 #pts{position:absolute;left:0;right:0;bottom:0;top:var(--tbh,0px);width:100%;height:calc(100% - var(--tbh,0px));pointer-events:none}
 .btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-#hint{position:absolute;left:10px;bottom:8px;background:rgba(255,255,255,.88);border-radius:6px;padding:3px 8px;font-size:12px;color:var(--mute);pointer-events:none;max-width:calc(100% - 270px)}
+#hint{display:none;position:absolute;left:10px;bottom:8px;background:rgba(255,255,255,.88);border-radius:6px;padding:3px 8px;font-size:12px;color:var(--mute);pointer-events:none;max-width:calc(100% - 270px)}
+#hint.show{display:block}
 #toolBar{position:absolute;left:10px;top:8px;display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;z-index:3;flex-wrap:wrap;max-width:calc(100% - 20px);box-shadow:0 2px 8px rgba(0,0,0,.06)}
 #toolBar[hidden]{display:none}
 #toolBar b{font-weight:600}
@@ -831,6 +832,13 @@ function bkHistory(){try{if(!(history.state&&history.state.bk))history.pushState
 addEventListener('popstate',()=>{if(S.tool==='bucket'&&((window.BK&&BK.pending)||S.undo.length)){undo();bkHistory();}});
 $('#toolBar').addEventListener('change',e=>{if(e.target.dataset.opt==='strokeW'){if(applyStyle(p=>{if(p.strokeColor&&!(p instanceof P.CompoundPath||p.closed&&p.fillColor))p.strokeWidth=S.strokeW;}))commit();e.target.blur();return;}if(e.target.dataset.opt){if(e.target.dataset.opt==='gap')bkSchedule();e.target.blur();}});
 
+/* aide de l'outil : seulement au survol de son bouton (et brièvement pour un message ponctuel) */
+let hintHover=false,hintT=0;
+document.addEventListener('DOMContentLoaded',()=>{const h=$('#hint');
+  document.querySelectorAll('.tool[data-tool]').forEach(b=>{
+    b.addEventListener('mouseenter',()=>{hintHover=true;clearTimeout(hintT);h.textContent=HINTS[b.dataset.tool]||'';h.classList.toggle('show',!!h.textContent);});
+    b.addEventListener('mouseleave',()=>{hintHover=false;h.classList.remove('show');h.textContent=HINTS[S.tool]||'';});});
+  new MutationObserver(()=>{if(hintHover)return;const t=h.textContent;if(t&&t!==(HINTS[S.tool]||'')){h.classList.add('show');clearTimeout(hintT);hintT=setTimeout(()=>h.classList.remove('show'),4000);}}).observe(h,{childList:true,characterData:true,subtree:true});});
 const HINTS={
   select:'Clic : sélectionner · Ctrl+clic : sélectionner une forme à l’intérieur d’un groupe · Maj+clic : ajouter · glisser : déplacer · Alt+glisser : copier (le curseur le montre) · poignées : redimensionner (Maj = libre) / pivoter (Maj = 15°) · double-clic : entrer dans un groupe',
   lasso:'Entoure à main levée les formes à prendre (même à l’intérieur d’un dessin) · si un objet est sélectionné, seulement dans cet objet (clic dans le vide : libérer) · Maj : ajouter · glisser ensuite une forme prise pour tout déplacer · « Détacher en objet » pour en faire un objet à part',
