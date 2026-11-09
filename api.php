@@ -98,13 +98,14 @@ if ($a === 'inbox_put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($n < 100) { @unlink($d . '/' . $f); out(400, array('error' => 'image vide')); }
   $name = isset($_GET['name']) ? preg_replace('/[^\p{L}\p{N} ._-]/u', '', substr($_GET['name'], 0, 80)) : '';
   if ($name !== '') file_put_contents($d . '/' . $f . '.name', $name);
+  if (isset($_GET['vx']) && strlen($_GET['vx']) < 4000 && json_decode($_GET['vx']) !== null) file_put_contents($d . '/' . $f . '.vx', $_GET['vx']);
   out(200, array('f' => $f, 'size' => $n));
 }
 if ($a === 'inbox_list') {
   if (!okid($id)) out(400, array('error' => 'identifiant invalide'));
   $d = inbox_dir($id); $l = array();
-  if (is_dir($d)) foreach (scandir($d) as $f) { if (!preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) continue; $nf = $d . '/' . $f . '.name';
-    $l[] = array('f' => $f, 'size' => filesize($d . '/' . $f), 'at' => (int) $f, 'name' => is_file($nf) ? file_get_contents($nf) : ''); }
+  if (is_dir($d)) foreach (scandir($d) as $f) { if (!preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) continue; $nf = $d . '/' . $f . '.name'; $vf = $d . '/' . $f . '.vx';
+    $l[] = array('f' => $f, 'size' => filesize($d . '/' . $f), 'at' => (int) $f, 'name' => is_file($nf) ? file_get_contents($nf) : '', 'vx' => is_file($vf) ? json_decode(file_get_contents($vf)) : null); }
   out(200, array('items' => $l));
 }
 if ($a === 'inbox_get') {
@@ -116,7 +117,7 @@ if ($a === 'inbox_get') {
 if ($a === 'inbox_del' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   $f = isset($_GET['f']) ? $_GET['f'] : '';
   if (!okid($id) || !preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) out(400, array('error' => 'identifiant invalide'));
-  $p = inbox_dir($id) . '/' . $f; @unlink($p); @unlink($p . '.name'); @rmdir(inbox_dir($id));
+  $p = inbox_dir($id) . '/' . $f; @unlink($p); @unlink($p . '.name'); @unlink($p . '.vx'); @rmdir(inbox_dir($id));
   out(200, array('ok' => true));
 }
 

@@ -37,6 +37,15 @@ main{flex:1;overflow:auto;padding:14px 16px 90px}
 #crop .bar{position:static;background:#1d1d1f;border-color:#333}
 #crop .btn{background:#2c2c2e;border-color:#3a3a3c;color:#fff;flex:none}
 #crop .btn.primary{background:var(--acc);border-color:var(--acc);flex:1}
+#vec{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:11}
+#vView{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#fff;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+#vView svg{max-width:100%;max-height:100%}
+#vStat{position:absolute;left:8px;bottom:6px;font-size:12px;color:var(--mute);background:rgba(255,255,255,.85);border-radius:6px;padding:2px 6px}
+#vSet{padding:10px 16px 0;max-height:42vh;overflow:auto}
+#vSet label.r{display:block;margin-bottom:8px;font-size:13px}#vSet label.r span{display:flex;justify-content:space-between}
+#vSet input[type=range]{width:100%}
+#vSet select{width:100%;font:inherit;padding:8px;border-radius:9px;border:1px solid var(--line);background:#fff;margin-bottom:10px}
+#vec .bar{position:static}
 #busy{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:20;color:#fff;font-weight:600}
 </style>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}));</script>
@@ -45,6 +54,7 @@ main{flex:1;overflow:auto;padding:14px 16px 90px}
 <header><h1>Envoyer un dessin</h1><a href="/">La Suite</a></header>
 <main>
   <div class="seg"><button data-app="paysage">Paysage</button><button data-app="vecto">Vecto</button></div>
+  <div class="seg" id="modeSeg"><button data-mode="photo">Envoyer la photo</button><button data-mode="vx">Vectoriser avant</button></div>
   <p class="muted" id="hint">Choisis le document ouvert sur l’ordinateur : les photos y arriveront dans quelques secondes.</p>
   <div id="docs"><p class="muted">Chargement…</p></div>
   <div id="sentBox" hidden><b>Envoyées</b><div class="sent" id="sent"></div></div>
@@ -63,6 +73,19 @@ main{flex:1;overflow:auto;padding:14px 16px 90px}
     <button class="btn" id="cNo">Annuler</button>
     <button class="btn primary" id="cOk">Envoyer</button>
   </div>
+</div>
+<div id="vec" hidden>
+  <div id="vView"><span id="vStat"></span></div>
+  <div id="vSet">
+    <select id="vPre"><option value="">Réglage enregistré…</option></select>
+    <label class="r"><span>Seuil (noir / blanc)<b id="lSeuil"></b></span><input type="range" id="vSeuil" min="1" max="99" value="50"></label>
+    <label class="r"><span>Ignorer les taches de moins de<b id="lTache"></b></span><input type="range" id="vTache" min="0" max="200" value="4"></label>
+    <label class="r"><span>Angles ↔ courbes<b id="lLisse"></b></span><input type="range" id="vLisse" min="0" max="1.33" step="0.01" value="1"></label>
+    <label class="r"><span>Fermer les lignes<b id="lFerme"></b></span><input type="range" id="vFerme" min="0" max="60" value="0"></label>
+    <label class="r"><span>Adoucir le grain<b id="lFlou"></b></span><input type="range" id="vFlou" min="0" max="4" step="0.5" value="0"></label>
+    <label class="r" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="vBlanc" checked> Zones blanches (remplissage blanc)</label>
+  </div>
+  <div class="bar"><button class="btn" id="vNo" style="flex:none">Annuler</button><button class="btn primary" id="vOk">Envoyer le dessin</button></div>
 </div>
 <div id="busy" hidden>…</div>
 
@@ -141,25 +164,65 @@ $('#cRot').onclick=phRotate;$('#cAll').onclick=()=>{phReset(0);phDraw();};
 $('#cNo').onclick=()=>{$('#crop').hidden=true;PH.img=null;next();};
 $('#cOk').onclick=async()=>{
   if(!DOC)return;busy('Redressement…');await new Promise(r=>setTimeout(r,30));
-  let blob;try{const c=phWarp();blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.9));}catch(e){busy();alert('Redressement impossible : '+(e.message||e));return;}
-  $('#crop').hidden=true;PH.img=null;await send(blob,PH.name);next();
+  let blob;try{const c=phWarp();blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));}catch(e){busy();alert('Redressement impossible : '+(e.message||e));return;}
+  $('#crop').hidden=true;const nm=PH.name;PH.img=null;if(MODE==='vx'){busy();const c=await createImageBitmap(blob);await vOpen(c,blob,nm);return;}await send(blob,nm);next();
 };
 
+/* ---------- vectoriser sur le portable (aperçu) : l'ordinateur refait le calcul en pleine définition avec ces réglages ---------- */
+let MODE=ls.get('envoyer.mode')||'photo';
+function syncMode(){document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===MODE));$('#cOk').textContent=MODE==='vx'?'Vectoriser':'Envoyer';}
+document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>{MODE=b.dataset.mode;ls.set('envoyer.mode',MODE);syncMode();});syncMode();
+const V={c:null,blob:null,name:'',id:0,wk:null,t:0,base:{seuil:50,flou:0,tache:4,liser:0,lisse:1,ferme:0,lignes:false,blanc:true,ouv:0,prec:0.2,def:12,inv:false,mode:'sep'},presets:[]};
+const vIds={seuil:'vSeuil',tache:'vTache',lisse:'vLisse',ferme:'vFerme',flou:'vFlou'};
+function vParams(){const p=Object.assign({},V.base);for(const k in vIds)p[k]=+$('#'+vIds[k]).value;p.blanc=$('#vBlanc').checked;return p;}
+function vLabels(){const p=vParams();$('#lSeuil').textContent=p.seuil+' %';$('#lTache').textContent=p.tache+' px';$('#lLisse').textContent=p.lisse.toFixed(2);$('#lFerme').textContent=p.ferme+' px';$('#lFlou').textContent=p.flou;}
+function vSet(p){V.base=Object.assign({},V.base,p);for(const k in vIds)if(p[k]!=null)$('#'+vIds[k]).value=p[k];if(p.blanc!=null)$('#vBlanc').checked=!!p.blanc;vLabels();}
+async function vPresets(){try{const r=await fetch(API+'?a=get&id=reglages.vecto',{credentials:'same-origin',cache:'no-store'});if(r.ok){const l=await r.json();if(Array.isArray(l))V.presets=l;}}catch(e){}
+  $('#vPre').innerHTML='<option value="">Réglage enregistré…</option>'+V.presets.map((p,i)=>'<option value="'+i+'"></option>').join('');
+  [...$('#vPre').options].slice(1).forEach((o,i)=>o.textContent=V.presets[i].name||('Réglage '+(i+1)));
+  const last=ls.get('envoyer.vx');if(last){try{vSet(JSON.parse(last));}catch(e){}}}
+$('#vPre').onchange=()=>{const p=V.presets[+$('#vPre').value];if(p){vSet(p);vRun();}};
+Object.values(vIds).forEach(id=>$('#'+id).addEventListener('input',()=>{vLabels();clearTimeout(V.t);V.t=setTimeout(vRun,300);}));
+$('#vBlanc').onchange=vRun;
+function vRun(){
+  const p=vParams(),src=V.c;if(!src)return;
+  const k=Math.min(1,Math.sqrt(3e6/(src.width*src.height))),w=Math.max(1,Math.round(src.width*k)),h=Math.max(1,Math.round(src.height*k));// aperçu léger
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#fff';x.fillRect(0,0,w,h);
+  if(p.flou>0)x.filter='blur('+(p.flou*Math.max(1,w/2000))+'px)';x.drawImage(src,0,0,w,h);x.filter='none';
+  const d=x.getImageData(0,0,w,h).data,bits=new Int8Array(w*h),t=p.seuil/100*255;
+  for(let i=0,j=0;j<bits.length;i+=4,j++){const l=0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];bits[j]=(l<t)!==!!p.inv?1:0;}
+  const id=++V.id;$('#vStat').textContent='Calcul…';$('#vOk').disabled=true;
+  if(!V.wk)V.wk=new Worker('/vecto/potrace-worker.js');
+  V.wk.onmessage=ev=>{if(ev.data.id!==V.id)return;if(ev.data.error){$('#vStat').textContent='Erreur : '+ev.data.error;return;}
+    const sh=ev.data.shapes||[],wh=ev.data.whites||[];const NS='http://www.w3.org/2000/svg';const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 '+w+' '+h);
+    svg.setAttribute('width',w);svg.setAttribute('height',h);svg.style.background='#fff';
+    if(p.blanc&&wh.length){const z=document.createElementNS(NS,'path');z.setAttribute('d',wh.map(s=>s.d).join(''));z.setAttribute('fill','#d9e6ff');svg.appendChild(z);}
+    const pa=document.createElementNS(NS,'path');pa.setAttribute('d',sh.map(s=>s.d).join(''));pa.setAttribute('fill-rule','evenodd');pa.setAttribute('fill','#000');svg.appendChild(pa);
+    $('#vView').querySelectorAll('svg').forEach(e=>e.remove());$('#vView').prepend(svg);
+    $('#vStat').textContent=sh.length+' forme'+(sh.length>1?'s':'')+(p.blanc?' · '+wh.length+' zone'+(wh.length>1?'s':'')+' blanche'+(wh.length>1?'s':''):'');$('#vOk').disabled=!sh.length;};
+  V.wk.onerror=()=>{$('#vStat').textContent='Erreur de calcul';};
+  const sc=Math.max(1,w/2000);// les réglages en pixels sont pensés pour la pleine définition
+  V.wk.postMessage({id,w,h,data:bits,params:{turdsize:Math.round(p.tache*k*k),alphamax:p.lisse,opttolerance:p.prec,optcurve:true,close:Math.round(p.ferme*k),closeLines:p.lignes}},[bits.buffer]);
+}
+async function vOpen(c,blob,name){V.c=c;V.blob=blob;V.name=name;$('#vec').hidden=false;if(!V.presets.length)await vPresets();else vLabels();vRun();}
+$('#vNo').onclick=()=>{$('#vec').hidden=true;V.c=null;next();};
+$('#vOk').onclick=async()=>{const p=vParams();ls.set('envoyer.vx',JSON.stringify(p));$('#vec').hidden=true;const b=V.blob,n=V.name;V.c=null;await send(b,n,p);next();};
+
 /* ---------- envoi ---------- */
-async function send(blob,name){
+async function send(blob,name,vx){
   const d=DOC;const tile=document.createElement('div');const im=document.createElement('img');im.src=URL.createObjectURL(blob);const tag=document.createElement('i');tag.textContent='envoi…';tile.append(im,tag);
   $('#sent').prepend(tile);$('#sentBox').hidden=false;
   busy('Envoi vers « '+(d.name||'Sans titre')+' »…');
-  try{const r=await fetch(API+'?a=inbox_put&id='+encodeURIComponent(d.id)+'&type=image/jpeg&name='+encodeURIComponent(name||''),{method:'POST',credentials:'same-origin',body:blob});
-    if(!r.ok)throw new Error('serveur '+r.status);tag.textContent='✓';}
+  try{const r=await fetch(API+'?a=inbox_put&id='+encodeURIComponent(d.id)+'&type=image/jpeg&name='+encodeURIComponent(name||'')+(vx?'&vx='+encodeURIComponent(JSON.stringify(vx)):''),{method:'POST',credentials:'same-origin',body:blob});
+    if(!r.ok)throw new Error('serveur '+r.status);tag.textContent=vx?'✓ vecto':'✓';}
   catch(e){tag.textContent='échec';alert('Envoi impossible : '+(e.message||e)+'\nVérifie la connexion et réessaie.');}
   busy();
 }
 function next(){const f=QUEUE.shift();if(f)phLoad(f);}
-function take(files){if(!DOC){alert('Choisis d’abord un document.');return;}QUEUE.push(...files);if($('#crop').hidden&&!PH.img)next();}
+function take(files){if(!DOC){alert('Choisis d’abord un document.');return;}QUEUE.push(...files);if($('#crop').hidden&&$('#vec').hidden&&!PH.img)next();}
 $('#fCam').onchange=e=>{const f=[...e.target.files];e.target.value='';take(f);};
 $('#fGal').onchange=e=>{const f=[...e.target.files];e.target.value='';take(f);};
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('#crop').hidden)loadDocs();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('#crop').hidden&&$('#vec').hidden)loadDocs();});
 loadDocs();
 </script>
 </body>
