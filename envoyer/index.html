@@ -204,7 +204,7 @@ function vRun(){
   const sc=Math.max(1,w/2000);// les réglages en pixels sont pensés pour la pleine définition
   V.wk.postMessage({id,w,h,data:bits,params:{turdsize:Math.round(p.tache*k*k),alphamax:p.lisse,opttolerance:p.prec,optcurve:true,close:Math.round(p.ferme*k),closeLines:p.lignes}},[bits.buffer]);
 }
-async function vOpen(c,blob,name){V.c=c;V.blob=blob;V.name=name;$('#vec').hidden=false;if(!V.presets.length)await vPresets();else vLabels();vRun();}
+async function vOpen(c,blob,name){V.c=c;V.blob=blob;V.name=name;$('#vec').hidden=false;if(!V.presets.length)await vPresets();vLabels();vRun();}
 $('#vNo').onclick=()=>{$('#vec').hidden=true;V.c=null;next();};
 $('#vOk').onclick=async()=>{const p=vParams();ls.set('envoyer.vx',JSON.stringify(p));$('#vec').hidden=true;const b=V.blob,n=V.name;V.c=null;await send(b,n,p);next();};
 
