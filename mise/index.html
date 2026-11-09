@@ -170,6 +170,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <h1><a href="../">La Suite</a> <span>Mise en page</span></h1>
   <span class="muted" id="docName" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
   <label class="btn" title="Ajouter des images ou des dessins SVG (aussi par glisser-déposer ou Ctrl+V)">Ajouter des images…<input type="file" id="fImg" accept="image/*,.svg" multiple hidden></label>
+  <label class="btn" title="Ouvrir un PDF : ses textes deviennent des cadres modifiables, le reste une image de fond (une page sans texte devient une image)">Ouvrir un PDF…<input type="file" id="fPdf" accept=".pdf,application/pdf" hidden></label>
   <label class="btn" title="Ouvrir une présentation PowerPoint : chaque diapo devient une page modifiable">Ouvrir un PowerPoint…<input type="file" id="fPptx" accept=".pptx" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bNew">Nouveau</button>
@@ -1046,8 +1047,84 @@ async function importPPTX(file){
     }}
   busy();await loadDoc(doc,null,d.name);hint('« '+file.name+' » ouvert : '+d.slides.length+' diapo'+(d.slides.length>1?'s':'')+' en pages modifiables. Enregistre-la pour la retrouver dans « Mes mises en page ».');
 }
+/* =====================================================================
+   Ouvrir un PDF : chaque page devient une page de la mise en page.
+   Les textes du PDF deviennent des cadres de texte modifiables (posés à leur place, avec leur police,
+   leur taille et leur couleur) ; tout le reste (images, formes, fonds) reste en image derrière.
+   Une page sans texte (scan) est simplement mise en image.
+   ===================================================================== */
+async function importPDF(file){
+  if(!window.pdfjsLib){alert('Lecteur PDF indisponible.');return;}
+  pdfjsLib.GlobalWorkerOptions.workerSrc='../lib/pdf.worker.min.js';
+  let pdf;busy('Lecture de « '+file.name+' »…');
+  try{pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;}catch(e){busy();alert('« '+file.name+' » n’est pas lisible : '+(e.message||e));return;}
+  busy();if(!(await leaveOk()))return;
+  const R=v=>Math.round(v*100)/100,MM=25.4/72;
+  const p1=(await pdf.getPage(1)).getViewport({scale:1});
+  const doc=newDoc();doc.page={w:R(p1.width*MM),h:R(p1.height*MM),fmt:'custom',m:[10,10,10,10],cols:1,gut:5,bg:'#ffffff'};doc.pages=[];
+  const img=async(c,name)=>{const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.9));const {key}=await storeImage(new File([blob],name,{type:'image/jpeg'}));return key;};
+  let nText=0,nImg=0;
+  for(let i=1;i<=pdf.numPages;i++){
+    busy('Conversion — page '+i+' / '+pdf.numPages);
+    const page=await pdf.getPage(i),vp1=page.getViewport({scale:1});
+    const pw=vp1.width*MM,ph=vp1.height*MM;
+    const sc=Math.min(200/72,4000/Math.max(vp1.width,vp1.height)),vp=page.getViewport({scale:sc});
+    const render=async noText=>{const c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);const x=c.getContext('2d');
+      x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);if(noText){x.fillText=()=>{};x.strokeText=()=>{};}
+      await page.render({canvasContext:x,viewport:vp}).promise;return c;};
+    const full=await render(false);
+    const lines=await pdfLines(page,vp1);
+    const pg={id:uid(),items:[]};doc.pages.push(pg);
+    if(!lines.length){pg.items.push({id:uid(),type:'image',key:await img(full,'page-'+i+'.jpg'),x:0,y:0,w:R(pw),h:R(ph),s:1,ox:0,oy:0});nImg++;continue;}
+    const bg=await render(true);
+    // couleur de chaque ligne : là où l'image avec texte diffère de l'image sans texte ; rien de différent = texte invisible (calque OCR d'un scan)
+    const fd=full.getContext('2d'),bd=bg.getContext('2d');
+    const vis=[];for(const l of lines){const x0=Math.max(0,Math.floor(l.x*sc)),y0=Math.max(0,Math.floor((l.y-l.fs*0.85)*sc)),w=Math.min(full.width-x0,Math.ceil(l.w*sc)),h=Math.min(full.height-y0,Math.ceil(l.fs*1.1*sc));
+      if(w<1||h<1)continue;const a=fd.getImageData(x0,y0,w,h).data,b=bd.getImageData(x0,y0,w,h).data;const px=[];
+      for(let k=0;k<a.length;k+=4){const d=Math.abs(a[k]-b[k])+Math.abs(a[k+1]-b[k+1])+Math.abs(a[k+2]-b[k+2]);if(d>60)px.push([d,a[k],a[k+1],a[k+2]]);}
+      if(px.length<3)continue;px.sort((p,q)=>q[0]-p[0]);const top=px.slice(0,Math.max(3,Math.round(px.length*0.25)));
+      const avg=j=>Math.round(top.reduce((s,p)=>s+p[j],0)/top.length);l.col='#'+[1,2,3].map(j=>avg(j).toString(16).padStart(2,'0')).join('');vis.push(l);}
+    if(!vis.length){pg.items.push({id:uid(),type:'image',key:await img(full,'page-'+i+'.jpg'),x:0,y:0,w:R(pw),h:R(ph),s:1,ox:0,oy:0});nImg++;continue;}
+    pg.items.push({id:uid(),type:'image',key:await img(bg,'fond-'+i+'.jpg'),x:0,y:0,w:R(pw),h:R(ph),s:1,ox:0,oy:0,lock:true});
+    // lignes voisines (même marge, même taille, interligne régulier) → un seul cadre
+    const blocks=[];for(const l of vis.sort((a,b)=>a.y-b.y||a.x-b.x)){
+      const b=blocks.find(b=>{const q=b[b.length-1];const dy=l.y-q.y;return !l.ang&&!q.ang&&Math.abs(l.x-b[0].x)<l.fs*0.6&&Math.abs(l.fs-q.fs)<q.fs*0.12&&dy>q.fs*0.8&&dy<q.fs*1.9&&(b.length<2||Math.abs(dy-(b[1].y-b[0].y))<q.fs*0.35);});
+      if(b)b.push(l);else blocks.push([l]);}
+    for(const b of blocks){const f=b[0],L=b[b.length-1];const step=b.length>1?(L.y-f.y)/(b.length-1):f.fs*1.2;
+      const lh=Math.max(step,f.fs*1.15),x=f.x,y=f.y-((lh-f.fs)/2+f.fs*0.86),w=Math.max(...b.map(l=>l.x+l.w))-x,h=b.length*lh+f.fs*0.35;// la ligne de base retombe à sa place
+      const sid=uid();doc.stories[sid]=b.map(l=>`<p class="st-texte" style="margin:0;line-height:${R(Math.max(step,f.fs*1.15))}pt;text-align:left">`+l.runs.map(r=>`<span style="font-family:${r.css};font-size:${R(l.fs)}pt;color:${l.col};${r.b?'font-weight:700;':''}${r.i?'font-style:italic;':''}">${esc(r.t)}</span>`).join('')+'</p>').join('');
+      const t={id:uid(),type:'text',story:sid,x:R(x*MM-0.5),y:R(y*MM),w:R(w*MM*1.25+3),h:R(h*MM+1),pad:0,fill:'none'};
+      if(f.ang)t.rot=R(f.ang*180/Math.PI);pg.items.push(t);nText++;}
+  }
+  busy();await loadDoc(doc,null,file.name.replace(/\.pdf$/i,''));
+  hint('« '+file.name+' » ouvert : '+pdf.numPages+' page'+(pdf.numPages>1?'s':'')+(nText?' · '+nText+' texte'+(nText>1?'s':'')+' modifiable'+(nText>1?'s':''):'')+(nImg?' · '+nImg+' page'+(nImg>1?'s':'')+' en image (sans texte)':'')+'. Enregistre-la pour la retrouver dans « Mes mises en page ».');
+}
+/* lignes de texte d'une page PDF (en points, origine en haut à gauche), coupées aux grands blancs (colonnes, tableaux) */
+async function pdfLines(page,vp){
+  const tc=await page.getTextContent();const fonts={};
+  const fontOf=n=>{if(fonts[n])return fonts[n];let nm='',b=false,it=false;try{const o=page.commonObjs.get(n);nm=(o&&o.name)||'';b=!!(o&&(o.bold||o.black));it=!!(o&&o.italic);}catch(e){}
+    const st=tc.styles[n]||{};const raw=nm.replace(/^[A-Z]{6}\+/,'');if(/bold|black|heavy|semibold|demi/i.test(raw))b=true;if(/italic|oblique/i.test(raw))it=true;
+    const fam=raw.replace(/[-,](Bold|Italic|Oblique|BoldItalic|BoldOblique|Regular|Roman|Medium|Light|Black|Semibold|SemiBold|Book|MT|PS)+$/i,'').replace(/(MT|PS|PSMT)$/,'').replace(/([a-z])([A-Z])/g,'$1 $2').trim();
+    const gen=st.fontFamily==='serif'||/times|georgia|garamond|serif/i.test(raw)&&!/sans/i.test(raw)?'serif':st.fontFamily==='monospace'?'monospace':'sans-serif';
+    return fonts[n]={css:(fam?`'${fam.replace(/'/g,'')}',`:'')+gen,b,i:it};};
+  const its=[];for(const it of tc.items){if(!it.str)continue;const m=pdfjsLib.Util.transform(vp.transform,it.transform);const fs=Math.hypot(m[2],m[3]);if(!(fs>0.5))continue;
+    const ang=Math.atan2(m[1],m[0]);let w=it.width*vp.scale;if(!(w>0))w=it.str.length*fs*0.5;
+    its.push({str:it.str,x:m[4],y:m[5],fs,ang:Math.abs(ang)<0.01?0:ang,w,font:it.fontName,eol:it.hasEOL});}
+  const lines=[];for(const it of its){const L=lines[lines.length-1];
+    if(L&&Math.abs(L.ang-it.ang)<0.01&&Math.abs(L.fs-it.fs)<L.fs*0.15&&!L.eol&&!L.brk){const ca=Math.cos(L.ang),sa=Math.sin(L.ang);const dx=it.x-L.x,dy=it.y-L.y;const along=dx*ca+dy*sa,across=-dx*sa+dy*ca;const gap=along-L.w;
+      if(Math.abs(across)<L.fs*0.25){
+        if(!it.str.trim()){if(it.w>L.fs*0.6||gap>L.fs*0.6)L.brk=true;else L.sp=true;continue;}
+        if(gap>-L.fs*0.3&&gap<L.fs*0.9){const sp=L.sp||(gap>L.fs*0.15&&!/\s$/.test(L.runs[L.runs.length-1].t)&&!/^\s/.test(it.str));L.sp=false;const f=fontOf(it.font),r=L.runs[L.runs.length-1];
+          if(r.css===f.css&&r.b===f.b&&r.i===f.i)r.t+=(sp?' ':'')+it.str;else{if(sp)r.t+=' ';L.runs.push(Object.assign({t:it.str},f));}
+          L.w=Math.max(L.w,along+it.w);L.eol=it.eol;continue;}}}
+    if(!it.str.trim())continue;lines.push({x:it.x,y:it.y,fs:it.fs,ang:it.ang,w:it.w,eol:it.eol,runs:[Object.assign({t:it.str},fontOf(it.font))]});}
+  return lines.filter(l=>l.runs.some(r=>r.t.trim()));
+}
+$('#fPdf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importPDF(f);};
+
 $('#fPptx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importPPTX(f);};
 </script>
+<script src="../lib/pdf.min.js"></script>
 <script src="../lib/pptx.js"></script>
 <script src="../lib/unsaved.js"></script>
 <script src="../lib/drop.js"></script>
@@ -1056,11 +1133,11 @@ $('#fPptx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)import
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
 const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
-AtelierDrop.init({app:'mise',own:true,accept:f=>isImg(f)||ext(f)==='svg'||f.type==='image/svg+xml'||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:async fs=>{const pp=fs.filter(f=>ext(f)==='pptx');for(const f of pp)await importPPTX(f);const im=fs.filter(f=>ext(f)!=='pptx');if(im.length)addImageFiles(im);}});})();
+AtelierDrop.init({app:'mise',own:true,accept:f=>isImg(f)||ext(f)==='svg'||f.type==='image/svg+xml'||ext(f)==='pptx'||ext(f)==='pdf',take:f=>ext(f)==='pptx'||ext(f)==='pdf',open:async fs=>{const pp=fs.filter(f=>ext(f)==='pptx');for(const f of pp)await importPPTX(f);for(const f of fs.filter(f=>ext(f)==='pdf'))await importPDF(f);const im=fs.filter(f=>ext(f)!=='pptx'&&ext(f)!=='pdf');if(im.length)addImageFiles(im);}});})();
 </script>
 <script src="../lib/help.js"></script>
 <script>AtelierHelp.init({app:"mise",title:"La Suite Mise en page",sections:[
-{title:"Outils",keys:[["V","Sélection"],["H ou Espace","Main : déplacer la vue"],["T","Cadre de texte"],["I","Cadre d’image"],["R / E / L","Rectangle, ellipse, ligne"],["Z","Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; options au-dessus"],["Molette","Zoom · Maj + molette : horizontal · Ctrl + molette : vertical · Ctrl + 0 : ajuster"],["Ctrl 0","Voir la page entière"],[";","Afficher / masquer les repères"]]},
+{title:"Outils",keys:[["V","Sélection"],["H ou Espace","Main : déplacer la vue"],["T","Cadre de texte"],["I","Cadre d’image"],["R / E / L","Rectangle, ellipse, ligne"],["Ouvrir un PDF…","Chaque page du PDF devient une page : ses textes deviennent des cadres modifiables (police, taille, couleur), le reste une image de fond ; une page sans texte (scan) devient une image"],["Z","Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; options au-dessus"],["Molette","Zoom · Maj + molette : horizontal · Ctrl + molette : vertical · Ctrl + 0 : ajuster"],["Ctrl 0","Voir la page entière"],[";","Afficher / masquer les repères"]]},
 {title:"Objets",keys:[["Alt + glisser","Déposer une copie"],["Maj + glisser","Déplacer droit / garder les proportions"],["Ctrl + glisser","Sans magnétisme"],["Flèches","Déplacer de 1 mm (Maj : 10 mm)"],["Ctrl+D","Dupliquer"],["Ctrl+C / X / V","Copier, couper, coller (aussi images et dessins de Vecto)"],["Suppr","Supprimer"],["Ctrl+Maj+] / [","Premier plan / arrière-plan"],["Ctrl+Z / Y","Annuler / rétablir"]]},
 {title:"Texte",keys:[["Double-clic ou Entrée","Écrire dans le cadre"],["Échap","Terminer"],["Ctrl+B / I / U","Gras, italique, souligné"],["+ rouge","Le texte ne tient pas : clique pour le faire suivre dans un autre cadre"]],params:[["Styles","Titre, Sous-titre, Texte, Légende : modifie-les dans le panneau de droite, tous les textes suivent."],["Texte qui suit","Un texte peut couler d’un cadre à l’autre, même sur une autre page. « Détacher ce cadre » le retire de la suite."]]},
 {title:"Images",keys:[["Double-clic","Déplacer l’image dans son cadre (molette : zoom)"],["Glisser-déposer","Ajouter des images ; sur un cadre vide, l’image va dedans"]]},
