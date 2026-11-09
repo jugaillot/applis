@@ -137,6 +137,14 @@ if ($a === 'inbox_list') {
     $l[] = array('f' => $f, 'size' => filesize($d . '/' . $f), 'at' => (int) $f, 'name' => is_file($nf) ? file_get_contents($nf) : '', 'vx' => is_file($vf) ? json_decode(file_get_contents($vf)) : null); }
   out(200, array('items' => $l));
 }
+if ($a === 'inbox_all') {
+  // tous les documents qui ont des envois en attente (pour proposer une photo envoyée vers un autre document)
+  flock($lock, LOCK_SH); $j = idx_read(); flock($lock, LOCK_UN); $o = array(); $base = $dir . '/inbox';
+  if (is_dir($base)) foreach (scandir($base) as $d) { if (!okid($d) || !is_dir($base . '/' . $d)) continue; $n = 0;
+    foreach (scandir($base . '/' . $d) as $f) if (preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) $n++;
+    if ($n) $o[$d] = array('n' => $n, 'app' => isset($j['docs'][$d]['app']) ? $j['docs'][$d]['app'] : '', 'name' => isset($j['docs'][$d]['name']) ? $j['docs'][$d]['name'] : $d); }
+  out(200, array('docs' => (object) $o));
+}
 if ($a === 'inbox_get') {
   $f = isset($_GET['f']) ? $_GET['f'] : '';
   if (!okid($id) || !preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) out(400, array('error' => 'identifiant invalide'));

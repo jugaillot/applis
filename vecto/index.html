@@ -3024,7 +3024,7 @@ addEventListener('keyup',e=>{if(e.key==='Control'||e.key==='Meta')ctrlHeld=false
 addEventListener('blur',()=>{ctrlHeld=false;});
 /* molette (zoom / Maj : horizontal / Ctrl : vertical) et loupe : communs à La Suite */
 /* photos envoyées depuis le portable (page « Envoyer un dessin ») : elles arrivent dans la vectorisation */
-addEventListener('DOMContentLoaded',()=>{if(window.AtelierInbox)AtelierInbox.init({docId:()=>S.doc&&S.doc.id,
+addEventListener('DOMContentLoaded',()=>{if(window.AtelierInbox)AtelierInbox.init({app:'vecto',docId:()=>S.doc&&S.doc.id,
   open:async(f,vx)=>{if(vx)return vxAuto(f,vx);VX.edit=null;vxDialogMode(false);if(!$('#vxDlg').open)$('#vxDlg').showModal();await vxOpenFile(f);}});});
 /* dessin déjà vectorisé sur le portable : on refait le calcul ici en pleine définition, avec ses réglages, et on le place */
 async function vxAuto(f,p){
