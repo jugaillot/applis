@@ -318,7 +318,24 @@
    "22": "Le monde est magique !",
    "23": "Y a des jours comme ça !",
    "24": "Cette fois, c'est fini !"
-  }
+  },
+  "eans": {
+   "1": "9782258034310",
+   "2": "9782258034389",
+   "3": "9782258034860",
+   "5": "9782258036413",
+   "6": "9782258038394",
+   "7": "9782258036420",
+   "8": "9782258034327",
+   "9": "9782258000254",
+   "10": "9782258039414",
+   "14": "9782258039445",
+   "15": "9782258039469",
+   "17": "9782258047785",
+   "19": "9782258051119",
+   "20": "9782258047808"
+  },
+  "maj": "2026-11-08"
  },
  "Demon Slayer": {
   "total": 23,
@@ -2881,8 +2898,8 @@
  },
  "Blacksad": {
   "total": 7,
-  "source": "https://www.bedetheque.com/serie-500-BD-Blacksad__10000.html",
-  "maj": "2026-11-07",
+  "source": "https://www.bedetheque.com/serie-500-BD-Blacksad.html",
+  "maj": "2026-11-08",
   "titres": {
    "1": "Quelque part entre les ombres",
    "2": "Arctic-Nation",
@@ -2891,6 +2908,9 @@
    "5": "Amarillo",
    "6": "Alors, tout tombe - Première partie",
    "7": "Alors, tout tombe - Seconde partie"
+  },
+  "eans": {
+   "2": "9782205051995"
   }
  },
  "Halloween": {
@@ -3694,7 +3714,7 @@
  "Titeuf": {
   "total": 18,
   "source": "https://www.bedetheque.com/serie-82-BD-Titeuf.html",
-  "maj": "2026-11-07",
+  "maj": "2026-11-08",
   "titres": {
    "2": "L'Amour, c'est pô propre...",
    "4": "C'est pô juste...",
@@ -3708,6 +3728,10 @@
    "15": "À fond le slip !",
    "17": "La grande aventure",
    "18": "Suivez la mèche"
+  },
+  "eans": {
+   "4": "9782723418409",
+   "5": "9782723421362"
   }
  },
  "Made In Abyss": {
