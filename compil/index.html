@@ -446,9 +446,9 @@ function cellsFor(W,H,cols,rows){
   const cw=(W-2*m-(cols-1)*g)/cols,ch=(H-2*m-(rows-1)*g)/rows;
   return{cw,ch,m,g};
 }
-function chooseLayout(){
+function chooseLayout(pages){
   const n=+S.opt.n,[a,b]=sheetSize();const short=Math.min(a,b),long=Math.max(a,b);
-  const refs=S.pages.length?S.pages.slice(0,60).map(p=>effSize(p).map(v=>v/PT)):[[210,297]];
+  pages=(pages||S.pages).filter(p=>!p.blank);const refs=pages.length?pages.slice(0,60).map(p=>effSize(p).map(v=>v/PT)):[[210,297]];
   const ors=S.opt.or==='auto'?['portrait','paysage']:[S.opt.or];
   let best=null;
   for(const or of ors){
@@ -477,6 +477,8 @@ function buildSheets(){
   const sheets=[];
   if(S.opt.mode==='repeat')S.pages.forEach(p=>sheets.push(Array(n).fill(p)));
   else for(let i=0;i<S.pages.length;i+=n)sheets.push(S.pages.slice(i,i+n));
+  // orientation automatique : chaque feuille suit ses pages (portrait et paysage gardent leur sens)
+  if(S.opt.or==='auto')sheets.forEach(sh=>{const l=chooseLayout(sh);if(l.or!==L.or||l.cols!==L.cols)sh.L=l;});
   return{L,sheets};
 }
 /* position de chaque case (mm, origine en haut à gauche) */
@@ -577,23 +579,24 @@ function _renderSheets(){
   SHGEN++;
   const box=$('#sheets');box.innerHTML='';
   const {L,sheets}=buildSheets();
-  const sl=slots(L);
+  const sl=slots(L);const ORT=sheets.some(sh=>sh.L)?'portrait et paysage selon les pages':L.or;
   const fmtName=S.opt.fmt==='custom'?`${L.W} × ${L.H} mm`:(S.opt.fmt==='30x40'?'30 × 40':S.opt.fmt);
-  $('#shTitle').textContent=L.book?`Livret — ${sheets.length/2} feuille${sheets.length>2?'s':''} ${fmtName} recto verso (${sheets.length} faces)`:`Aperçu des feuilles (${sheets.length}) — ${fmtName} ${L.or}, ${L.cols} × ${L.rows}`;
+  $('#shTitle').textContent=L.book?`Livret — ${sheets.length/2} feuille${sheets.length>2?'s':''} ${fmtName} recto verso (${sheets.length} faces)`:`Aperçu des feuilles (${sheets.length}) — ${fmtName} ${ORT}, ${L.cols} × ${L.rows}`;
   const sumN=S.pages.length;
-  $('#summary').innerHTML=sumN?`${sumN} page${sumN>1?'s':''} → <b>${sheets.length} feuille${sheets.length>1?'s':''}</b> ${fmtName} (${L.or})<br>${L.cols*L.rows} case${L.cols*L.rows>1?'s':''} par feuille, ${L.cols} × ${L.rows}`:'Aucune page.';
+  $('#summary').innerHTML=sumN?`${sumN} page${sumN>1?'s':''} → <b>${sheets.length} feuille${sheets.length>1?'s':''}</b> ${fmtName} (${ORT})<br>${L.cols*L.rows} case${L.cols*L.rows>1?'s':''} par feuille, ${L.cols} × ${L.rows}`:'Aucune page.';
   if(L.book&&sumN)$('#summary').innerHTML=`${sumN} page${sumN>1?'s':''} → <b>livret de ${sheets.length*2} pages</b> (${sheets.length*2-sumN} blanche${sheets.length*2-sumN>1?'s':''} ajoutée${sheets.length*2-sumN>1?'s':''})<br>${sheets.length/2} feuille${sheets.length>2?'s':''} ${fmtName} recto verso`;
   $('#modeHelp').textContent=S.opt.mode==='repeat'?'Chaque page remplit sa feuille avec '+(L.cols*L.rows)+' copies (flyers, cartes à découper).':'Les pages se suivent, '+(L.cols*L.rows)+' par feuille.';
   const SZ=300*Math.max(1,ZOOM.z*0.8);const scale=Math.min(SZ/L.W,SZ/L.H)*Math.min(2.5,Math.max(1,window.devicePixelRatio||1));
   if(SHIO)SHIO.disconnect();SHIO=new IntersectionObserver(ents=>ents.forEach(en=>{if(en.isIntersecting){SHIO.unobserve(en.target);sheetHi(en.target);}}),{rootMargin:'300px'});
   const shown=sheets.slice(0,60);
-  shown.forEach((pages,k)=>{
+  const mixed=sheets.some(sh=>sh.L);
+  shown.forEach((pages,k)=>{const L0=L;{const L=pages.L||L0,sl=pages.L?slots(pages.L):slots(L0);
     const c=document.createElement('canvas');c.width=Math.round(L.W*scale);c.height=Math.round(L.H*scale);
     const disp=Math.min(SZ/L.W,SZ/L.H);c.style.width=Math.round(L.W*disp)+'px';c.style.height=Math.round(L.H*disp)+'px';
     c._sh={pages,L,sl,scale,gen:SHGEN};drawSheet(c,visNA);SHIO.observe(c);
     const w=document.createElement('div');w.className='sh';const iw=document.createElement('div');iw.className='shw';iw.appendChild(c);w.appendChild(iw);c._ov=iw;sheetAnn(c);
-    const s=document.createElement('span');s.textContent=L.book?('Feuille '+(Math.floor(k/2)+1)+(k%2?' — verso':' — recto')):('Feuille '+(k+1));w.appendChild(s);box.appendChild(w);
-  });
+    const s=document.createElement('span');s.textContent=L.book?('Feuille '+(Math.floor(k/2)+1)+(k%2?' — verso':' — recto')):('Feuille '+(k+1)+(mixed?' — '+L.or:''));w.appendChild(s);box.appendChild(w);
+  }});
   annPanel();
   if(sheets.length>shown.length){const m=document.createElement('div');m.className='muted';m.textContent='… et '+(sheets.length-shown.length)+' autres feuilles.';box.appendChild(m);}
 }
@@ -666,16 +669,17 @@ async function buildPDF(){
   }
   for(let k=0;k<sheets.length;k++){
     await busy(`Création du PDF — feuille ${k+1} / ${sheets.length}`);
-    const pg=out.addPage([L.W*PT,L.H*PT]);
+    const LK=sheets[k].L||L,slK=sheets[k].L?slots(LK):sl;
+    const pg=out.addPage([LK.W*PT,LK.H*PT]);
     for(let i=0;i<sheets[k].length;i++){
-      const p=sheets[k][i],cell=sl[i];if(!cell)continue;
+      const p=sheets[k][i],cell=slK[i];if(!cell)continue;
       let e;try{e=await getEmb(p);}catch(err){console.warn('page recopiée en image',err);try{out.embeddedPages=out.embeddedPages.filter(x=>x.alreadyEmbedded);}catch(e2){}for(const [k2,v2] of embedded)if(v2&&v2.kind==='page'&&!v2.obj.alreadyEmbedded)embedded.delete(k2);e=await rasterEmb(p);RASTERED++;}if(!e)continue;
       const q=placeIn(p,cell);
       const r=((e.rot+p.rot)%360+360)%360;
       // taille de la page non tournée, à l'échelle
       const s=q.s*(e.kind==='page'?1:1);
       const w=(r%180?q.h:q.w)*PT,h=(r%180?q.w:q.h)*PT;
-      const cx=q.cx*PT,cy=(L.H-q.cy)*PT;
+      const cx=q.cx*PT,cy=(LK.H-q.cy)*PT;
       const th=-r*Math.PI/180;
       const ox=(w/2)*Math.cos(th)-(h/2)*Math.sin(th),oy=(w/2)*Math.sin(th)+(h/2)*Math.cos(th);
       const opts={x:cx-ox,y:cy-oy,width:w,height:h,rotate:degrees(-r)};
