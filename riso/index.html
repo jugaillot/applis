@@ -322,6 +322,11 @@ function capCanvas(img,max){let w=img.naturalWidth||img.width,h=img.naturalHeigh
 function newGroup(name,kind,w,h){const fb=frameBox();const g={id:nid('g'),name,kind,w,h,cx:fb.x+fb.w/2,cy:fb.y+fb.h/2,scale:1,rot:0,sep:null};S.groups.push(g);S.sel=g.id;return g;}
 function makeLayer(g,o){return Object.assign({id:nid('l'),groupId:g.id,name:'Calque',ink:'noir',visible:true,density:100,lo:0,hi:100,tone:0,invert:false,flat:false,trame:'aucune',lpi:45,angle:45,seuil:50,src:null,svgText:null,ver:1,open:false,cache:null},o);}
 function addLayer(g,o){const L=makeLayer(g,o);S.layers.push(L);return L;}
+function deleteGroup(g,ask=true){
+  if(ask&&!confirm('Supprimer « '+g.name+' » et ses calques ?'))return false;
+  S.layers=S.layers.filter(l=>l.groupId!==g.id);S.groups=S.groups.filter(x=>x!==g);
+  if(S.sel===g.id)S.sel=S.groups.length?S.groups[S.groups.length-1].id:null;renderSide();scheduleRender();return true;
+}
 function marginBox(){const f=frameBox(),m=S.guides.margin;return{x:f.x+m,y:f.y+m,w:f.w-2*m,h:f.h-2*m};}
 function fitGroup(g,box){const r=g.rot%180!==0;const w=r?g.h:g.w,h=r?g.w:g.h;g.scale=Math.min(box.w/w,box.h/h);g.cx=box.x+box.w/2;g.cy=box.y+box.h/2;}
 function placeInitial(g){const f=frameBox();if(g.w<=f.w+0.5&&g.h<=f.h+0.5){g.scale=1;g.cx=f.x+f.w/2;g.cy=f.y+f.h/2;}else fitGroup(g,marginBox());}
@@ -641,7 +646,7 @@ async function printInk(){
 /* ---------- projet ---------- */
 function buildProject(){
     const P={app:'atelier-riso',v:1,paper:S.paper,guides:S.guides,inks:S.inks,groups:[],layers:[]};
-    for(const g of S.groups){const o={id:g.id,name:g.name,kind:g.kind,w:g.w,h:g.h,cx:g.cx,cy:g.cy,scale:g.scale,rot:g.rot,sep:g.sep};if(g.srcCanvas)o.src=g.srcCanvas.toDataURL('image/png');P.groups.push(o);}
+    for(const g of S.groups){const o={id:g.id,name:g.name,kind:g.kind,w:g.w,h:g.h,cx:g.cx,cy:g.cy,scale:g.scale,rot:g.rot,sep:g.sep,locked:!!g.locked};if(g.srcCanvas)o.src=g.srcCanvas.toDataURL('image/png');P.groups.push(o);}
     for(const L of S.layers){const o={...L};delete o.src;delete o.cache;const g=groupById(L.groupId);if(!L.svgText&&!(g&&g.sep)&&L.src)o.srcData=toCanvas(L.src).toDataURL('image/png');P.layers.push(o);}
     return P;
 }
@@ -732,7 +737,7 @@ function renderGroups(){
   const el=$('#groups');
   if(!S.groups.length){el.innerHTML='<div class="empty">Rien pour l’instant.</div>';tbShow('');return;}
   const g=selGroup();let tb='';
-  let h=`<div class="glist">${S.groups.map(x=>`<button class="gitem${x.id===S.sel?' on':''}" data-g="${x.id}" title="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</div>`;
+  let h=`<div class="glist">${S.groups.map(x=>`<button class="gitem${x.id===S.sel?' on':''}" data-g="${x.id}" title="${esc(x.name)}${x.locked?' (verrouillé)':''}">${x.locked?'🔒 ':''}${esc(x.name)}</button>`).join('')}</div>`;
   if(g){
     tb=`<b class="tn" title="${esc(g.name)}">${esc(g.name)}</b>
         <label>X<input type="number" step="1" data-gk="cx" value="${f1(g.cx)}"> mm</label>
@@ -746,15 +751,14 @@ function renderGroups(){
         <button class="btn sm" data-ga="fitpage">Ajuster à la page</button>
         <button class="btn sm" data-ga="real">Taille d’origine</button>
         <button class="btn sm danger" data-ga="del" title="Supprimer">✕</button></span>`;
-    if(g.sep){const p=g.sep;h+=`<div class="gprops"><div class="sepbox">
+    if(g.sep){const p=g.sep;h+=`<div class="gprops"><details data-sepd="${g.id}"${g.sepOpen?' open':''}><summary>Réglages de la séparation</summary><div class="sepbox">
         <label>Séparation<select data-sk="mode"><option value="melange"${p.mode==='melange'?' selected':''}>Mélange (superpositions)</option><option value="franc"${p.mode==='franc'?' selected':''}>Couleurs franches</option></select></label>
         ${inkChecks(p.inks,'data-sink')}
         ${rng('Blanc papier','white',60,100,1,p.white,' %','data-sk')}
         ${rng('Économie d’encres','eco',0,100,1,p.eco,' %','data-sk')}
-        ${rng('Intensité','intensite',30,200,5,p.intensite,' %','data-sk')}
-      </div></div>`;}
+      </div></details></div>`;}
   }
-  el.innerHTML=h;tbShow(tb);
+  el.innerHTML=h;tbShow(tb);if(g&&g.locked)$('#toolBar').querySelectorAll('input,select,button').forEach(x=>x.disabled=true);
 }
 function tbShow(h){const t=$('#toolBar');const was=t.hidden;t.innerHTML=h;t.hidden=!h;if(was!==t.hidden)scheduleRender();}
 function syncPlacement(){const g=selGroup();if(!g)return;const set=(k,v)=>{const i=$(`#toolBar [data-gk="${k}"]`);if(i&&document.activeElement!==i)i.value=v;};set('cx',f1(g.cx));set('cy',f1(g.cy));set('scale',f1(g.scale*100));const s=$('#gSize');if(s)s.textContent=`${f1(g.w*g.scale)} × ${f1(g.h*g.scale)} mm`;}
@@ -764,6 +768,7 @@ function renderLayers(){
   el.innerHTML=S.layers.map(L=>{const g=groupById(L.groupId);const ink=getInk(L.ink);const tr=L.trame;return`<div class="layer${L.visible?'':' off'}" data-l="${L.id}">
     <div class="lhead">
       <button class="ico" data-la="vis" title="Afficher / masquer">${L.visible?'●':'○'}</button>
+      <button class="ico" data-la="lock" title="${g&&g.locked?'Déverrouiller':'Verrouiller'} l’élément « ${esc(g?g.name:'')} » (on ne peut plus le sélectionner sur la feuille)">${g&&g.locked?'🔒':'🔓'}</button>
       <span class="sw" data-sw="${ink.id}" style="background:${ink.hex}"></span>
       <input class="lname" type="text" data-lk="name" value="${esc(L.name)}">
       <select data-lk="ink">${inkOptions(L.ink)}</select>
@@ -818,18 +823,19 @@ const G=$('#groups');
 const TB=$('#toolBar');
 const onGClick=e=>{
   const b=e.target.closest('[data-g]');if(b){S.sel=b.dataset.g;renderGroups();scheduleRender();return;}
-  const a=e.target.closest('[data-ga]');if(!a)return;const g=selGroup();if(!g)return;const[pw,ph]=pageSize();
+  const a=e.target.closest('[data-ga]');if(!a)return;const g=selGroup();if(!g||g.locked)return;const[pw,ph]=pageSize();
   switch(a.dataset.ga){
     case'center':{const f=frameBox();g.cx=f.x+f.w/2;g.cy=f.y+f.h/2;break;}
     case'fitmargin':fitGroup(g,marginBox());break;
     case'fitpage':fitGroup(g,frameBox());break;
     case'real':g.scale=1;break;
-    case'del':if(!confirm('Supprimer « '+g.name+' » et ses calques ?'))return;S.layers=S.layers.filter(l=>l.groupId!==g.id);S.groups=S.groups.filter(x=>x!==g);S.sel=S.groups.length?S.groups[S.groups.length-1].id:null;renderSide();scheduleRender();return;
+    case'del':deleteGroup(g);return;
   }
   syncPlacement();scheduleRender();
 };G.addEventListener('click',onGClick);TB.addEventListener('click',onGClick);
+G.addEventListener('toggle',e=>{const d=e.target.closest&&e.target.closest('[data-sepd]');if(!d)return;const g=groupById(d.dataset.sepd);if(g)g.sepOpen=d.open;},true);
 const onGInput=e=>{
-  const t=e.target,g=selGroup();if(!g)return;
+  const t=e.target,g=selGroup();if(!g||g.locked)return;
   if(t.dataset.gk){const v=parseFloat(t.value);if(isNaN(v))return;if(t.dataset.gk==='scale')g.scale=Math.max(0.01,v/100);else g[t.dataset.gk]=v;syncPlacement();scheduleRender();}
   if(t.dataset.sk&&t.type==='range')t.previousElementSibling.querySelector('b').textContent=t.value+t.dataset.unit;
 };G.addEventListener('input',onGInput);TB.addEventListener('input',onGInput);
@@ -859,7 +865,11 @@ LY.addEventListener('click',e=>{
     case'up':if(i>0)[S.layers[i-1],S.layers[i]]=[S.layers[i],S.layers[i-1]];break;
     case'down':if(i<S.layers.length-1)[S.layers[i+1],S.layers[i]]=[S.layers[i],S.layers[i+1]];break;
     case'dup':S.layers.splice(i+1,0,{...L,id:nid('l'),name:L.name+' (copie)',cache:null});break;
-    case'del':S.layers.splice(i,1);break;
+    case'del':{S.layers.splice(i,1);const g=groupById(L.groupId);
+      if(g){if(g.sep)g.sep.inks=g.sep.inks.filter(id=>id!==L.ink);
+        if(!S.layers.some(l=>l.groupId===g.id)||(g.sep&&!g.sep.inks.length))deleteGroup(g,false);else renderGroups();}
+      break;}
+    case'lock':{const g=groupById(L.groupId);if(g){g.locked=!g.locked;renderGroups();toolSync();}break;}
   }
   renderLayers();scheduleRender();
 });
@@ -883,9 +893,9 @@ $('#resetInks').onclick=()=>{if(!confirm('Revenir à la liste d’encres d’ori
 /* déplacement à la souris / au doigt */
 const cv=$('#cv');let drag=null;
 function toMM(e){const r=cv.getBoundingClientRect(),[pw,ph]=pageSize();return{x:(e.clientX-r.left)/r.width*pw,y:(e.clientY-r.top)/r.height*ph};}
-function hitGroup(p){for(let k=S.groups.length-1;k>=0;k--){const g=S.groups[k];if(!S.layers.some(l=>l.groupId===g.id))continue;const a=-g.rot*Math.PI/180;let dx=p.x-g.cx,dy=p.y-g.cy;const x=(dx*Math.cos(a)-dy*Math.sin(a))/g.scale,y=(dx*Math.sin(a)+dy*Math.cos(a))/g.scale;if(Math.abs(x)<=g.w/2&&Math.abs(y)<=g.h/2)return g;}return null;}
+function hitGroup(p){for(let k=S.groups.length-1;k>=0;k--){const g=S.groups[k];if(g.locked)continue;if(!S.layers.some(l=>l.groupId===g.id))continue;const a=-g.rot*Math.PI/180;let dx=p.x-g.cx,dy=p.y-g.cy;const x=(dx*Math.cos(a)-dy*Math.sin(a))/g.scale,y=(dx*Math.sin(a)+dy*Math.cos(a))/g.scale;if(Math.abs(x)<=g.w/2&&Math.abs(y)<=g.h/2)return g;}return null;}
 /* Alt + glisser : copie du dessin (avec ses calques), comme dans Illustrator */
-function dupGroup(g){const g2={...g,id:nid('g'),name:g.name+' (copie)'};S.groups.splice(S.groups.indexOf(g)+1,0,g2);
+function dupGroup(g){const g2={...g,id:nid('g'),name:g.name+' (copie)',locked:false};S.groups.splice(S.groups.indexOf(g)+1,0,g2);
   const ls=S.layers.filter(l=>l.groupId===g.id).map(l=>({...l,id:nid('l'),groupId:g2.id,cache:null}));let last=-1;S.layers.forEach((l,i)=>{if(l.groupId===g.id)last=i;});S.layers.splice(last+1,0,...ls);return g2;}
 cv.addEventListener('pointerdown',e=>{const p=toMM(e);let hit=hitGroup(p);
   if(TBM==='resize'&&hit&&!e.altKey){if(hit.id!==S.sel){S.sel=hit.id;renderGroups();}{const b=gBox(hit),k=cv.clientWidth/pageSize()[0];rsz={g:hit,mode:'c',x0:e.clientX,y0:e.clientY,dg:Math.max(20,Math.hypot(b.w,b.h)*k),s0:hit.scale};}cv.setPointerCapture(e.pointerId);return;}if(hit&&e.altKey){hit=dupGroup(hit);S.sel=hit.id;renderSide();}else if(hit&&hit.id!==S.sel){S.sel=hit.id;renderGroups();}const g=hit||null;if(!g)return;drag={g,x:p.x,y:p.y};cv.setPointerCapture(e.pointerId);});
@@ -894,7 +904,8 @@ cv.addEventListener('pointermove',e=>{if(rsz){rszMove(e);return;}if(!drag)return
 const endDrag=()=>{drag=null;rsz=null;};cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
 document.addEventListener('keydown',e=>{
   if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)||$('#dlg').open)return;
-  const g=selGroup();if(!g)return;const s=e.shiftKey?10:1;
+  const g=selGroup();if(!g||g.locked)return;const s=e.shiftKey?10:1;
+  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteGroup(g);toolSync();return;}
   const m={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];if(!m)return;
   e.preventDefault();g.cx+=m[0];g.cy+=m[1];syncPlacement();scheduleRender();
 });
@@ -910,7 +921,7 @@ function rszMove(e){const g=rsz.g,p=toMM(e);
   else{const O=rsz.O,d={x:rsz.S.x-O.x,y:rsz.S.y-O.y};const r=Math.max(0.02,((p.x-O.x)*d.x+(p.y-O.y)*d.y)/(d.x*d.x+d.y*d.y));
     g.scale=Math.max(0.01,rsz.s0*r);g.cx=O.x+(rsz.C.x-O.x)*r;g.cy=O.y+(rsz.C.y-O.y)*r;}
   syncPlacement();scheduleRender();}
-$('#gsel').addEventListener('pointerdown',e=>{const h=e.target.closest('.gh');if(!h)return;e.preventDefault();e.stopPropagation();const g=selGroup();if(!g)return;const b=gBox(g);
+$('#gsel').addEventListener('pointerdown',e=>{const h=e.target.closest('.gh');if(!h)return;e.preventDefault();e.stopPropagation();const g=selGroup();if(!g||g.locked)return;const b=gBox(g);
   const pts={tl:{x:b.x,y:b.y},tr:{x:b.x+b.w,y:b.y},bl:{x:b.x,y:b.y+b.h},br:{x:b.x+b.w,y:b.y+b.h}},opp={tl:'br',tr:'bl',bl:'tr',br:'tl'}[h.dataset.h];
   rsz={g,mode:'k',O:pts[opp],S:pts[h.dataset.h],C:{x:g.cx,y:g.cy},s0:g.scale};h.setPointerCapture(e.pointerId);});
 $('#gsel').addEventListener('pointermove',e=>{if(rsz&&rsz.mode==='k')rszMove(e);});
@@ -918,7 +929,7 @@ $('#gsel').addEventListener('pointerup',()=>{rsz=null;});
 {const _r=render;render=function(){_r();placeSel();};}
 /* ---------- barre d'outils à gauche, panneau de droite repliable (comme Vecto) ---------- */
 let TBM='move';
-function gAct(a){const g=selGroup();if(!g){if(['center','fitmargin','fitpage','real','rot','dup','del'].includes(a))alert('Choisis d’abord un élément (clic dessus sur la feuille).');return;}const[pw,ph]=pageSize();
+function gAct(a){const g=selGroup();if(!g){if(['center','fitmargin','fitpage','real','rot','dup','del'].includes(a))alert('Choisis d’abord un élément (clic dessus sur la feuille).');return;}if(g.locked)return alert('Cet élément est verrouillé : clique sur le cadenas 🔒 d’un de ses calques pour le déverrouiller.');const[pw,ph]=pageSize();
   switch(a){case'center':{const f=frameBox();g.cx=f.x+f.w/2;g.cy=f.y+f.h/2;break;}case'fitmargin':fitGroup(g,marginBox());break;case'fitpage':fitGroup(g,frameBox());break;case'real':g.scale=1;break;
     case'rot':g.rot=((g.rot||0)+90)%360;break;
     case'dup':{const g2=dupGroup(g);const k=5;g2.cx+=k;g2.cy+=k;S.sel=g2.id;renderSide();scheduleRender();return;}
@@ -931,7 +942,7 @@ document.querySelectorAll('#tools [data-tb]').forEach(b=>b.addEventListener('cli
   else if(a==='guides'){const c=$('#gShow');c.checked=!c.checked;c.dispatchEvent(new Event('change'));}
   else gAct(a);toolSync();}));
 function toolSync(){document.querySelector('#tools [data-tb=trame]').classList.toggle('on',$('#showTrame').checked);document.querySelector('#tools [data-tb=guides]').classList.toggle('on',$('#gShow').checked);
-  const has=!!selGroup();['center','fitmargin','fitpage','real','rot','dup','del'].forEach(k=>{document.querySelector('#tools [data-tb='+k+']').disabled=!has;});
+  const sg=selGroup(),has=!!sg&&!sg.locked;['center','fitmargin','fitpage','real','rot','dup','del'].forEach(k=>{document.querySelector('#tools [data-tb='+k+']').disabled=!has;});
   $('#zLabT').textContent=$('#zLab').textContent;
   document.querySelectorAll('#mini [data-pf]').forEach(b=>b.classList.toggle('on',S.paper.fin===b.dataset.pf));document.querySelectorAll('#mini [data-po]').forEach(b=>b.classList.toggle('on',(S.paper.fo||'portrait')===b.dataset.po));
   const ML=$('#miniLayers');ML.innerHTML=S.layers.map(L=>{const ink=getInk(L.ink);return`<button type="button" class="ml${L.visible?'':' off'}" data-ml="${L.id}" title="${esc(L.name)} — ${esc(ink.name)} (clic : afficher / masquer)"><span class="sw" style="background:${ink.hex}"></span></button>`;}).join('')||'<span class="muted" style="font-size:10px">—</span>';}
@@ -984,6 +995,6 @@ AtelierDrop.init({app:'riso',accept:f=>['svg','pdf','ai','json'].includes(ext(f)
   open:async fs=>{const pj=fs.filter(f=>ext(f)==='json');if(pj.length)feed('#projIn',[pj[0]]);const rest=fs.filter(f=>ext(f)!=='json');if(rest.length)feed('#fileIn',rest);}});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Feuille d’impression", "Le papier mis dans la riso : 29,7 × 42 (A3), 30 × 40 ou personnalisée (portrait)."], ["Format final du dessin", "Le format du dessin fini (A3, A4, A5, 30 × 30…), collé en bas de la feuille et centré. Le cadre orange et le gris autour marquent les limites (non imprimés). Sens portrait / paysage au choix."], ["Marge", "Cadre bleu non imprimé, à X mm du bord du format final."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut de la feuille."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."], ["Intensité", "Renforce ou allège toutes les couches."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Imprimer", "text": "Le bouton Imprimer demande quelle encre imprimer, puis ouvre l’impression du navigateur avec cette seule couleur (en noir, à la taille de la feuille). Une encre à la fois : changer de tambour entre deux impressions."}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["Suppr", "Supprimer l’élément sélectionné et tous ses calques"], ["🔒 (calque)", "Verrouille l’élément du calque : on ne peut plus le sélectionner ni le déplacer sur la feuille, il reste imprimé"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Feuille d’impression", "Le papier mis dans la riso : 29,7 × 42 (A3), 30 × 40 ou personnalisée (portrait)."], ["Format final du dessin", "Le format du dessin fini (A3, A4, A5, 30 × 30…), collé en bas de la feuille et centré. Le cadre orange et le gris autour marquent les limites (non imprimés). Sens portrait / paysage au choix."], ["Marge", "Cadre bleu non imprimé, à X mm du bord du format final."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut de la feuille."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Imprimer", "text": "Le bouton Imprimer demande quelle encre imprimer, puis ouvre l’impression du navigateur avec cette seule couleur (en noir, à la taille de la feuille). Une encre à la fois : changer de tambour entre deux impressions."}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
 </body>
 </html>
