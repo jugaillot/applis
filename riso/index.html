@@ -27,7 +27,10 @@ header h1 span{color:var(--acc)}
 main{flex:1;display:grid;grid-template-columns:86px 1fr 350px;min-height:0}
 aside{overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:2px 12px 40px;order:3}
 #stageWrap{order:2}
-#tools{order:1;background:var(--panel);border-right:1px solid var(--line);padding:8px 0;overflow-y:auto}
+#tools{order:1;background:var(--panel);border-right:1px solid var(--line);padding:8px 0;overflow-y:auto;display:flex;flex-direction:column;align-items:center}
+#tools #bPreview{margin-top:auto;flex-shrink:0}
+body.apv #bPreview{background:var(--ink);color:#fff}
+body.apv #gsel,body.apv #toolBar{display:none!important}
 #tools .tgrid{display:grid;grid-template-columns:36px 36px;gap:3px;justify-content:center;align-content:start}
 .tool{width:36px;height:36px;border:1px solid transparent;border-radius:8px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);padding:0}
 .tool:hover{background:var(--soft)}
@@ -176,7 +179,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <button class="tool" type="button" data-tb="zfit" title="Voir toute la feuille"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
 <button class="tool" type="button" data-tb="trame" title="Voir la trame (aperçu de l’impression)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="7" r="1.6" fill="currentColor"/><circle cx="17" cy="7" r="1.6" fill="currentColor"/><circle cx="7" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="17" cy="12" r="1.6" fill="currentColor"/><circle cx="7" cy="17" r="1.6" fill="currentColor"/><circle cx="12" cy="17" r="1.6" fill="currentColor"/><circle cx="17" cy="17" r="1.6" fill="currentColor"/></svg></button>
 <button class="tool" type="button" data-tb="guides" title="Afficher les repères (marge, trait du haut — non imprimés)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><rect x="6.5" y="6.5" width="11" height="11" stroke-dasharray="2 2"/></svg></button>
-  </div><div class="muted" id="zLabT" style="text-align:center;margin-top:6px;font-size:11px"></div></nav>
+  </div><div class="muted" id="zLabT" style="text-align:center;margin-top:6px;margin-bottom:10px;font-size:11px"></div>
+  <button class="tool" type="button" id="bPreview" title="Aperçu : la feuille telle qu’elle sera imprimée, sans repères ni cadres (Échap : revenir)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><rect x="6" y="3" width="12" height="18" rx="1.2"/><path d="M2.5 12s3-4.2 9.5-4.2S21.5 12 21.5 12s-3 4.2-9.5 4.2S2.5 12 2.5 12z" fill="var(--panel,#fff)"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/></svg></button></nav>
   <aside>
     <div id="asideTop"><button type="button" id="asideTg" title="Réduire le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l6 6-6 6M12 6l6 6-6 6"/></svg></button></div>
     <section data-sec="paper">
@@ -528,6 +532,9 @@ function zoomBy(f,cx,cy){const cv=$('#cv'),st=$('#stage');const r=cv.getBounding
 addEventListener('DOMContentLoaded',()=>{if(window.AtelierZoom)AtelierZoom.init({area:'#stage',tools:'#tools',before:'#tools .tsep',wheel:true,
   zoomBy,panBy:(dx,dy)=>{const st=$('#stage');st.scrollLeft-=dx;st.scrollTop-=dy;},fit:()=>{S.zoom=1;scheduleRender();},
   actual:()=>{const st=$('#stage').getBoundingClientRect();zoomBy((96/25.4)/(lastFit*S.zoom),st.left+st.width/2,st.top+st.height/2);},pct:()=>lastFit*S.zoom/(96/25.4)*100});});
+/* aperçu : la feuille telle qu'imprimée (trame comprise), sans repères, cadres ni poignées */
+let APV=false;
+function setPreview(on){APV=!!on;document.body.classList.toggle('apv',APV);scheduleRender();}
 function render(){
   const[pw,ph]=pageSize(),stage=$('#stage'),cv=$('#cv');
   const fit=Math.max(0.3,Math.min((stage.clientWidth-32)/pw,(stage.clientHeight-32)/ph));lastFit=fit;
@@ -537,14 +544,14 @@ function render(){
   cv.style.width=cssW+'px';cv.style.height=cssH+'px';if(cv.width!==W)cv.width=W;if(cv.height!==H)cv.height=H;
   const ppm=W/pw;lastPPM=ppm;
   const ctx=cv.getContext('2d');ctx.setTransform(1,0,0,1,0,0);
-  const acc=accumulate(S.layers,W,H,ppm,0,S.showTrame,true);
+  const acc=accumulate(S.layers,W,H,ppm,0,S.showTrame||APV,true);
   const n=W*H,R=new Float32Array(n).fill(1),G=new Float32Array(n).fill(1),B=new Float32Array(n).fill(1);
   for(const[id,d]of acc){const[ir,ig,ib]=hexToRgb(getInk(id).hex);const kr=1-ir/255,kg=1-ig/255,kb=1-ib/255;for(let i=0;i<n;i++){const v=d[i];if(v>0){R[i]*=1-v*kr;G[i]*=1-v*kg;B[i]*=1-v*kb;}}}
   const img=ctx.createImageData(W,H),o=img.data;
   for(let i=0,j=0;i<n;i++,j+=4){o[j]=R[i]*255;o[j+1]=G[i]*255;o[j+2]=B[i]*255;o[j+3]=255;}
   ctx.putImageData(img,0,0);
   if(!S.layers.length){ctx.fillStyle='#9a978f';ctx.font=`${Math.round(5*ppm)}px system-ui,sans-serif`;ctx.textAlign='center';ctx.fillText('Importe une image, un SVG ou un PDF',W/2,H/2);}
-  drawGuides(ctx,ppm,pw,ph);drawSel(ctx,ppm);
+  if(!APV){drawGuides(ctx,ppm,pw,ph);drawSel(ctx,ppm);}
   $('#zLab').textContent=Math.round(lastFit*S.zoom/(96/25.4)*100)+' %';if(window.AtelierZoom)AtelierZoom.info();
 }
 function drawGuides(ctx,ppm,pw,ph){
@@ -803,6 +810,8 @@ window.addEventListener('atelier-inks',()=>{S.inks=loadInks();renderSide();sched
 window.addEventListener('atelier-conflict',e=>{if(e.detail.id!==S.doc.id)return;S.doc={id:e.detail.copyId,name:e.detail.name};showDoc();alert('Ce document a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();saveProject(false);}});
 $('#exportBtn').onclick=exportPDF;
+$('#bPreview').onclick=()=>setPreview(!APV);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&APV&&!$('#dlg').open)setPreview(false);});
 $('#printBtn').onclick=printInk;
 $('#pFmt').onchange=e=>{S.paper.fmt=e.target.value;if(S.paper.fmt==='custom'&&!S.paper.w){S.paper.w=210;S.paper.h=297;}savePrefs();syncPaperUI();scheduleRender();};
 $('#pFin').onchange=e=>{S.paper.fin=e.target.value;savePrefs();syncPaperUI();scheduleRender();};
@@ -995,6 +1004,6 @@ AtelierDrop.init({app:'riso',accept:f=>['svg','pdf','ai','json'].includes(ext(f)
   open:async fs=>{const pj=fs.filter(f=>ext(f)==='json');if(pj.length)feed('#projIn',[pj[0]]);const rest=fs.filter(f=>ext(f)!=='json');if(rest.length)feed('#fileIn',rest);}});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["Suppr", "Supprimer l’élément sélectionné et tous ses calques"], ["🔒 (calque)", "Verrouille l’élément du calque : on ne peut plus le sélectionner ni le déplacer sur la feuille, il reste imprimé"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Feuille d’impression", "Le papier mis dans la riso : 29,7 × 42 (A3), 30 × 40 ou personnalisée (portrait)."], ["Format final du dessin", "Le format du dessin fini (A3, A4, A5, 30 × 30…), collé en bas de la feuille et centré. Le cadre orange et le gris autour marquent les limites (non imprimés). Sens portrait / paysage au choix."], ["Marge", "Cadre bleu non imprimé, à X mm du bord du format final."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut de la feuille."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Imprimer", "text": "Le bouton Imprimer demande quelle encre imprimer, puis ouvre l’impression du navigateur avec cette seule couleur (en noir, à la taille de la feuille). Une encre à la fois : changer de tambour entre deux impressions."}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["Échap", "Quitter l’aperçu"], ["Suppr", "Supprimer l’élément sélectionné et tous ses calques"], ["🔒 (calque)", "Verrouille l’élément du calque : on ne peut plus le sélectionner ni le déplacer sur la feuille, il reste imprimé"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Feuille d’impression", "Le papier mis dans la riso : 29,7 × 42 (A3), 30 × 40 ou personnalisée (portrait)."], ["Format final du dessin", "Le format du dessin fini (A3, A4, A5, 30 × 30…), collé en bas de la feuille et centré. Le cadre orange et le gris autour marquent les limites (non imprimés). Sens portrait / paysage au choix."], ["Marge", "Cadre bleu non imprimé, à X mm du bord du format final."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut de la feuille."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Imprimer", "text": "Le bouton Imprimer demande quelle encre imprimer, puis ouvre l’impression du navigateur avec cette seule couleur (en noir, à la taille de la feuille). Une encre à la fois : changer de tambour entre deux impressions."}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
 </body>
 </html>
