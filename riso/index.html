@@ -183,8 +183,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="grid2">
         <label>Format<select id="pFmt"><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="30x30">30 × 30 cm</option><option value="custom">Personnalisé…</option></select></label>
         <label>Orientation<select id="pOr"><option value="portrait">Portrait</option><option value="paysage">Paysage</option></select></label>
-        <label id="pWl" hidden>Largeur (mm)<input type="number" id="pW" min="50" max="320" step="1"></label>
-        <label id="pHl" hidden>Hauteur (mm)<input type="number" id="pH" min="50" max="450" step="1"></label>
+        <label id="pWl" style="display:none">Largeur (mm)<input type="number" id="pW" min="50" max="320" step="1"></label>
+        <label id="pHl" style="display:none">Hauteur (mm)<input type="number" id="pH" min="50" max="450" step="1"></label>
         <label>Marge (mm)<input type="number" id="gMargin" min="0" step="1"></label>
         <label>Trait haut (mm)<input type="number" id="gTop" min="0" step="1"></label>
       </div>
@@ -234,7 +234,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const PAPERS={A3:[297,420],A4:[210,297],A5:[148,210],'30x30':[300,300]};
+const PAPERS={A3:[297,420],A4:[210,297],A5:[148,210],'30x30':[297,420]};// 30 × 30 : feuille A3 portrait, avec une limite à 30 cm
+const limitH=()=>S.paper.fmt==='30x30'?300:null;
 const SHAPES='path,rect,circle,ellipse,polygon,polyline,line,text,tspan,textPath';
 const DEFAULT_INKS=[
   {id:'gold',name:'Or métallique',hex:'#ac936e'},
@@ -283,7 +284,7 @@ const f1=v=>Math.round(v*10)/10;
 
 /* ---------- utilitaires ---------- */
 const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;return new Promise(r=>setTimeout(r,30));};
-function pageSize(){const[w,h]=S.paper.fmt==='custom'?[Math.max(50,+S.paper.w||210),Math.max(50,+S.paper.h||297)]:(PAPERS[S.paper.fmt]||PAPERS.A3);return S.paper.orient==='paysage'?[h,w]:[w,h];}
+function pageSize(){if(S.paper.fmt==='30x30')return[297,420];const[w,h]=S.paper.fmt==='custom'?[Math.max(50,+S.paper.w||210),Math.max(50,+S.paper.h||297)]:(PAPERS[S.paper.fmt]||PAPERS.A3);return S.paper.orient==='paysage'?[h,w]:[w,h];}
 const groupById=id=>S.groups.find(g=>g.id===id);
 const selGroup=()=>groupById(S.sel);
 function loadImgURL(url){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('image illisible'));i.src=url;});}
@@ -297,7 +298,7 @@ function capCanvas(img,max){let w=img.naturalWidth||img.width,h=img.naturalHeigh
 function newGroup(name,kind,w,h){const[pw,ph]=pageSize();const g={id:nid('g'),name,kind,w,h,cx:pw/2,cy:ph/2,scale:1,rot:0,sep:null};S.groups.push(g);S.sel=g.id;return g;}
 function makeLayer(g,o){return Object.assign({id:nid('l'),groupId:g.id,name:'Calque',ink:'noir',visible:true,density:100,lo:0,hi:100,tone:0,invert:false,flat:false,trame:'aucune',lpi:45,angle:45,seuil:50,src:null,svgText:null,ver:1,open:false,cache:null},o);}
 function addLayer(g,o){const L=makeLayer(g,o);S.layers.push(L);return L;}
-function marginBox(){const[pw,ph]=pageSize();const m=S.guides.margin;return{x:m,y:m,w:pw-2*m,h:ph-2*m};}
+function marginBox(){const[pw,ph]=pageSize();const m=S.guides.margin,H=limitH()||ph;return{x:m,y:m,w:pw-2*m,h:H-2*m};}
 function fitGroup(g,box){const r=g.rot%180!==0;const w=r?g.h:g.w,h=r?g.w:g.h;g.scale=Math.min(box.w/w,box.h/h);g.cx=box.x+box.w/2;g.cy=box.y+box.h/2;}
 function placeInitial(g){const[pw,ph]=pageSize();if(g.w<=pw+0.5&&g.h<=ph+0.5){g.scale=1;g.cx=pw/2;g.cy=ph/2;}else fitGroup(g,marginBox());}
 
@@ -520,10 +521,13 @@ function render(){
 function drawGuides(ctx,ppm,pw,ph){
   if(!S.guides.show)return;const m=S.guides.margin,t=S.guides.top;
   ctx.save();ctx.lineWidth=Math.max(1,ppm*0.25);ctx.setLineDash([ppm*3,ppm*2]);
-  ctx.strokeStyle='rgba(0,160,255,.9)';ctx.strokeRect(m*ppm,m*ppm,(pw-2*m)*ppm,(ph-2*m)*ppm);
+  ctx.textAlign='left';ctx.strokeStyle='rgba(0,160,255,.9)';ctx.strokeRect(m*ppm,m*ppm,(pw-2*m)*ppm,((limitH()||ph)-2*m)*ppm);
   ctx.strokeStyle='rgba(255,0,140,.9)';ctx.beginPath();ctx.moveTo(0,t*ppm);ctx.lineTo(pw*ppm,t*ppm);ctx.stroke();
   ctx.setLineDash([]);ctx.font=`${Math.max(9,Math.round(2.6*ppm))}px system-ui,sans-serif`;
   ctx.fillStyle='rgba(255,0,140,.9)';ctx.fillText(t+' mm',(m+1)*ppm,t*ppm-ppm);
+  const L=limitH();if(L){// format 30 × 30 : limite du carré, le bas de la feuille grisé
+    ctx.fillStyle='rgba(0,0,0,.07)';ctx.fillRect(0,L*ppm,pw*ppm,(ph-L)*ppm);ctx.strokeStyle='rgba(230,90,0,.95)';ctx.lineWidth=Math.max(1.5,ppm*0.5);ctx.beginPath();ctx.moveTo(0,L*ppm);ctx.lineTo(pw*ppm,L*ppm);ctx.stroke();
+    ctx.fillStyle='rgba(230,90,0,.95)';ctx.fillText('Limite 30 × 30 cm',(m+1)*ppm,L*ppm+3.5*ppm);}
   ctx.restore();
 }
 function drawSel(ctx,ppm){
@@ -709,7 +713,7 @@ function renderLayers(){
 function renderInks(){
   $('#inks').innerHTML=S.inks.map(i=>`<div class="ink" data-i="${i.id}"><input type="color" data-ik="hex" value="${i.hex}"><input type="text" data-ik="name" value="${esc(i.name)}"><button class="btn sm" data-ia="del" title="Supprimer">✕</button></div>`).join('');
 }
-function syncPaperUI(){$('#pFmt').value=S.paper.fmt;const cu=S.paper.fmt==='custom';$('#pWl').hidden=$('#pHl').hidden=!cu;if(cu){$('#pW').value=S.paper.w||210;$('#pH').value=S.paper.h||297;}$('#pOr').value=S.paper.orient;$('#gMargin').value=S.guides.margin;$('#gTop').value=S.guides.top;$('#gShow').checked=S.guides.show;}
+function syncPaperUI(){$('#pFmt').value=S.paper.fmt;const cu=S.paper.fmt==='custom';$('#pWl').style.display=$('#pHl').style.display=cu?'':'none';if(cu){$('#pW').value=S.paper.w||210;$('#pH').value=S.paper.h||297;}$('#pOr').value=S.paper.fmt==='30x30'?'portrait':S.paper.orient;$('#pOr').disabled=S.paper.fmt==='30x30';$('#gMargin').value=S.guides.margin;$('#gTop').value=S.guides.top;$('#gShow').checked=S.guides.show;}
 
 /* ---------- événements ---------- */
 $('#fileIn').onchange=async e=>{const files=[...e.target.files];e.target.value='';for(const f of files)await importFile(f);};
