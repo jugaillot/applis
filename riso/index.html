@@ -181,7 +181,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <section data-sec="paper">
       <h2 class="fold"><span class="tw">▼</span>Papier &amp; repères</h2>
       <div class="grid2">
-        <label>Format<select id="pFmt"><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="custom">Personnalisé…</option></select></label>
+        <label>Format<select id="pFmt"><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="30x30">30 × 30 cm</option><option value="custom">Personnalisé…</option></select></label>
         <label>Orientation<select id="pOr"><option value="portrait">Portrait</option><option value="paysage">Paysage</option></select></label>
         <label id="pWl" hidden>Largeur (mm)<input type="number" id="pW" min="50" max="320" step="1"></label>
         <label id="pHl" hidden>Hauteur (mm)<input type="number" id="pH" min="50" max="450" step="1"></label>
@@ -234,7 +234,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const PAPERS={A3:[297,420],A4:[210,297],A5:[148,210]};
+const PAPERS={A3:[297,420],A4:[210,297],A5:[148,210],'30x30':[300,300]};
 const SHAPES='path,rect,circle,ellipse,polygon,polyline,line,text,tspan,textPath';
 const DEFAULT_INKS=[
   {id:'gold',name:'Or métallique',hex:'#ac936e'},
