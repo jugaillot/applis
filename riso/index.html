@@ -154,7 +154,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span id="syncBadge"></span>
   <button class="btn" id="openProj">Mes projets…</button><input type="file" id="projIn" accept=".json,application/json" hidden>
   <button class="btn" id="saveProj" title="Enregistrer (Ctrl+S) — sur cet appareil et sur le serveur">Enregistrer</button>
-  <button class="btn accent" id="exportBtn">Exporter PDF</button>
+  <button class="btn" id="exportBtn">Exporter PDF</button>
+  <button class="btn accent" id="printBtn" title="Imprimer une encre sur la riso">Imprimer…</button>
 </header>
 <main>
   <nav id="tools"><div class="tgrid">
@@ -181,10 +182,13 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <section data-sec="paper">
       <h2 class="fold"><span class="tw">▼</span>Papier &amp; repères</h2>
       <div class="grid2">
-        <label>Format<select id="pFmt"><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="30x30">30 × 30 cm</option><option value="custom">Personnalisé…</option></select></label>
-        <label>Orientation<select id="pOr"><option value="portrait">Portrait</option><option value="paysage">Paysage</option></select></label>
-        <label id="pWl" style="display:none">Largeur (mm)<input type="number" id="pW" min="50" max="320" step="1"></label>
-        <label id="pHl" style="display:none">Hauteur (mm)<input type="number" id="pH" min="50" max="450" step="1"></label>
+        <label>Feuille d’impression<select id="pFmt"><option value="A3">29,7 × 42 cm (A3)</option><option value="30x40">30 × 40 cm</option><option value="custom">Personnalisée…</option></select></label>
+        <label>Format final du dessin<select id="pFin"><option value="full">Toute la feuille</option><option value="A3">A3</option><option value="A4">A4</option><option value="A5">A5</option><option value="30x30">30 × 30 cm</option><option value="30x40">30 × 40 cm</option><option value="custom">Personnalisé…</option></select></label>
+        <label id="pWl" style="display:none">Feuille : largeur (mm)<input type="number" id="pW" min="50" max="320" step="1"></label>
+        <label id="pHl" style="display:none">Feuille : hauteur (mm)<input type="number" id="pH" min="50" max="450" step="1"></label>
+        <label id="fWl" style="display:none">Final : largeur (mm)<input type="number" id="fW" min="20" max="450" step="1"></label>
+        <label id="fHl" style="display:none">Final : hauteur (mm)<input type="number" id="fH" min="20" max="450" step="1"></label>
+        <label>Sens du format final<select id="pOr"><option value="portrait">Portrait</option><option value="paysage">Paysage</option></select></label>
         <label>Marge (mm)<input type="number" id="gMargin" min="0" step="1"></label>
         <label>Trait haut (mm)<input type="number" id="gTop" min="0" step="1"></label>
       </div>
@@ -204,9 +208,9 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="btns"><button class="btn sm" id="addInk">+ Ajouter une encre</button><button class="btn sm" id="resetInks">Réinitialiser</button></div>
     </section>
     <div id="mini">
-      <div class="mlab">Papier</div>
-      <button type="button" class="mb" data-pf="A3" title="Format A3"><b>A3</b></button>
-      <button type="button" class="mb" data-pf="A4" title="Format A4"><b>A4</b></button>
+      <div class="mlab">Format</div>
+      <button type="button" class="mb" data-pf="A3" title="Format final A3"><b>A3</b></button>
+      <button type="button" class="mb" data-pf="A4" title="Format final A4"><b>A4</b></button>
       <button type="button" class="mb" data-po="portrait" title="Portrait"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="1.5"/></svg></button>
       <button type="button" class="mb" data-po="paysage" title="Paysage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="1.5"/></svg></button>
       <div class="mlab">Calques</div>
@@ -234,8 +238,9 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
-const PAPERS={A3:[297,420],A4:[210,297],A5:[148,210],'30x30':[297,420]};// 30 × 30 : feuille A3 portrait, avec une limite à 30 cm
-const limitH=()=>S.paper.fmt==='30x30'?300:null;
+const SHEETS={A3:[297,420],'30x40':[300,400]};// feuilles d'impression (portrait)
+const FINALS={A3:[297,420],A4:[210,297],A5:[148,210],'30x30':[300,300],'30x40':[300,400]};
+const FIN_NAMES={A3:'A3',A4:'A4',A5:'A5','30x30':'30 × 30 cm','30x40':'30 × 40 cm'};
 const SHAPES='path,rect,circle,ellipse,polygon,polyline,line,text,tspan,textPath';
 const DEFAULT_INKS=[
   {id:'gold',name:'Or métallique',hex:'#ac936e'},
@@ -253,7 +258,7 @@ const DEFAULT_INKS=[
 let uid=1; const nid=p=>p+(uid++);
 
 const S={
-  paper:{fmt:'A3',orient:'portrait'},
+  paper:{fmt:'A3',w:210,h:297,fin:'full',fw:200,fh:200,fo:'portrait'},
   guides:{show:true,margin:10,top:30},
   inks:loadInks(),
   groups:[],layers:[],sel:null,zoom:1,showTrame:false,
@@ -265,7 +270,7 @@ loadPrefs();
 function loadInks(){try{const s=localStorage.getItem('atelierRiso.inks');if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length)return a;}}catch(e){}return DEFAULT_INKS.map(o=>({...o}));}
 let inkT=0;
 function saveInks(){try{localStorage.setItem('atelierRiso.inks',JSON.stringify(S.inks));}catch(e){}clearTimeout(inkT);inkT=setTimeout(()=>{if(window.AtelierSync)AtelierSync.save('reglages','reglages.encres','Encres riso',S.inks);},1200);}
-function loadPrefs(){try{const p=JSON.parse(localStorage.getItem('atelierRiso.prefs')||'null');if(p){Object.assign(S.paper,p.paper||{});Object.assign(S.guides,p.guides||{});}}catch(e){}}
+function loadPrefs(){try{const p=JSON.parse(localStorage.getItem('atelierRiso.prefs')||'null');if(p){setPaper(p.paper);Object.assign(S.guides,p.guides||{});}}catch(e){}}
 function savePrefs(){try{localStorage.setItem('atelierRiso.prefs',JSON.stringify({paper:S.paper,guides:S.guides}));}catch(e){}}
 
 /* ---------- couleurs ---------- */
@@ -284,7 +289,26 @@ const f1=v=>Math.round(v*10)/10;
 
 /* ---------- utilitaires ---------- */
 const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;return new Promise(r=>setTimeout(r,30));};
-function pageSize(){if(S.paper.fmt==='30x30')return[297,420];const[w,h]=S.paper.fmt==='custom'?[Math.max(50,+S.paper.w||210),Math.max(50,+S.paper.h||297)]:(PAPERS[S.paper.fmt]||PAPERS.A3);return S.paper.orient==='paysage'?[h,w]:[w,h];}
+/* anciens réglages (format A3/A4/A5/30x30 + orientation) → feuille + format final */
+function setPaper(P){
+  if(!P)return;
+  if(P.fin===undefined&&P.fmt!==undefined){
+    const old={A3:[297,420],A4:[210,297],A5:[148,210],'30x30':[297,420]};
+    let[w,h]=P.fmt==='custom'?[+P.w||210,+P.h||297]:(old[P.fmt]||old.A3);if(P.orient==='paysage'&&P.fmt!=='30x30')[w,h]=[h,w];
+    P={fmt:(w===297&&h===420)?'A3':'custom',w,h,fin:P.fmt==='30x30'?'30x30':'full',fw:200,fh:200,fo:'portrait'};
+  }
+  Object.assign(S.paper,P);
+}
+function pageSize(){const P=S.paper;if(P.fmt==='custom')return[Math.max(50,+P.w||210),Math.max(50,+P.h||297)];return SHEETS[P.fmt]||SHEETS.A3;}
+/* cadre du format final (mm), collé en bas de la feuille et centré ; null = toute la feuille */
+function finBox(){
+  const P=S.paper;if(!P.fin||P.fin==='full')return null;const[pw,ph]=pageSize();
+  let[w,h]=P.fin==='custom'?[Math.max(20,+P.fw||200),Math.max(20,+P.fh||200)]:(FINALS[P.fin]||FINALS.A4);
+  if(P.fo==='paysage')[w,h]=[h,w];
+  const over=w>pw+5||h>ph+5;w=Math.min(w,pw);h=Math.min(h,ph);
+  return{x:(pw-w)/2,y:ph-h,w,h,over,name:P.fin==='custom'?(Math.round(+P.fw||200)+' × '+Math.round(+P.fh||200)+' mm'):FIN_NAMES[P.fin]||P.fin};
+}
+function frameBox(){const[pw,ph]=pageSize();const b=finBox();return b||{x:0,y:0,w:pw,h:ph};}
 const groupById=id=>S.groups.find(g=>g.id===id);
 const selGroup=()=>groupById(S.sel);
 function loadImgURL(url){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('image illisible'));i.src=url;});}
@@ -295,12 +319,12 @@ function toCanvas(src){if(src instanceof HTMLCanvasElement)return src;const c=do
 function capCanvas(img,max){let w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;const k=Math.min(1,max/Math.max(w,h));const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c;}
 
 /* ---------- groupes & calques ---------- */
-function newGroup(name,kind,w,h){const[pw,ph]=pageSize();const g={id:nid('g'),name,kind,w,h,cx:pw/2,cy:ph/2,scale:1,rot:0,sep:null};S.groups.push(g);S.sel=g.id;return g;}
+function newGroup(name,kind,w,h){const fb=frameBox();const g={id:nid('g'),name,kind,w,h,cx:fb.x+fb.w/2,cy:fb.y+fb.h/2,scale:1,rot:0,sep:null};S.groups.push(g);S.sel=g.id;return g;}
 function makeLayer(g,o){return Object.assign({id:nid('l'),groupId:g.id,name:'Calque',ink:'noir',visible:true,density:100,lo:0,hi:100,tone:0,invert:false,flat:false,trame:'aucune',lpi:45,angle:45,seuil:50,src:null,svgText:null,ver:1,open:false,cache:null},o);}
 function addLayer(g,o){const L=makeLayer(g,o);S.layers.push(L);return L;}
-function marginBox(){const[pw,ph]=pageSize();const m=S.guides.margin,H=limitH()||ph;return{x:m,y:m,w:pw-2*m,h:H-2*m};}
+function marginBox(){const f=frameBox(),m=S.guides.margin;return{x:f.x+m,y:f.y+m,w:f.w-2*m,h:f.h-2*m};}
 function fitGroup(g,box){const r=g.rot%180!==0;const w=r?g.h:g.w,h=r?g.w:g.h;g.scale=Math.min(box.w/w,box.h/h);g.cx=box.x+box.w/2;g.cy=box.y+box.h/2;}
-function placeInitial(g){const[pw,ph]=pageSize();if(g.w<=pw+0.5&&g.h<=ph+0.5){g.scale=1;g.cx=pw/2;g.cy=ph/2;}else fitGroup(g,marginBox());}
+function placeInitial(g){const f=frameBox();if(g.w<=f.w+0.5&&g.h<=f.h+0.5){g.scale=1;g.cx=f.x+f.w/2;g.cy=f.y+f.h/2;}else fitGroup(g,marginBox());}
 
 /* ---------- SVG ---------- */
 function shapeList(root){return[...root.querySelectorAll(SHAPES)].filter(el=>!el.closest('defs,clipPath,mask,symbol,pattern,marker'));}
@@ -519,15 +543,17 @@ function render(){
   $('#zLab').textContent=Math.round(lastFit*S.zoom/(96/25.4)*100)+' %';if(window.AtelierZoom)AtelierZoom.info();
 }
 function drawGuides(ctx,ppm,pw,ph){
-  if(!S.guides.show)return;const m=S.guides.margin,t=S.guides.top;
+  if(!S.guides.show)return;const m=S.guides.margin,t=S.guides.top,mb=marginBox();
   ctx.save();ctx.lineWidth=Math.max(1,ppm*0.25);ctx.setLineDash([ppm*3,ppm*2]);
-  ctx.textAlign='left';ctx.strokeStyle='rgba(0,160,255,.9)';ctx.strokeRect(m*ppm,m*ppm,(pw-2*m)*ppm,((limitH()||ph)-2*m)*ppm);
+  ctx.textAlign='left';ctx.strokeStyle='rgba(0,160,255,.9)';ctx.strokeRect(mb.x*ppm,mb.y*ppm,mb.w*ppm,mb.h*ppm);
   ctx.strokeStyle='rgba(255,0,140,.9)';ctx.beginPath();ctx.moveTo(0,t*ppm);ctx.lineTo(pw*ppm,t*ppm);ctx.stroke();
   ctx.setLineDash([]);ctx.font=`${Math.max(9,Math.round(2.6*ppm))}px system-ui,sans-serif`;
   ctx.fillStyle='rgba(255,0,140,.9)';ctx.fillText(t+' mm',(m+1)*ppm,t*ppm-ppm);
-  const L=limitH();if(L){// format 30 × 30 : limite du carré, le bas de la feuille grisé
-    ctx.fillStyle='rgba(0,0,0,.07)';ctx.fillRect(0,L*ppm,pw*ppm,(ph-L)*ppm);ctx.strokeStyle='rgba(230,90,0,.95)';ctx.lineWidth=Math.max(1.5,ppm*0.5);ctx.beginPath();ctx.moveTo(0,L*ppm);ctx.lineTo(pw*ppm,L*ppm);ctx.stroke();
-    ctx.fillStyle='rgba(230,90,0,.95)';ctx.fillText('Limite 30 × 30 cm',(m+1)*ppm,L*ppm+3.5*ppm);}
+  const b=finBox();if(b){// format final : le reste de la feuille est grisé, le cadre est marqué en orange
+    ctx.fillStyle='rgba(0,0,0,.07)';ctx.beginPath();ctx.rect(0,0,pw*ppm,ph*ppm);ctx.rect(b.x*ppm,b.y*ppm,b.w*ppm,b.h*ppm);ctx.fill('evenodd');
+    ctx.strokeStyle='rgba(230,90,0,.95)';ctx.lineWidth=Math.max(1.5,ppm*0.5);ctx.strokeRect(b.x*ppm,b.y*ppm,b.w*ppm,b.h*ppm);
+    ctx.fillStyle='rgba(230,90,0,.95)';const lab='Format final : '+b.name+(b.over?' (dépasse la feuille)':'');
+    ctx.fillText(lab,(b.x+m+1)*ppm,b.y>7?(b.y-1.5)*ppm:(b.y+3.5)*ppm);}
   ctx.restore();
 }
 function drawSel(ctx,ppm){
@@ -567,6 +593,51 @@ async function exportPDF(){
   await busy();
 }
 
+/* ---------- impression directe : une encre à la fois ---------- */
+function inkPageCanvas(ink,layers){
+  const[pw,ph]=pageSize(),ppm=300/25.4,W=Math.round(pw*ppm),H=Math.round(ph*ppm),strip=2048;
+  const out=document.createElement('canvas');out.width=W;out.height=H;const octx=out.getContext('2d');octx.fillStyle='#fff';octx.fillRect(0,0,W,H);
+  const oc=document.createElement('canvas');
+  return(async()=>{
+    for(let y0=0;y0<H;y0+=strip){
+      const h=Math.min(strip,H-y0);await busy(`Préparation ${getInk(ink).name} — ${Math.round(100*y0/H)} %`);
+      const acc=accumulate(layers,W,h,ppm,y0,true,false),d=acc.get(ink);if(!d)continue;
+      oc.width=W;oc.height=h;const cx=oc.getContext('2d'),img=cx.createImageData(W,h),o=img.data;
+      for(let i=0,j=0;i<d.length;i++,j+=4){const v=255*(1-(d[i]>1?1:d[i]));o[j]=o[j+1]=o[j+2]=v;o[j+3]=255;}
+      cx.putImageData(img,0,0);octx.drawImage(oc,0,y0);
+    }
+    return out;
+  })();
+}
+function askPrintInk(order,last){
+  return new Promise(res=>{
+    const d=$('#dlg'),body=$('#dlgBody');$('#dlgTitle').textContent='Imprimer — quelle couleur ?';$('#dlgOk').textContent='Imprimer';
+    body.innerHTML='<div style="margin-bottom:8px;color:var(--mute);font-size:12px">Mets le tambour de l’encre choisie dans la riso, puis imprime. Une couleur à la fois.</div><div class="inkpick" style="grid-template-columns:1fr">'+order.map((id,k)=>{const i=getInk(id);return`<label style="padding:4px 0"><input type="radio" name="prInk" value="${id}"${(last?id===last:k===0)?' checked':''}><span class="sw" style="background:${i.hex}"></span>${esc(i.name)}</label>`;}).join('')+'</div>';
+    let done=false;const finish=v=>{if(done)return;done=true;if(d.open)d.close();$('#dlgOk').textContent='Importer';res(v);};
+    d.oncancel=()=>finish(null);$('#dlgCancel').onclick=()=>finish(null);
+    $('#dlgOk').onclick=()=>{const r=body.querySelector('input[name=prInk]:checked');finish(r?r.value:null);};
+    d.showModal();
+  });
+}
+let lastPrintInk=null;
+async function printInk(){
+  const vis=S.layers.filter(l=>l.visible&&l.src);if(!vis.length)return alert('Aucun calque visible à imprimer.');
+  const order=[];vis.forEach(l=>{if(!order.includes(l.ink))order.push(l.ink);});
+  const ink=await askPrintInk(order,lastPrintInk);if(!ink)return;lastPrintInk=ink;
+  const[pw,ph]=pageSize(),layers=vis.filter(l=>l.ink===ink),binary=layers.some(l=>l.trame!=='aucune');
+  try{
+    const cv=await inkPageCanvas(ink,layers);await busy('Ouverture de l’impression…');
+    const blob=await new Promise(r=>cv.toBlob(r,binary?'image/png':'image/jpeg',0.95));const url=URL.createObjectURL(blob);
+    let fr=document.getElementById('printFrame');if(fr)fr.remove();
+    fr=document.createElement('iframe');fr.id='printFrame';fr.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    fr.srcdoc=`<!doctype html><html><head><meta charset="utf-8"><title>Riso — ${esc(getInk(ink).name)}</title><style>@page{size:${pw}mm ${ph}mm;margin:0}html,body{margin:0;padding:0;background:#fff}img{display:block;width:${pw}mm;height:${ph}mm}</style></head><body><img src="${url}"></body></html>`;
+    fr.onload=()=>{const im=fr.contentDocument.querySelector('img');const go=()=>{try{fr.contentWindow.focus();fr.contentWindow.print();}catch(e){alert('Impression impossible : '+(e.message||e));}};if(im.complete)go();else im.onload=go;};
+    document.body.appendChild(fr);
+  }catch(e){console.error(e);alert('Impression impossible : '+(e.message||e));}
+  await busy();
+}
+
+
 /* ---------- projet ---------- */
 function buildProject(){
     const P={app:'atelier-riso',v:1,paper:S.paper,guides:S.guides,inks:S.inks,groups:[],layers:[]};
@@ -599,7 +670,7 @@ async function openProjectData(P){
   await busy('Ouverture…');
   try{
     if(!P||P.app!=='atelier-riso')throw new Error('ce fichier n’est pas un projet La Suite Riso');
-    Object.assign(S.paper,P.paper||{});Object.assign(S.guides,P.guides||{});
+    setPaper(P.paper);Object.assign(S.guides,P.guides||{});
     (P.inks||[]).forEach(i=>{if(!S.inks.some(x=>x.id===i.id))S.inks.push(i);});
     S.groups=[];S.layers=[];let mx=0;const num=id=>{const n=parseInt(String(id).slice(1));if(n>mx)mx=n;};
     for(const go of P.groups){const g={...go};delete g.src;if(go.src)g.srcCanvas=toCanvas(await loadImgURL(go.src));S.groups.push(g);num(g.id);}
@@ -713,7 +784,9 @@ function renderLayers(){
 function renderInks(){
   $('#inks').innerHTML=S.inks.map(i=>`<div class="ink" data-i="${i.id}"><input type="color" data-ik="hex" value="${i.hex}"><input type="text" data-ik="name" value="${esc(i.name)}"><button class="btn sm" data-ia="del" title="Supprimer">✕</button></div>`).join('');
 }
-function syncPaperUI(){$('#pFmt').value=S.paper.fmt;const cu=S.paper.fmt==='custom';$('#pWl').style.display=$('#pHl').style.display=cu?'':'none';if(cu){$('#pW').value=S.paper.w||210;$('#pH').value=S.paper.h||297;}$('#pOr').value=S.paper.fmt==='30x30'?'portrait':S.paper.orient;$('#pOr').disabled=S.paper.fmt==='30x30';$('#gMargin').value=S.guides.margin;$('#gTop').value=S.guides.top;$('#gShow').checked=S.guides.show;}
+function syncPaperUI(){const P=S.paper;$('#pFmt').value=P.fmt;const cu=P.fmt==='custom';$('#pWl').style.display=$('#pHl').style.display=cu?'':'none';if(cu){$('#pW').value=P.w||210;$('#pH').value=P.h||297;}
+  $('#pFin').value=P.fin||'full';const fc=P.fin==='custom';$('#fWl').style.display=$('#fHl').style.display=fc?'':'none';if(fc){$('#fW').value=P.fw||200;$('#fH').value=P.fh||200;}
+  $('#pOr').value=P.fo||'portrait';$('#pOr').disabled=!P.fin||P.fin==='full';$('#gMargin').value=S.guides.margin;$('#gTop').value=S.guides.top;$('#gShow').checked=S.guides.show;}
 
 /* ---------- événements ---------- */
 $('#fileIn').onchange=async e=>{const files=[...e.target.files];e.target.value='';for(const f of files)await importFile(f);};
@@ -725,10 +798,13 @@ window.addEventListener('atelier-inks',()=>{S.inks=loadInks();renderSide();sched
 window.addEventListener('atelier-conflict',e=>{if(e.detail.id!==S.doc.id)return;S.doc={id:e.detail.copyId,name:e.detail.name};showDoc();alert('Ce document a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();saveProject(false);}});
 $('#exportBtn').onclick=exportPDF;
+$('#printBtn').onclick=printInk;
 $('#pFmt').onchange=e=>{S.paper.fmt=e.target.value;if(S.paper.fmt==='custom'&&!S.paper.w){S.paper.w=210;S.paper.h=297;}savePrefs();syncPaperUI();scheduleRender();};
+$('#pFin').onchange=e=>{S.paper.fin=e.target.value;savePrefs();syncPaperUI();scheduleRender();};
+['fW','fH'].forEach(id=>$('#'+id).addEventListener('change',e=>{const v=Math.max(20,Math.min(450,Math.round(+e.target.value||0)));e.target.value=v;S.paper[id==='fW'?'fw':'fh']=v;savePrefs();scheduleRender();}));
 /* format personnalisé : largeur × hauteur en mm (la riso imprime jusqu'au A3, un peu plus en long) */
 ['pW','pH'].forEach(id=>$('#'+id).addEventListener('change',e=>{const v=Math.max(50,Math.min(id==='pW'?320:450,Math.round(+e.target.value||0)));e.target.value=v;S.paper[id==='pW'?'w':'h']=v;savePrefs();scheduleRender();}));
-$('#pOr').onchange=e=>{S.paper.orient=e.target.value;savePrefs();scheduleRender();};
+$('#pOr').onchange=e=>{S.paper.fo=e.target.value;savePrefs();scheduleRender();};
 $('#gMargin').oninput=e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.guides.margin=v;savePrefs();scheduleRender();}};
 $('#gTop').oninput=e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.guides.top=v;savePrefs();scheduleRender();}};
 $('#gShow').onchange=e=>{S.guides.show=e.target.checked;savePrefs();scheduleRender();};
@@ -744,9 +820,9 @@ const onGClick=e=>{
   const b=e.target.closest('[data-g]');if(b){S.sel=b.dataset.g;renderGroups();scheduleRender();return;}
   const a=e.target.closest('[data-ga]');if(!a)return;const g=selGroup();if(!g)return;const[pw,ph]=pageSize();
   switch(a.dataset.ga){
-    case'center':g.cx=pw/2;g.cy=ph/2;break;
+    case'center':{const f=frameBox();g.cx=f.x+f.w/2;g.cy=f.y+f.h/2;break;}
     case'fitmargin':fitGroup(g,marginBox());break;
-    case'fitpage':fitGroup(g,{x:0,y:0,w:pw,h:ph});break;
+    case'fitpage':fitGroup(g,frameBox());break;
     case'real':g.scale=1;break;
     case'del':if(!confirm('Supprimer « '+g.name+' » et ses calques ?'))return;S.layers=S.layers.filter(l=>l.groupId!==g.id);S.groups=S.groups.filter(x=>x!==g);S.sel=S.groups.length?S.groups[S.groups.length-1].id:null;renderSide();scheduleRender();return;
   }
@@ -843,7 +919,7 @@ $('#gsel').addEventListener('pointerup',()=>{rsz=null;});
 /* ---------- barre d'outils à gauche, panneau de droite repliable (comme Vecto) ---------- */
 let TBM='move';
 function gAct(a){const g=selGroup();if(!g){if(['center','fitmargin','fitpage','real','rot','dup','del'].includes(a))alert('Choisis d’abord un élément (clic dessus sur la feuille).');return;}const[pw,ph]=pageSize();
-  switch(a){case'center':g.cx=pw/2;g.cy=ph/2;break;case'fitmargin':fitGroup(g,marginBox());break;case'fitpage':fitGroup(g,{x:0,y:0,w:pw,h:ph});break;case'real':g.scale=1;break;
+  switch(a){case'center':{const f=frameBox();g.cx=f.x+f.w/2;g.cy=f.y+f.h/2;break;}case'fitmargin':fitGroup(g,marginBox());break;case'fitpage':fitGroup(g,frameBox());break;case'real':g.scale=1;break;
     case'rot':g.rot=((g.rot||0)+90)%360;break;
     case'dup':{const g2=dupGroup(g);const k=5;g2.cx+=k;g2.cy+=k;S.sel=g2.id;renderSide();scheduleRender();return;}
     case'del':{const b=document.querySelector('#toolBar [data-ga=del]');if(b)b.click();return;}}
@@ -857,11 +933,11 @@ document.querySelectorAll('#tools [data-tb]').forEach(b=>b.addEventListener('cli
 function toolSync(){document.querySelector('#tools [data-tb=trame]').classList.toggle('on',$('#showTrame').checked);document.querySelector('#tools [data-tb=guides]').classList.toggle('on',$('#gShow').checked);
   const has=!!selGroup();['center','fitmargin','fitpage','real','rot','dup','del'].forEach(k=>{document.querySelector('#tools [data-tb='+k+']').disabled=!has;});
   $('#zLabT').textContent=$('#zLab').textContent;
-  document.querySelectorAll('#mini [data-pf]').forEach(b=>b.classList.toggle('on',S.paper.fmt===b.dataset.pf));document.querySelectorAll('#mini [data-po]').forEach(b=>b.classList.toggle('on',S.paper.orient===b.dataset.po));
+  document.querySelectorAll('#mini [data-pf]').forEach(b=>b.classList.toggle('on',S.paper.fin===b.dataset.pf));document.querySelectorAll('#mini [data-po]').forEach(b=>b.classList.toggle('on',(S.paper.fo||'portrait')===b.dataset.po));
   const ML=$('#miniLayers');ML.innerHTML=S.layers.map(L=>{const ink=getInk(L.ink);return`<button type="button" class="ml${L.visible?'':' off'}" data-ml="${L.id}" title="${esc(L.name)} — ${esc(ink.name)} (clic : afficher / masquer)"><span class="sw" style="background:${ink.hex}"></span></button>`;}).join('')||'<span class="muted" style="font-size:10px">—</span>';}
 $('#miniLayers').addEventListener('click',e=>{const b=e.target.closest('[data-ml]');if(!b)return;const row=document.querySelector('#layers [data-l="'+b.dataset.ml+'"] [data-la=vis]');if(row)row.click();setTimeout(toolSync,0);});
 $('#mini').addEventListener('click',e=>{const f=e.target.closest('[data-pf]'),o=e.target.closest('[data-po]');
-  if(f){$('#pFmt').value=f.dataset.pf;$('#pFmt').dispatchEvent(new Event('change'));}if(o){$('#pOr').value=o.dataset.po;$('#pOr').dispatchEvent(new Event('change'));}setTimeout(toolSync,0);});
+  if(f){$('#pFin').value=f.dataset.pf;$('#pFin').dispatchEvent(new Event('change'));}if(o){$('#pOr').value=o.dataset.po;$('#pOr').dispatchEvent(new Event('change'));}setTimeout(toolSync,0);});
 (function(){
   let st={};try{st=JSON.parse(localStorage.getItem('atelierRiso.rub'))||{};}catch(e){}
   document.querySelectorAll('aside section[data-sec]').forEach(sec=>{const k=sec.dataset.sec;if(st[k]===false)sec.classList.add('closed');
@@ -893,7 +969,7 @@ async function fromVecto(){
   const t=await new Promise(res=>{const q=db.transaction('kv').objectStore('kv').get('transfert.riso');q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);});
   if(!t||!t.svg)return;
   await new Promise(res=>{const tx=db.transaction('kv','readwrite');tx.objectStore('kv').delete('transfert.riso');tx.oncomplete=res;tx.onerror=res;});
-  if(t.fmt){S.paper.fmt=t.fmt;S.paper.orient=t.orient||'portrait';savePrefs();syncPaperUI();scheduleRender();}
+  if(t.fmt&&FINALS[t.fmt]){S.paper.fin=t.fmt;S.paper.fo=t.orient||'portrait';savePrefs();syncPaperUI();scheduleRender();}
   if(window.AtelierTabs&&(S.groups.length||S.layers.length))await AtelierTabs.newTab();// ce qui vient de Vecto s'ouvre dans un nouvel onglet
   await importFile(new File([t.svg],(t.name||'Vecto')+'.svg',{type:'image/svg+xml'}));
 }
@@ -908,6 +984,6 @@ AtelierDrop.init({app:'riso',accept:f=>['svg','pdf','ai','json'].includes(ext(f)
   open:async fs=>{const pj=fs.filter(f=>ext(f)==='json');if(pj.length)feed('#projIn',[pj[0]]);const rest=fs.filter(f=>ext(f)!=='json');if(rest.length)feed('#fileIn',rest);}});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Format / orientation", "A3 ou A4, portrait ou paysage."], ["Marge", "Cadre bleu non imprimé, à X mm du bord."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut (repère pour le 30 × 40)."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."], ["Intensité", "Renforce ou allège toutes les couches."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Feuille d’impression", "Le papier mis dans la riso : 29,7 × 42 (A3), 30 × 40 ou personnalisée (portrait)."], ["Format final du dessin", "Le format du dessin fini (A3, A4, A5, 30 × 30…), collé en bas de la feuille et centré. Le cadre orange et le gris autour marquent les limites (non imprimés). Sens portrait / paysage au choix."], ["Marge", "Cadre bleu non imprimé, à X mm du bord du format final."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut de la feuille."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."], ["Intensité", "Renforce ou allège toutes les couches."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Imprimer", "text": "Le bouton Imprimer demande quelle encre imprimer, puis ouvre l’impression du navigateur avec cette seule couleur (en noir, à la taille de la feuille). Une encre à la fois : changer de tambour entre deux impressions."}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
 </body>
 </html>
