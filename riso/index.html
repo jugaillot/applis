@@ -575,7 +575,7 @@ function drawSel(ctx,ppm){
 }
 
 /* ---------- export PDF ---------- */
-async function exportPDF(){
+async function exportPDFgris(){
   const vis=S.layers.filter(l=>l.visible&&l.src);if(!vis.length)return alert('Aucun calque visible à exporter.');
   if(!window.jspdf)return alert('Bibliothèque PDF non chargée (connexion ?).');
   const[pw,ph]=pageSize(),ppm=300/25.4,W=Math.round(pw*ppm),H=Math.round(ph*ppm),or=pw>ph?'landscape':'portrait';
@@ -603,6 +603,45 @@ async function exportPDF(){
     alert('PDF exporté.\n\n'+order.map((id,k)=>`Page ${k+1} : ${getInk(id).name}`).join('\n'));
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
+}
+
+/* export couleur : toutes les encres superposées sur une seule page */
+async function exportPDFcouleur(){
+  const vis=S.layers.filter(l=>l.visible&&l.src);if(!vis.length)return alert('Aucun calque visible à exporter.');
+  if(!window.jspdf)return alert('Bibliothèque PDF non chargée (connexion ?).');
+  const[pw,ph]=pageSize(),ppm=300/25.4,W=Math.round(pw*ppm),H=Math.round(ph*ppm),or=pw>ph?'landscape':'portrait',strip=1024;
+  const doc=new window.jspdf.jsPDF({orientation:or,unit:'mm',format:[pw,ph],compress:true});
+  const oc=document.createElement('canvas');
+  try{
+    for(let y0=0;y0<H;y0+=strip){
+      const h=Math.min(strip,H-y0);await busy(`Export couleur — ${Math.round(100*y0/H)} %`);
+      const acc=accumulate(vis,W,h,ppm,y0,true,false),n=W*h,R=new Float32Array(n).fill(1),G=new Float32Array(n).fill(1),B=new Float32Array(n).fill(1);
+      for(const[id,d]of acc){const[ir,ig,ib]=hexToRgb(getInk(id).hex),kr=1-ir/255,kg=1-ig/255,kb=1-ib/255;for(let i=0;i<n;i++){const v=d[i]>1?1:d[i];if(v>0){R[i]*=1-v*kr;G[i]*=1-v*kg;B[i]*=1-v*kb;}}}
+      oc.width=W;oc.height=h;const cx=oc.getContext('2d'),img=cx.createImageData(W,h),o=img.data;
+      for(let i=0,j=0;i<n;i++,j+=4){o[j]=R[i]*255;o[j+1]=G[i]*255;o[j+2]=B[i]*255;o[j+3]=255;}
+      cx.putImageData(img,0,0);doc.addImage(oc.toDataURL('image/jpeg',0.93),'JPEG',0,y0/ppm,pw,h/ppm,undefined,'FAST');
+    }
+    doc.save(`riso-couleur-${new Date().toISOString().slice(0,10)}.pdf`);
+    await busy();
+  }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
+  await busy();
+}
+let lastExportMode='gris';
+function askExport(){
+  return new Promise(res=>{
+    const d=$('#dlg'),body=$('#dlgBody');$('#dlgTitle').textContent='Exporter en PDF';$('#dlgOk').textContent='Exporter';
+    body.innerHTML=`<label class="chk" style="align-items:flex-start;padding:4px 0"><input type="radio" name="exMode" value="gris"${lastExportMode==='gris'?' checked':''}><span><b>Nuances de gris, pour tirage riso</b><br><span class="muted">Une page par encre, en noir : chaque page s’imprime avec le tambour de sa couleur.</span></span></label>
+    <label class="chk" style="align-items:flex-start;padding:4px 0"><input type="radio" name="exMode" value="couleur"${lastExportMode==='couleur'?' checked':''}><span><b>Couleur</b><br><span class="muted">Toutes les encres superposées sur une seule page, comme à l’écran.</span></span></label>`;
+    let done=false;const finish=v=>{if(done)return;done=true;if(d.open)d.close();$('#dlgOk').textContent='Importer';res(v);};
+    d.oncancel=()=>finish(null);$('#dlgCancel').onclick=()=>finish(null);
+    $('#dlgOk').onclick=()=>{const r=body.querySelector('input[name=exMode]:checked');finish(r?r.value:null);};
+    d.showModal();
+  });
+}
+async function exportPDF(){
+  if(!S.layers.some(l=>l.visible&&l.src))return alert('Aucun calque visible à exporter.');
+  const m=await askExport();if(!m)return;lastExportMode=m;
+  if(m==='couleur')await exportPDFcouleur();else await exportPDFgris();
 }
 
 /* ---------- impression directe : une encre à la fois ---------- */
@@ -1004,6 +1043,6 @@ AtelierDrop.init({app:'riso',accept:f=>['svg','pdf','ai','json'].includes(ext(f)
   open:async fs=>{const pj=fs.filter(f=>ext(f)==='json');if(pj.length)feed('#projIn',[pj[0]]);const rest=fs.filter(f=>ext(f)!=='json');if(rest.length)feed('#fileIn',rest);}});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["Échap", "Quitter l’aperçu"], ["Suppr", "Supprimer l’élément sélectionné et tous ses calques"], ["🔒 (calque)", "Verrouille l’élément du calque : on ne peut plus le sélectionner ni le déplacer sur la feuille, il reste imprimé"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Feuille d’impression", "Le papier mis dans la riso : 29,7 × 42 (A3), 30 × 40 ou personnalisée (portrait)."], ["Format final du dessin", "Le format du dessin fini (A3, A4, A5, 30 × 30…), collé en bas de la feuille et centré. Le cadre orange et le gris autour marquent les limites (non imprimés). Sens portrait / paysage au choix."], ["Marge", "Cadre bleu non imprimé, à X mm du bord du format final."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut de la feuille."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Imprimer", "text": "Le bouton Imprimer demande quelle encre imprimer, puis ouvre l’impression du navigateur avec cette seule couleur (en noir, à la taille de la feuille). Une encre à la fois : changer de tambour entre deux impressions."}, {"title": "Export", "text": "Le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["Échap", "Quitter l’aperçu"], ["Suppr", "Supprimer l’élément sélectionné et tous ses calques"], ["🔒 (calque)", "Verrouille l’élément du calque : on ne peut plus le sélectionner ni le déplacer sur la feuille, il reste imprimé"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Feuille d’impression", "Le papier mis dans la riso : 29,7 × 42 (A3), 30 × 40 ou personnalisée (portrait)."], ["Format final du dessin", "Le format du dessin fini (A3, A4, A5, 30 × 30…), collé en bas de la feuille et centré. Le cadre orange et le gris autour marquent les limites (non imprimés). Sens portrait / paysage au choix."], ["Marge", "Cadre bleu non imprimé, à X mm du bord du format final."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut de la feuille."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Imprimer", "text": "Le bouton Imprimer demande quelle encre imprimer, puis ouvre l’impression du navigateur avec cette seule couleur (en noir, à la taille de la feuille). Une encre à la fois : changer de tambour entre deux impressions."}, {"title": "Export", "text": "Exporter PDF propose deux choix : nuances de gris pour tirage riso, ou couleur (toutes les encres sur une même page). En gris, le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
 </body>
 </html>
