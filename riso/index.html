@@ -89,6 +89,11 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 #gsel .gh[data-h=tl]{left:0;top:0;cursor:nwse-resize}#gsel .gh[data-h=br]{left:100%;top:100%;cursor:nwse-resize}
 #gsel .gh[data-h=tr]{left:100%;top:0;cursor:nesw-resize}#gsel .gh[data-h=bl]{left:0;top:100%;cursor:nesw-resize}
 body.tb-resize #cv{cursor:nwse-resize}
+body.tb-erase #cv{cursor:crosshair}
+#erBrush{position:fixed;pointer-events:none;border:1px solid rgba(255,0,140,.9);background:rgba(255,0,140,.12);border-radius:50%;transform:translate(-50%,-50%);z-index:30;display:none}
+#erBar b,#erBar span{white-space:nowrap}
+#erBar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:var(--panel,#fff);border:1px solid var(--line,#ddd);border-radius:10px;padding:6px 12px;z-index:25;display:none;align-items:center;gap:8px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+body.apv #erBar{display:none!important}
 #cv{margin:auto;flex:none;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.16);touch-action:none;cursor:grab}
 #cv:active{cursor:grabbing}
 .glist{display:flex;flex-wrap:wrap;gap:6px}
@@ -165,6 +170,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <button class="tool" type="button" data-tb="import" title="Importer une image, un SVG, un PDF…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></button>
 <button class="tool on" type="button" data-tb="move" title="Déplacer : glisser un élément sur la feuille (Alt : en faire une copie) · flèches : 1 mm, Maj : 10 mm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor" stroke="none"/></svg></button>
 <button class="tool" type="button" data-tb="resize" title="Redimensionner : glisser sur l’élément vers la droite / le bas pour l’agrandir, vers la gauche / le haut pour le réduire (depuis son centre) · ou tirer les poignées des coins (le coin opposé reste en place)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="10" height="10" rx="1"/><path d="M13 3h8v8M21 3l-8 8"/></svg></button>
+<button class="tool" type="button" data-tb="erase" title="Gomme (E) : efface ce qui est sous le cercle, dans tous les éléments non verrouillés · Ctrl+Z / Ctrl+Y pour revenir en arrière"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(-40 12 11)"><rect x="4" y="7" width="16" height="9" rx="1.6"/><path d="M11 7v9"/></g><path d="M4 21h16"/></svg></button>
     <div class="tsep"></div>
 <button class="tool" type="button" data-tb="center" title="Centrer l’élément choisi sur la feuille"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M12 8v8M8 12h8"/></svg></button>
 <button class="tool" type="button" data-tb="fitmargin" title="Ajuster l’élément à la marge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5" stroke-dasharray="2 2"/><rect x="6.5" y="6.5" width="11" height="11" rx="1"/></svg></button>
@@ -181,6 +187,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <button class="tool" type="button" data-tb="guides" title="Afficher les repères (marge, trait du haut — non imprimés)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"/><rect x="6.5" y="6.5" width="11" height="11" stroke-dasharray="2 2"/></svg></button>
   </div><div class="muted" id="zLabT" style="text-align:center;margin-top:6px;margin-bottom:10px;font-size:11px"></div>
   <button class="tool" type="button" id="bPreview" title="Aperçu : la feuille telle qu’elle sera imprimée, sans repères ni cadres (Échap : revenir)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><rect x="6" y="3" width="12" height="18" rx="1.2"/><path d="M2.5 12s3-4.2 9.5-4.2S21.5 12 21.5 12s-3 4.2-9.5 4.2S2.5 12 2.5 12z" fill="var(--panel,#fff)"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/></svg></button></nav>
+  <div id="erBrush"></div>
+<div id="erBar"><b>Gomme</b><label style="display:flex;flex-direction:row;align-items:center;gap:6px;margin:0;white-space:nowrap">Diamètre <input type="range" id="erD" min="1" max="80" step="1" style="width:140px;margin:0"><span id="erDv" style="min-width:18px;text-align:right"></span> mm</label><span class="muted">Ctrl+Z : revenir · E : quitter</span></div>
   <aside>
     <div id="asideTop"><button type="button" id="asideTg" title="Réduire le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l6 6-6 6M12 6l6 6-6 6"/></svg></button></div>
     <section data-sec="paper">
@@ -486,11 +494,12 @@ function layerAmount(L,g,W,H,ppm,y0){
   ctx.translate(g.cx,g.cy);ctx.rotate(g.rot*Math.PI/180);ctx.scale(g.scale,g.scale);
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   try{ctx.drawImage(L.src,-g.w/2,-g.h/2,g.w,g.h);}catch(e){}
+  if(g.mask){ctx.globalCompositeOperation='destination-out';try{ctx.drawImage(g.mask,-g.w/2,-g.h/2,g.w,g.h);}catch(e){}ctx.globalCompositeOperation='source-over';}
   const d=ctx.getImageData(0,0,W,H).data,out=new Uint8Array(W*H),inv=L.invert,flat=L.flat;
   for(let i=0,j=0;i<out.length;i++,j+=4){const a=d[j+3];if(!a)continue;const lum=(d[j]*299+d[j+1]*587+d[j+2]*114)/1000;let v=inv?lum:255-lum;if(flat)v=v>12?255:0;out[i]=(v*a+127)/255;}
   return out;
 }
-function cachedAmount(L,g,W,H,ppm){const key=[g.cx,g.cy,g.scale,g.rot,g.w,g.h,W,H,L.ver,L.invert,L.flat].join('|');if(L.cache&&L.cache.key===key)return L.cache.a;const a=layerAmount(L,g,W,H,ppm,0);L.cache={key,a};return a;}
+function cachedAmount(L,g,W,H,ppm){const key=[g.cx,g.cy,g.scale,g.rot,g.w,g.h,W,H,L.ver,L.invert,L.flat,g.maskVer||0].join('|');if(L.cache&&L.cache.key===key)return L.cache.a;const a=layerAmount(L,g,W,H,ppm,0);L.cache={key,a};return a;}
 function levelLUT(L){const lo=L.lo/100,hi=Math.max(lo+0.01,L.hi/100),gm=Math.pow(2,-L.tone/50),den=L.density/100,t=new Float32Array(256);for(let v=1;v<256;v++){let x=(v/255-lo)/(hi-lo);x=x<0?0:x>1?1:x;t[v]=Math.pow(x,gm)*den;}return t;}
 function hash(x,y){let h=(x*374761393+y*668265263)|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296;}
 function applyTrame(L,d,W,H,ppm,y0){
@@ -534,7 +543,7 @@ addEventListener('DOMContentLoaded',()=>{if(window.AtelierZoom)AtelierZoom.init(
   actual:()=>{const st=$('#stage').getBoundingClientRect();zoomBy((96/25.4)/(lastFit*S.zoom),st.left+st.width/2,st.top+st.height/2);},pct:()=>lastFit*S.zoom/(96/25.4)*100});});
 /* aperçu : la feuille telle qu'imprimée (trame comprise), sans repères, cadres ni poignées */
 let APV=false;
-function setPreview(on){APV=!!on;document.body.classList.toggle('apv',APV);scheduleRender();}
+function setPreview(on){APV=!!on;document.body.classList.toggle('apv',APV);if(typeof setTBM==='function')setTBM(TBM);scheduleRender();}
 function render(){
   const[pw,ph]=pageSize(),stage=$('#stage'),cv=$('#cv');
   const fit=Math.max(0.3,Math.min((stage.clientWidth-32)/pw,(stage.clientHeight-32)/ph));lastFit=fit;
@@ -692,7 +701,7 @@ async function printInk(){
 /* ---------- projet ---------- */
 function buildProject(){
     const P={app:'atelier-riso',v:1,paper:S.paper,guides:S.guides,inks:S.inks,groups:[],layers:[]};
-    for(const g of S.groups){const o={id:g.id,name:g.name,kind:g.kind,w:g.w,h:g.h,cx:g.cx,cy:g.cy,scale:g.scale,rot:g.rot,sep:g.sep,locked:!!g.locked};if(g.srcCanvas)o.src=g.srcCanvas.toDataURL('image/png');P.groups.push(o);}
+    for(const g of S.groups){const o={id:g.id,name:g.name,kind:g.kind,w:g.w,h:g.h,cx:g.cx,cy:g.cy,scale:g.scale,rot:g.rot,sep:g.sep,locked:!!g.locked};if(g.srcCanvas)o.src=g.srcCanvas.toDataURL('image/png');if(g.mask){if(g.maskDataVer!==g.maskVer){g.maskData=g.mask.toDataURL('image/png');g.maskDataVer=g.maskVer;}o.mask=g.maskData;}P.groups.push(o);}
     for(const L of S.layers){const o={...L};delete o.src;delete o.cache;const g=groupById(L.groupId);if(!L.svgText&&!(g&&g.sep)&&L.src)o.srcData=toCanvas(L.src).toDataURL('image/png');P.layers.push(o);}
     return P;
 }
@@ -724,7 +733,7 @@ async function openProjectData(P){
     setPaper(P.paper);Object.assign(S.guides,P.guides||{});
     (P.inks||[]).forEach(i=>{if(!S.inks.some(x=>x.id===i.id))S.inks.push(i);});
     S.groups=[];S.layers=[];let mx=0;const num=id=>{const n=parseInt(String(id).slice(1));if(n>mx)mx=n;};
-    for(const go of P.groups){const g={...go};delete g.src;if(go.src)g.srcCanvas=toCanvas(await loadImgURL(go.src));S.groups.push(g);num(g.id);}
+    for(const go of P.groups){const g={...go};delete g.src;delete g.mask;if(go.src)g.srcCanvas=toCanvas(await loadImgURL(go.src));if(go.mask){g.mask=toCanvas(await loadImgURL(go.mask));g.maskVer=1;}S.groups.push(g);num(g.id);}
     for(const lo of P.layers){const L={...lo,cache:null};delete L.srcData;if(lo.svgText)L.src=await svgImage(lo.svgText);else if(lo.srcData)L.src=await loadImgURL(lo.srcData);else L.src=null;S.layers.push(L);num(L.id);}
     uid=mx+1;
     for(const g of S.groups)if(g.sep)await doSeparation(g);
@@ -943,9 +952,9 @@ const cv=$('#cv');let drag=null;
 function toMM(e){const r=cv.getBoundingClientRect(),[pw,ph]=pageSize();return{x:(e.clientX-r.left)/r.width*pw,y:(e.clientY-r.top)/r.height*ph};}
 function hitGroup(p){for(let k=S.groups.length-1;k>=0;k--){const g=S.groups[k];if(g.locked)continue;if(!S.layers.some(l=>l.groupId===g.id))continue;const a=-g.rot*Math.PI/180;let dx=p.x-g.cx,dy=p.y-g.cy;const x=(dx*Math.cos(a)-dy*Math.sin(a))/g.scale,y=(dx*Math.sin(a)+dy*Math.cos(a))/g.scale;if(Math.abs(x)<=g.w/2&&Math.abs(y)<=g.h/2)return g;}return null;}
 /* Alt + glisser : copie du dessin (avec ses calques), comme dans Illustrator */
-function dupGroup(g){const g2={...g,id:nid('g'),name:g.name+' (copie)',locked:false};S.groups.splice(S.groups.indexOf(g)+1,0,g2);
+function dupGroup(g){const g2={...g,id:nid('g'),name:g.name+' (copie)',locked:false,maskData:null,maskDataVer:-1};if(g.mask){const c=document.createElement('canvas');c.width=g.mask.width;c.height=g.mask.height;c.getContext('2d').drawImage(g.mask,0,0);g2.mask=c;g2.maskVer=1;}S.groups.splice(S.groups.indexOf(g)+1,0,g2);
   const ls=S.layers.filter(l=>l.groupId===g.id).map(l=>({...l,id:nid('l'),groupId:g2.id,cache:null}));let last=-1;S.layers.forEach((l,i)=>{if(l.groupId===g.id)last=i;});S.layers.splice(last+1,0,...ls);return g2;}
-cv.addEventListener('pointerdown',e=>{const p=toMM(e);let hit=hitGroup(p);
+cv.addEventListener('pointerdown',e=>{if(TBM==='erase'){erDown(e);return;}const p=toMM(e);let hit=hitGroup(p);
   if(TBM==='resize'&&hit&&!e.altKey){if(hit.id!==S.sel){S.sel=hit.id;renderGroups();}{const b=gBox(hit),k=cv.clientWidth/pageSize()[0];rsz={g:hit,mode:'c',x0:e.clientX,y0:e.clientY,dg:Math.max(20,Math.hypot(b.w,b.h)*k),s0:hit.scale};}cv.setPointerCapture(e.pointerId);return;}if(hit&&e.altKey){hit=dupGroup(hit);S.sel=hit.id;renderSide();}else if(hit&&hit.id!==S.sel){S.sel=hit.id;renderGroups();}const g=hit||null;if(!g)return;drag={g,x:p.x,y:p.y};cv.setPointerCapture(e.pointerId);});
 cv.addEventListener('mousemove',e=>{if(drag)return;cv.style.cursor=e.altKey&&hitGroup(toMM(e))?'copy':'';});
 cv.addEventListener('pointermove',e=>{if(rsz){rszMove(e);return;}if(!drag)return;const p=toMM(e);drag.g.cx+=p.x-drag.x;drag.g.cy+=p.y-drag.y;drag.x=p.x;drag.y=p.y;syncPlacement();scheduleRender();});
@@ -956,6 +965,60 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteGroup(g);toolSync();return;}
   const m={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];if(!m)return;
   e.preventDefault();g.cx+=m[0];g.cy+=m[1];syncPlacement();scheduleRender();
+});
+
+/* ---------- gomme : efface ce qui est sous le cercle, dans tous les éléments non verrouillés ----------
+   Le résultat est un masque par élément (l'image d'origine n'est jamais abîmée). Ctrl+Z / Ctrl+Y : plusieurs retours en arrière. */
+const ER={d:Math.max(1,Math.min(80,+(localStorage.getItem('atelierRiso.gomme')||8))),undo:[],redo:[],stroke:null,last:null};
+function erLocal(g,p){const a=-g.rot*Math.PI/180,dx=p.x-g.cx,dy=p.y-g.cy;return{x:(dx*Math.cos(a)-dy*Math.sin(a))/g.scale+g.w/2,y:(dx*Math.sin(a)+dy*Math.cos(a))/g.scale+g.h/2};}
+function erBrushShow(e){const b=$('#erBrush'),k=cv.getBoundingClientRect().width/pageSize()[0];b.style.display='block';b.style.left=e.clientX+'px';b.style.top=e.clientY+'px';b.style.width=b.style.height=Math.max(4,ER.d*k)+'px';}
+function erSeg(p,prev){
+  for(const g of S.groups){
+    if(g.locked||!S.layers.some(l=>l.groupId===g.id&&l.visible&&l.src))continue;
+    const a=erLocal(g,p),b=prev?erLocal(g,prev):a,r=ER.d/2/g.scale;
+    if(Math.max(a.x,b.x)<-r||Math.min(a.x,b.x)>g.w+r||Math.max(a.y,b.y)<-r||Math.min(a.y,b.y)>g.h+r)continue;
+    let sn=ER.stroke.snap.get(g.id);
+    if(!sn){
+      let full=null;
+      if(!g.mask){const pm=Math.min(6,4000/Math.max(g.w,g.h));g.mask=document.createElement('canvas');g.mask.width=Math.max(1,Math.ceil(g.w*pm));g.mask.height=Math.max(1,Math.ceil(g.h*pm));}
+      else{full=document.createElement('canvas');full.width=g.mask.width;full.height=g.mask.height;full.getContext('2d').drawImage(g.mask,0,0);}
+      sn={full,x0:1e9,y0:1e9,x1:-1e9,y1:-1e9};ER.stroke.snap.set(g.id,sn);
+    }
+    const pm=g.mask.width/g.w,c=g.mask.getContext('2d'),lw=ER.d/g.scale*pm;
+    c.strokeStyle=c.fillStyle='#000';c.lineCap='round';c.lineJoin='round';c.lineWidth=lw;
+    if(prev){c.beginPath();c.moveTo(b.x*pm,b.y*pm);c.lineTo(a.x*pm,a.y*pm);c.stroke();}else{c.beginPath();c.arc(a.x*pm,a.y*pm,lw/2,0,7);c.fill();}
+    sn.x0=Math.min(sn.x0,a.x*pm-lw,b.x*pm-lw);sn.y0=Math.min(sn.y0,a.y*pm-lw,b.y*pm-lw);sn.x1=Math.max(sn.x1,a.x*pm+lw,b.x*pm+lw);sn.y1=Math.max(sn.y1,a.y*pm+lw,b.y*pm+lw);
+    g.maskVer=(g.maskVer||0)+1;
+  }
+  scheduleRender();
+}
+function erDown(e){e.preventDefault();cv.setPointerCapture(e.pointerId);ER.stroke={snap:new Map()};const p=toMM(e);ER.last=p;erSeg(p,null);erBrushShow(e);}
+function erEnd(){
+  const st=ER.stroke;ER.stroke=null;ER.last=null;if(!st)return;
+  for(const[gid,sn]of st.snap){const g=groupById(gid);if(!g||!g.mask)continue;
+    const x=Math.max(0,Math.floor(sn.x0)),y=Math.max(0,Math.floor(sn.y0)),w=Math.min(g.mask.width,Math.ceil(sn.x1))-x,h=Math.min(g.mask.height,Math.ceil(sn.y1))-y;if(w<=0||h<=0)continue;
+    let img=null;if(sn.full){img=document.createElement('canvas');img.width=w;img.height=h;img.getContext('2d').drawImage(sn.full,x,y,w,h,0,0,w,h);}
+    ER.undo.push({gid,rect:{x,y,w,h},img});}
+  ER.redo.length=0;if(ER.undo.length>60)ER.undo.splice(0,ER.undo.length-60);
+}
+function erSwap(from,to){
+  const e=from.pop();if(!e)return;const g=groupById(e.gid);if(!g||!g.mask)return erSwap(from,to);
+  const{x,y,w,h}=e.rect,cur=document.createElement('canvas');cur.width=w;cur.height=h;cur.getContext('2d').drawImage(g.mask,x,y,w,h,0,0,w,h);
+  const c=g.mask.getContext('2d');c.clearRect(x,y,w,h);if(e.img)c.drawImage(e.img,x,y);
+  to.push({gid:e.gid,rect:e.rect,img:cur});g.maskVer=(g.maskVer||0)+1;scheduleRender();
+}
+cv.addEventListener('pointermove',e=>{if(TBM!=='erase')return;erBrushShow(e);if(!ER.stroke)return;
+  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];(evs.length?evs:[e]).forEach(ev=>{const p=toMM(ev);if(ER.last&&Math.hypot(p.x-ER.last.x,p.y-ER.last.y)<0.05)return;erSeg(p,ER.last);ER.last=p;});});
+cv.addEventListener('pointerup',erEnd);cv.addEventListener('pointercancel',erEnd);
+cv.addEventListener('pointerleave',()=>{if(!ER.stroke)$('#erBrush').style.display='none';});
+$('#erD').value=ER.d;$('#erDv').textContent=ER.d;
+$('#erD').oninput=e=>{ER.d=+e.target.value;$('#erDv').textContent=ER.d;try{localStorage.setItem('atelierRiso.gomme',ER.d);}catch(_){}};
+document.addEventListener('keydown',e=>{
+  if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)||$('#dlg').open)return;
+  const k=e.key.toLowerCase(),ctrl=e.ctrlKey||e.metaKey;
+  if(ctrl&&k==='z'&&!e.shiftKey){if(ER.undo.length){e.preventDefault();erSwap(ER.undo,ER.redo);}return;}
+  if(ctrl&&(k==='y'||(k==='z'&&e.shiftKey))){if(ER.redo.length){e.preventDefault();erSwap(ER.redo,ER.undo);}return;}
+  if(!ctrl&&!e.altKey&&k==='e'){e.preventDefault();setTBM(TBM==='erase'?'move':'erase');}
 });
 
 /* ---------- redimensionner à la main : poignées aux coins de l'élément choisi, ou outil « Redimensionner » ---------- */
@@ -977,6 +1040,7 @@ $('#gsel').addEventListener('pointerup',()=>{rsz=null;});
 {const _r=render;render=function(){_r();placeSel();};}
 /* ---------- barre d'outils à gauche, panneau de droite repliable (comme Vecto) ---------- */
 let TBM='move';
+function setTBM(a){TBM=a;document.querySelectorAll('#tools [data-tb=move],#tools [data-tb=resize],#tools [data-tb=erase]').forEach(x=>x.classList.toggle('on',x.dataset.tb===a));document.body.classList.toggle('tb-resize',a==='resize');document.body.classList.toggle('tb-erase',a==='erase');$('#erBar').style.display=a==='erase'&&!APV?'flex':'none';if(a!=='erase')$('#erBrush').style.display='none';}
 function gAct(a){const g=selGroup();if(!g){if(['center','fitmargin','fitpage','real','rot','dup','del'].includes(a))alert('Choisis d’abord un élément (clic dessus sur la feuille).');return;}if(g.locked)return alert('Cet élément est verrouillé : clique sur le cadenas 🔒 d’un de ses calques pour le déverrouiller.');const[pw,ph]=pageSize();
   switch(a){case'center':{const f=frameBox();g.cx=f.x+f.w/2;g.cy=f.y+f.h/2;break;}case'fitmargin':fitGroup(g,marginBox());break;case'fitpage':fitGroup(g,frameBox());break;case'real':g.scale=1;break;
     case'rot':g.rot=((g.rot||0)+90)%360;break;
@@ -984,7 +1048,7 @@ function gAct(a){const g=selGroup();if(!g){if(['center','fitmargin','fitpage','r
     case'del':{const b=document.querySelector('#toolBar [data-ga=del]');if(b)b.click();return;}}
   syncPlacement();renderGroups();scheduleRender();}
 document.querySelectorAll('#tools [data-tb]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.tb;
-  if(a==='import'){$('#fileIn').click();return;}if(a==='move'||a==='resize'){TBM=a;document.querySelectorAll('#tools [data-tb=move],#tools [data-tb=resize]').forEach(x=>x.classList.toggle('on',x.dataset.tb===a));document.body.classList.toggle('tb-resize',a==='resize');return;}
+  if(a==='import'){$('#fileIn').click();return;}if(a==='move'||a==='resize'||a==='erase'){setTBM(a);return;}
   if(a==='zin'){$('#zIn').click();}else if(a==='zout'){$('#zOut').click();}else if(a==='zfit'){$('#zFit').click();}
   else if(a==='trame'){const c=$('#showTrame');c.checked=!c.checked;c.dispatchEvent(new Event('change'));}
   else if(a==='guides'){const c=$('#gShow');c.checked=!c.checked;c.dispatchEvent(new Event('change'));}
@@ -1043,6 +1107,6 @@ AtelierDrop.init({app:'riso',accept:f=>['svg','pdf','ai','json'].includes(ext(f)
   open:async fs=>{const pj=fs.filter(f=>ext(f)==='json');if(pj.length)feed('#projIn',[pj[0]]);const rest=fs.filter(f=>ext(f)!=='json');if(rest.length)feed('#fileIn',rest);}});})();
 </script>
 <script src="../lib/help.js"></script>
-<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["Échap", "Quitter l’aperçu"], ["Suppr", "Supprimer l’élément sélectionné et tous ses calques"], ["🔒 (calque)", "Verrouille l’élément du calque : on ne peut plus le sélectionner ni le déplacer sur la feuille, il reste imprimé"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Feuille d’impression", "Le papier mis dans la riso : 29,7 × 42 (A3), 30 × 40 ou personnalisée (portrait)."], ["Format final du dessin", "Le format du dessin fini (A3, A4, A5, 30 × 30…), collé en bas de la feuille et centré. Le cadre orange et le gris autour marquent les limites (non imprimés). Sens portrait / paysage au choix."], ["Marge", "Cadre bleu non imprimé, à X mm du bord du format final."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut de la feuille."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Imprimer", "text": "Le bouton Imprimer demande quelle encre imprimer, puis ouvre l’impression du navigateur avec cette seule couleur (en noir, à la taille de la feuille). Une encre à la fois : changer de tambour entre deux impressions."}, {"title": "Export", "text": "Exporter PDF propose deux choix : nuances de gris pour tirage riso, ou couleur (toutes les encres sur une même page). En gris, le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
+<script>AtelierHelp.init(Object.assign({app:"riso"},{"title": "La Suite Riso", "sections": [{"title": "Clavier et souris", "keys": [["Z", "Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; ses options (−, +, Ajuster à la fenêtre, 100 %) s’affichent au-dessus"], ["Molette / Alt / Ctrl", "Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"], ["Glisser", "Déplacer l’élément importé sur la feuille"], ["E", "Gomme : efface ce qui est sous le cercle (Ctrl+Z / Ctrl+Y pour revenir)"], ["Échap", "Quitter l’aperçu"], ["Suppr", "Supprimer l’élément sélectionné et tous ses calques"], ["🔒 (calque)", "Verrouille l’élément du calque : on ne peut plus le sélectionner ni le déplacer sur la feuille, il reste imprimé"], ["← ↑ → ↓", "Déplacer l’élément sélectionné de 1 mm"], ["Maj + flèches", "Déplacer de 10 mm"], ["Ctrl + S", "Enregistrer le projet (appareil + serveur)"], ["Échap", "Fermer ce panneau"]]}, {"title": "Feuille et repères", "params": [["Feuille d’impression", "Le papier mis dans la riso : 29,7 × 42 (A3), 30 × 40 ou personnalisée (portrait)."], ["Format final du dessin", "Le format du dessin fini (A3, A4, A5, 30 × 30…), collé en bas de la feuille et centré. Le cadre orange et le gris autour marquent les limites (non imprimés). Sens portrait / paysage au choix."], ["Marge", "Cadre bleu non imprimé, à X mm du bord du format final."], ["Trait haut", "Trait rose non imprimé à X mm du bord haut de la feuille."]]}, {"title": "Séparation des couleurs (images, PDF)", "params": [["Mélange / Couleurs franches", "Mélange : les encres se superposent pour recréer les teintes. Franches : chaque zone prend une seule encre, la plus proche."], ["Blanc papier", "Au-dessus de ce niveau de clarté, rien n’est imprimé."], ["Économie d’encres", "Plus haut = moins de superpositions, moins d’encre."]]}, {"title": "Réglages d’un calque", "params": [["Densité", "Quantité d’encre maximale du calque (100 % = noir plein à l’impression)."], ["Clairs → papier", "Tout ce qui est plus clair que cette valeur disparaît."], ["Foncés → 100 %", "Tout ce qui est plus foncé que cette valeur devient plein."], ["Tonalité", "Éclaircit (−) ou fonce (+) les gris moyens."], ["Inverser / Aplat 100 %", "Inverse le calque, ou transforme toute trace en aplat plein."], ["Trame", "Aucune (le pilote riso trame les gris), points, lignes, grain, diffusion ou seuil net."], ["Linéature / angle", "Finesse de la trame (lignes par pouce) et son inclinaison."]]}, {"title": "Imprimer", "text": "Le bouton Imprimer demande quelle encre imprimer, puis ouvre l’impression du navigateur avec cette seule couleur (en noir, à la taille de la feuille). Une encre à la fois : changer de tambour entre deux impressions."}, {"title": "Export", "text": "Exporter PDF propose deux choix : nuances de gris pour tirage riso, ou couleur (toutes les encres sur une même page). En gris, le PDF contient une page par encre, en noir, dans l’ordre de la liste des calques. Chaque page s’imprime avec le tambour de l’encre indiquée."}]}));</script>
 </body>
 </html>

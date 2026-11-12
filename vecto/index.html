@@ -752,7 +752,8 @@ function setTool(t){
   S.tool=t;
   document.querySelectorAll('.tool[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
   $('#hint').textContent=HINTS[t]||'';
-  cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?bucketCursor():t==='eraser'?'cell':'crosshair';
+  if(t!=='eraser'&&typeof erHover==='function')erHover(null);
+  cv.style.cursor=t==='lasso'?'crosshair':t==='hand'?'grab':(t==='select'||t==='direct')?'default':t==='eyedrop'?'copy':t==='bucket'?bucketCursor():t==='eraser'?'crosshair':'crosshair';
   renderToolBar(t);
   if(t!=='bucket'&&window.BK){BK.limit=null;BK.drawLimit=false;if(BK.limDraw){BK.limDraw.remove();BK.limDraw=null;}P.project.layers.filter(l=>l.name==='__prev').forEach(l=>l.removeChildren());}
   if(t==='bucket'){bkWarm();if(matchMedia('(pointer:coarse)').matches)bkHistory();}
@@ -861,6 +862,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Alt'&&altCopyReady()&&!/INPU
 document.addEventListener('keyup',e=>{if(e.key==='Alt'&&altCur!=null){cv.style.cursor=altCur;altCur=null;}});
 addEventListener('blur',()=>{if(altCur!=null){cv.style.cursor=altCur;altCur=null;}});
 tool.onMouseMove=function(e){
+  if(S.tool==='eraser'&&cv.matches(':hover'))erHover(e.point);
   if(S.rotMode){if(!drag)cv.style.cursor=ROT_CUR;return;}
   if(e.modifiers.alt&&altCopyReady()){cv.style.cursor='copy';return;}
   if((S.tool==='select'||S.tool==='lasso'||S.tool==='direct')&&handles.length){const h=handleAt(e.point);cv.style.cursor=h?(h==='rot'?ROT_CUR:({tl:'nwse-resize',br:'nwse-resize',tr:'nesw-resize',bl:'nesw-resize',tc:'ns-resize',bc:'ns-resize',lc:'ew-resize',rc:'ew-resize'})[h]):(S.tool==='lasso'?'crosshair':'default');}
@@ -1863,7 +1865,17 @@ $('#ctLayer').addEventListener('change',()=>{const ol=ctCurrent();if(ol)ctApply(
 
 /* ---------- gomme : efface dans la sélection, ou dans tout ce qui est dessous s'il n'y a pas de sélection ---------- */
 let erPath=null,erPreview=null;
-function erDown(e){erPath=new P.Path({insert:false,segments:[e.point]});erShow(e.point);}
+/* cercle de la gomme qui suit la souris avant de gommer (diamètre réglé dans la barre du haut) */
+var erHov=null;
+function erHover(pt){
+  if(erHov){erHov.remove();erHov=null;}
+  if(!pt||S.tool!=='eraser'||erPath)return;
+  uiLayer.activate();const d=Math.max(0.2,+S.opt.eraser||5);
+  erHov=new P.Path.Circle({center:pt,radius:d/2,strokeColor:new P.Color(1,0.18,0.6,0.9),strokeWidth:px(1.2),fillColor:new P.Color(1,0.18,0.6,0.12)});
+  if(activeLayer)activeLayer.activate();
+}
+cv.addEventListener('pointerleave',()=>erHover(null));
+function erDown(e){erHover(null);erPath=new P.Path({insert:false,segments:[e.point]});erShow(e.point);}
 function erShow(pt){if(erPreview)erPreview.remove();uiLayer.activate();const d=Math.max(0.2,+S.opt.eraser||5);
   erPreview=erPath&&erPath.segments.length>1?new P.Path({segments:erPath.segments.map(s=>s.point),strokeColor:new P.Color(1,0.18,0.6,0.35),strokeWidth:d,strokeCap:'round',strokeJoin:'round'}):new P.Path.Circle({center:pt,radius:d/2,fillColor:new P.Color(1,0.18,0.6,0.35)});
   if(activeLayer)activeLayer.activate();}
