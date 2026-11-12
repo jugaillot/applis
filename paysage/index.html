@@ -3055,6 +3055,13 @@ document.addEventListener('keydown',e=>{
   if(k==='Escape'&&PV){setPreview(false);return;}
   if(k==='Escape'){if(S.aquaEdit){exitAquaEdit();return;}if(S.tool==='pen'&&penPath){finishPen();return;}setSel([]);clearDirect();return;}
   if(k==='Enter'&&S.tool==='pen'){finishPen();return;}
+  if(k==='Enter'&&!S.aquaEdit){// Entrée : la sélection passe au calque suivant (Blanc → Couleur → Aquarelle → Blanc…)
+    const mv=movableSelection();
+    if(mv.length){e.preventDefault();const order=['blanc','couleur','aqua'],rs=new Set();mv.forEach(i=>itemRoles(i).forEach(r=>rs.add(r)));
+      let i=order.indexOf(rs.size===1?[...rs][0]:activeRole);if(i<0)i=0;
+      for(let n=1;n<=order.length;n++){const r=order[(i+n)%order.length];if(!roleLocked(r)){moveToRole(mv,r);break;}}
+      return;}
+  }
   if(k==='Delete'||k==='Backspace'){e.preventDefault();if(S.tool==='direct'){if(deleteSegs())return;if(deleteDirectPaths())return;}cmd('del');return;}
   if(S.tool==='bucket'&&(k==='ArrowLeft'||k==='ArrowRight')&&!(e.ctrlKey||e.metaKey)){e.preventDefault();bkCycleLayer(k==='ArrowRight'?1:-1);return;}
   if(k.startsWith('Arrow')&&(sel.length||S.tool==='direct')){
