@@ -265,36 +265,15 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     </section>
     <section id="secSel" data-sec="sel">
       <h2><span class="ttl"><span class="tw">▼</span>Transformation</span> <span class="muted" id="selCount"></span></h2>
-      <div class="g4">
-        <label>X<input type="number" step="0.5" data-geo="x"></label>
-        <label>Y<input type="number" step="0.5" data-geo="y"></label>
-        <label>L<input type="number" step="0.5" min="0.1" data-geo="w"></label>
-        <label>H<input type="number" step="0.5" min="0.1" data-geo="h"></label>
-      </div>
-      <label class="chk" style="margin-top:6px"><input type="checkbox" id="keepRatio" checked> Garder les proportions</label>
       <div class="row" style="margin-top:6px">
-        <button class="btn sm ic" data-cmd="rotL" title="Rotation −90°">⟲</button>
-        <button class="btn sm ic" data-cmd="rotR" title="Rotation +90°">⟳</button>
-        <button type="button" class="mb rotTg" title="Rotation libre : glisser sur la feuille pour faire tourner la sélection (Maj : 15°)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M5 14a7 7 0 0 1 12-7"/><path d="M14 4.5l3.2 2.6-3.6 2"/><path d="M19 10a7 7 0 0 1-12 7"/><path d="M10 19.5l-3.2-2.6 3.6-2"/></svg></button>
         <button class="btn sm ic" data-cmd="flipH" title="Miroir gauche ↔ droite"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 1.5v21" stroke-dasharray="2.4 2"/><path d="M2.5 6.5L10 12l-7.5 5.5z"/><path d="M21.5 6.5L14 12l7.5 5.5z" fill="currentColor"/></svg></button>
         <button class="btn sm ic" data-cmd="flipV" title="Miroir haut ↕ bas"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" style="vertical-align:-3px"><path d="M1.5 12h21" stroke-dasharray="2.4 2"/><path d="M6.5 2.5L12 10 17.5 2.5z"/><path d="M6.5 21.5L12 14l5.5 7.5z" fill="currentColor"/></svg></button>
-        <input type="number" id="rotVal" value="15" step="1" style="width:56px" title="Angle">
-        <button class="btn sm" data-cmd="rotN" title="Rotation de l'angle indiqué">Pivoter</button>
       </div>
       <div class="row" style="margin-top:6px">
         <button type="button" class="mb" data-cmd="dup" title="Dupliquer (Ctrl+D)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
         <button type="button" class="mb" data-cmd="del" title="Supprimer (Suppr)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13M10.5 11v5.5M13.5 11v5.5"/></svg></button>
         <button type="button" class="mb" data-cmd="front" title="Devant (premier plan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5" stroke-dasharray="2 2"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".55"/></svg></button>
         <button type="button" class="mb" data-cmd="back" title="Derrière (arrière-plan)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="4" width="11" height="11" rx="1.5" fill="currentColor" fill-opacity=".55"/><rect x="9" y="9" width="11" height="11" rx="1.5" fill="var(--panel,#fff)"/></svg></button>
-      </div>
-      <div class="muted" style="margin-top:8px">Aligner <select id="alignTo" style="width:auto;padding:1px 4px;font-size:12px"><option value="sel">sur la sélection</option><option value="page">sur la page</option></select></div>
-      <div class="row" style="margin-top:4px">
-        <button class="btn sm ic" data-align="left" title="À gauche">⇤</button>
-        <button class="btn sm ic" data-align="hcenter" title="Centre horizontal">↔</button>
-        <button class="btn sm ic" data-align="right" title="À droite">⇥</button>
-        <button class="btn sm ic" data-align="top" title="En haut">⤒</button>
-        <button class="btn sm ic" data-align="vcenter" title="Centre vertical">↕</button>
-        <button class="btn sm ic" data-align="bottom" title="En bas">⤓</button>
       </div>
     </section>
     <section data-sec="fill" id="fillSec">
@@ -2273,7 +2252,7 @@ function cmd0(name){
     case'dup':{const c=relink(sel.map(s=>{const x=s.clone();moveIt(x,new P.Point(5,5));return x;}));setSel(c);break;}
     case'rotL':sel.forEach(s=>xf(s,new P.Matrix().rotate(-90,b.center)));break;
     case'rotR':sel.forEach(s=>xf(s,new P.Matrix().rotate(90,b.center)));break;
-    case'rotN':{const a=parseFloat($('#rotVal').value)||0;sel.forEach(s=>xf(s,new P.Matrix().rotate(a,b.center)));break;}
+    case'rotN':{const a=parseFloat($('#rotVal')?$('#rotVal').value:0)||0;sel.forEach(s=>xf(s,new P.Matrix().rotate(a,b.center)));break;}
     case'flipH':sel.forEach(s=>xf(s,new P.Matrix().scale(-1,1,b.center)));break;
     case'flipV':sel.forEach(s=>xf(s,new P.Matrix().scale(1,-1,b.center)));break;
     // un objet passe devant/derrière les autres objets du calque ; un élément pris dans un objet, devant/derrière les autres éléments de cet objet
@@ -2328,7 +2307,7 @@ function strokeToShape(p,fine){
 }
 function align0(kind){
   if(!sel.length)return;
-  const ref=$('#alignTo').value==='page'||sel.length===1?new P.Rectangle(0,0,S.page.w,S.page.h):selBounds();
+  const ref=($('#alignTo')&&$('#alignTo').value==='page')||sel.length===1?new P.Rectangle(0,0,S.page.w,S.page.h):selBounds();
   sel.forEach(s=>{const b=s.bounds;let dx=0,dy=0;
     if(kind==='left')dx=ref.left-b.left;if(kind==='right')dx=ref.right-b.right;if(kind==='hcenter')dx=ref.center.x-b.center.x;
     if(kind==='top')dy=ref.top-b.top;if(kind==='bottom')dy=ref.bottom-b.bottom;if(kind==='vcenter')dy=ref.center.y-b.center.y;
@@ -2342,7 +2321,7 @@ function setGeo0(k,v){
   else{
     v=Math.max(0.1,v);let sx=1,sy=1;
     if(k==='w')sx=v/b.width;else sy=v/b.height;
-    if($('#keepRatio').checked){if(k==='w')sy=sx;else sx=sy;}
+    if(!$('#keepRatio')||$('#keepRatio').checked){if(k==='w')sy=sx;else sx=sy;}
     sel.forEach(s=>xf(s,new P.Matrix().scale(sx,sy,b.topLeft)));
   }
   commit();
