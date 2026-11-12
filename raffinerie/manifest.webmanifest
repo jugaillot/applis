@@ -1,0 +1,17 @@
+{
+  "name": "Mon espace — La Raffinerie",
+  "short_name": "Mon espace",
+  "description": "Tâches, tensions, agenda et deck chantier de La Raffinerie.",
+  "lang": "fr",
+  "id": "/raffinerie/",
+  "start_url": "/raffinerie/",
+  "scope": "/raffinerie/",
+  "display": "standalone",
+  "background_color": "#FBF7F0",
+  "theme_color": "#C2410C",
+  "icons": [
+    { "src": "/icons/raffinerie-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/raffinerie-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/raffinerie-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
