@@ -45,7 +45,9 @@ main{flex:1;display:grid;grid-template-columns:250px 1fr;min-height:0}
 #repo{flex:1;overflow:auto;padding:16px 20px 60px}
 #repo h2{margin:0 0 12px;font-size:18px}
 .list{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.row{display:grid;grid-template-columns:1fr 150px 110px 120px;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--line);cursor:pointer;text-decoration:none;color:inherit}
+.rowCl{width:100%;box-sizing:border-box;font:inherit;font-size:12px;color:var(--mute);background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 6px}
+.rowCl:hover{border-color:var(--line)}.rowCl:focus{border-color:var(--accent,#888);color:inherit;background:#fff;outline:none}
+.row{display:grid;grid-template-columns:1fr 150px 170px 120px;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--line);cursor:pointer;text-decoration:none;color:inherit}
 .row:first-child{border-top:0}
 .row:hover{background:var(--soft)}
 .row .t{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -492,7 +494,7 @@ function renderRepo(){
   const docs=allDocs().filter(matches);
   docs.sort((a,b)=>String(b.meta.modifie||'').localeCompare(String(a.meta.modifie||'')));
   const title=S.filter.cl&&S.filter.cl!=='__none'?S.filter.cl.replace(/\//g,' › '):S.filter.cl==='__none'?'Sans classeur':'Tous les documents';
-  el.innerHTML=`<h2>${esc(title)} <span class="muted">· ${docs.length} document${docs.length>1?'s':''}</span>${S.filter.cl&&S.filter.cl!=='__none'?' <button class="btn sm" id="bClCopy" title="Copier l’adresse de ce classeur : elle ouvre directement cette liste">Copier le lien</button>':''}</h2>`+(docs.length?`<div class="list">${docs.map(d=>`<a class="row" href="#${esc(d.slug)}" draggable="true" data-slug="${esc(d.slug)}"><span class="t">${esc(d.meta.titre)}${d.dirty?'<span class="dot" title="Pas encore envoyé sur GitHub"></span>':''}${d.meta.sous_titre?`<small>${esc(d.meta.sous_titre)}</small>`:''}</span><span class="c"><span class="badge ${d.meta.type}">${d.meta.type==='fiche'?'Fiche action':'Dossier'}</span> <select class="rowSt ${stClass(d.meta.statut)}" data-slug="${esc(d.slug)}" title="Changer le statut">${STATUTS.map(([v,l])=>`<option value="${esc(v)}"${v===d.meta.statut?' selected':''}>${l}</option>`).join('')}</select></span><span class="c">${esc(d.meta.classeur||'')}</span><span class="c">${fmtDate(d.meta.modifie)}</span></a>`).join('')}</div>`:`<div id="empty">Aucun document ici.<br><span class="muted">« + Nouveau dossier » pour en créer un.</span></div>`);
+  el.innerHTML=`<h2>${esc(title)} <span class="muted">· ${docs.length} document${docs.length>1?'s':''}</span>${S.filter.cl&&S.filter.cl!=='__none'?' <button class="btn sm" id="bClCopy" title="Copier l’adresse de ce classeur : elle ouvre directement cette liste">Copier le lien</button>':''}</h2>`+(docs.length?`<div class="list">${docs.map(d=>`<a class="row" href="#${esc(d.slug)}" draggable="true" data-slug="${esc(d.slug)}"><span class="t">${esc(d.meta.titre)}${d.dirty?'<span class="dot" title="Pas encore envoyé sur GitHub"></span>':''}${d.meta.sous_titre?`<small>${esc(d.meta.sous_titre)}</small>`:''}</span><span class="c"><span class="badge ${d.meta.type}">${d.meta.type==='fiche'?'Fiche action':'Dossier'}</span> <select class="rowSt ${stClass(d.meta.statut)}" data-slug="${esc(d.slug)}" title="Changer le statut">${STATUTS.map(([v,l])=>`<option value="${esc(v)}"${v===d.meta.statut?' selected':''}>${l}</option>`).join('')}</select></span><span class="c"><input class="rowCl" list="dlClasseurs" data-slug="${esc(d.slug)}" value="${esc(d.meta.classeur||'')}" placeholder="Sans classeur" title="Changer le classeur de ce document (choisis dans la liste ou tape un nouveau nom, ex. Raffinerie/Ateliers)"></span><span class="c">${fmtDate(d.meta.modifie)}</span></a>`).join('')}</div>`:`<div id="empty">Aucun document ici.<br><span class="muted">« + Nouveau dossier » pour en créer un.</span></div>`);
 }
 $('#q').addEventListener('input',e=>{S.filter.q=e.target.value.trim();if(S.cur)location.hash='';else renderRepo();});
 $('#fType').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;S.filter.type=c.dataset.v;document.querySelectorAll('#fType .chip').forEach(x=>x.classList.toggle('on',x===c));if(S.cur)location.hash='';else renderRepo();});
@@ -500,9 +502,16 @@ $('#fStat').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c
 $('#tree').addEventListener('click',e=>{const c=e.target.closest('.cl');if(!c)return;S.filter.cl=c.dataset.cl;renderSide();if(S.cur)location.hash='';else renderRepo();
   history.replaceState(null,'',S.filter.cl&&S.filter.cl!=='__none'?'#classeur='+encodeURIComponent(S.filter.cl):location.pathname+location.search+'#');});
 /* changer le statut depuis la liste */
-$('#repo').addEventListener('click',e=>{if(e.target.closest('.rowSt'))e.preventDefault();
+$('#repo').addEventListener('mousedown',e=>{const i=e.target.closest('.rowCl');if(!i)return;const r=i.closest('.row');r.draggable=false;i.addEventListener('blur',()=>{r.draggable=true;},{once:true});});
+$('#repo').addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('.rowCl')&&e.key==='Enter'){e.preventDefault();e.target.blur();}});
+$('#repo').addEventListener('click',e=>{if(e.target.closest('.rowSt,.rowCl'))e.preventDefault();
   if(e.target.closest('#bClCopy')){const u=location.origin+'/dossiers/#classeur='+encodeURIComponent(S.filter.cl);navigator.clipboard.writeText(u).then(()=>toast('Lien du classeur copié : '+u));}});
-$('#repo').addEventListener('change',async e=>{const sel=e.target.closest('.rowSt');if(!sel)return;const r=docRec(sel.dataset.slug);if(!r)return;
+$('#repo').addEventListener('change',async e=>{
+  const ci=e.target.closest('.rowCl');
+  if(ci){const r=docRec(ci.dataset.slug);if(!r)return;const v=ci.value.trim().replace(/\s*\/\s*/g,'/').replace(/^\/+|\/+$/g,'');
+    const p=parseDoc(r.raw);if((p.meta.classeur||'')===v)return;p.meta.classeur=v;p.meta.modifie=nowIso();
+    await storeRec(Object.assign({},r,{raw:buildDoc(p.meta,p.body),dirty:true}));schedulePush(1500);renderSide();renderRepo();toast(v?'« '+p.meta.titre+' » déplacé dans « '+v.replace(/\//g,' › ')+' »':'« '+p.meta.titre+' » : plus de classeur');return;}
+  const sel=e.target.closest('.rowSt');if(!sel)return;const r=docRec(sel.dataset.slug);if(!r)return;
   const p=parseDoc(r.raw);p.meta.statut=sel.value;p.meta.modifie=nowIso();await storeRec(Object.assign({},r,{raw:buildDoc(p.meta,p.body),dirty:true}));
   schedulePush(1500);renderSide();renderRepo();toast(sel.value==='archivé'?'« '+p.meta.titre+' » archivé — retrouve-le avec le filtre « Archivé »':'Statut : '+sel.value);});
 /* glisser un document sur un classeur */
