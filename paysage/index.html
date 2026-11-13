@@ -816,7 +816,7 @@ const HINTS={
   lasso:'Entoure à main levée les formes à prendre (même à l’intérieur d’un dessin) · si un objet est sélectionné, seulement dans cet objet (clic dans le vide : libérer) · Maj : ajouter · glisser ensuite une forme prise pour tout déplacer · « Détacher en objet » pour en faire un objet à part',
   curve:'Clic sur un point : angle ↔ courbe · glisser depuis un point : tirer ses poignées (Alt : un seul côté) · glisser au milieu d’un segment : le courber',
   direct:'Clic sur un tracé : voir ses points · glisser un point ou une poignée · Maj : ajouter des points · double-clic sur un point : angle ↔ courbe · Suppr : effacer les points',
-  pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer',
+  pen:'Clic : point d’angle · cliquer-glisser : point courbe · clic sur le premier point : fermer · Entrée ou Échap : terminer · sur un tracé sélectionné : clic sur la ligne = ajouter un point, clic sur un point = le supprimer',
   blob:'Dessiner à main levée une zone pleine, sans contour, de la couleur du calque actif (lissage dans la barre du haut)',
   pencil:'Dessiner à main levée — le tracé est lissé automatiquement',
   shape:'Glisser pour dessiner (forme choisie dans la barre du haut) · Maj : carré / cercle · Alt : depuis le centre',
@@ -1131,7 +1131,17 @@ function deleteSegs(){
 }
 
 /* --- plume --- */
+/* plume sur un tracé sélectionné : clic sur la ligne = ajoute un point, clic sur un point = le supprime */
+function penEditPts(e){
+  if(penPath||e.modifiers.shift)return false;const tol=px(7);let best=null;
+  sel.filter(it=>it&&it.parent).forEach(it=>leafPaths(it).forEach(p=>{if(!(p instanceof P.Path))return;const loc=p.getNearestLocation(e.point);if(!loc)return;const d=loc.point.getDistance(e.point);if(d<=tol&&(!best||d<best.d))best={p,loc,d};}));
+  if(!best)return false;const {p,loc}=best;
+  const seg=p.segments.find(s=>s.point.getDistance(e.point)<=tol);
+  if(seg){if(p.segments.length<=2)return true;seg.remove();commit();return true;}
+  p.divideAt(loc);commit();return true;
+}
 function penDown(e){
+  if(penEditPts(e))return;
   ensureLayer(true);
   if(penPath&&penPath.segments.length>1&&e.point.getDistance(penPath.firstSegment.point)<px(7)){penPath.closed=true;finishPen();return;}
   if(!penPath){penPath=new P.Path(newPathStyle());if(!S.fill&&!S.stroke){penPath.strokeColor='#000';penPath.strokeWidth=S.strokeW||0.5;}if(S.fill&&!S.stroke){penPath.strokeColor=new P.Color(S.fill);penPath.strokeWidth=S.strokeW||0.5;penPath.data.penFill=S.fill;penPath.fillColor=null;}}
