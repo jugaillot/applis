@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>La Suite Mise en page</title>
 <link rel="stylesheet" href="../lib/fonts.css">
-<script src="../lib/save.js"></script><script src="../lib/sync.js"></script>
+<script src="../lib/save.js"></script><script src="../lib/recent.js"></script><script src="../lib/sync.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#e0533d;--soft:#f7f6f2;--board:#dcd9d2;--sel:#1e88ff}
 *{box-sizing:border-box}
@@ -1167,5 +1167,6 @@ AtelierDrop.init({app:'mise',own:true,accept:f=>isImg(f)||ext(f)==='svg'||f.type
 {title:"Texte",keys:[["Double-clic ou Entrée","Écrire dans le cadre"],["Échap","Terminer"],["Ctrl+B / I / U","Gras, italique, souligné"],["+ rouge","Le texte ne tient pas : clique pour le faire suivre dans un autre cadre"]],params:[["Styles","Titre, Sous-titre, Texte, Légende : modifie-les dans le panneau de droite, tous les textes suivent."],["Texte qui suit","Un texte peut couler d’un cadre à l’autre, même sur une autre page. « Détacher ce cadre » le retire de la suite."]]},
 {title:"Images",keys:[["Double-clic","Déplacer l’image dans son cadre (molette : zoom)"],["Glisser-déposer","Ajouter des images ; sur un cadre vide, l’image va dedans"]]},
 {title:"PDF",params:[["PDF / Imprimer","Ouvre l’impression : « Enregistrer en PDF » donne un PDF vectoriel. Fonds perdus et traits de coupe dans le panneau Export."]]}]});</script>
+<script>if(window.AtelierRecent)AtelierRecent.init({app:'mise',openDocs:()=>document.getElementById('bOpen').click()});</script>
 </body>
 </html>

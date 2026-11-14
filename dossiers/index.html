@@ -293,7 +293,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <div id="busy" hidden>…</div>
 <div id="toast" hidden></div>
 
-<script src="../lib/save.js"></script><script src="../lib/sync.js"></script>
+<script src="../lib/save.js"></script><script src="../lib/recent.js"></script><script src="../lib/sync.js"></script>
 <script src="../lib/toastui-editor-all.min.js"></script>
 <script src="../lib/docx.iife.js"></script>
 <script>
@@ -558,6 +558,7 @@ function highlight(addOnly,color){
 function fillStatutSelect(){$('#fStatut').innerHTML=STATUTS.map(([v,l])=>`<option value="${esc(v)}">${l}</option>`).join('');}
 async function openDoc(slug,keepScroll){
   const r=docRec(slug);if(!r||r.deleted){toast('Document introuvable');location.hash='';return;}
+  if(window.AtelierRecent)AtelierRecent.addDoc('dossiers',slug,(parseDoc(r.raw).meta.titre)||slug);
   S.cur=slug;$('#repo').hidden=true;$('#ed').hidden=false;document.body.classList.add('editing');if(!editor)makeEditor();setTimeout(()=>window.renderPlan&&renderPlan(),50);
   const {meta,body}=parseDoc(r.raw);
   $('#fTitre').value=meta.titre||'';$('#fSous').value=meta.sous_titre||'';$('#fTypeD').value=meta.type;$('#fClasseur').value=meta.classeur||'';$('#fStatut').value=meta.statut;$('#fTags').value=(meta.etiquettes||[]).join(', ');
@@ -981,5 +982,6 @@ AtelierDrop.init({app:'dossiers',accept:f=>['md','markdown','txt','pptx'].includ
 <script>AtelierHelp.init({app:"dossiers",title:"La Suite Dossiers",sections:[
 {title:"Documents",keys:[["Ctrl + S","Enregistrer et envoyer tout de suite sur GitHub"],["Ctrl + P","PDF / imprimer"],["Glisser une ligne sur un classeur","Ranger le document"],["Coller ou glisser une image","L’ajouter au document"]]},
 {title:"Comment ça marche",params:[["Adresse","Chaque classeur a aussi sa propre adresse (bouton « Copier le lien » au-dessus de la liste). Chaque document a sa propre adresse (bouton « Copier l’adresse ») : atelier…/dossiers/#nom-du-document. Elle ne change pas si tu renommes le document."],["Enregistrement","Tout est gardé sur l’appareil à chaque frappe, puis envoyé sur GitHub quelques secondes après. Hors connexion, l’envoi se fait au retour du réseau."],["Versions","Chaque envoi est une version : le bouton « Versions » ouvre l’historique sur GitHub."],["Claude","Claude peut créer ou modifier des documents depuis une conversation : ils apparaissent ici à l’actualisation (clic sur l’état de synchronisation, ou en revenant sur la fenêtre)."],["Lien public","Une page en lecture seule, sans mot de passe, mise à jour à chaque modification."],["Charte","Polices, couleurs, logo et pied de page communs à tous les documents."]]}]});</script>
+<script>if(window.AtelierRecent)AtelierRecent.init({app:'dossiers',openDoc:id=>{location.hash='#'+encodeURIComponent(id);}});</script>
 </body>
 </html>
