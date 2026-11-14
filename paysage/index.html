@@ -711,7 +711,7 @@ async function saveDoc(asNew){
   IDB.set('paysage.autosave',Object.assign({},projectData(),{doc:S.doc}));showDoc();
 }
 function openDocs(){
-  AtelierSync.openDialog({app:'paysage',title:'Mes compositions',current:S.doc.id,
+  AtelierSync.openDialog({app:'paysage',title:'Mes compositions',current:S.doc.id,lockUnsynced:true,
     onOpen:(id,data,inf)=>{try{if(window.AtelierTabs)AtelierTabs.open(id,inf?inf.name:id,data);else{loadProject(data);S.doc={id,name:inf?inf.name:id};showDoc();IDB.set('paysage.autosave',Object.assign({},data,{doc:S.doc}));}}catch(e){alert('Ouverture impossible : '+e.message);}},
     onRename:(id,n)=>{if(id===S.doc.id){S.doc.name=n;showDoc();}},
     onDelete:id=>{if(id===S.doc.id){S.doc={id:null,name:''};showDoc();}},
