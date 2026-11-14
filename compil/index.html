@@ -609,7 +609,7 @@ async function rasterEmb(p){
   const page=await f.doc.getPage(p.index+1);const v1=page.getViewport({scale:1,rotation:0});const k=Math.min(300/72,Math.sqrt(36e6/(v1.width*v1.height)));const v=page.getViewport({scale:k,rotation:0});
   let src=document.createElement('canvas');src.width=Math.ceil(v.width);src.height=Math.ceil(v.height);const x=src.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,src.width,src.height);await page.render({canvasContext:x,viewport:v}).promise;
   if(annOn(p))src=withAnn(src,p);const c=(p.crop||hasLevels(p))?editedCanvas(src,p):src;
-  const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));const OUT=CUR_OUT;const img=await OUT.embedJpg(await b.arrayBuffer());
+  const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85));const OUT=CUR_OUT;const img=await OUT.embedJpg(await b.arrayBuffer());
   return{kind:'img',obj:img,rot:p.srcRot||0};
 }
 let CUR_OUT=null,NOATT=false;
@@ -746,12 +746,12 @@ async function printPDF(){
     const bytes=await buildPDF();
     const pdf=await pdfjsLib.getDocument({data:bytes.slice?bytes.slice(0):bytes,isEvalSupported:false}).promise;
     box=document.createElement('div');box.id='printBox';document.body.appendChild(box);
-    let css='@media print{body>*:not(#printBox){display:none!important}#printBox{display:block!important}html,body{background:#fff!important;height:auto!important;overflow:visible!important}}#printBox{display:none}#printBox img{display:block;break-after:page;page-break-after:always}#printBox img:last-child{break-after:auto;page-break-after:auto}';
+    let css='@media print{body>*:not(#printBox){display:none!important}#printBox{display:block!important}html,body{background:#fff!important;height:auto!important;overflow:visible!important}}#printBox{display:none}#printBox img{display:block;break-after:page;page-break-after:always}#printBox img:last-of-type{break-after:auto;page-break-after:auto}';
     const sizes=new Map();
     for(let n=1;n<=pdf.numPages;n++){
       await busy('Préparation de l’impression… '+n+' / '+pdf.numPages);
       const pg=await pdf.getPage(n);const v1=pg.getViewport({scale:1});
-      const k=Math.min(250/72,6000/Math.max(v1.width,v1.height));const vp=pg.getViewport({scale:k});
+      const k=Math.min((pdf.numPages>1?170:250)/72,4200/Math.max(v1.width,v1.height));const vp=pg.getViewport({scale:k});
       const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
       await pg.render({canvasContext:x,viewport:vp}).promise;
       const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));c.width=c.height=1;
@@ -760,7 +760,9 @@ async function printPDF(){
       const im=document.createElement('img');im.className=sizes.get(key);im.src=URL.createObjectURL(blob);box.appendChild(im);
       pg.cleanup();
     }
-    const first=[...sizes.keys()][0].split('x');css+=`@page{size:${first[0]}mm ${first[1]}mm;margin:0}`;
+    const first=[...sizes.keys()][0].split('x');
+    if(sizes.size===1)css=css.replace(/@page pg0\{[^}]*\}\.pg0\{[^}]*\}/,'.pg0{width:'+first[0]+'mm;height:'+first[1]+'mm}');
+    css+=`@page{size:${first[0]}mm ${first[1]}mm;margin:0}`;
     const st=document.createElement('style');st.textContent=css;box.appendChild(st);
     await Promise.all([...box.querySelectorAll('img')].map(im=>im.decode?im.decode().catch(()=>{}):0));
     try{pdf.destroy();}catch(e){}
