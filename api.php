@@ -47,7 +47,7 @@ if ($a === 'put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   $j = idx_read();
   $cur = isset($j['docs'][$id]) ? $j['docs'][$id] : null;
   $rev = $cur ? (int) $cur['rev'] : 0;
-  if ($cur && empty($cur['deleted']) && !$force && $base !== $rev) { flock($lock, LOCK_UN); out(409, array('error' => 'conflit', 'rev' => $rev, 'updated' => $cur['updated'])); }
+  if ($cur && empty($cur['deleted']) && !$force && $base !== $rev) { flock($lock, LOCK_UN); out(409, array('error' => 'conflit', 'rev' => $rev, 'updated' => $cur['updated'], 'dev' => isset($cur['dev']) ? $cur['dev'] : '')); }
   // historique : on garde la version remplacée quand un autre appareil écrit par-dessus, quand on revient à une
   // ancienne version, et au moins une toutes les 15 minutes (30 versions au plus par document)
   $dev = isset($_GET['dev']) ? substr(preg_replace('/[^A-Za-z0-9]/', '', $_GET['dev']), 0, 20) : '';
