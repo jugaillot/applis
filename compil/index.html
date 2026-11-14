@@ -1016,7 +1016,12 @@ $('#oFmt').onchange=e=>{S.opt.fmt=e.target.value;$('#customBox').hidden=S.opt.fm
 
 /* ---------- taille d'affichage des pages et des feuilles ---------- */
 function setZoom(z,save){ZOOM.z=Math.max(1,Math.min(10,z));document.documentElement.style.setProperty('--z',ZOOM.z);$('#zoomR').value=ZOOM.z;if(save)try{localStorage.setItem('atelierCompil.zoom',ZOOM.z);}catch(e){}
-  clearTimeout(ZOOM.t);ZOOM.t=setTimeout(()=>{renderSheets();zoomAnchor();},60);}
+  /* on recale tout de suite (la taille suit le curseur), puis encore une fois quand les pages sont redessinées */
+  const keep=ZOOM.anchor;if(keep){ZOOM.keep=Object.assign({},keep);zoomAnchor();}
+  clearTimeout(ZOOM.t);ZOOM.t=setTimeout(()=>{renderSheets();setTimeout(()=>{if(ZOOM.keep){ZOOM.anchor=ZOOM.keep;ZOOM.keep=null;zoomAnchor();}},150);},60);}
+/* zoom / dézoom des boutons et de la glissière : on reste centré sur ce qu'on voit */
+function zoomCenter(newZ){const w=$('#work').getBoundingClientRect(),bar=$('#shBar').getBoundingClientRect(),top=Math.max(w.top,bar.bottom);
+  zoomTo(Math.max(1,Math.min(10,newZ))/ZOOM.z,(w.left+w.right)/2,(top+w.bottom)/2);}
 /* zoom autour d'un point : la même place de la même feuille revient sous le pointeur (ou au point visé) */
 function zoomTo(f,cx,cy,tx,ty){const cs=[...document.querySelectorAll('#sheets canvas')];let a=null;
   cs.forEach((c,k)=>{const r=c.getBoundingClientRect();const d=Math.hypot(Math.max(r.left-cx,0,cx-r.right),Math.max(r.top-cy,0,cy-r.bottom));if(!a||d<a.d)a={d,k,u:(cx-r.left)/r.width,v:(cy-r.top)/r.height};});
@@ -1024,7 +1029,7 @@ function zoomTo(f,cx,cy,tx,ty){const cs=[...document.querySelectorAll('#sheets c
 function zoomAnchor(){const a=ZOOM.anchor;ZOOM.anchor=null;if(!a)return;const c=document.querySelectorAll('#sheets canvas')[a.k];if(!c)return;const r=c.getBoundingClientRect();const w=$('#work');
   w.scrollTop+=r.top+a.v*r.height-a.ty;w.scrollLeft+=r.left+a.u*r.width-a.tx;}
 
-$('#zoomR').addEventListener('input',e=>setZoom(+e.target.value,true));
+$('#zoomR').addEventListener('input',e=>zoomCenter(+e.target.value));
 $('#sheets').addEventListener('wheel',e=>{if(window.AtelierZoom)AtelierZoom.wheel(e);},{passive:false});/* molette : zoom · Maj : horizontal · Ctrl : vertical */
 /* 100 % : la feuille à sa taille réelle à l'écran */
 function sheetMM(){const c=document.querySelector('#sheets canvas');return c&&c._sh?Math.max(c._sh.L.W,c._sh.L.H):297;}
@@ -1212,7 +1217,7 @@ function tbSync(){if(window.AtelierZoom&&AtelierZoom.on)return;const a=ANSEL&&AN
   tb.hidden=!(a||TN[t]);$('#tbName').hidden=!!a;$('#tbHint').hidden=!!a;$('#tbSign').hidden=!!a||t!=='sign';
   $('#tbName').textContent=TN[t]||'';$('#tbHint').textContent=TH[t]||'';}
 document.querySelectorAll('#tools [data-tool]').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
-$('#zIn').onclick=()=>setZoom(ZOOM.z*1.25,true);$('#zOut').onclick=()=>setZoom(ZOOM.z/1.25,true);
+$('#zIn').onclick=()=>zoomCenter(ZOOM.z*1.25);$('#zOut').onclick=()=>zoomCenter(ZOOM.z/1.25);
 $('#pFold').onclick=()=>$('#pgHead').click();
 
 /* le bloc d'édition des éléments posés vit dans la barre flottante */
