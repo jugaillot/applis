@@ -1,12 +1,12 @@
 # La Suite — applis.rdutemps.fr
 
 Suite d'applis web personnelles de Julien (duo artistique Rdutemps, La Réunion), pour remplacer son usage ciblé d'Adobe et ses outils de travail.
-Dépôt GitHub `jugaillot/applis`. Hébergement OVH (mutualisé, PHP) : **Julien publie lui-même en cliquant « Déployer » dans OVH** après chaque push.
+Dépôt GitHub `jugaillot/applis`. Hébergement OVH (mutualisé, PHP) : **déploiement automatique** (webhook GitHub → OVH, en ligne ~1 minute après chaque push ; vérifié le 14/11/2026). Plus besoin de cliquer sur « Déployer ».
 
 ## Façon de travailler avec Julien
 - Répondre **en français**, brièvement. Pas de narration des étapes techniques ni de jargon : dire ce qui change pour lui.
 - En cas de doute ergonomique ou technique, **poser la question (AskUserQuestion) avant de coder** plutôt que de partir sur une hypothèse.
-- Après chaque changement : tester (Playwright), commit + push, puis résumer ce qui change et **rappeler de cliquer « Déployer » dans OVH** (et de recharger l'appli deux fois à cause du cache hors ligne).
+- Après chaque changement : tester (Playwright), commit + push, puis résumer ce qui change et rappeler d'attendre ~1 minute puis de recharger l'appli deux fois (cache hors ligne). Ne plus demander de cliquer « Déployer ».
 - Il travaille sur Windows (Firefox/Chrome) et sur un portable Android.
 
 ## Les applis (une page HTML autonome par dossier)
