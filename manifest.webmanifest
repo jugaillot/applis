@@ -74,6 +74,68 @@
     {
       "action": "/",
       "accept": {
+        "application/pdf": [
+          ".pdf"
+        ]
+      },
+      "icons": [
+        {
+          "src": "/icons/file-pdf.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    },
+    {
+      "action": "/",
+      "accept": {
+        "image/jpeg": [
+          ".jpg",
+          ".jpeg"
+        ],
+        "image/png": [
+          ".png"
+        ],
+        "image/webp": [
+          ".webp"
+        ],
+        "image/gif": [
+          ".gif"
+        ]
+      },
+      "icons": [
+        {
+          "src": "/icons/file-image.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    },
+    {
+      "action": "/",
+      "accept": {
+        "image/svg+xml": [
+          ".svg"
+        ],
+        "application/postscript": [
+          ".ai",
+          ".eps"
+        ]
+      },
+      "icons": [
+        {
+          "src": "/icons/file-svg.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    },
+    {
+      "action": "/",
+      "accept": {
         "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
           ".pptx"
         ]
