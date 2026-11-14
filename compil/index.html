@@ -1349,5 +1349,7 @@ AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='appl
 })();
 </script>
 <script>if(window.AtelierRecent)AtelierRecent.init({app:'compil'});</script>
+<script>/* Ctrl+P = bouton Imprimer / Export PDF de l'appli */
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#bPrint');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
 </body>
 </html>
