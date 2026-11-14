@@ -219,6 +219,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span id="syncBadge"></span>
   <button class="btn" id="bOpen">Mes compositions…</button><input type="file" id="fProj" accept=".json,application/json" hidden>
   <button class="btn" id="bSave" title="Enregistrer (Ctrl+S) — sur cet appareil et sur le serveur">Enregistrer</button>
+  <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
   <button class="btn" id="bSvg">Export SVG</button>
   <button class="btn accent" id="bPdf">PDF par calque…</button>
 </header>
@@ -3669,5 +3670,6 @@ AtelierDrop.init({app:'paysage',accept:f=>['svg','pdf','ai','json'].includes(ext
 <script>if(window.AtelierRecent)AtelierRecent.init({app:'paysage',openDocs:()=>openDocs()});</script>
 <script>/* Ctrl+P = bouton Imprimer / Export PDF de l'appli */
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#bPdf');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
+<script>$('#bXfer').onclick=()=>AtelierDrop.transfer('paysage','paysage.svg','image/svg+xml',async()=>new File([buildSVG()],`${fileBase()}.svg`,{type:'image/svg+xml'}));</script>
 </body>
 </html>

@@ -145,6 +145,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span class="sp"></span>
   <button class="btn" id="bClear">Tout vider</button>
   <button class="btn" id="bPrint">Imprimer…</button>
+  <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
   <button class="btn accent" id="bPdf">Exporter PDF</button>
 </header>
 <main>
@@ -1351,5 +1352,6 @@ AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='appl
 <script>if(window.AtelierRecent)AtelierRecent.init({app:'compil'});</script>
 <script>/* Ctrl+P = bouton Imprimer / Export PDF de l'appli */
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#bPrint');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
+<script>$('#bXfer').onclick=()=>AtelierDrop.transfer('compil','document.pdf','application/pdf',async()=>{await busy('Préparation du PDF…');try{return new File([await buildPDF()],'document.pdf',{type:'application/pdf'});}finally{await busy();}});</script>
 </body>
 </html>

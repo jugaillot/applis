@@ -164,6 +164,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bCopy" title="Copier l’image retouchée pour la coller ailleurs (Ctrl+C)">Copier</button>
   <button class="btn" id="bPrint" title="Imprimer l’image retouchée (Ctrl+P)">Imprimer</button>
   <button class="btn primary" id="bSaveOne" title="Enregistrer l’image retouchée sur son fichier d’origine (Ctrl+S). Sans fichier d’origine, propose de le créer.">Enregistrer</button>
+  <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
   <button class="btn" id="bExportOne" title="Exporter une copie (Ctrl+Maj+S)">Exporter cette image</button>
   <button class="btn accent" id="bExportAll">Exporter tout (ZIP)</button>
 </header>
@@ -1406,5 +1407,6 @@ async function pdfToImages(file){
 }
 </script>
 <script>if(window.AtelierRecent)AtelierRecent.init({app:'photo'});</script>
+<script>$('#bXfer').onclick=()=>AtelierDrop.transfer('photo',(cur()?fname(cur()):'image.jpg'),(cur()&&cur().st.out.fmt==='png'?'image/png':'image/jpeg'),async()=>{const it=cur();if(!it)return null;await busy('Préparation de l’image…');try{const c=await renderFull(it);const b=await encode(it,c);return new File([b],fname(it),{type:b.type});}finally{await busy();}});</script>
 </body>
 </html>
