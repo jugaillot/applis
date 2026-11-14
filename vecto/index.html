@@ -292,6 +292,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
         <button type="button" class="mb" data-cmd="outline" title="Contour → forme : transforme le contour en forme pleine (pour la riso)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path fill="currentColor" fill-rule="evenodd" d="M3 3h18v18H3zM7.5 7.5v9h9v-9z"/></svg></button>
         <button type="button" class="mb" id="bRevec" title="Revectoriser : reprendre les réglages de vectorisation du dessin sélectionné"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5V8h-4.5"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg></button>
       </div>
+      <div class="row" style="align-items:flex-end;gap:6px"><label style="flex:1" title="Décale le tracé d’un nombre de mm : positif = vers l’extérieur, négatif = vers l’intérieur">Décaler (mm)<input type="number" id="ofsV" step="0.5" value="1"></label><button type="button" class="btn sm" id="bOfs" title="Décaler les formes sélectionnées (+ extérieur / − intérieur)">Décaler</button></div>
     </section>
     <section data-sec="fill" id="fillSec">
       <h2><span class="ttl"><span class="tw">▼</span>Remplissage et contour</span></h2>
@@ -305,7 +306,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
         <label>Extrémités du trait<select id="strokeCap"><option value="round">Rondes</option><option value="butt">Nettes</option><option value="square">Carrées</option></select></label>
       </div>
       <div class="grp">Contour</div>
-      <div class="seg" id="ctType"><button type="button" data-ct="gen" class="on" title="Un contour autour de chaque tracé">Général</button><button type="button" data-ct="ext" title="Un contour sur le seul bord extérieur">Extérieur</button></div>
+      <div class="seg" id="ctType"><button type="button" data-ct="gen" class="on" title="Un contour autour de chaque tracé">Général</button><button type="button" data-ct="ext" title="Un contour sur le seul bord extérieur">Extérieur</button><button type="button" data-ct="full" title="Contour plein : remplit toute la surface de l’objet (trous compris), derrière lui — avec le décalage X/Y, on obtient une surface continue à déplacer">Plein</button></div>
       <div class="muted" id="ctInfo" style="margin:5px 0 2px"></div>
       <div class="g2">
         <label>Épaisseur (mm)<input type="number" id="ctW" min="0" step="0.1" value="0"></label>
@@ -1583,12 +1584,28 @@ function placeFill(fill,pt,scope){
 
 /* ---------- dissocier : par calque, par sous-objet, par élément ---------- */
 function ungTops(){const tops=[...new Set(sel.map(s=>topOf(s)).filter(t=>t&&t.parent))];return typeof expandLinks==='function'?expandLinks(tops):tops;}
+/* zones disjointes d'une forme composée : chaque zone garde ses trous (profondeur d'emboîtement pair = zone, impair = trou) */
+function ungIslands(c){
+  const kids=c.children.filter(k=>k.segments&&k.segments.length>1);if(kids.length<2)return[c];
+  const info=kids.map(k=>({k,a:Math.abs(k.area),pt:k.interiorPoint}));
+  info.forEach(a=>{a.depth=info.filter(b=>b!==a&&b.a>a.a&&b.k.contains(a.pt)).length;});
+  const outers=info.filter(a=>a.depth%2===0);if(outers.length<2)return[c];
+  outers.forEach(o=>{o.h=[];});
+  info.filter(a=>a.depth%2===1).forEach(h=>{const o=outers.filter(o=>o.a>h.a&&o.k.contains(h.pt)).sort((x,y)=>x.a-y.a)[0];if(o)o.h.push(h);});
+  return outers.map(o=>{const ch=[o.k.clone({insert:false}),...o.h.map(h=>h.k.clone({insert:false}))];
+    const it=ch.length===1?ch[0]:new P.CompoundPath({insert:false,children:ch});
+    it.style=c.style;if(ch.length>1)it.fillRule=c.fillRule;it.name=c.name;
+    it.data=Object.assign({},c.data||{});delete it.data.cuid;delete it.data.outline;return it;});
+}
+/* remplace une forme composée par ses zones (renvoie les nouveaux éléments), sinon null */
+function ungSplit(c){if(!(c instanceof P.CompoundPath))return null;const isl=ungIslands(c);if(isl.length<2)return null;isl.forEach(i=>i.insertBelow(c));c.remove();return isl;}
 function openUngroup(){
   const tops=ungTops();if(!tops.length)return;
   const linked=tops.some(t=>t.data&&t.data.link),grp=tops.some(t=>t instanceof P.Group);
   $('#ungDlg [data-ung="layer"]').disabled=!linked;
   $('#ungDlg [data-ung="sub"]').disabled=!grp;
-  $('#ungDlg [data-ung="leaf"]').disabled=!grp;
+  const comp=tops.some(t=>t instanceof P.CompoundPath&&ungIslands(t).length>1);
+  $('#ungDlg [data-ung="leaf"]').disabled=!(grp||comp);
   $('#ungDlg [data-ung="layer"]').hidden=typeof linkedTops!=='function';
   $('#ungDlg').showModal();
 }
@@ -1596,10 +1613,11 @@ function doUngroup(mode){
   const tops=ungTops(),out=[];
   tops.forEach(t=>{
     if(t.data&&t.data.link)delete t.data.link;
+    if(mode==='leaf'&&t instanceof P.CompoundPath){const isl=ungSplit(t);if(isl){out.push(...isl);return;}}
     if(mode==='layer'||!(t instanceof P.Group)){out.push(t);return;}
     if(mode==='sub'){const ch=t.removeChildren();ch.forEach(c=>{c.insertBelow(t);out.push(c);});t.remove();return;}
     const leaves=t.getItems({match:x=>!(x instanceof P.Group)&&!(x.parent instanceof P.CompoundPath)});
-    leaves.forEach(x=>{if(x.data&&x.data.link)delete x.data.link;x.insertBelow(t);out.push(x);});t.remove();
+    leaves.forEach(x=>{if(x.data&&x.data.link)delete x.data.link;x.insertBelow(t);const isl=ungSplit(x);if(isl)out.push(...isl);else out.push(x);});t.remove();
   });
   setSel(out);
 }
@@ -1675,7 +1693,8 @@ $('#bPreview').addEventListener('click',()=>setPreview(!PV));
 /* ---------- contours : « Général » (autour de chaque tracé) et « Extérieur » (bord extérieur seul),
    chacun avec épaisseur, position, extrémités, angles, décalage et calque ; recalculés quand l'objet change ---------- */
 const CT_KEY='atelier.contours'+location.pathname;
-S.ct=Object.assign({type:'gen',gen:{pos:'center',cap:'round',join:'round',dx:0,dy:0},ext:{pos:'outside',cap:'round',join:'round',dx:0,dy:0}},(()=>{try{return JSON.parse(localStorage.getItem(CT_KEY))||{};}catch(e){return{};}})());
+S.ct=Object.assign({type:'gen',gen:{pos:'center',cap:'round',join:'round',dx:0,dy:0},ext:{pos:'outside',cap:'round',join:'round',dx:0,dy:0},full:{pos:'outside',cap:'round',join:'round',dx:0,dy:0}},(()=>{try{return JSON.parse(localStorage.getItem(CT_KEY))||{};}catch(e){return{};}})());
+if(!S.ct.full)S.ct.full={pos:'outside',cap:'round',join:'round',dx:0,dy:0};
 function ctSave(){try{localStorage.setItem(CT_KEY,JSON.stringify(S.ct));}catch(e){}}
 function isOutline(p){return !!(p&&p.data&&p.data.outline);}
 const newCuid=()=>'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -1769,7 +1788,7 @@ function cpToPaper(paths){paths=ClipperLib.Clipper.CleanPolygons(paths,4).filter
   return new P.CompoundPath({insert:false,fillRule:'nonzero',children:paths.map(r=>new P.Path({segments:r.map(q=>[q.X/CPK,q.Y/CPK]),closed:true,insert:false}))});}
 function cpShape(lv,o){
   const C=ClipperLib;let all=[];
-  if(o.type==='ext'){
+  if(o.type==='ext'||o.type==='full'){
     let reg=[];
     lv.forEach(p=>{const L=cpLeaf(p);const isFill=(p.closed||p instanceof P.CompoundPath)&&(p.fillColor||!(p.strokeColor&&p.strokeWidth));
       if(isFill&&L.closed.length)reg=reg.concat(cpRegion(L.closed,p.fillRule==='evenodd'));
@@ -1778,6 +1797,7 @@ function cpShape(lv,o){
     const c=new C.Clipper();c.AddPaths(reg,C.PolyType.ptSubject,true);const tree=new C.PolyTree();c.Execute(C.ClipType.ctUnion,tree,C.PolyFillType.pftNonZero,C.PolyFillType.pftNonZero);
     const outers=tree.Childs().map(n=>n.Contour()).filter(r=>r.length>2);if(!outers.length)return null;
     all=cpBand(outers,outers,[],o);
+    if(o.type==='full')all=cpBool(C.ClipType.ctUnion,outers,all);// surface pleine : le contour + tout l'intérieur
   }else{
     lv.forEach(p=>{const L=cpLeaf(p);const region=L.closed.length?cpRegion(L.closed,p.fillRule==='evenodd'):null;all=all.concat(cpBand(L.closed,region,L.open,o));});
     if(all.length>1)all=cpBool(C.ClipType.ctUnion,all,null);
@@ -1798,6 +1818,7 @@ function ctRebuild(ol){
   ol.removeChildren();ol.addChildren(shape instanceof P.CompoundPath?shape.removeChildren():[shape]);ol.fillRule='nonzero';
   ol.strokeColor=null;ol.fillColor=ol.fillColor||new P.Color('#000000');
   o.sig=ctSig(ol,lv);
+  if(o.type==='full'&&ol.parent&&!(ol.parent instanceof P.Layer)&&ol.parent.firstChild!==ol)ol.parent.insertChild(0,ol);// la surface pleine reste derrière l'objet
   if(o.type==='ext'&&ol.parent&&!(ol.parent instanceof P.Layer)&&ol.nextSibling&&!(ol.nextSibling.data&&ol.nextSibling.data.outline))ol.parent.addChild(ol);// devant l'objet : visible en entier, même décalé
 }
 function refreshOutlines(){
@@ -1843,7 +1864,7 @@ function ctApply(){
     let ol=ctFind(owner,type,src);
     if(!(w>0)){if(ol){ol.remove();n++;}continue;}
     const key=$('#ctLayer').value;
-    if(!ol){ol=new P.CompoundPath({name:type==='ext'?'Contour extérieur':'Contour général'});}
+    if(!ol){ol=new P.CompoundPath({name:type==='ext'?'Contour extérieur':type==='full'?'Contour plein':'Contour général'});}
     ol.data.outline={type,owner:owner.data.cuid,src,w,pos:o.pos,cap:o.cap,join:o.join,dx:+o.dx||0,dy:+o.dy||0,layer:key,sig:''};
     ol.fillColor=new P.Color(ctColor(key));
     ctPlace(ol,owner,key,type);ctRebuild(ol);n++;
@@ -1862,14 +1883,18 @@ function ctSyncPanel(){
   if(ol&&o.layer!=null)sel_.value=o.layer;else if(!ol){if(typeof roleUp==='function')sel_.value=(activeRole==='blanc'?'blanc':activeRole==='aqua'?'aqua':'couleur');else if(t){const g=[...t.groups.keys()][0];sel_.value=String(Math.max(0,userLayers().indexOf(g.layer)));}}
   [['pos',o.pos],['cap',o.cap],['join',o.join]].forEach(([k,v])=>$('#fillSec [data-ctk="'+k+'"]').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)));
   $('#ctCapRow').style.display=type==='gen'?'':'none';
-  $('#ctInfo').textContent=!t?'Sélectionne un objet, ou des éléments à la flèche blanche.':t.objMode?('S’applique à '+(t.groups.size>1?t.groups.size+' objets':'l’objet')+(type==='ext'?' (bord extérieur)':' (chaque tracé)')):('S’applique aux '+[...t.groups.values()].reduce((a,b)=>a+b.length,0)+' éléments pris');
+  $('#ctInfo').textContent=!t?'Sélectionne un objet, ou des éléments à la flèche blanche.':t.objMode?('S’applique à '+(t.groups.size>1?t.groups.size+' objets':'l’objet')+(type==='ext'?' (bord extérieur)':type==='full'?' (surface pleine, derrière l’objet)':' (chaque tracé)')):('S’applique aux '+[...t.groups.values()].reduce((a,b)=>a+b.length,0)+' éléments pris');
   ['ctW','ctDx','ctDy','ctLayer'].forEach(id=>$('#'+id).disabled=!t);
 }
 $('#ctType').addEventListener('click',e=>{const b=e.target.closest('[data-ct]');if(!b)return;S.ct.type=b.dataset.ct;ctSave();ctSyncPanel();});
 $('#fillSec').addEventListener('click',e=>{const b=e.target.closest('.icos button');if(!b)return;const k=b.closest('[data-ctk]').dataset.ctk;S.ct[S.ct.type][k]=b.dataset.v;ctSave();
   const ol=ctCurrent();if(ol){ol.data.outline[k]=b.dataset.v;ctRebuild(ol);commit();}ctSyncPanel();});
-['ctDx','ctDy'].forEach(id=>$('#'+id).addEventListener('change',()=>{const o=S.ct[S.ct.type];o.dx=parseFloat($('#ctDx').value)||0;o.dy=parseFloat($('#ctDy').value)||0;ctSave();const ol=ctCurrent();if(ol){ol.data.outline.dx=o.dx;ol.data.outline.dy=o.dy;ctRebuild(ol);commit();}}));
-$('#ctW').addEventListener('change',()=>ctApply());
+/* temporisation : plusieurs clics de suite sur les flèches ne recalculent le contour qu'une fois, juste après le dernier */
+function ctLater(fn){clearTimeout(ctLater.t);ctLater.f=fn;ctLater.t=setTimeout(()=>{ctLater.f=null;fn();},450);}
+function ctFlush(){if(ctLater.f){clearTimeout(ctLater.t);const f=ctLater.f;ctLater.f=null;f();}}
+function ctDxy(){const o=S.ct[S.ct.type];o.dx=parseFloat($('#ctDx').value)||0;o.dy=parseFloat($('#ctDy').value)||0;ctSave();const ol=ctCurrent();if(ol){ol.data.outline.dx=o.dx;ol.data.outline.dy=o.dy;ctRebuild(ol);commit();}}
+['ctDx','ctDy'].forEach(id=>{$('#'+id).addEventListener('input',()=>ctLater(ctDxy));$('#'+id).addEventListener('change',()=>ctLater(ctDxy));$('#'+id).addEventListener('blur',ctFlush);});
+['input','change'].forEach(ev=>$('#ctW').addEventListener(ev,()=>ctLater(ctApply)));$('#ctW').addEventListener('blur',ctFlush);
 $('#ctLayer').addEventListener('change',()=>{const ol=ctCurrent();if(ol)ctApply();});
 
 
@@ -2532,6 +2557,22 @@ segBind('vxMode','mode');
 segBind('vxShow','show',vxDraw);
 $('#vxCancel').onclick=()=>$('#vxDlg').close();
 $('#bRevec').onclick=openRevec;
+/* décaler : agrandit (+) ou réduit (−) les formes d'un nombre de mm */
+function doOffset(){
+  const d=parseFloat($('#ofsV').value);if(!d||!window.ClipperLib)return;
+  const T=cmdTargets().filter(t=>t&&t.parent);const leaves=[...new Set(T.flatMap(t=>leafPaths(t)))].filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&!isOutline(p)&&!(p.data&&p.data.sys)&&p.parent);
+  if(!leaves.length){alert('Sélectionne d’abord une forme.');return;}
+  const C=ClipperLib,out=[];let skip=0;
+  leaves.forEach(p=>{const L=cpLeaf(p);if(!L.closed.length){skip++;return;}
+    const co=new C.ClipperOffset(4,10);co.AddPaths(cpRegion(L.closed,p.fillRule==='evenodd'),C.JoinType.jtRound,C.EndType.etClosedPolygon);const res=new C.Paths();co.Execute(res,d*CPK);
+    const sh=cpToPaper(res);
+    if(!sh){p.remove();return;}// réduit jusqu'à disparaître
+    sh.style=p.style;sh.name=p.name;sh.data=Object.assign({},p.data||{});delete sh.data.cuid;delete sh.data.outline;
+    sh.insertAbove(p);p.remove();out.push(sh);});
+  if(out.length||leaves.length>skip){setSel(out);commit();}
+  if(skip)$('#hint').textContent='Les tracés ouverts (lignes) ne sont pas décalés.';
+}
+$('#bOfs').onclick=doOffset;$('#ofsV').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doOffset();}});
 $('#vxOk').onclick=()=>{$('#vxDlg').close();vxPlace();};
 
 /* =====================================================================
