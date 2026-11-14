@@ -177,7 +177,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span id="syncBadge"></span>
   <button class="btn" id="bOpen">Mes mises en page…</button>
   <button class="btn" id="bSave" title="Ctrl+S">Enregistrer</button>
-  <button class="btn primary" id="bPrint" title="Ouvre l’impression : choisis « Enregistrer en PDF » pour un PDF (Ctrl+P)">PDF / Imprimer</button>
+  <button class="btn primary" id="bPrint" title="Exporter : PDF / Imprimer ou IDML (InDesign)">Exporter…</button>
 </header>
 <main>
   <nav id="tools"><div class="tgrid">
@@ -238,7 +238,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <section data-sec="export"><h2><span class="tw">▼</span>Export</h2><div class="sbd">
       <label class="chk"><input type="checkbox" id="xBleed"> Fonds perdus (3 mm)</label>
       <label class="chk"><input type="checkbox" id="xMarks"> Traits de coupe</label>
-      <div class="btns"><button class="btn sm" id="xPrint">PDF / Imprimer…</button></div>
+      <div class="btns"><button class="btn sm" id="xPrint">Exporter…</button></div>
       <div class="muted">Dans la fenêtre d’impression, choisis « Enregistrer en PDF » : le PDF garde les textes et les dessins nets (vectoriels). Pour l’imprimeur, coche les fonds perdus et les traits de coupe, et prolonge les fonds jusqu’au bord de la page.</div>
     </div></section>
   </aside>
@@ -1004,7 +1004,23 @@ async function printDoc(){
   await document.fonts.ready;await Promise.all([...pr.querySelectorAll('img')].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;})));
   const t=document.title;document.title=S.name||'mise-en-page';window.print();document.title=t;setTimeout(()=>{pr.innerHTML='';},1000);
 }
-$('#bPrint').onclick=printDoc;$('#xPrint').onclick=printDoc;
+/* export : on demande le format voulu */
+function chooseFormat(){return new Promise(res=>{const d=document.createElement('dialog');
+  d.style.cssText='border:1px solid #e3e0d9;border-radius:14px;padding:0;width:min(440px,94vw);font:13px/1.35 system-ui,"Segoe UI",sans-serif;color:#1d1d1f';
+  d.innerHTML='<div style="padding:12px 16px;border-bottom:1px solid #e3e0d9;font-weight:700">Exporter en…</div><div class="ch" style="padding:12px;display:flex;flex-direction:column;gap:6px"></div><div style="padding:0 12px 12px;text-align:right"><button type="button" class="btn sm x">Annuler</button></div>';
+  [['pdf','PDF / Imprimer','pour l’imprimeur ou pour envoyer : textes et dessins nets'],['idml','IDML (InDesign)','pour continuer dans InDesign ou Affinity Publisher : cadres, textes chaînés, styles, images']].forEach(([k,t,w],i)=>{
+    const b=document.createElement('button');b.type='button';b.style.cssText='display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;font:inherit;border:1px solid '+(i?'#e3e0d9':'#1d1d1f')+';background:#fff;border-radius:9px;padding:8px 12px;cursor:pointer';
+    b.innerHTML='<b style="font-size:14px"></b><span style="color:#77756f;font-size:12px"></span>';b.firstChild.textContent=t;b.lastChild.textContent=w;b.onclick=()=>{d.close();res(k);};d.querySelector('.ch').appendChild(b);});
+  d.querySelector('.x').onclick=()=>{d.close();res(null);};d.addEventListener('close',()=>{setTimeout(()=>d.remove(),50);res(null);});document.body.appendChild(d);d.showModal();});}
+async function exportIDML(){
+  if(S.edit)endEdit();if(S.imgEdit)endImgEdit();busy('Export IDML…');
+  try{const blob=await AtelierIDML.build(S.doc,{name:S.name,chain:chainOf,geom:imgGeom,
+      getImage:async key=>{const o=IMG.get(key);if(!o)return null;const b=await (await fetch(o.url)).blob();const t=b.type||'';const bytes=new Uint8Array(await b.arrayBuffer());
+        return{bytes,w:o.w,h:o.h,png:/png/.test(t),svg:/svg/.test(t),name:key};}});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(S.name||'mise-en-page')+'.idml';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+  }catch(e){alert('Export IDML impossible : '+e.message);}finally{busy();}}
+async function exportDoc(){const f=await chooseFormat();if(f==='pdf')printDoc();else if(f==='idml')exportIDML();}
+$('#bPrint').onclick=exportDoc;$('#xPrint').onclick=exportDoc;
 
 /* =====================================================================
    Démarrage
@@ -1134,6 +1150,7 @@ $('#fPptx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)import
 </script>
 <script src="../lib/pdf.min.js"></script>
 <script src="../lib/pptx.js"></script>
+<script src="../lib/idml.js"></script>
 <script src="../lib/unsaved.js"></script>
 <script src="../lib/drop.js"></script>
 <script src="../lib/zoom.js"></script>
