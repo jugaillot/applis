@@ -163,7 +163,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bApplyAll" title="Copier les réglages de cette image sur les autres">Appliquer à toutes…</button>
   <button class="btn" id="bCopy" title="Copier l’image retouchée pour la coller ailleurs (Ctrl+C)">Copier</button>
   <button class="btn" id="bPrint" title="Imprimer l’image retouchée (Ctrl+P)">Imprimer</button>
-  <button class="btn" id="bExportOne">Exporter cette image</button>
+  <button class="btn primary" id="bSaveOne" title="Enregistrer l’image retouchée sur son fichier d’origine (Ctrl+S). Sans fichier d’origine, propose de le créer.">Enregistrer</button>
+  <button class="btn" id="bExportOne" title="Exporter une copie (Ctrl+Maj+S)">Exporter cette image</button>
   <button class="btn accent" id="bExportAll">Exporter tout (ZIP)</button>
 </header>
 <main>
@@ -320,6 +321,7 @@ async function decode(file,maxPx){
   c.origW=W;c.origH=H;return c;
 }
 function hasAlpha(c){try{const d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height).data;for(let i=3;i<d.length;i+=16)if(d[i]<250)return true;}catch(e){}return false;}
+const HND=new WeakMap();// fichier -> emplacement d'origine (pour « Enregistrer »)
 async function addFiles(list){
   // les PDF sont d'abord convertis en images (une par page)
   if([...list].some(f=>/\.pptx$/i.test(f.name))){const o2=[];for(const f of list){if(!/\.pptx$/i.test(f.name)){o2.push(f);continue;}const im=await pptxToImages(f);if(im)o2.push(...im);}list=o2;}
@@ -333,7 +335,7 @@ async function addFiles(list){
       const prev=await decode(f,2000);
       const W=prev.origW||prev.width,H=prev.origH||prev.height;
       const thumb=document.createElement('canvas');const kk=Math.min(1,160/Math.max(prev.width,prev.height));thumb.width=Math.round(prev.width*kk);thumb.height=Math.round(prev.height*kk);thumb.getContext('2d').drawImage(prev,0,0,thumb.width,thumb.height);
-      const it={id:'i'+(uid++),file:f,name:f.name.replace(/\.[^.]+$/,''),W,H,prev,thumb,st:DEF(),hist:[],fut:[]};
+      const it={id:'i'+(uid++),file:f,handle:HND.get(f)||null,name:f.name.replace(/\.[^.]+$/,''),W,H,prev,thumb,st:DEF(),hist:[],fut:[]};
       // image avec des zones transparentes (PNG…) : export en PNG par défaut pour les garder
       if(hasAlpha(prev))it.st.out.fmt='png';
       // une image de plus de 2000 px n'est gardée en pleine définition qu'au moment de l'export
@@ -816,7 +818,7 @@ function renderStrip(){
   const s=$('#strip');
   s.innerHTML=S.items.map(it=>`<div class="th${it.id===S.cur?' on':''}${S.sel.has(it.id)?' sel':''}" data-id="${it.id}" title="${it.name.replace(/"/g,'&quot;')} — Ctrl+clic : sélection multiple"><canvas></canvas><button class="x" data-x="${it.id}" title="Retirer">✕</button></div>`).join('')+`<div class="muted" style="text-align:center">${S.items.length} image${S.items.length>1?'s':''}</div>`;
   S.items.forEach(it=>{const el=s.querySelector(`.th[data-id="${it.id}"] canvas`);el.width=it.thumb.width;el.height=it.thumb.height;el.getContext('2d').drawImage(it.thumb,0,0);});
-  const has=S.items.length>0;['#bCopy','#bPrint','#bExportOne','#bExportAll','#bApplyAll','#bReset','#bUndo','#bRedo','#bCrop','#bPersp','#bBefore'].forEach(id=>$(id).disabled=!has);
+  const has=S.items.length>0;['#bCopy','#bPrint','#bSaveOne','#bExportOne','#bExportAll','#bApplyAll','#bReset','#bUndo','#bRedo','#bCrop','#bPersp','#bBefore'].forEach(id=>$(id).disabled=!has);
 }
 $('#strip').addEventListener('click',e=>{
   const x=e.target.closest('[data-x]');if(x){const id=x.dataset.x;{const it0=S.items.find(i=>i.id===id);if(it0&&dirtyIt(it0)){(async()=>{const r=window.AtelierUnsaved?await AtelierUnsaved.ask(it0.name,{title:'Exporter « '+it0.name+' » avant de la retirer ?',text:'Cette image a été retouchée depuis le dernier export. Si tu la retires sans l’exporter, les retouches seront perdues.',verb:'Exporter l’image…'}):'discard';if(!r)return;if(r==='save'){await exportItem(it0);if(dirtyIt(it0))return;}it0.saved=null;x.click();})();return;}}S.items=S.items.filter(i=>i.id!==id);S.sel.delete(id);if(S.cur===id)S.cur=S.items[0]?S.items[0].id:null;renderStrip();select(S.cur,true);return;}
@@ -878,6 +880,26 @@ const fname=it=>(it.name+(it.st.out.suffix||'')).replace(/[\\/:*?"<>|]/g,'_')+(i
 function download(blob,name){return AtelierSave.save(blob,name);}
 async function exportItem(it){if(!it)return;await busy('Traitement en pleine définition…');try{const c=await renderFull(it);await busy(it.st.out.fmt==='png'?'Compression PNG…':'Compression JPG…');const b=await encode(it,c);download(b,fname(it));it.saved=stSig(it);$('#xInfo').textContent=`Exporté : ${c.width} × ${c.height} px · ${Math.round(b.size/1024)} Ko`;}catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}await busy();}
 $('#bExportOne').onclick=()=>exportItem(cur());
+/* Enregistrer : écrit sur le fichier d'origine s'il existe (même format), sinon propose de le créer */
+async function saveItem(it){if(!it)return;
+  await busy('Traitement en pleine définition…');let b,ext=it.st.out.fmt==='png'?'png':'jpg';
+  try{const c=await renderFull(it);b=await encode(it,c);}catch(e){await busy();alert('Enregistrement impossible : '+(e.message||e));return;}
+  await busy();
+  const hExt=it.handle?(it.handle.name.split('.').pop()||'').toLowerCase().replace('jpeg','jpg'):'';
+  try{
+    if(it.handle&&hExt===ext){
+      if(it.handle.requestPermission&&(await it.handle.requestPermission({mode:'readwrite'}))!=='granted')throw Object.assign(new Error('droit refusé'),{name:'NotAllowedError'});
+      const w=await it.handle.createWritable();try{await w.write(b);await w.close();}catch(e){try{await w.abort();}catch(x){}throw e;}
+      it.saved=stSig(it);$('#xInfo').textContent='Enregistré sur « '+it.handle.name+' ».';return;}
+    if(!window.showSaveFilePicker){await download(b,fname(it));it.saved=stSig(it);return;}
+    const nm=it.handle&&hExt!==ext?it.name+'.'+ext:fname(it).replace(it.st.out.suffix||'\u0000','');
+    const h=await showSaveFilePicker({suggestedName:nm,types:[{description:ext==='png'?'Image PNG':'Image JPEG',accept:{[ext==='png'?'image/png':'image/jpeg']:ext==='png'?['.png']:['.jpg','.jpeg']}}]});
+    const w=await h.createWritable();try{await w.write(b);await w.close();}catch(e){try{await w.abort();}catch(x){}throw e;}
+    it.handle=h;it.saved=stSig(it);$('#xInfo').textContent='Enregistré : « '+h.name+' ».';
+  }catch(e){if(e&&e.name==='AbortError')return;console.error(e);
+    if(confirm('Enregistrement impossible sur le fichier d’origine ('+(e.name||'erreur')+' : '+(e.message||'')+').\nTélécharger une copie à la place ?'))await download(b,fname(it));}
+}
+$('#bSaveOne').onclick=()=>saveItem(cur());
 $('#xEstimate').onclick=async()=>{const it=cur();if(!it)return;await busy('Estimation…');try{const c=await renderFull(it);const b=await encode(it,c);$('#xInfo').textContent=`Image exportée : ${c.width} × ${c.height} px · environ ${Math.round(b.size/1024)} Ko`;}catch(e){alert(e.message||e);}await busy();};
 /* ZIP minimal (sans compression : les JPG le sont déjà) */
 const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
@@ -945,7 +967,7 @@ document.addEventListener('keydown',e=>{
   if(ctrl&&(k==='+'||k==='=')){e.preventDefault();setZoom(S.vz*1.25);return;}
   if(ctrl&&k==='-'){e.preventDefault();setZoom(S.vz/1.25);return;}
   if(ctrl&&k==='p'){e.preventDefault();printCurrent();return;}
-  if(ctrl&&k==='s'){e.preventDefault();$('#bExportOne').click();return;}
+  if(ctrl&&k==='s'){e.preventDefault();(e.shiftKey?$('#bExportOne'):$('#bSaveOne')).click();return;}
   if(ctrl&&k==='a'){e.preventDefault();S.items.forEach(i=>S.sel.add(i.id));renderStrip();return;}
   if(ctrl)return;
   if(k==='b'){setBefore(true);return;}
@@ -1275,7 +1297,12 @@ $('#zoneBan').addEventListener('click',e=>{if(e.target.closest('[data-za=all]'))
 </script>
 <script>
 /* fichiers ouverts depuis l'ordinateur (« Ouvrir avec » Atelier) */
-if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;window.__laSuiteBusy=1;if(window.AtelierRecent)AtelierRecent.addHandles('photo',p.files);addFiles(await Promise.all(p.files.map(h=>h.getFile())));});
+if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;window.__laSuiteBusy=1;if(window.AtelierRecent)AtelierRecent.addHandles('photo',p.files);addFiles(await Promise.all(p.files.map(async h=>{const f=await h.getFile();HND.set(f,h);return f;})));});
+/* « Ajouter des images… » : ouverture par le sélecteur du navigateur quand il existe, pour garder l'emplacement d'origine */
+if(window.showOpenFilePicker)$('#fIn').addEventListener('click',async e=>{e.preventDefault();
+  try{const hs=await showOpenFilePicker({multiple:true,types:[{description:'Images, PDF, PowerPoint',accept:{'image/*':['.jpg','.jpeg','.png','.webp','.gif','.bmp'],'application/pdf':['.pdf'],'application/vnd.openxmlformats-officedocument.presentationml.presentation':['.pptx']}}]});
+    window.__laSuiteBusy=1;const fs=await Promise.all(hs.map(async h=>{const f=await h.getFile();HND.set(f,h);return f;}));if(window.AtelierRecent)AtelierRecent.addHandles('photo',hs);addFiles(fs);}
+  catch(err){if(err&&err.name!=='AbortError')$('#fIn').click&&0;}});
 </script>
 <script src="../lib/pptx.js"></script>
 <script>
