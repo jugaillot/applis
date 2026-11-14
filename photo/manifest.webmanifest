@@ -1,0 +1,58 @@
+{
+  "name": "Photo — La Suite",
+  "short_name": "Photo",
+  "description": "Retouche photo : JPG, PNG, WebP.",
+  "lang": "fr",
+  "id": "/photo/",
+  "start_url": "/photo/",
+  "scope": "/photo/",
+  "display": "standalone",
+  "background_color": "#f1efea",
+  "theme_color": "#1d1d1f",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/photo/",
+      "accept": {
+        "image/jpeg": [
+          ".jpg",
+          ".jpeg"
+        ],
+        "image/png": [
+          ".png"
+        ],
+        "image/webp": [
+          ".webp"
+        ],
+        "image/gif": [
+          ".gif"
+        ]
+      },
+      "icons": [
+        {
+          "src": "/icons/file-image.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    }
+  ]
+}
