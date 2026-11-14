@@ -6,7 +6,7 @@
 <title>La Suite Riso</title>
 <script src="../lib/jspdf.umd.min.js"></script>
 <script src="../lib/pdf.min.js"></script>
-<script src="../lib/sync.js"></script>
+<script src="../lib/save.js"></script><script src="../lib/sync.js"></script>
 <script src="../lib/unsaved.js"></script>
 <script src="../lib/tabs.js"></script>
 <style>
@@ -607,7 +607,7 @@ async function exportPDFgris(){
       }
     }
     const dt=new Date().toISOString().slice(0,10);
-    doc.save(`riso-${dt}.pdf`);
+    AtelierSave.save(doc.output('blob'),`riso-${dt}.pdf`);
     await busy();
     alert('PDF exporté.\n\n'+order.map((id,k)=>`Page ${k+1} : ${getInk(id).name}`).join('\n'));
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
@@ -630,7 +630,7 @@ async function exportPDFcouleur(){
       for(let i=0,j=0;i<n;i++,j+=4){o[j]=R[i]*255;o[j+1]=G[i]*255;o[j+2]=B[i]*255;o[j+3]=255;}
       cx.putImageData(img,0,0);doc.addImage(oc.toDataURL('image/jpeg',0.93),'JPEG',0,y0/ppm,pw,h/ppm,undefined,'FAST');
     }
-    doc.save(`riso-couleur-${new Date().toISOString().slice(0,10)}.pdf`);
+    AtelierSave.save(doc.output('blob'),`riso-couleur-${new Date().toISOString().slice(0,10)}.pdf`);
     await busy();
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
@@ -705,7 +705,7 @@ function buildProject(){
     for(const L of S.layers){const o={...L};delete o.src;delete o.cache;const g=groupById(L.groupId);if(!L.svgText&&!(g&&g.sep)&&L.src)o.srcData=toCanvas(L.src).toDataURL('image/png');P.layers.push(o);}
     return P;
 }
-function downloadProject(){const blob=new Blob([JSON.stringify(buildProject())],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(S.doc.name||'projet-riso')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
+function downloadProject(){const blob=new Blob([JSON.stringify(buildProject())],{type:'application/json'});AtelierSave.save(blob,(S.doc.name||'projet-riso')+'.json');}
 function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'';if(window.AtelierTabs)AtelierTabs.refresh();}
 async function saveProject(asNew){
   if(!window.AtelierSync){downloadProject();return;}

@@ -137,7 +137,7 @@ navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!window
 /* une erreur au démarrage ne laisse plus une page vide : on l'affiche, avec un moyen de repartir */
 setTimeout(()=>{window.__bootOk=true;},10000);
 window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.message)||'erreur';if(/ResizeObserver loop/.test(m))return;const d=document.getElementById('bootErr')||document.body&&document.body.appendChild(Object.assign(document.createElement('div'),{id:'bootErr'}));if(!d)return;d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#fff3f0;border:1px solid #e3a59a;border-radius:10px;padding:10px 14px;font:13px system-ui;color:#5a1d12;box-shadow:0 6px 24px rgba(0,0,0,.15)';d.innerHTML='<b>Le démarrage a rencontré un problème</b> : '+String(m).replace(/</g,'&lt;')+'<br><button onclick="location.reload()" style="margin-top:6px">Recharger</button>';});</script>
-</head>
+<script src="../lib/save.js"></script></head>
 <body>
 <header>
   <h1><a href="../">La Suite</a> <span>PDF</span></h1>
@@ -702,7 +702,7 @@ async function rasterPdf(bytes,dpi,q){
   out.setTitle('Compilation');out.setProducer('La Suite PDF');return await out.save();
 }
 const mo=n=>(n/1048576).toFixed(n<1048576?2:1).replace('.',',')+' Mo';
-function dl(bytes,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+function dl(bytes,name){return AtelierSave.save(new Blob([bytes],{type:'application/pdf'}),name);}
 /* une page par fichier : le PDF final est découpé feuille par feuille */
 async function saveSplit(bytes){
   const src=await PDFLib.PDFDocument.load(bytes);const n=src.getPageCount();const w=String(n).length<2?2:String(n).length;

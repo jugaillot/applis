@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>La Suite Mise en page</title>
 <link rel="stylesheet" href="../lib/fonts.css">
-<script src="../lib/sync.js"></script>
+<script src="../lib/save.js"></script><script src="../lib/sync.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#e0533d;--soft:#f7f6f2;--board:#dcd9d2;--sel:#1e88ff}
 *{box-sizing:border-box}
@@ -960,7 +960,7 @@ function busy(msg){const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}
 let asT=0;
 function autosave(){clearTimeout(asT);asT=setTimeout(()=>{IDB.set('autosave',{doc:S.doc,id:S.id,name:S.name});if(S.id&&window.AtelierSync)AtelierSync.save('mise',S.id,S.name,S.doc,{lazy:true});},600);}
 async function saveDoc(asNew){if(S.edit)endEdit();
-  if(!window.AtelierSync){const b=new Blob([JSON.stringify(S.doc)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(S.name||'mise-en-page')+'.json';a.click();return;}
+  if(!window.AtelierSync){const b=new Blob([JSON.stringify(S.doc)],{type:'application/json'});AtelierSave.save(b,(S.name||'mise-en-page')+'.json');return;}
   if(!S.id||asNew||!S.name){const n=prompt('Nom de la mise en page :',S.name||'Affiche '+new Date().toLocaleDateString('fr-FR'));if(!n||!n.trim())return;S.name=n.trim();if(asNew)S.id=null;}
   S.id=await AtelierSync.save('mise',S.id,S.name,S.doc);autosave();syncPanels();hint('Enregistré : « '+S.name+' »');}
 /* avant de remplacer la mise en page : proposer de l'enregistrer si elle ne l'a jamais été */
@@ -1017,7 +1017,7 @@ async function exportIDML(){
   try{const blob=await AtelierIDML.build(S.doc,{name:S.name,chain:chainOf,geom:imgGeom,
       getImage:async key=>{const o=IMG.get(key);if(!o)return null;const b=await (await fetch(o.url)).blob();const t=b.type||'';const bytes=new Uint8Array(await b.arrayBuffer());
         return{bytes,w:o.w,h:o.h,png:/png/.test(t),svg:/svg/.test(t),name:key};}});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(S.name||'mise-en-page')+'.idml';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+    busy();await AtelierSave.save(blob,(S.name||'mise-en-page')+'.idml');
   }catch(e){alert('Export IDML impossible : '+e.message);}finally{busy();}}
 async function exportDoc(){const f=await chooseFormat();if(f==='pdf')printDoc();else if(f==='idml')exportIDML();}
 $('#bPrint').onclick=exportDoc;$('#xPrint').onclick=exportDoc;

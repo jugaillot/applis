@@ -293,7 +293,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <div id="busy" hidden>…</div>
 <div id="toast" hidden></div>
 
-<script src="../lib/sync.js"></script>
+<script src="../lib/save.js"></script><script src="../lib/sync.js"></script>
 <script src="../lib/toastui-editor-all.min.js"></script>
 <script src="../lib/docx.iife.js"></script>
 <script>
@@ -838,7 +838,7 @@ $('#bPdf').onclick=async()=>{
 /* ===================== Word ===================== */
 $('#bWord').onclick=async()=>{
   await saveCur();await busy('Création du fichier Word…');
-  try{const blob=await buildDocx(S.cur);const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=S.cur+'.docx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);}
+  try{const blob=await buildDocx(S.cur);await AtelierSave.save(blob,S.cur+'.docx');}
   catch(e){console.error(e);alert('Export Word impossible : '+(e.message||e));}
   await busy();
 };
