@@ -315,6 +315,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
         <label title="Décale le contour vers le bas (+) ou le haut (−)">Décalage Y (mm)<input type="number" id="ctDy" step="0.5" value="0"></label>
       </div>
       <div class="ctRow"><span>Position</span><div class="icos" data-ctk="pos"><button type="button" data-v="center" title="Centré sur le tracé"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="6" y="6" width="12" height="12" stroke-width="4" opacity=".35"/><rect x="6" y="6" width="12" height="12" stroke-width="1" stroke-dasharray="2 1.5"/></svg></button><button type="button" data-v="inside" title="À l’intérieur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="8" y="8" width="8" height="8" stroke-width="4" opacity=".35"/><rect x="6" y="6" width="12" height="12" stroke-width="1" stroke-dasharray="2 1.5"/></svg></button><button type="button" data-v="outside" title="À l’extérieur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="16" height="16" stroke-width="4" opacity=".35"/><rect x="6" y="6" width="12" height="12" stroke-width="1" stroke-dasharray="2 1.5"/></svg></button></div></div>
+      <div class="ctRow"><span>Plan</span><div class="icos" data-ctk="z"><button type="button" data-v="front" title="Devant l’objet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="4" width="11" height="11" stroke-dasharray="2 2"/><rect x="9" y="9" width="11" height="11" fill="currentColor" fill-opacity=".55"/></svg></button><button type="button" data-v="back" title="Derrière l’objet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="4" width="11" height="11" fill="currentColor" fill-opacity=".55"/><rect x="9" y="9" width="11" height="11" stroke-dasharray="2 2" fill="var(--panel,#fff)"/></svg></button></div></div>
       <div class="ctRow" id="ctCapRow"><span>Extrémités</span><div class="icos" data-ctk="cap"><button type="button" data-v="butt" title="Extrémités nettes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h12" stroke-width="7" stroke-linecap="butt" opacity=".35"/><path d="M3 12h12" stroke-width="1"/><path d="M15 6v12" stroke-width="1" stroke-dasharray="1.5 1.5"/></svg></button><button type="button" data-v="round" title="Extrémités arrondies"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h12" stroke-width="7" stroke-linecap="round" opacity=".35"/><path d="M3 12h12" stroke-width="1"/><path d="M15 6v12" stroke-width="1" stroke-dasharray="1.5 1.5"/></svg></button><button type="button" data-v="square" title="Extrémités carrées"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h12" stroke-width="7" stroke-linecap="square" opacity=".35"/><path d="M3 12h12" stroke-width="1"/><path d="M15 6v12" stroke-width="1" stroke-dasharray="1.5 1.5"/></svg></button></div></div>
       <div class="ctRow"><span>Angles</span><div class="icos" data-ctk="join"><button type="button" data-v="miter" title="Angles droits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 19L12 7l7 12" stroke-width="5" stroke-linejoin="miter" opacity=".35"/><path d="M5 19L12 7l7 12" stroke-width="1"/></svg></button><button type="button" data-v="round" title="Angles arrondis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 19L12 7l7 12" stroke-width="5" stroke-linejoin="round" opacity=".35"/><path d="M5 19L12 7l7 12" stroke-width="1"/></svg></button><button type="button" data-v="bevel" title="Angles biseautés"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 19L12 7l7 12" stroke-width="5" stroke-linejoin="bevel" opacity=".35"/><path d="M5 19L12 7l7 12" stroke-width="1"/></svg></button></div></div>
     </section>
@@ -1693,8 +1694,8 @@ $('#bPreview').addEventListener('click',()=>setPreview(!PV));
 /* ---------- contours : « Général » (autour de chaque tracé) et « Extérieur » (bord extérieur seul),
    chacun avec épaisseur, position, extrémités, angles, décalage et calque ; recalculés quand l'objet change ---------- */
 const CT_KEY='atelier.contours'+location.pathname;
-S.ct=Object.assign({type:'gen',gen:{pos:'center',cap:'round',join:'round',dx:0,dy:0},ext:{pos:'outside',cap:'round',join:'round',dx:0,dy:0},full:{pos:'outside',cap:'round',join:'round',dx:0,dy:0}},(()=>{try{return JSON.parse(localStorage.getItem(CT_KEY))||{};}catch(e){return{};}})());
-if(!S.ct.full)S.ct.full={pos:'outside',cap:'round',join:'round',dx:0,dy:0};
+S.ct=Object.assign({type:'gen',gen:{pos:'center',cap:'round',join:'round',dx:0,dy:0,z:'front'},ext:{pos:'outside',cap:'round',join:'round',dx:0,dy:0,z:'front'},full:{pos:'outside',cap:'round',join:'round',dx:0,dy:0,z:'back'}},(()=>{try{return JSON.parse(localStorage.getItem(CT_KEY))||{};}catch(e){return{};}})());
+if(!S.ct.full)S.ct.full={pos:'outside',cap:'round',join:'round',dx:0,dy:0,z:'back'};['gen','ext','full'].forEach(k=>{if(!S.ct[k].z)S.ct[k].z=k==='full'?'back':'front';});
 function ctSave(){try{localStorage.setItem(CT_KEY,JSON.stringify(S.ct));}catch(e){}}
 function isOutline(p){return !!(p&&p.data&&p.data.outline);}
 const newCuid=()=>'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -1818,8 +1819,8 @@ function ctRebuild(ol){
   ol.removeChildren();ol.addChildren(shape instanceof P.CompoundPath?shape.removeChildren():[shape]);ol.fillRule='nonzero';
   ol.strokeColor=null;ol.fillColor=ol.fillColor||new P.Color('#000000');
   o.sig=ctSig(ol,lv);
-  if(o.type==='full'&&ol.parent&&!(ol.parent instanceof P.Layer)&&ol.parent.firstChild!==ol)ol.parent.insertChild(0,ol);// la surface pleine reste derrière l'objet
-  if(o.type==='ext'&&ol.parent&&!(ol.parent instanceof P.Layer)&&ol.nextSibling&&!(ol.nextSibling.data&&ol.nextSibling.data.outline))ol.parent.addChild(ol);// devant l'objet : visible en entier, même décalé
+  const z=o.z||(o.type==='full'?'back':'front');// devant ou derrière l'objet
+  if(ol.parent&&!(ol.parent instanceof P.Layer)){if(z==='back'){if(ol.parent.firstChild!==ol)ol.parent.insertChild(0,ol);}else if(ol.nextSibling&&!(ol.nextSibling.data&&ol.nextSibling.data.outline))ol.parent.addChild(ol);}
 }
 function refreshOutlines(){
   P.project.getItems({match:it=>isOutline(it)&&!(it.layer&&isSys(it.layer))}).forEach(ol=>{
@@ -1865,7 +1866,7 @@ function ctApply(){
     if(!(w>0)){if(ol){ol.remove();n++;}continue;}
     const key=$('#ctLayer').value;
     if(!ol){ol=new P.CompoundPath({name:type==='ext'?'Contour extérieur':type==='full'?'Contour plein':'Contour général'});}
-    ol.data.outline={type,owner:owner.data.cuid,src,w,pos:o.pos,cap:o.cap,join:o.join,dx:+o.dx||0,dy:+o.dy||0,layer:key,sig:''};
+    ol.data.outline={type,owner:owner.data.cuid,src,w,pos:o.pos,cap:o.cap,join:o.join,dx:+o.dx||0,dy:+o.dy||0,z:o.z||(type==='full'?'back':'front'),layer:key,sig:''};
     ol.fillColor=new P.Color(ctColor(key));
     ctPlace(ol,owner,key,type);ctRebuild(ol);n++;
   }
@@ -1881,7 +1882,7 @@ function ctSyncPanel(){
   const ae=document.activeElement&&document.activeElement.id;
   if(ae!=='ctW')$('#ctW').value=ol?o.w:0;if(ae!=='ctDx')$('#ctDx').value=o.dx||0;if(ae!=='ctDy')$('#ctDy').value=o.dy||0;
   if(ol&&o.layer!=null)sel_.value=o.layer;else if(!ol){if(typeof roleUp==='function')sel_.value=(activeRole==='blanc'?'blanc':activeRole==='aqua'?'aqua':'couleur');else if(t){const g=[...t.groups.keys()][0];sel_.value=String(Math.max(0,userLayers().indexOf(g.layer)));}}
-  [['pos',o.pos],['cap',o.cap],['join',o.join]].forEach(([k,v])=>$('#fillSec [data-ctk="'+k+'"]').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)));
+  [['pos',o.pos],['cap',o.cap],['join',o.join],['z',o.z||(type==='full'?'back':'front')]].forEach(([k,v])=>$('#fillSec [data-ctk="'+k+'"]').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)));
   $('#ctCapRow').style.display=type==='gen'?'':'none';
   $('#ctInfo').textContent=!t?'Sélectionne un objet, ou des éléments à la flèche blanche.':t.objMode?('S’applique à '+(t.groups.size>1?t.groups.size+' objets':'l’objet')+(type==='ext'?' (bord extérieur)':type==='full'?' (surface pleine, derrière l’objet)':' (chaque tracé)')):('S’applique aux '+[...t.groups.values()].reduce((a,b)=>a+b.length,0)+' éléments pris');
   ['ctW','ctDx','ctDy','ctLayer'].forEach(id=>$('#'+id).disabled=!t);
