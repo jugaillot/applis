@@ -71,7 +71,8 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #crop .btn{background:#2c2c2e;border-color:#3a3a3c;color:#fff}#crop .btn.acc{background:var(--acc);border-color:var(--acc);flex:1}
 #crop select{font:inherit;padding:5px;border-radius:7px}
 #cam{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column}
-#cam video{flex:1;min-height:0;width:100%;object-fit:cover;background:#000}
+#cam video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}
+#camO{position:absolute;left:0;top:0;pointer-events:none}
 #camG{position:absolute;left:6%;right:6%;top:9%;bottom:24%;border:2px solid rgba(255,255,255,.75);border-radius:6px;pointer-events:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.35)}
 #camMsg{position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:0;right:0;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 3px #000}
 #cam .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:#000}
@@ -154,7 +155,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <div id="cBox"><canvas id="cCv"></canvas></div>
   <div class="bar"><button class="btn" id="cRot" title="Tourner la photo d’un quart de tour">⟳ Tourner</button><button class="btn" id="cNo">Ignorer</button><button class="btn acc" id="cOk">Redresser et continuer</button></div>
 </div>
-<div id="cam" hidden><video id="camV" playsinline muted autoplay></video><div id="camG"></div><div id="camMsg"></div><div class="bar"><button class="btn" id="camX">✕ Fermer</button><button class="shut" id="camS" aria-label="Prendre la photo"></button><button class="btn acc" id="camOk">Terminer</button></div></div>
+<div id="cam" hidden><video id="camV" playsinline muted autoplay></video><canvas id="camO"></canvas><div id="camMsg"></div><div class="bar"><button class="btn" id="camX">✕ Fermer</button><button class="shut" id="camS" aria-label="Prendre la photo"></button><button class="btn acc" id="camOk">Terminer</button></div></div>
 <div id="busy" hidden></div>
 
 <script src="../lib/sync.js"></script>
@@ -387,11 +388,25 @@ async function openCam(){
   try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:4096},height:{ideal:3072}},audio:false});
     const tr=st.getVideoTracks()[0];CAM={st,tr,n:0,ic:window.ImageCapture?new ImageCapture(tr):null};
     try{await tr.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
-    $('#camV').srcObject=st;$('#cam').hidden=false;camMsg();
+    $('#camV').srcObject=st;$('#cam').hidden=false;camMsg();camLoop();
   }catch(e){alert('Caméra de l’appli indisponible ('+(e.name||e.message)+') : j’ouvre l’appareil photo du téléphone.');$('#fCam').click();}
 }
-function camMsg(){$('#camMsg').textContent=CAM&&CAM.n?CAM.n+' photo(s) prise(s) · cadre la page entière avec ses 4 croix':'Cadre la page entière avec ses 4 croix (ou ses 4 coins)';$('#camOk').textContent=CAM&&CAM.n?'Terminer ('+CAM.n+')':'Terminer';}
-function camClose(){if(CAM){CAM.st.getTracks().forEach(t=>t.stop());}$('#camV').srcObject=null;$('#cam').hidden=true;const n=CAM?CAM.n:0;CAM=null;if(n&&$('#crop').hidden&&!$('#dNew').open)nextPhoto();}
+/* repérage du bord de la page en direct, avant la prise de vue */
+let camT=0;
+function camLoop(){clearTimeout(camT);if(!CAM)return;
+  const v=$('#camV'),o=$('#camO'),box=v.getBoundingClientRect();
+  if(v.videoWidth&&box.width){
+    if(o.width!==Math.round(box.width)||o.height!==Math.round(box.height)){o.width=Math.round(box.width);o.height=Math.round(box.height);}
+    const sc=Math.min(1,480/Math.max(v.videoWidth,v.videoHeight)),c=CAM.sm||(CAM.sm=document.createElement('canvas'));c.width=Math.round(v.videoWidth*sc);c.height=Math.round(v.videoHeight*sc);c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+    let q=null;try{q=detectPage(c);}catch(e){}
+    const x=o.getContext('2d');x.clearRect(0,0,o.width,o.height);
+    if(q){const k=Math.min(o.width/v.videoWidth,o.height/v.videoHeight),ox=(o.width-v.videoWidth*k)/2,oy=(o.height-v.videoHeight*k)/2,f=k/sc;
+      x.beginPath();q.forEach((pt,i)=>{const X=ox+pt[0]*f,Y=oy+pt[1]*f;i?x.lineTo(X,Y):x.moveTo(X,Y);});x.closePath();
+      x.fillStyle='rgba(60,200,110,.18)';x.fill();x.strokeStyle='#3cc86e';x.lineWidth=3;x.stroke();CAM.ok=true;}else CAM.ok=false;
+    camMsg();}
+  camT=setTimeout(camLoop,450);}
+function camMsg(){$('#camMsg').textContent=(CAM&&CAM.ok?'✓ Page repérée · ':'Cadre toute la page · ')+(CAM&&CAM.n?CAM.n+' photo(s) prise(s)':'chaque photo = une page');$('#camOk').textContent=CAM&&CAM.n?'Terminer ('+CAM.n+')':'Terminer';}
+function camClose(){clearTimeout(camT);if(CAM){CAM.st.getTracks().forEach(t=>t.stop());}$('#camV').srcObject=null;$('#cam').hidden=true;const n=CAM?CAM.n:0;CAM=null;if(n&&$('#crop').hidden&&!$('#dNew').open)nextPhoto();}
 $('#camX').onclick=()=>{if(CAM&&CAM.n&&!confirm('Fermer la caméra ? Les '+CAM.n+' photo(s) prises seront quand même traitées.'))return;camClose();};
 $('#camOk').onclick=camClose;
 $('#camS').onclick=async()=>{if(!CAM)return;let blob=null;
