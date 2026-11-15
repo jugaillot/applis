@@ -21,6 +21,7 @@ Dépôt GitHub `jugaillot/applis`. Hébergement OVH (mutualisé, PHP) : **déplo
 | `mise/` | Mise en page | affiches/flyers, cadres de texte chaînés, import PowerPoint et PDF |
 | `dossiers/` | Dossiers | documents Markdown stockés dans le dépôt GitHub `jugaillot/dossiers` (voir le CLAUDE.md de ce dépôt) |
 | `envoyer/` | Envoyer un dessin | page mobile : photographier, redresser, (pré)vectoriser et envoyer vers un document Paysage/Vecto ouvert sur l'ordinateur |
+| `cahier/` | Cahier | cahier numérique : pages à imprimer avec repères, photos redressées, feuilletage, planche, recherche, zone → autre appli |
 | `bd/`, `civco/` | BD, Civco | collection de BD ; petit jeu coopératif |
 | `index.html` | Accueil | rubriques Outils / Dessin / Projet / Perso, tuiles avec icône |
 
