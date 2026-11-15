@@ -72,6 +72,8 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #crop select{font:inherit;padding:5px;border-radius:7px}
 #cam{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column}
 #cam video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}
+#camOpt{position:absolute;left:0;right:0;bottom:calc(112px + env(safe-area-inset-bottom));display:flex;gap:14px;align-items:center;justify-content:center;color:#fff;font-size:13px;background:rgba(0,0,0,.45);padding:8px 14px}
+#camOpt label{display:flex;gap:6px;align-items:center}#camOpt input[type=range]{width:110px}
 #camO{position:absolute;left:0;top:0;pointer-events:none}
 #camG{position:absolute;left:6%;right:6%;top:9%;bottom:24%;border:2px solid rgba(255,255,255,.75);border-radius:6px;pointer-events:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.35)}
 #camMsg{position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:0;right:0;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 3px #000}
@@ -142,7 +144,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 <!-- nouvelle page : infos -->
 <dialog id="dNew"><div class="h" id="nwH">Nouvelle page</div><div class="b">
   <img id="nwImg" style="max-width:100%;max-height:34vh;display:block;margin:0 auto 10px;border:1px solid var(--line)">
-  <div class="muted" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap"><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nClean"> Fond blanc</label><label style="display:flex;gap:6px;align-items:center;flex:1;min-width:150px">Contraste <input type="range" id="nCt" min="0" max="100" style="flex:1"></label></div>
+  <div class="muted" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap"><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nClean"> Fond blanc</label><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nColor"> Couleur</label><label style="display:flex;gap:6px;align-items:center;flex:1 1 100%">Contraste <input type="range" id="nCt" min="0" max="100" style="flex:1"></label></div>
   <label><span>Date</span><input type="date" id="nD"><small id="nDhint" class="muted"></small></label>
   <label><span>Type</span><select id="nT"><option value="note">Notes (texte)</option><option value="croquis">Croquis (dessin)</option></select></label>
   <label><span>Titre (tapé)</span><input type="text" id="nTitle"></label>
@@ -155,7 +157,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <div id="cBox"><canvas id="cCv"></canvas></div>
   <div class="bar"><button class="btn" id="cRot" title="Tourner la photo d’un quart de tour">⟳ Tourner</button><button class="btn" id="cNo">Ignorer</button><button class="btn acc" id="cOk">Redresser et continuer</button></div>
 </div>
-<div id="cam" hidden><video id="camV" playsinline muted autoplay></video><canvas id="camO"></canvas><div id="camMsg"></div><div class="bar"><button class="btn" id="camX">✕ Fermer</button><button class="shut" id="camS" aria-label="Prendre la photo"></button><button class="btn acc" id="camOk">Terminer</button></div></div>
+<div id="cam" hidden><video id="camV" playsinline muted autoplay></video><canvas id="camO"></canvas><div id="camMsg"></div><div id="camOpt"><label>Bord <small>large</small><input type="range" id="camSens" min="0" max="100"><small>serré</small></label><label><input type="checkbox" id="camCol"> Couleur</label></div><div class="bar"><button class="btn" id="camX">✕ Fermer</button><button class="shut" id="camS" aria-label="Prendre la photo"></button><button class="btn acc" id="camOk">Terminer</button></div></div>
 <div id="busy" hidden></div>
 
 <script src="../lib/sync.js"></script>
@@ -388,7 +390,7 @@ async function openCam(){
   try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:4096},height:{ideal:3072}},audio:false});
     const tr=st.getVideoTracks()[0];CAM={st,tr,n:0,ic:window.ImageCapture?new ImageCapture(tr):null};
     try{await tr.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
-    $('#camV').srcObject=st;$('#cam').hidden=false;camMsg();camLoop();
+    $('#camV').srcObject=st;$('#cam').hidden=false;$('#camSens').value=ls.get('cahier.sens')||50;$('#camCol').checked=ls.get('cahier.color')==='1';camMsg();camLoop();
   }catch(e){alert('Caméra de l’appli indisponible ('+(e.name||e.message)+') : j’ouvre l’appareil photo du téléphone.');$('#fCam').click();}
 }
 /* repérage du bord de la page en direct, avant la prise de vue */
@@ -407,6 +409,8 @@ function camLoop(){clearTimeout(camT);if(!CAM)return;
   camT=setTimeout(camLoop,450);}
 function camMsg(){$('#camMsg').textContent=(CAM&&CAM.ok?'✓ Page repérée · ':'Cadre toute la page · ')+(CAM&&CAM.n?CAM.n+' photo(s) prise(s)':'chaque photo = une page');$('#camOk').textContent=CAM&&CAM.n?'Terminer ('+CAM.n+')':'Terminer';}
 function camClose(){clearTimeout(camT);if(CAM){CAM.st.getTracks().forEach(t=>t.stop());}$('#camV').srcObject=null;$('#cam').hidden=true;const n=CAM?CAM.n:0;CAM=null;if(n&&$('#crop').hidden&&!$('#dNew').open)nextPhoto();}
+$('#camSens').oninput=()=>{ls.set('cahier.sens',$('#camSens').value);camT&&clearTimeout(camT);camLoop();};
+$('#camCol').onchange=()=>ls.set('cahier.color',$('#camCol').checked?'1':'0');
 $('#camX').onclick=()=>{if(CAM&&CAM.n&&!confirm('Fermer la caméra ? Les '+CAM.n+' photo(s) prises seront quand même traitées.'))return;camClose();};
 $('#camOk').onclick=camClose;
 $('#camS').onclick=async()=>{if(!CAM)return;let blob=null;
@@ -485,6 +489,7 @@ function detectPage(src){
   for(let i=0;i<w*h;i++){const v=Math.round(0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2]);g[i]=v;hist[v]++;}
   let tot=w*h,sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];let sB=0,wB=0,best=-1,T=128;
   for(let t=0;t<256;t++){wB+=hist[t];if(!wB)continue;const wF=tot-wB;if(!wF)break;sB+=t*hist[t];const mB=sB/wB,mF=(sum-sB)/wF,v=wB*wF*(mB-mF)*(mB-mF);if(v>best){best=v;T=t;}}
+  T=Math.max(20,Math.min(235,T+(+(ls.get('cahier.sens')||50)-50)*0.9));    // curseur « bord » : plus haut = on ne garde que le papier bien clair
   const m=new Uint8Array(w*h);for(let i=0;i<w*h;i++)m[i]=g[i]>T?1:0;
   const lab=new Int32Array(w*h),st=[];let L=0,bl=0,ba=0;
   for(let q0=0;q0<w*h;q0++){if(!m[q0]||lab[q0])continue;L++;let n=0;st.length=0;st.push(q0);lab[q0]=L;
@@ -547,9 +552,10 @@ function whiten(c,t){t=t==null?0.4:t;const LO=0.1+0.3*t,HI=0.97-0.17*t;const w=c
         const r=d[t+ch]/b,o=(r-LO)/(HI-LO);d[t+ch]=o<=0?0:o>=1?255:Math.round(255*(o*o*(3-2*o)*0.55+o*0.45));}}}
   x.putImageData(im,0,0);}
 let CUR=null;
-const SET=()=>({clean:ls.get('cahier.clean')!=='0',t:+(ls.get('cahier.ct')||40)/100});
+const SET=()=>({clean:ls.get('cahier.clean')!=='0',t:+(ls.get('cahier.ct')||40)/100,color:ls.get('cahier.color')==='1'});
+function gray(c){const x=c.getContext('2d'),im=x.getImageData(0,0,c.width,c.height),d=im.data;for(let i=0;i<d.length;i+=4){const v=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);d[i]=d[i+1]=d[i+2]=v;}x.putImageData(im,0,0);}
 /* applique les réglages (fond blanc, contraste), efface les croix, fabrique l'image enregistrée et la vignette */
-async function build(cur){const st=SET(),c=document.createElement('canvas');c.width=cur.raw.width;c.height=cur.raw.height;c.getContext('2d').drawImage(cur.raw,0,0);if(st.clean)whiten(c,st.t);
+async function build(cur){const st=SET(),c=document.createElement('canvas');c.width=cur.raw.width;c.height=cur.raw.height;c.getContext('2d').drawImage(cur.raw,0,0);if(!st.color)gray(c);if(st.clean)whiten(c,st.t);
   cur.cv=c;const e=cur.pad?eraseMarks(c,cur.mi):c;cur.blob=await new Promise(r=>e.toBlob(r,'image/jpeg',0.88));
   const t=document.createElement('canvas');t.width=150;t.height=Math.round(cur.Ho*150/cur.Wo);t.getContext('2d').drawImage(e,0,0,t.width,t.height);
   Object.assign(cur,{thumb:t.toDataURL('image/jpeg',0.6),ar:(cur.Wo/cur.Ho).toFixed(3),st:JSON.stringify(st)});}
@@ -589,12 +595,13 @@ function parseDate(t,ref){
 let PV=null,PT=0;
 function preview(){clearTimeout(PT);PT=setTimeout(()=>{if(!CUR)return;
   if(!PV){const k=Math.min(1,700/Math.max(CUR.raw.width,CUR.raw.height));PV=document.createElement('canvas');PV.width=Math.round(CUR.raw.width*k);PV.height=Math.round(CUR.raw.height*k);PV.getContext('2d').drawImage(CUR.raw,0,0,PV.width,PV.height);}
-  const st=SET(),c=document.createElement('canvas');c.width=PV.width;c.height=PV.height;c.getContext('2d').drawImage(PV,0,0);if(st.clean)whiten(c,st.t);
+  const st=SET(),c=document.createElement('canvas');c.width=PV.width;c.height=PV.height;c.getContext('2d').drawImage(PV,0,0);if(!st.color)gray(c);if(st.clean)whiten(c,st.t);
   const e=CUR.pad?eraseMarks(c,Math.round(CUR.mi*PV.width/CUR.raw.width)):c;$('#nwImg').src=e.toDataURL('image/jpeg',0.8);},40);}
+$('#nColor').onchange=()=>{ls.set('cahier.color',$('#nColor').checked?'1':'0');preview();};
 $('#nClean').onchange=()=>{ls.set('cahier.clean',$('#nClean').checked?'1':'0');$('#nCt').disabled=!$('#nClean').checked;preview();};
 $('#nCt').oninput=()=>{ls.set('cahier.ct',$('#nCt').value);preview();};
 function askMeta(){
-  const st=SET();$('#nClean').checked=st.clean;$('#nCt').value=Math.round(st.t*100);$('#nCt').disabled=!st.clean;PV=null;preview();$('#nD').value='';$('#nD').dataset.touched='';$('#nDhint').textContent='Facultatif : laisse vide si tu ne veux pas de date.';$('#nT').value=ls.get('cahier.type')||'note';$('#nTitle').value='';$('#nTags').value='';
+  const st=SET();$('#nClean').checked=st.clean;$('#nColor').checked=st.color;$('#nCt').value=Math.round(st.t*100);$('#nCt').disabled=!st.clean;PV=null;preview();$('#nD').value='';$('#nD').dataset.touched='';$('#nDhint').textContent='Facultatif : laisse vide si tu ne veux pas de date.';$('#nT').value=ls.get('cahier.type')||'note';$('#nTitle').value='';$('#nTags').value='';
   $('#nwH').textContent='Nouvelle page'+(QUEUE.length?' (encore '+QUEUE.length+' photo'+(QUEUE.length>1?'s':'')+')':'');
   $('#dNew').showModal();
 }
