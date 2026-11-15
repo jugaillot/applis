@@ -42,7 +42,10 @@ main{flex:1;min-height:0;position:relative}
 #nav .info span{color:var(--mute);font-size:12px}
 .arr{font-size:22px;line-height:1;padding:6px 14px}
 /* planche */
-#grid{position:absolute;inset:0 0 0 50px;overflow:auto;padding:12px}
+#grid,#skv{position:absolute;inset:0 0 0 50px;overflow:auto;padding:12px}
+.crow{display:grid;grid-template-columns:1fr 1fr;gap:6px;border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;background:#fff}
+.crow.ok{border-color:#4a9a5f}.crow input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:7px;min-width:0}
+.crow .bt{grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.crow .bt .muted{flex:1}
 #tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 #q{font:inherit;flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#fff}
 #cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
@@ -74,7 +77,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 <header>
   <h1><a href="../">La Suite</a> <span>Cahier</span></h1>
   <button class="btn" id="bName" title="Mes cahiers">📓 …</button>
-  <span class="seg" id="mode"><button data-m="view" class="on">Feuilleter</button><button data-m="grid">Planche</button></span>
+  <span class="seg" id="mode"><button data-m="view" class="on">Feuilleter</button><button data-m="grid">Planche</button><button data-m="sk">Croquis</button></span>
   <span class="sp"></span>
   <button class="btn acc" id="bAdd" title="Photographier ou importer des pages">＋ Ajouter des pages</button>
   <button class="btn" id="bGal" title="Choisir des photos déjà prises" hidden>🖼</button>
@@ -95,13 +98,26 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <div id="tools">
       <input id="q" type="search" placeholder="Chercher : titre, mot-clé, texte, date, n°…">
       <span class="seg" id="flt"><button data-t="all" class="on">Tout</button><button data-t="note">Notes</button><button data-t="croquis">Croquis</button></span>
-      <button class="btn" id="bOcr" title="Lire automatiquement le texte écrit sur les pages (pour pouvoir le chercher)">Lire le texte…</button>
+      <button class="btn" id="bOcr" title="Lit le texte, les titres encadrés, la date, les téléphones et les mails de toutes les pages pas encore traitées">Reconnaître les textes</button><button class="btn" id="bCt" title="Noms, téléphones et mails repérés dans le cahier">Contacts</button>
     </div>
     <div id="cells"></div>
+  </div>
+  <div id="skv" hidden>
+    <div id="tools"><input id="qs" type="search" placeholder="Chercher un croquis : titre, mot-clé, note…"></div>
+    <div id="skc"></div>
   </div>
 </main>
 <input type="file" id="fIn" accept="image/*" multiple hidden>
 <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
+
+<!-- croquis -->
+<dialog id="dSk"><div class="h" id="skH">Croquis</div><div class="b">
+  <img id="skImg" style="max-width:100%;max-height:38vh;display:block;margin:0 auto 10px;border:1px solid var(--line);background:#fff">
+  <label><span>Titre</span><input type="text" id="skT"></label>
+  <label><span>Mots-clés (séparés par des espaces ou virgules)</span><input type="text" id="skTags"></label>
+  <label><span>Note</span><textarea id="skNote" rows="3"></textarea></label>
+</div><div class="f"><button class="btn" id="skDel" style="margin-right:auto;color:#b3261e">Supprimer</button><button class="btn" id="skPage">Voir la page</button><button class="btn" id="skNo">Annuler</button><button class="btn primary" id="skOk">Enregistrer</button></div></dialog>
+<dialog id="dCt"><div class="h">Contacts repérés dans le cahier</div><div class="b"><div class="muted" style="margin-bottom:8px">Lus automatiquement sur l’écriture à la main : vérifie et corrige, puis coche ✓ pour garder.</div><div id="ctl"></div></div><div class="f"><button class="btn primary" id="ctOk">Fermer</button></div></dialog>
 
 <!-- infos d'une page -->
 <dialog id="dInfo"><div class="h">Infos de la page</div><div class="b">
@@ -109,6 +125,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <label><span>Type</span><select id="iT"><option value="note">Notes (texte)</option><option value="croquis">Croquis (dessin)</option></select></label>
   <label><span>Titre (tapé)</span><input type="text" id="iTitle" placeholder="Une phrase pour retrouver la page"></label>
   <label><span>Mots-clés (tapés, séparés par des espaces ou virgules)</span><input type="text" id="iTags"></label>
+  <label><span>Titres de parties lus (un par ligne, modifiables)</span><textarea id="iHeads" rows="2"></textarea></label>
   <label><span>Texte lu automatiquement (modifiable)</span><textarea id="iOcr" rows="3"></textarea></label>
   <button class="btn" id="iRead">Lire le texte de cette page</button>
 </div><div class="f"><button class="btn" id="iDel" style="margin-right:auto;color:#b3261e">Supprimer la page</button><button class="btn" id="iNo">Annuler</button><button class="btn primary" id="iOk">Enregistrer</button></div></dialog>
@@ -181,7 +198,7 @@ async function loadSlide(i){const s=$('#slider').children[i];if(!s||s.dataset.ok
 function go(i,smooth){POS=Math.max(0,Math.min(LIST.length-1,i));const sl=$('#slider');if(!smooth)sl.style.scrollBehavior='auto';sl.scrollLeft=POS*sl.clientWidth;sl.style.scrollBehavior='';loadSlide(POS);loadSlide(POS+1);loadSlide(POS-1);updNav();}
 $('#slider').addEventListener('scroll',()=>{clearTimeout(go.t);go.t=setTimeout(()=>{const sl=$('#slider');const i=Math.round(sl.scrollLeft/Math.max(1,sl.clientWidth));if(i!==POS){POS=Math.max(0,Math.min(LIST.length-1,i));updNav();}},60);});
 function updNav(){const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-1;$('#bInfo').disabled=!p;
-  $('#nT').textContent=p?(p.title||'Page '+pos(p)):'—';$('#nS').textContent=p?('p. '+pos(p)+' · '+fdate(p.date)+(p.type==='croquis'?' · croquis':'')+'  ('+(POS+1)+' / '+LIST.length+')'):'';}
+  $('#nT').textContent=p?(p.title||'Page '+pos(p)):'—';$('#nS').textContent=p?('p. '+pos(p)+' · '+fdate(p.date)+(p.type==='croquis'?' · croquis':'')+((p.heads||[]).length?' · '+p.heads.join(' / '):'')+'  ('+(POS+1)+' / '+LIST.length+')'):'';}
 $('#bPrev').onclick=()=>go(POS-1,true);$('#bNext').onclick=()=>go(POS+1,true);
 addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||!$('#crop').hidden||$('#view').hidden)return;if(/INPUT|TEXTAREA|SELECT/.test((e.target||{}).tagName))return;
   if(e.key==='ArrowLeft'){go(POS-1,true);e.preventDefault();}else if(e.key==='ArrowRight'||e.key===' '){go(POS+1,true);e.preventDefault();}else if(e.key==='Home')go(0);else if(e.key==='End')go(LIST.length-1);});
@@ -191,12 +208,12 @@ let FLT='all',QS='';
 function matches(p){
   if(FLT!=='all'&&p.type!==FLT)return false;
   if(!QS)return true;
-  const hay=norm([p.title,p.tags,p.ocr,p.date,fdate(p.date),'p'+pos(p),pos(p),p.type].join(' '));
+  const hay=norm([p.title,p.tags,(p.heads||[]).join(' '),p.ocr,p.date,fdate(p.date),'p'+pos(p),pos(p),p.type].join(' '));
   return QS.split(/\s+/).every(w=>hay.includes(w));
 }
 function refresh(keepPos){
   const cur=LIST[POS];LIST=sorted().filter(matches);
-  buildSlides();renderGrid();
+  buildSlides();renderGrid();updBtns();renderSk();
   const i=cur?LIST.findIndex(p=>p.id===cur.id):-1;go(i>=0?i:Math.min(POS,Math.max(0,LIST.length-1)));
 }
 function renderGrid(){
@@ -204,7 +221,7 @@ function renderGrid(){
   if(!LIST.length){c.innerHTML='<div class="empty">'+(DOC&&DOC.pages.length?'Aucune page ne correspond à cette recherche.':'Ce cahier est vide.')+'</div>';return;}
   LIST.forEach((p,i)=>{const d=document.createElement('div');d.className='cell'+(p.type==='croquis'?' sk':'');
     d.innerHTML='<img alt=""><div><b></b><span></span></div>';const im=d.querySelector('img');im.src=p.thumb||'';if(p.ar)im.style.setProperty('--ar',p.ar);
-    d.querySelector('b').textContent=p.title||('Page '+pos(p));d.querySelector('span').textContent='p. '+pos(p)+' · '+fdate(p.date);
+    d.querySelector('b').textContent=p.title||('Page '+pos(p));d.querySelector('span').textContent='p. '+pos(p)+' · '+fdate(p.date)+((p.heads||[]).length?' · '+p.heads.join(' / '):'');
     d.draggable=true;d.dataset.id=p.id;
     d.onclick=()=>{setMode('view');go(i);};c.appendChild(d);});
 }
@@ -217,28 +234,127 @@ $('#cells').addEventListener('drop',e=>{const c=e.target.closest('.cell');docume
 $('#cells').addEventListener('dragend',()=>{DRAG=null;document.querySelectorAll('.cell.over').forEach(x=>x.classList.remove('over'));});
 $('#q').addEventListener('input',()=>{QS=norm($('#q').value).trim();refresh();});
 $('#flt').onclick=e=>{const b=e.target.closest('button');if(!b)return;FLT=b.dataset.t;$('#flt').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));refresh();};
-function setMode(m){$('#view').hidden=m!=='view';$('#grid').hidden=m!=='grid';$('#mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));if(m==='view')requestAnimationFrame(()=>go(POS));}
+function setMode(m){$('#view').hidden=m!=='view';$('#grid').hidden=m!=='grid';$('#skv').hidden=m!=='sk';if(m!=='view'&&TOOL==='zone')setTool('hand');$('#mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));if(m==='view')requestAnimationFrame(()=>go(POS));}
 $('#mode').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.m);};
 
 /* ---------- infos d'une page ---------- */
 let EDIT=null;
-function openInfo(p){EDIT=p;$('#iN').value=pos(p);$('#iD').value=p.date||'';$('#iT').value=p.type||'note';$('#iTitle').value=p.title||'';$('#iTags').value=p.tags||'';$('#iOcr').value=p.ocr||'';$('#dInfo').showModal();}
+function openInfo(p){EDIT=p;$('#iN').value=pos(p);$('#iD').value=p.date||'';$('#iT').value=p.type||'note';$('#iTitle').value=p.title||'';$('#iTags').value=p.tags||'';$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');$('#dInfo').showModal();}
 $('#bInfo').onclick=()=>{if(LIST[POS])openInfo(LIST[POS]);};
 $('#iNo').onclick=()=>$('#dInfo').close();
-$('#iOk').onclick=()=>{const p=EDIT;if(!p)return;const np=Math.max(1,Math.min(DOC.pages.length,+$('#iN').value||pos(p)));DOC.pages=DOC.pages.filter(x=>x!==p);DOC.pages.splice(np-1,0,p);p.date=$('#iD').value;p.type=$('#iT').value;p.title=$('#iTitle').value.trim();p.tags=$('#iTags').value.trim();p.ocr=$('#iOcr').value;$('#dInfo').close();persist();refresh();};
+$('#iOk').onclick=()=>{const p=EDIT;if(!p)return;const np=Math.max(1,Math.min(DOC.pages.length,+$('#iN').value||pos(p)));DOC.pages=DOC.pages.filter(x=>x!==p);DOC.pages.splice(np-1,0,p);p.date=$('#iD').value;p.type=$('#iT').value;p.title=$('#iTitle').value.trim();p.tags=$('#iTags').value.trim();p.ocr=$('#iOcr').value;p.heads=$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean);$('#dInfo').close();persist();refresh();};
 $('#iDel').onclick=()=>{if(!EDIT||!confirm('Supprimer la page '+pos(EDIT)+' ?'))return;DOC.pages=DOC.pages.filter(x=>x!==EDIT);$('#dInfo').close();persist();refresh();};
-$('#iRead').onclick=async()=>{const p=EDIT;if(!p)return;busy('Lecture du texte…');try{$('#iOcr').value=await ocrPage(p);}catch(e){alert('Lecture impossible : '+(e.message||e));}busy();};
+$('#iRead').onclick=async()=>{const p=EDIT;if(!p)return;busy('Lecture de la page…');try{const w=await ocrWorker();try{await ocrApply(p,w);}finally{await w.terminate();}$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');if(p.date&&!p.dAuto)$('#iD').value=p.date;persist();}catch(e){alert('Lecture impossible : '+(e.message||e));}busy();};
 
 /* ---------- lecture automatique du texte (OCR), chargée à la demande ---------- */
 let tessP=null;
 function loadTess(){if(window.Tesseract)return Promise.resolve();return tessP||(tessP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=()=>{tessP=null;rej(new Error('bibliothèque de lecture indisponible (connexion ?)'));};document.head.appendChild(s);}));}
-async function ocrPage(p){await loadTess();const b=await AtelierSync.getBlob(blobKey(p));if(!b)throw new Error('image indisponible');const r=await Tesseract.recognize(b,'fra');return (r.data.text||'').replace(/\s+/g,' ').trim().slice(0,4000);}
+const ocrWorker=async()=>{await loadTess();return Tesseract.createWorker('fra');};
+/* cadres tracés autour d'un texte (titres de parties) : lignes d'encre fermées en rectangle plutôt large */
+function detectFrames(src){
+  const sc=Math.min(1,900/src.width),w=Math.round(src.width*sc),h=Math.round(src.height*sc);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(src,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,g=new Float32Array(w*h);for(let i=0;i<w*h;i++)g[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
+  const I=new Float64Array((w+1)*(h+1));for(let j=0;j<h;j++){let r=0;for(let i=0;i<w;i++){r+=g[j*w+i];I[(j+1)*(w+1)+i+1]=I[j*(w+1)+i+1]+r;}}
+  const R=Math.max(8,Math.round(w/12));let m=new Uint8Array(w*h);
+  for(let j=0;j<h;j++){const y0=Math.max(0,j-R),y1=Math.min(h,j+R+1);for(let i=0;i<w;i++){const x0=Math.max(0,i-R),x1=Math.min(w,i+R+1);const mean=(I[y1*(w+1)+x1]-I[y0*(w+1)+x1]-I[y1*(w+1)+x0]+I[y0*(w+1)+x0])/((x1-x0)*(y1-y0));m[j*w+i]=(g[j*w+i]<mean*0.75&&g[j*w+i]<150)?1:0;}}
+  for(let k=0;k<2;k++){const n=new Uint8Array(w*h);for(let j=1;j<h-1;j++)for(let i=1;i<w-1;i++){const q=j*w+i;if(m[q]||m[q-1]||m[q+1]||m[q-w]||m[q+w]||m[q-w-1]||m[q-w+1]||m[q+w-1]||m[q+w+1])n[q]=1;}m=n;}   // referme les petits trous du trait
+  const lab=new Int32Array(w*h),out=[],st=[];let L=0;
+  for(let q0=0;q0<w*h;q0++){if(!m[q0]||lab[q0])continue;L++;let x0=w,y0=h,x1=0,y1=0;st.length=0;st.push(q0);lab[q0]=L;
+    while(st.length){const q=st.pop(),qx=q%w,qy=(q-qx)/w;if(qx<x0)x0=qx;if(qx>x1)x1=qx;if(qy<y0)y0=qy;if(qy>y1)y1=qy;
+      for(const nq of [q-1,q+1,q-w,q+w]){if(nq<0||nq>=w*h||lab[nq]||!m[nq])continue;if((nq===q-1&&qx===0)||(nq===q+1&&qx===w-1))continue;lab[nq]=L;st.push(nq);}}
+    const bw=x1-x0+1,bh=y1-y0+1;
+    if(bw<0.14*w||bw>0.9*w||bh<0.03*h||bh>0.2*h||bw/bh<2.2||x0<0.02*w||y0<0.02*h||x1>0.98*w)continue;
+    const t=Math.max(4,Math.round(bh*0.22));
+    const side=(xa,ya,xb,yb)=>{let n=0,tot=0;for(let j=ya;j<yb;j++)for(let i=xa;i<xb;i++){}let hit=0;const horiz=(xb-xa)>(yb-ya);
+      const len=horiz?xb-xa:yb-ya;for(let k=0;k<len;k++){let on=0;const ii=horiz?xa+k:xa,jj=horiz?ya:ya+k;for(let u=0;u<(horiz?yb-ya:xb-xa)&&!on;u++){const px=horiz?ii:ii+u,py=horiz?jj+u:jj;if(lab[py*w+px]===L)on=1;}hit+=on;}return hit/len;};
+    const top=side(x0,y0,x1+1,y0+t),bot=side(x0,y1-t+1,x1+1,y1+1),lef=side(x0,y0,x0+t,y1+1),rig=side(x1-t+1,y0,x1+1,y1+1);
+    if(Math.min(top,bot,lef,rig)<0.72)continue;
+    out.push({x:x0/w,y:y0/h,w:bw/w,h:bh/h});}
+  return out.sort((a,b)=>a.y-b.y);
+}
+/* téléphones, noms (juste avant le numéro) et mails */
+function fixDigits(t){for(let k=0;k<2;k++)t=t.replace(/(?<=\d[\s.\-]?)[oO](?=[\s.\-]?\d)|(?<=\d)[oO]\b/g,'0').replace(/(?<=\d)[Il|](?=\d)/g,'1');return t;}
+function cleanName(t){return t.replace(/\b(t[ée]l[ée]?(phone)?|tel|port(able)?|mob(ile)?|fixe|e-?mail|mail|courriel)\b\.?/gi,' ').replace(/[:;,\-–—>=()\[\]]+/g,' ').replace(/\s+/g,' ').trim().slice(0,60);}
+function extractContacts(lines){
+  const res=[],em=/[A-Za-z0-9._+\-]+\s?@\s?[A-Za-z0-9\-]+(?:\s?\.\s?[A-Za-z0-9\-]+)+/,ph=/\+?\d[\d\s.\-]{7,}\d/;
+  lines=lines.map(l=>l.replace(/\s+/g,' ').trim());
+  for(let i=0;i<lines.length;i++){
+    const L=fixDigits(lines[i]);let name='',phone='',mail='',cut=L.length;
+    const me=L.match(em);if(me){mail=me[0].replace(/\s/g,'').toLowerCase();cut=Math.min(cut,me.index);}
+    const mp=L.match(ph);if(mp){const dg=mp[0].replace(/\D/g,'');if(dg.length>=9&&dg.length<=13){phone=mp[0].trim().replace(/[\s.\-]+/g,' ');cut=Math.min(cut,mp.index);}}
+    if(!phone&&!mail)continue;
+    name=cleanName(L.slice(0,cut));
+    if(!name&&i>0&&!/[@]|\d{3}/.test(lines[i-1])&&lines[i-1].length<=45&&!(res.length&&res[res.length-1].line===i-1))name=cleanName(lines[i-1]);
+    const last=res[res.length-1];
+    if(mail&&!phone&&!name&&last&&last.line===i-1&&!last.mail){last.mail=mail;continue;}
+    res.push({name,phone,mail,line:i});}
+  return res.map(({name,phone,mail})=>({name,phone,mail}));
+}
+/* lit une page : texte, titres encadrés, contacts, date près de la croix */
+async function ocrApply(p,worker){
+  const b=await AtelierSync.getBlob(blobKey(p));if(!b)throw new Error('image indisponible');const bm=await createImageBitmap(b);
+  const cv=document.createElement('canvas');cv.width=bm.width;cv.height=bm.height;cv.getContext('2d').drawImage(bm,0,0);
+  const r=(await worker.recognize(cv)).data,lines=(r.lines&&r.lines.length?r.lines.map(l=>l.text):(r.text||'').split('\n')).map(t=>t.trim()).filter(Boolean);
+  p.ocr=lines.join(' ').replace(/\s+/g,' ').slice(0,4000)||' ';
+  if(p.type!=='croquis'){p.frames=detectFrames(cv);p.heads=[];
+    for(const f of p.frames.slice(0,8)){const ix=Math.round((f.x+0.012)*cv.width),iy=Math.round((f.y+0.012)*cv.height),iw=Math.round((f.w-0.024)*cv.width),ih=Math.round((f.h-0.024)*cv.height);if(iw<20||ih<10)continue;
+      const c=document.createElement('canvas');c.width=iw;c.height=ih;c.getContext('2d').drawImage(cv,ix,iy,iw,ih,0,0,iw,ih);
+      const t=((await worker.recognize(c)).data.text||'').replace(/\s+/g,' ').trim();if(t)p.heads.push(t.slice(0,120));}}
+  DOC.contacts=(DOC.contacts||[]).filter(c=>c.page!==p.id||c.ok);
+  extractContacts(lines).forEach(c=>{if(!(DOC.contacts||[]).some(o=>(c.mail&&o.mail===c.mail)||(c.phone&&o.phone.replace(/\D/g,'')===c.phone.replace(/\D/g,''))))DOC.contacts.push(Object.assign({id:nid(),page:p.id,ok:false},c));});
+  if(p.dz&&p.dAuto){const z=p.dz,sx=Math.round(z.x*cv.width),sy=Math.round(z.y*cv.height),sw=Math.round(z.w*cv.width),sh=Math.round(z.h*cv.height);
+    const c=document.createElement('canvas');c.width=sw;c.height=sh;const cx=c.getContext('2d');cx.filter='grayscale(1) contrast(1.6)';cx.drawImage(cv,sx,sy,sw,sh,0,0,sw,sh);
+    const dt=parseDate((await worker.recognize(c)).data.text||'');if(dt){p.date=dt;p.dAuto=false;}}
+  p.rd=2;
+}
+function updBtns(){if(!DOC)return;const n=DOC.pages.filter(p=>p.rd!==2).length,k=(DOC.contacts||[]).length;$('#bOcr').textContent='Reconnaître les textes'+(n?' ('+n+')':'');$('#bOcr').disabled=!n;$('#bCt').textContent='Contacts'+(k?' ('+k+')':'');}
 $('#bOcr').onclick=async()=>{
-  const todo=DOC.pages.filter(p=>!p.ocr);if(!todo.length){alert('Toutes les pages ont déjà leur texte lu.');return;}
-  if(!confirm('Lire automatiquement le texte de '+todo.length+' page(s) ? Cela peut prendre un moment. Sur de l’écriture à la main, le résultat est approximatif : les titres et mots-clés tapés restent la façon la plus sûre de retrouver une page.'))return;
-  let n=0;for(const p of todo){busy('Lecture '+(++n)+' / '+todo.length+'…');try{p.ocr=await ocrPage(p)||' ';}catch(e){busy();alert('Lecture interrompue : '+(e.message||e));break;}}
+  const todo=DOC.pages.filter(p=>p.rd!==2);if(!todo.length)return;
+  if(!navigator.onLine){alert('Il faut une connexion pour cette lecture.');return;}
+  if(!confirm('Lire '+todo.length+' page(s) : texte, titres encadrés, date, téléphones et mails ? Cela peut prendre un moment. Sur de l’écriture à la main, le résultat est approximatif : tu pourras tout corriger.'))return;
+  let w;try{w=await ocrWorker();}catch(e){alert('Lecture impossible : '+(e.message||e));return;}
+  let n=0;try{for(const p of todo){busy('Lecture '+(++n)+' / '+todo.length+'…');try{await ocrApply(p,w);}catch(e){busy();alert('Page '+pos(p)+' non lue : '+(e.message||e));}persist();}}finally{await w.terminate();}
   busy();persist(true);refresh();
+  const k=(DOC.contacts||[]).filter(c=>!c.ok).length;if(k)setTimeout(()=>{if(confirm(k+' contact(s) repéré(s) à vérifier. Les voir maintenant ?'))openContacts();},100);
 };
+/* contacts */
+function openContacts(){const l=$('#ctl');l.innerHTML='';const arr=DOC.contacts||[];
+  if(!arr.length)l.innerHTML='<div class="empty">Aucun contact repéré pour l’instant. Utilise « Reconnaître les textes ».</div>';
+  arr.forEach(c=>{const r=document.createElement('div');r.className='crow'+(c.ok?' ok':'');
+    r.innerHTML='<input data-k="name" placeholder="Nom"><input data-k="phone" placeholder="Téléphone"><input data-k="mail" placeholder="Mail" style="grid-column:1/-1"><div class="bt"><button class="btn" data-a="ok"></button><span class="muted"></span><button class="btn" data-a="pg">Voir la page</button><button class="btn" data-a="del" style="color:#b3261e">Supprimer</button></div>';
+    r.querySelectorAll('input').forEach(i=>{i.value=c[i.dataset.k]||'';i.oninput=()=>{c[i.dataset.k]=i.value;persist();};});
+    const okb=r.querySelector('[data-a=ok]');const pg=DOC.pages.find(p=>p.id===c.page);
+    const upd=()=>{okb.textContent=c.ok?'✓ Gardé':'Garder ✓';r.classList.toggle('ok',!!c.ok);};upd();r.querySelector('.muted').textContent=pg?'page '+pos(pg):'';
+    okb.onclick=()=>{c.ok=!c.ok;upd();persist();};
+    r.querySelector('[data-a=pg]').onclick=()=>{if(!pg)return;$('#dCt').close();FLT='all';QS='';$('#q').value='';refresh();setMode('view');go(LIST.findIndex(x=>x.id===pg.id));};
+    r.querySelector('[data-a=del]').onclick=()=>{DOC.contacts=DOC.contacts.filter(x=>x!==c);persist();updBtns();openContacts();};
+    l.appendChild(r);});
+  if(!$('#dCt').open)$('#dCt').showModal();}
+$('#bCt').onclick=openContacts;$('#ctOk').onclick=()=>{$('#dCt').close();updBtns();};
+
+/* ---------- base de croquis : zones entourées, avec titre, mots-clés et note ---------- */
+const skKey=k=>'cahier.'+DOC.id+'.s.'+k.id;
+let SK=null,SKQ='';
+async function skURL(k){const key=skKey(k);if(URLS.has(key))return URLS.get(key);const b=await AtelierSync.getBlob(key);if(!b)return null;const u=URL.createObjectURL(b);URLS.set(key,u);return u;}
+function renderSk(){const c=$('#skc');if(!c||!DOC)return;c.innerHTML='';const arr=(DOC.sketches||[]).filter(k=>!SKQ||SKQ.split(/\s+/).every(w=>norm([k.title,k.tags,k.note].join(' ')).includes(w)));
+  if(!arr.length){c.innerHTML='<div class="empty">'+((DOC.sketches||[]).length?'Aucun croquis ne correspond.':'Aucun croquis pour l’instant.<br>Dans Feuilleter, utilise l’outil Zone (barre à gauche), entoure un croquis puis « ＋ Aux croquis ».')+'</div>';return;}
+  const g=document.createElement('div');g.id='cells';c.appendChild(g);
+  arr.slice().reverse().forEach(k=>{const d=document.createElement('div');d.className='cell sk';d.innerHTML='<img alt=""><div><b></b><span></span></div>';const im=d.querySelector('img');im.src=k.thumb||'';im.style.setProperty('--ar',k.ar||1);im.style.objectFit='contain';
+    d.querySelector('b').textContent=k.title||'Croquis';d.querySelector('span').textContent=k.tags||'';d.onclick=()=>openSk(k);g.appendChild(d);});}
+$('#qs').addEventListener('input',()=>{SKQ=norm($('#qs').value).trim();renderSk();});
+async function openSk(k,isNew,blob){SK={k,isNew,blob};$('#skH').textContent=isNew?'Nouveau croquis':'Croquis';$('#skT').value=k.title||'';$('#skTags').value=k.tags||'';$('#skNote').value=k.note||'';
+  $('#skDel').style.display=isNew?'none':'';const pg=DOC.pages.find(p=>p.id===k.page);$('#skPage').style.display=pg?'':'none';
+  $('#skImg').src=isNew?URL.createObjectURL(blob):(await skURL(k))||k.thumb||'';$('#dSk').showModal();}
+$('#skNo').onclick=()=>$('#dSk').close();
+$('#skOk').onclick=async()=>{if(!SK)return;const k=SK.k;k.title=$('#skT').value.trim();k.tags=$('#skTags').value.trim();k.note=$('#skNote').value;
+  if(SK.isNew){await AtelierSync.saveBlob(skKey(k),SK.blob);(DOC.sketches=DOC.sketches||[]).push(k);}
+  $('#dSk').close();persist(true);renderSk();};
+$('#skDel').onclick=()=>{if(!SK||!confirm('Supprimer ce croquis ?'))return;DOC.sketches=DOC.sketches.filter(x=>x!==SK.k);$('#dSk').close();persist(true);renderSk();};
+$('#skPage').onclick=()=>{const pg=DOC.pages.find(p=>p.id===SK.k.page);if(!pg)return;$('#dSk').close();FLT='all';QS='';$('#q').value='';refresh();setMode('view');go(LIST.findIndex(x=>x.id===pg.id));};
+async function skCreate(){const zr=ZR;if(!zr)return;busy('Découpe…');const b=await zoneBlob();busy();if(!b){alert('Image indisponible.');return;}
+  const bm=await createImageBitmap(b),t=document.createElement('canvas');t.width=240;t.height=Math.max(1,Math.round(bm.height*240/bm.width));t.getContext('2d').drawImage(bm,0,0,t.width,t.height);
+  const k={id:nid(),page:zr.p.id,title:'',tags:'',note:'',thumb:t.toDataURL('image/jpeg',0.7),ar:(bm.width/bm.height).toFixed(3),ts:Date.now()};zoneClear();openSk(k,true,b);}
 
 /* ---------- ajout de pages : photo → repères → redressement ---------- */
 let QUEUE=[],PH={img:null,q:[],drag:-1,k:1,ox:0,oy:0,detected:false};
@@ -253,9 +369,9 @@ async function nextPhoto(){const f=QUEUE.shift();if(!f)return;
     const k=Math.min(1,Math.sqrt(14e6/(bmp.width*bmp.height)));
     const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
     PH.img=c;PH.name=f.name;
-    const q=detectMarkers(c);PH.detected=!!q;
-    if(q){PH.q=q;$('#cMode').value='rep';}else{const w=c.width,h=c.height,m=0.06;PH.q=[[w*m,h*m],[w*(1-m),h*m],[w*(1-m),h*(1-m)],[w*m,h*(1-m)]];$('#cMode').value='page';}
-    $('#cMsg').textContent=q?'Croix trouvées : vérifie les 4 points (la croix entourée = haut gauche), puis continue.':'Croix non trouvées : place les 4 points sur les croix (entourée = haut gauche) ou sur les coins de la page.';
+    const noX=ls.get('cahier.mode')==='page',q=noX?null:detectMarkers(c);PH.detected=!!q;
+    if(q){PH.q=q;$('#cMode').value='rep';}else{const w=c.width,h=c.height,m=noX?0.012:0.06;PH.q=[[w*m,h*m],[w*(1-m),h*m],[w*(1-m),h*(1-m)],[w*m,h*(1-m)]];$('#cMode').value='page';}
+    $('#cMsg').textContent=q?'Croix trouvées : vérifie les 4 points (la croix entourée = haut gauche), puis continue.':noX?'Sans croix : place les 4 points sur les coins de la page (haut gauche en premier ; « Tourner » si la page est couchée).':'Croix non trouvées : place les 4 points sur les croix (entourée = haut gauche) ou sur les coins de la page.';
     busy();$('#crop').hidden=false;requestAnimationFrame(draw);
   }catch(e){busy();alert('Photo illisible : '+(e.message||e));nextPhoto();}
 }
@@ -322,6 +438,7 @@ $('#cCv').addEventListener('pointerup',()=>{PH.drag=-1;});
 addEventListener('resize',()=>{if(!$('#crop').hidden)draw();});
 $('#cRot').onclick=()=>{const s=PH.img,c=document.createElement('canvas');c.width=s.height;c.height=s.width;const x=c.getContext('2d');x.translate(c.width,0);x.rotate(Math.PI/2);x.drawImage(s,0,0);
   const H=s.height;PH.q=PH.q.map(([px,py])=>[H-py,px]);PH.q=[PH.q[3],PH.q[0],PH.q[1],PH.q[2]];PH.img=c;draw();};
+$('#cMode').onchange=()=>ls.set('cahier.mode',$('#cMode').value);
 $('#cNo').onclick=()=>{$('#crop').hidden=true;PH.img=null;nextPhoto();};
 
 /* redressement : les 4 points (repères ou coins) deviennent un rectangle aux proportions de la feuille */
@@ -369,7 +486,7 @@ $('#cOk').onclick=async()=>{
     const raw=warp(PH.img,PH.q,Wo,Ho,mi);
     CUR={date:'',mi,Wo,Ho,raw,pad};await build(CUR);
   }catch(e){busy();alert('Redressement impossible : '+(e.message||e));return;}
-  busy();$('#crop').hidden=true;PH.img=null;askMeta();readDate(CUR);
+  busy();$('#crop').hidden=true;PH.img=null;askMeta();
 };
 /* efface les 4 croix (et le cercle) : on remplit chaque coin avec la couleur du papier alentour */
 function eraseMarks(c,mi){const o=document.createElement('canvas');o.width=c.width;o.height=c.height;const x=o.getContext('2d',{willReadFrequently:true});x.drawImage(c,0,0);
@@ -393,15 +510,6 @@ function parseDate(t,ref){
   if(y==null)y=now.getFullYear();else if(y<100)y+=2000;
   return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
 }
-async function readDate(cur){
-  if(!navigator.onLine||!cur||!cur.cv)return;
-  try{await loadTess();const W=cur.Wo,H=cur.Ho,mi=cur.mi;
-    const x0=Math.round(mi+0.05*W),y0=Math.max(0,Math.round(mi-0.04*H)),cw=Math.round(0.5*W),ch=Math.round(0.08*H);
-    const c=document.createElement('canvas');c.width=cw;c.height=ch;const cx=c.getContext('2d');cx.filter='grayscale(1) contrast(1.6)';cx.drawImage(cur.cv,x0,y0,cw,ch,0,0,cw,ch);
-    const r=await Tesseract.recognize(c,'fra');const dt=parseDate(r.data.text||'');
-    if(dt&&CUR===cur&&$('#dNew').open&&!$('#nD').dataset.touched){$('#nD').value=dt;$('#nDhint').textContent='Date lue sur la page : '+fdate(dt)+' (à vérifier)';}
-  }catch(e){}
-}
 let PV=null,PT=0;
 function preview(){clearTimeout(PT);PT=setTimeout(()=>{if(!CUR)return;
   if(!PV){const k=Math.min(1,700/Math.max(CUR.raw.width,CUR.raw.height));PV=document.createElement('canvas');PV.width=Math.round(CUR.raw.width*k);PV.height=Math.round(CUR.raw.height*k);PV.getContext('2d').drawImage(CUR.raw,0,0,PV.width,PV.height);}
@@ -410,7 +518,7 @@ function preview(){clearTimeout(PT);PT=setTimeout(()=>{if(!CUR)return;
 $('#nClean').onchange=()=>{ls.set('cahier.clean',$('#nClean').checked?'1':'0');$('#nCt').disabled=!$('#nClean').checked;preview();};
 $('#nCt').oninput=()=>{ls.set('cahier.ct',$('#nCt').value);preview();};
 function askMeta(){
-  const st=SET();$('#nClean').checked=st.clean;$('#nCt').value=Math.round(st.t*100);$('#nCt').disabled=!st.clean;PV=null;preview();$('#nD').value=today();$('#nD').dataset.touched='';$('#nDhint').textContent='';$('#nT').value=ls.get('cahier.type')||'note';$('#nTitle').value='';$('#nTags').value='';
+  const st=SET();$('#nClean').checked=st.clean;$('#nCt').value=Math.round(st.t*100);$('#nCt').disabled=!st.clean;PV=null;preview();$('#nD').value=today();$('#nD').dataset.touched='';$('#nDhint').textContent='La date écrite près de la croix sera lue avec « Reconnaître les textes ».';$('#nT').value=ls.get('cahier.type')||'note';$('#nTitle').value='';$('#nTags').value='';
   $('#nwH').textContent='Nouvelle page'+(QUEUE.length?' (encore '+QUEUE.length+' photo'+(QUEUE.length>1?'s':'')+')':'');
   $('#dNew').showModal();
 }
@@ -420,6 +528,7 @@ $('#dNew').addEventListener('cancel',e=>e.preventDefault());
 $('#nOk').onclick=async()=>{
   if(JSON.stringify(SET())!==CUR.st)await build(CUR);
   const p={id:nid(),date:$('#nD').value,type:$('#nT').value,title:$('#nTitle').value.trim(),tags:$('#nTags').value.trim(),ocr:'',thumb:CUR.thumb,ar:CUR.ar,ts:Date.now()};
+  if(CUR.pad){const W=CUR.Wo,H=CUR.Ho,mi=CUR.mi;p.dz={x:(mi+0.05*W)/W,y:Math.max(0,mi-0.04*H)/H,w:0.5,h:0.08};p.dAuto=!$('#nD').dataset.touched;}
   ls.set('cahier.type',p.type);
   await AtelierSync.saveBlob(blobKey(p),CUR.blob);DOC.pages.push(p);CUR=null;$('#dNew').close();persist(true);
   FLT='all';QS='';$('#q').value='';$('#flt').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t==='all'));
@@ -441,13 +550,13 @@ $('#slider').addEventListener('pointermove',e=>{if(!ZD)return;const r=ZD.r,x0=Ma
   ZD.box=[Math.min(x0,x1),Math.min(y0,y1),Math.abs(x1-x0),Math.abs(y1-y0)];const b=$('#selBox');b.style.left=ZD.box[0]+'px';b.style.top=ZD.box[1]+'px';b.style.width=ZD.box[2]+'px';b.style.height=ZD.box[3]+'px';});
 $('#slider').addEventListener('pointerup',()=>{if(!ZD)return;const bx=ZD.box,r=ZD.r;ZD=null;if(!bx||bx[2]<10||bx[3]<10){zoneClear();return;}
   ZR={p:LIST[POS],x:(bx[0]-r.left)/r.width,y:(bx[1]-r.top)/r.height,w:bx[2]/r.width,h:bx[3]/r.height};
-  const z=document.createElement('div');z.id='zbar';z.innerHTML='<button class="btn primary" data-a="xfer">Transférer vers…</button><button class="btn" data-a="save">Enregistrer l’image</button><button class="btn" data-a="copy">Copier</button><button class="btn" data-a="no">✕</button>';document.body.appendChild(z);
+  const z=document.createElement('div');z.id='zbar';z.innerHTML='<button class="btn primary" data-a="sk">＋ Aux croquis</button><button class="btn" data-a="xfer">Transférer vers…</button><button class="btn" data-a="save">Enregistrer l’image</button><button class="btn" data-a="copy">Copier</button><button class="btn" data-a="no">✕</button>';document.body.appendChild(z);
   z.onclick=async ev=>{const a=ev.target.dataset.a;if(!a)return;if(a==='no'){zoneClear();return;}await zoneAct(a);};});
 async function zoneBlob(){const zr=ZR;if(!zr)return null;const b=await AtelierSync.getBlob(blobKey(zr.p));if(!b)return null;const bm=await createImageBitmap(b);
   const sx=Math.round(zr.x*bm.width),sy=Math.round(zr.y*bm.height),sw=Math.max(1,Math.round(zr.w*bm.width)),sh=Math.max(1,Math.round(zr.h*bm.height));
   const c=document.createElement('canvas');c.width=sw;c.height=sh;c.getContext('2d').drawImage(bm,sx,sy,sw,sh,0,0,sw,sh);
   return new Promise(r=>c.toBlob(r,'image/png'));}
-async function zoneAct(a){const nm='cahier-p'+pos(ZR.p)+'-zone.png';
+async function zoneAct(a){if(a==='sk'){await skCreate();return;}const nm='cahier-p'+pos(ZR.p)+'-zone.png';
   if(a==='xfer'){const zr=ZR;await AtelierDrop.transfer('cahier',nm,'image/png',async()=>{ZR=zr;const b=await zoneBlob();return b?new File([b],nm,{type:'image/png'}):null;});return;}
   busy('Découpe…');const b=await zoneBlob();busy();if(!b){alert('Image indisponible.');return;}
   if(a==='save'){await AtelierSave.save(b,nm);}
@@ -457,7 +566,7 @@ $('#slider').addEventListener('scroll',()=>{if(ZR)zoneClear();});
 
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
-window.__cahier={detectMarkers,warp,parseDate,cur:()=>CUR};
+window.__cahier={detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
 (async()=>{
   $('#bdg').appendChild(AtelierSync.badge());
   const last=ls.get('cahier.last');let data=null;
