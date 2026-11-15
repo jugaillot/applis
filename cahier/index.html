@@ -407,9 +407,9 @@ async function nextPhoto(){const f=QUEUE.shift();if(!f)return;
     const k=Math.min(1,Math.sqrt(14e6/(bmp.width*bmp.height)));
     const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
     PH.img=c;PH.name=f.name;
-    const noX=ls.get('cahier.mode')==='page',q=noX?null:detectMarkers(c);PH.detected=!!q;
-    if(q){PH.q=q;$('#cMode').value='rep';}else{const w=c.width,h=c.height,m=noX?0.012:0.06;PH.q=[[w*m,h*m],[w*(1-m),h*m],[w*(1-m),h*(1-m)],[w*m,h*(1-m)]];$('#cMode').value='page';}
-    $('#cMsg').textContent=q?'Croix trouvées : vérifie les 4 points (la croix entourée = haut gauche), puis continue.':noX?'Sans croix : place les 4 points sur les coins de la page (haut gauche en premier ; « Tourner » si la page est couchée).':'Croix non trouvées : place les 4 points sur les croix (entourée = haut gauche) ou sur les coins de la page.';
+    const withX=ls.get('cahier.mode')==='rep',noX=!withX,q=withX?detectMarkers(c):detectPage(c);PH.detected=!!q;
+    if(q){PH.q=q;$('#cMode').value=withX?'rep':'page';}else{const w=c.width,h=c.height,m=noX?0.012:0.06;PH.q=[[w*m,h*m],[w*(1-m),h*m],[w*(1-m),h*(1-m)],[w*m,h*(1-m)]];$('#cMode').value='page';}
+    $('#cMsg').textContent=q?(withX?'Croix trouvées : vérifie les 4 points (la croix entourée = haut gauche), puis continue.':'Bords de la page trouvés : vérifie les 4 points, puis continue (« Tourner » si la page est dans le mauvais sens).'):noX?'Sans croix : place les 4 points sur les coins de la page (haut gauche en premier ; « Tourner » si la page est couchée).':'Croix non trouvées : place les 4 points sur les croix (entourée = haut gauche) ou sur les coins de la page.';
     busy();$('#crop').hidden=false;requestAnimationFrame(draw);
   }catch(e){busy();alert('Photo illisible : '+(e.message||e));nextPhoto();}
 }
@@ -461,6 +461,29 @@ function detectMarkers(src){
   four.sort((a,b)=>Math.atan2(a.y-cy,a.x-cx)-Math.atan2(b.y-cy,b.x-cx));   // sens horaire à l'écran
   let bi=0;four.forEach((f,i)=>{if(f.ring>four[bi].ring)bi=i;});
   return [0,1,2,3].map(i=>four[(bi+i)%4]).map(f=>[f.x/sc,f.y/sc]);
+}
+/* bords de la page : la plus grande zone claire de la photo (papier) → ses 4 coins */
+function detectPage(src){
+  const sc=Math.min(1,480/Math.max(src.width,src.height)),w=Math.round(src.width*sc),h=Math.round(src.height*sc);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.filter='blur(2px)';x.drawImage(src,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,g=new Uint8Array(w*h),hist=new Float64Array(256);
+  for(let i=0;i<w*h;i++){const v=Math.round(0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2]);g[i]=v;hist[v]++;}
+  let tot=w*h,sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];let sB=0,wB=0,best=-1,T=128;
+  for(let t=0;t<256;t++){wB+=hist[t];if(!wB)continue;const wF=tot-wB;if(!wF)break;sB+=t*hist[t];const mB=sB/wB,mF=(sum-sB)/wF,v=wB*wF*(mB-mF)*(mB-mF);if(v>best){best=v;T=t;}}
+  const m=new Uint8Array(w*h);for(let i=0;i<w*h;i++)m[i]=g[i]>T?1:0;
+  const lab=new Int32Array(w*h),st=[];let L=0,bl=0,ba=0;
+  for(let q0=0;q0<w*h;q0++){if(!m[q0]||lab[q0])continue;L++;let n=0;st.length=0;st.push(q0);lab[q0]=L;
+    while(st.length){const q=st.pop();n++;const qx=q%w;if(qx>0&&m[q-1]&&!lab[q-1]){lab[q-1]=L;st.push(q-1);}if(qx<w-1&&m[q+1]&&!lab[q+1]){lab[q+1]=L;st.push(q+1);}if(q>=w&&m[q-w]&&!lab[q-w]){lab[q-w]=L;st.push(q-w);}if(q<w*(h-1)&&m[q+w]&&!lab[q+w]){lab[q+w]=L;st.push(q+w);}}
+    if(n>ba){ba=n;bl=L;}}
+  if(ba<0.22*w*h)return null;
+  const P=[[1e9,0,0],[-1e9,0,0],[-1e9,0,0],[-1e9,0,0]];   // HG: min x+y, HD: max x−y, BD: max x+y, BG: max y−x
+  for(let q=0;q<w*h;q++){if(lab[q]!==bl)continue;const qx=q%w,qy=(q-qx)/w,v=[qx+qy,qx-qy,qx+qy,qy-qx];
+    if(v[0]<P[0][0])P[0]=[v[0],qx,qy];for(let k=1;k<4;k++)if(v[k]>P[k][0])P[k]=[v[k],qx,qy];}
+  const cx=P.reduce((a,p)=>a+p[1],0)/4,cy=P.reduce((a,p)=>a+p[2],0)/4,k=0.004;
+  let pts=P.map(p=>[(p[1]+(cx-p[1])*k*4)/sc,(p[2]+(cy-p[2])*k*4)/sc]);
+  const W=Math.hypot(pts[1][0]-pts[0][0],pts[1][1]-pts[0][1]),H=Math.hypot(pts[3][0]-pts[0][0],pts[3][1]-pts[0][1]);
+  if(W>H*1.15)pts=[pts[1],pts[2],pts[3],pts[0]];     // page couchée : on la remet debout (« Tourner » si c'est dans l'autre sens)
+  return pts;
 }
 /* fenêtre de redressement */
 function draw(){const cv=$('#cCv'),box=$('#cBox').getBoundingClientRect(),dpr=devicePixelRatio||1;cv.width=Math.round(box.width*dpr);cv.height=Math.round(box.height*dpr);
@@ -556,7 +579,7 @@ function preview(){clearTimeout(PT);PT=setTimeout(()=>{if(!CUR)return;
 $('#nClean').onchange=()=>{ls.set('cahier.clean',$('#nClean').checked?'1':'0');$('#nCt').disabled=!$('#nClean').checked;preview();};
 $('#nCt').oninput=()=>{ls.set('cahier.ct',$('#nCt').value);preview();};
 function askMeta(){
-  const st=SET();$('#nClean').checked=st.clean;$('#nCt').value=Math.round(st.t*100);$('#nCt').disabled=!st.clean;PV=null;preview();$('#nD').value=today();$('#nD').dataset.touched='';$('#nDhint').textContent='La date écrite près de la croix sera lue avec « Reconnaître les textes ».';$('#nT').value=ls.get('cahier.type')||'note';$('#nTitle').value='';$('#nTags').value='';
+  const st=SET();$('#nClean').checked=st.clean;$('#nCt').value=Math.round(st.t*100);$('#nCt').disabled=!st.clean;PV=null;preview();$('#nD').value='';$('#nD').dataset.touched='';$('#nDhint').textContent='Facultatif : laisse vide si tu ne veux pas de date.';$('#nT').value=ls.get('cahier.type')||'note';$('#nTitle').value='';$('#nTags').value='';
   $('#nwH').textContent='Nouvelle page'+(QUEUE.length?' (encore '+QUEUE.length+' photo'+(QUEUE.length>1?'s':'')+')':'');
   $('#dNew').showModal();
 }
@@ -604,7 +627,7 @@ $('#slider').addEventListener('scroll',()=>{if(ZR)zoneClear();});
 
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
-window.__cahier={openCam,learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
+window.__cahier={detectPage,openCam,learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
 (async()=>{
   $('#bdg').appendChild(AtelierSync.badge());
   const last=ls.get('cahier.last');let data=null;
