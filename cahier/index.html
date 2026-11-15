@@ -253,41 +253,54 @@ async function nextPhoto(){const f=QUEUE.shift();if(!f)return;
     busy();$('#crop').hidden=false;requestAnimationFrame(draw);
   }catch(e){busy();alert('Photo illisible : '+(e.message||e));nextPhoto();}
 }
-/* détection des 4 croix tracées à la main (celle en haut à gauche est entourée : c'est la plus grosse) */
+/* détection des 4 croix tracées à la main (celle en haut à gauche est entourée) :
+   on cherche, à plusieurs tailles, « de l'encre sur les 2 axes d'une croix et rien dans ses 4 coins » */
 function detectMarkers(src){
-  const sc=Math.min(1,900/Math.max(src.width,src.height)),w=Math.round(src.width*sc),h=Math.round(src.height*sc);
+  const sc=Math.min(1,1300/Math.max(src.width,src.height)),w=Math.round(src.width*sc),h=Math.round(src.height*sc);
   const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(src,0,0,w,h);
   const d=x.getImageData(0,0,w,h).data,g=new Float32Array(w*h);for(let i=0;i<w*h;i++)g[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
   const I=new Float64Array((w+1)*(h+1));for(let j=0;j<h;j++){let r=0;for(let i=0;i<w;i++){r+=g[j*w+i];I[(j+1)*(w+1)+i+1]=I[j*(w+1)+i+1]+r;}}
-  const R=Math.max(10,Math.round(Math.min(w,h)/10));const m=new Uint8Array(w*h);
-  for(let j=0;j<h;j++){const y0=Math.max(0,j-R),y1=Math.min(h,j+R+1);for(let i=0;i<w;i++){const x0=Math.max(0,i-R),x1=Math.min(w,i+R+1);
-    const s=I[y1*(w+1)+x1]-I[y0*(w+1)+x1]-I[y1*(w+1)+x0]+I[y0*(w+1)+x0],mean=s/((x1-x0)*(y1-y0));
-    m[j*w+i]=(g[j*w+i]<mean*0.66&&g[j*w+i]<135)?1:0;}}
-  // on relie les traits proches (un trait de feutre peut être interrompu)
-  const m2=new Uint8Array(m);for(let j=1;j<h-1;j++)for(let i=1;i<w-1;i++){const p=j*w+i;if(!m[p]&&(m[p-1]||m[p+1]||m[p-w]||m[p+w]))m2[p]=1;}
-  const lab=new Int32Array(w*h),cand=[],st=[];let L=0;const big=Math.max(w,h);
-  for(let p=0;p<w*h;p++){if(!m2[p]||lab[p])continue;L++;let a=0,sx=0,sy=0,x0=w,y0=h,x1=0,y1=0;st.length=0;st.push(p);lab[p]=L;
-    while(st.length){const q=st.pop(),qx=q%w,qy=(q-qx)/w;a++;sx+=qx;sy+=qy;if(qx<x0)x0=qx;if(qx>x1)x1=qx;if(qy<y0)y0=qy;if(qy>y1)y1=qy;
-      if(qx>0&&m2[q-1]&&!lab[q-1]){lab[q-1]=L;st.push(q-1);}if(qx<w-1&&m2[q+1]&&!lab[q+1]){lab[q+1]=L;st.push(q+1);}
-      if(qy>0&&m2[q-w]&&!lab[q-w]){lab[q-w]=L;st.push(q-w);}if(qy<h-1&&m2[q+w]&&!lab[q+w]){lab[q+w]=L;st.push(q+w);}}
-    const bw=x1-x0+1,bh=y1-y0+1,sz=Math.max(bw,bh);
-    if(sz<big*0.016||sz>big*0.12)continue;                 // taille d'une croix
-    if(bw/bh<0.6||bw/bh>1.67)continue;                     // à peu près carrée
-    const fill=a/(bw*bh);if(fill<0.16||fill>0.85)continue; // ni un point plein, ni un long trait
-    const mx=sx/a,my=sy/a;if(Math.abs(mx-(x0+x1)/2)>bw*0.22||Math.abs(my-(y0+y1)/2)>bh*0.22)continue;  // symétrique : centre = centre
-    cand.push({a,sz,cx:mx,cy:my});}
-  if(cand.length<4)return null;
-  const quad=[[],[],[],[]],mx=w/2,my=h/2;
-  cand.forEach(c=>quad[(c.cx<mx?0:1)+(c.cy<my?0:2)].push(c));
+  const R=Math.max(10,Math.round(Math.min(w,h)/10));const S=new Int32Array((w+1)*(h+1));
+  for(let j=0;j<h;j++){const y0=Math.max(0,j-R),y1=Math.min(h,j+R+1);let row=0;for(let i=0;i<w;i++){const x0=Math.max(0,i-R),x1=Math.min(w,i+R+1);
+    const s=I[y1*(w+1)+x1]-I[y0*(w+1)+x1]-I[y1*(w+1)+x0]+I[y0*(w+1)+x0],mean=s/((x1-x0)*(y1-y0)),v=g[j*w+i];
+    row+=(v<mean*0.7&&v<140)?1:0;S[(j+1)*(w+1)+i+1]=S[j*(w+1)+i+1]+row;}}
+  const box=(x0,y0,x1,y1)=>{x0=Math.max(0,Math.round(x0));y0=Math.max(0,Math.round(y0));x1=Math.min(w,Math.round(x1));y1=Math.min(h,Math.round(y1));if(x1<=x0||y1<=y0)return 0;return S[y1*(w+1)+x1]-S[y0*(w+1)+x1]-S[y1*(w+1)+x0]+S[y0*(w+1)+x0];};
+  const big=Math.max(w,h),found=[];
+  for(const L of [0.014,0.019,0.026,0.035,0.046].map(f=>Math.round(f*big))){
+    const hf=L/2,t=Math.max(3,Math.round(L*0.2)),ht=t/2,cs=L*0.24,co=L*0.27,m=Math.round(L*0.3);
+    const lineA=L*t,cornA=cs*cs;
+    for(let y=m;y<h-m;y+=2)for(let xx=m;xx<w-m;xx+=2){
+      const hl=box(xx-hf,y-ht,xx+hf,y+ht)/lineA;if(hl<0.55)continue;
+      const vl=box(xx-ht,y-hf,xx+ht,y+hf)/lineA;if(vl<0.55)continue;
+      const cn=(box(xx+co-cs/2,y+co-cs/2,xx+co+cs/2,y+co+cs/2)+box(xx-co-cs/2,y+co-cs/2,xx-co+cs/2,y+co+cs/2)+box(xx+co-cs/2,y-co-cs/2,xx+co+cs/2,y-co+cs/2)+box(xx-co-cs/2,y-co-cs/2,xx-co+cs/2,y-co+cs/2))/(4*cornA);
+      const sco=Math.min(hl,vl)-1.7*cn;if(sco>0.38)found.push({x:xx,y,L,sco});}}
+  if(found.length<4)return null;
+  found.sort((a,b)=>b.sco-a.sco);const keep=[];
+  for(const f of found){if(keep.every(k=>Math.hypot(k.x-f.x,k.y-f.y)>0.7*Math.max(k.L,f.L)))keep.push(f);if(keep.length>400)break;}
+  const mx=w/2,my=h/2,diag=Math.hypot(w,h),quad=[[],[],[],[]];
+  keep.forEach(f=>quad[(f.x<mx?0:1)+(f.y<my?0:2)].push(f));
   if(quad.some(q=>!q.length))return null;
-  // dans chaque quart : la croix la plus proche du coin de l'image
-  const corners=[[0,0],[w,0],[0,h],[w,h]];
-  const four=quad.map((q,i)=>q.sort((a,b)=>Math.hypot(a.cx-corners[i][0],a.cy-corners[i][1])-Math.hypot(b.cx-corners[i][0],b.cy-corners[i][1]))[0]);
-  const cx=four.reduce((s,c)=>s+c.cx,0)/4,cy=four.reduce((s,c)=>s+c.cy,0)/4;
-  four.sort((a,b)=>Math.atan2(a.cy-cy,a.cx-cx)-Math.atan2(b.cy-cy,b.cx-cx));   // sens horaire à l'écran
-  let bi=0;four.forEach((c,i)=>{if(c.a>four[bi].a)bi=i;});                    // la plus chargée (entourée) = haut gauche de la feuille
-  const ord=[0,1,2,3].map(i=>four[(bi+i)%4]);
-  return ord.map(c=>[c.cx/sc,c.cy/sc]);
+  // cercle d'encre autour d'une croix (la croix entourée = haut gauche de la feuille)
+  const ring=f=>{let best=0;for(const r of [0.42,0.5,0.58,0.66]){let n=0,N=24;for(let k=0;k<N;k++){const a=k*2*Math.PI/N,px=f.x+Math.cos(a)*r*f.L,py=f.y+Math.sin(a)*r*f.L;n+=box(px-1.5,py-1.5,px+1.5,py+1.5)>0?1:0;}best=Math.max(best,n/N);}return best;};
+  const top=quad.map(q=>q.slice(0,7));top.forEach(q=>q.forEach(f=>{f.ring=ring(f);}));
+  // on choisit l'ensemble de 4 croix le plus cohérent : bons scores, grand quadrilatère presque parallélogramme, tailles voisines, une seule croix entourée
+  let best=null,bv=-1e9;
+  for(const A of top[0])for(const B of top[1])for(const C of top[2])for(const D of top[3]){
+    const Ls=[A.L,B.L,C.L,D.L],lr=Math.max(...Ls)/Math.min(...Ls);if(lr>2.1)continue;
+    const par=Math.hypot(A.x+D.x-B.x-C.x,A.y+D.y-B.y-C.y)/diag;
+    const area=Math.abs((B.x-A.x)*(C.y-A.y)-(C.x-A.x)*(B.y-A.y))/2+Math.abs((B.x-D.x)*(C.y-D.y)-(C.x-D.x)*(B.y-D.y))/2;
+    const rs=[A.ring,B.ring,C.ring,D.ring].sort((p,q)=>q-p);
+    const v=(A.sco+B.sco+C.sco+D.sco)+1.4*(rs[0]-rs[1])-6*par+2.2*area/(w*h)-0.4*lr;
+    if(v>bv){bv=v;best=[A,B,C,D];}}
+  if(!best)return null;
+  // si la croix la moins sûre est loin de l'endroit prévu par les 3 autres, on cherche une meilleure croix près de cet endroit
+  {const ix=[0,1,2,3].sort((p,q)=>best[p].sco-best[q].sco)[0],o=[0,1,2,3].filter(i=>i!==ix),opp={0:3,3:0,1:2,2:1}[ix],adj=o.filter(i=>i!==opp);
+   const px=best[adj[0]].x+best[adj[1]].x-best[opp].x,py=best[adj[0]].y+best[adj[1]].y-best[opp].y,tol=0.05*diag;
+   if(Math.hypot(best[ix].x-px,best[ix].y-py)>tol){const c=keep.filter(f=>Math.hypot(f.x-px,f.y-py)<tol&&f.sco>0.3).sort((a,b)=>b.sco-a.sco)[0];if(c){c.ring=ring(c);best=best.slice();best[ix]=c;}}}
+  const four=best.slice(),cx=four.reduce((s,f)=>s+f.x,0)/4,cy=four.reduce((s,f)=>s+f.y,0)/4;
+  four.sort((a,b)=>Math.atan2(a.y-cy,a.x-cx)-Math.atan2(b.y-cy,b.x-cx));   // sens horaire à l'écran
+  let bi=0;four.forEach((f,i)=>{if(f.ring>four[bi].ring)bi=i;});
+  return [0,1,2,3].map(i=>four[(bi+i)%4]).map(f=>[f.x/sc,f.y/sc]);
 }
 /* fenêtre de redressement */
 function draw(){const cv=$('#cCv'),box=$('#cBox').getBoundingClientRect(),dpr=devicePixelRatio||1;cv.width=Math.round(box.width*dpr);cv.height=Math.round(box.height*dpr);
@@ -321,11 +334,19 @@ function warp(img,q,Wo,Ho,mi){
     for(let ch=0;ch<3;ch++){const tp=src[qq+ch]+(src[qq+4+ch]-src[qq+ch])*fx,bt=src[q2+ch]+(src[q2+4+ch]-src[q2+ch])*fx;o[t+ch]=tp+(bt-tp)*fy;}o[t+3]=255;}}
   ox.putImageData(od,0,0);return out;
 }
-/* fond de la feuille ramené au blanc */
-function whiten(c){const x=c.getContext('2d'),w=c.width,h=c.height,im=x.getImageData(0,0,w,h),d=im.data,hist=new Uint32Array(256);
-  for(let i=0;i<d.length;i+=16)hist[(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])|0]++;
-  let tot=0;for(let i=0;i<256;i++)tot+=hist[i];let acc=0,p=255;for(let i=0;i<256;i++){acc+=hist[i];if(acc>=tot*0.82){p=i;break;}}
-  const k=255/Math.max(120,p);for(let i=0;i<d.length;i+=4){d[i]=Math.min(255,d[i]*k);d[i+1]=Math.min(255,d[i+1]*k);d[i+2]=Math.min(255,d[i+2]*k);}x.putImageData(im,0,0);}
+/* fond de la feuille ramené au blanc : on estime la couleur du papier localement (zones sans trait), puis on divise */
+function whiten(c){const w=c.width,h=c.height,x=c.getContext('2d'),im=x.getImageData(0,0,w,h),d=im.data;
+  const K=14,gw=Math.ceil(w/K),gh=Math.ceil(h/K),bg=[new Float32Array(gw*gh),new Float32Array(gw*gh),new Float32Array(gw*gh)];
+  for(let ch=0;ch<3;ch++){const m=new Float32Array(gw*gh);
+    for(let gy=0;gy<gh;gy++)for(let gx=0;gx<gw;gx++){const v=[];for(let j=0;j<K;j+=3)for(let i=0;i<K;i+=3){const X=Math.min(w-1,gx*K+i),Y=Math.min(h-1,gy*K+j);v.push(d[(Y*w+X)*4+ch]);}v.sort((p,q)=>p-q);m[gy*gw+gx]=v[Math.floor(v.length*0.85)];}
+    const e=new Float32Array(gw*gh);                           // maximum local (ignore les traits) puis flou
+    for(let gy=0;gy<gh;gy++)for(let gx=0;gx<gw;gx++){let mx=0;for(let j=-2;j<=2;j++)for(let i=-2;i<=2;i++){const X=Math.max(0,Math.min(gw-1,gx+i)),Y=Math.max(0,Math.min(gh-1,gy+j));mx=Math.max(mx,m[Y*gw+X]);}e[gy*gw+gx]=mx;}
+    for(let gy=0;gy<gh;gy++)for(let gx=0;gx<gw;gx++){let sm=0,n=0;for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){const X=Math.max(0,Math.min(gw-1,gx+i)),Y=Math.max(0,Math.min(gh-1,gy+j));sm+=e[Y*gw+X];n++;}bg[ch][gy*gw+gx]=Math.max(60,sm/n);}}
+  for(let y=0;y<h;y++){const fy=Math.max(0,Math.min(gh-1.001,y/K-0.5)),y0=fy|0,ty=fy-y0;
+    for(let xx=0;xx<w;xx++){const fx=Math.max(0,Math.min(gw-1.001,xx/K-0.5)),x0=fx|0,tx=fx-x0,t=(y*w+xx)*4;
+      for(let ch=0;ch<3;ch++){const B=bg[ch],b=(B[y0*gw+x0]*(1-tx)+B[y0*gw+x0+1]*tx)*(1-ty)+(B[(y0+1)*gw+x0]*(1-tx)+B[(y0+1)*gw+x0+1]*tx)*ty;
+        const r=d[t+ch]/b,o=(r-0.22)/0.72;d[t+ch]=o<=0?0:o>=1?255:Math.round(255*(o*o*(3-2*o)*0.55+o*0.45));}}}
+  x.putImageData(im,0,0);}
 let CUR=null;
 $('#cOk').onclick=async()=>{
   busy('Redressement…');await new Promise(r=>setTimeout(r,30));
@@ -409,7 +430,7 @@ $('#slider').addEventListener('scroll',()=>{if(ZR)zoneClear();});
 
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
-window.__cahier={detectMarkers,warp,parseDate};
+window.__cahier={detectMarkers,warp,parseDate,cur:()=>CUR};
 (async()=>{
   $('#bdg').appendChild(AtelierSync.badge());
   const last=ls.get('cahier.last');let data=null;
