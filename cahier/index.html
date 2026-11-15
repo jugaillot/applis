@@ -132,6 +132,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <button class="btn primary" id="recCl">Avec Claude — copier la demande</button>
   <div class="muted" style="margin-top:-6px">Sur un ordinateur avec Chrome et l’extension Claude ouverts : colle la demande dans claude.ai, Claude transcrit tes pages à la main dans l’appli.</div>
   <button class="btn" id="recTr">Transcrire moi-même (page par page)</button>
+  <button class="btn" id="recReset" style="color:#b3261e">Remettre toutes les pages à zéro (effacer les textes lus)</button>
   <button class="btn" id="recAuto">Lecture automatique de l’appli (peu fiable sur l’écriture à la main)</button>
 </div><div class="f"><button class="btn" id="recNo">Fermer</button></div></dialog>
 <dialog id="dTr" style="max-width:min(96vw,980px)"><div class="h" id="trH0">Transcription</div><div class="b">
@@ -343,7 +344,7 @@ async function ocrApply(p,worker){
     const dt=parseDate((await worker.recognize(c)).data.text||'');if(dt){p.date=dt;p.dAuto=false;}}
   p.rd=2;
 }
-function updBtns(){if(!DOC)return;const n=DOC.pages.filter(p=>p.rd!==2).length,k=(DOC.contacts||[]).length;$('#bOcr').textContent='Reconnaître les textes'+(n?' ('+n+')':'');$('#bOcr').disabled=!n;$('#bCt').textContent='Contacts'+(k?' ('+k+')':'');}
+function updBtns(){if(!DOC)return;const n=DOC.pages.filter(p=>p.rd!==2).length,k=(DOC.contacts||[]).length;$('#bOcr').textContent='Reconnaître les textes'+(n?' ('+n+')':'');$('#bOcr').disabled=false;$('#bCt').textContent='Contacts'+(k?' ('+k+')':'');}
 const doAuto=async()=>{
   const todo=DOC.pages.filter(p=>p.rd!==2);if(!todo.length)return;
   if(!navigator.onLine){alert('Il faut une connexion pour cette lecture.');return;}
@@ -356,6 +357,8 @@ const doAuto=async()=>{
 $('#bOcr').onclick=()=>{const n=DOC.pages.filter(p=>p.rd!==2).length;$('#recN').textContent=n+' page(s) pas encore lue(s).';$('#dRec').showModal();};
 $('#recNo').onclick=()=>$('#dRec').close();
 $('#recAuto').onclick=()=>{$('#dRec').close();doAuto();};
+$('#recReset').onclick=()=>{if(!confirm('Effacer les textes, titres et contacts lus de TOUTES les pages (les contacts gardés ✓ restent) ? Les images ne changent pas.'))return;
+  DOC.pages.forEach(p=>{p.ocr='';p.heads=[];delete p.frames;delete p.rd;});DOC.contacts=(DOC.contacts||[]).filter(c=>c.ok);persist(true);updBtns();refresh();$('#recN').textContent=DOC.pages.length+' page(s) pas encore lue(s).';};
 $('#recTr').onclick=()=>{$('#dRec').close();openTr();};
 $('#recCl').onclick=async()=>{const t='Transcris les pages de mon cahier « '+(DOC.name||'Mon cahier')+' » qui n’ont pas encore de texte. Ouvre '+location.origin+'/cahier/ dans Chrome, ouvre mon cahier, clique « Reconnaître les textes » puis « Transcrire moi-même ». Pour chaque page, lis l’écriture à la main sur l’image, remplis « Texte de la page », « Titres de parties » (textes encadrés) et « Contacts » (Nom ; téléphone ; mail), puis clique « Enregistrer et page suivante » jusqu’à la fin. Au début, fais une seule page et montre-moi le résultat.';
   try{await navigator.clipboard.writeText(t);$('#recCl').textContent='✓ Demande copiée — colle-la dans claude.ai';}catch(e){prompt('Copie cette demande :',t);}};
