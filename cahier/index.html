@@ -70,6 +70,13 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #crop .bar{display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#1d1d1f;flex-wrap:wrap}
 #crop .btn{background:#2c2c2e;border-color:#3a3a3c;color:#fff}#crop .btn.acc{background:var(--acc);border-color:var(--acc);flex:1}
 #crop select{font:inherit;padding:5px;border-radius:7px}
+#cam{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column}
+#cam video{flex:1;min-height:0;width:100%;object-fit:cover;background:#000}
+#camG{position:absolute;left:6%;right:6%;top:9%;bottom:24%;border:2px solid rgba(255,255,255,.75);border-radius:6px;pointer-events:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.35)}
+#camMsg{position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:0;right:0;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 3px #000}
+#cam .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:#000}
+#cam .shut{width:72px;height:72px;border-radius:50%;border:5px solid #fff;background:#fff;box-shadow:inset 0 0 0 4px #000;cursor:pointer}
+#cam .shut:active{background:#ccc}#cam .btn{background:#2c2c2e;border-color:#3a3a3c;color:#fff;min-width:96px}
 #busy{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:60;color:#fff;font-weight:600;text-align:center;padding:20px}
 </style>
 </head>
@@ -147,6 +154,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <div id="cBox"><canvas id="cCv"></canvas></div>
   <div class="bar"><button class="btn" id="cRot" title="Tourner la photo d’un quart de tour">⟳ Tourner</button><button class="btn" id="cNo">Ignorer</button><button class="btn acc" id="cOk">Redresser et continuer</button></div>
 </div>
+<div id="cam" hidden><video id="camV" playsinline muted autoplay></video><div id="camG"></div><div id="camMsg"></div><div class="bar"><button class="btn" id="camX">✕ Fermer</button><button class="shut" id="camS" aria-label="Prendre la photo"></button><button class="btn acc" id="camOk">Terminer</button></div></div>
 <div id="busy" hidden></div>
 
 <script src="../lib/sync.js"></script>
@@ -371,7 +379,26 @@ async function skCreate(){const zr=ZR;if(!zr)return;busy('Découpe…');const b=
 let QUEUE=[],PH={img:null,q:[],drag:-1,k:1,ox:0,oy:0,detected:false};
 const MOBILE=matchMedia('(pointer:coarse)').matches&&/Android|iPhone|iPad/i.test(navigator.userAgent);
 if(MOBILE)$('#bGal').hidden=false;
-$('#bAdd').onclick=()=>{if(!DOC){chooser();return;}(MOBILE?$('#fCam'):$('#fIn')).click();};
+$('#bAdd').onclick=()=>{if(!DOC){chooser();return;}if(MOBILE)openCam();else $('#fIn').click();};
+/* caméra de l'appli : on prend plusieurs pages à la suite, le recadrage se fait ensuite */
+let CAM=null;
+async function openCam(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$('#fCam').click();return;}
+  try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:4096},height:{ideal:3072}},audio:false});
+    const tr=st.getVideoTracks()[0];CAM={st,tr,n:0,ic:window.ImageCapture?new ImageCapture(tr):null};
+    try{await tr.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
+    $('#camV').srcObject=st;$('#cam').hidden=false;camMsg();
+  }catch(e){alert('Caméra de l’appli indisponible ('+(e.name||e.message)+') : j’ouvre l’appareil photo du téléphone.');$('#fCam').click();}
+}
+function camMsg(){$('#camMsg').textContent=CAM&&CAM.n?CAM.n+' photo(s) prise(s) · cadre la page entière avec ses 4 croix':'Cadre la page entière avec ses 4 croix (ou ses 4 coins)';$('#camOk').textContent=CAM&&CAM.n?'Terminer ('+CAM.n+')':'Terminer';}
+function camClose(){if(CAM){CAM.st.getTracks().forEach(t=>t.stop());}$('#camV').srcObject=null;$('#cam').hidden=true;const n=CAM?CAM.n:0;CAM=null;if(n&&$('#crop').hidden&&!$('#dNew').open)nextPhoto();}
+$('#camX').onclick=()=>{if(CAM&&CAM.n&&!confirm('Fermer la caméra ? Les '+CAM.n+' photo(s) prises seront quand même traitées.'))return;camClose();};
+$('#camOk').onclick=camClose;
+$('#camS').onclick=async()=>{if(!CAM)return;let blob=null;
+  try{if(CAM.ic)blob=await CAM.ic.takePhoto();}catch(e){blob=null;}
+  if(!blob){const v=$('#camV'),c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));}
+  if(!blob)return;QUEUE.push(new File([blob],'page-'+Date.now()+'.jpg',{type:'image/jpeg'}));CAM.n++;camMsg();
+  $('#camV').style.opacity=.3;setTimeout(()=>$('#camV').style.opacity=1,120);};
 $('#bGal').onclick=()=>{if(!DOC){chooser();return;}$('#fIn').click();};
 $('#fIn').onchange=$('#fCam').onchange=e=>{QUEUE.push(...e.target.files);e.target.value='';if($('#crop').hidden&&!$('#dNew').open)nextPhoto();};
 async function nextPhoto(){const f=QUEUE.shift();if(!f)return;
@@ -577,7 +604,7 @@ $('#slider').addEventListener('scroll',()=>{if(ZR)zoneClear();});
 
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
-window.__cahier={learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
+window.__cahier={openCam,learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
 (async()=>{
   $('#bdg').appendChild(AtelierSync.badge());
   const last=ls.get('cahier.last');let data=null;
