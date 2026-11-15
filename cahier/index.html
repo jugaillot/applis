@@ -106,6 +106,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <div id="nav">
       <button class="btn arr" id="bPrev" title="Page précédente (←)">‹</button>
       <div class="info"><b id="nT">—</b><span id="nS"></span></div>
+      <button class="btn" id="bFind" title="Rechercher dans tout le cahier">🔍 Rechercher</button>
       <button class="btn" id="bTxt" title="Afficher le texte de la page">Texte</button>
       <button class="btn" id="bInfo" title="Modifier les infos de cette page">Infos</button>
       <button class="btn arr" id="bNext" title="Page suivante (→)">›</button>
@@ -115,6 +116,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <div id="tools">
       <input id="q" type="search" placeholder="Chercher : titre, mot-clé, texte, date, n°…">
       <span class="seg" id="flt"><button data-t="all" class="on">Tout</button><button data-t="note">Notes</button><button data-t="croquis">Croquis</button></span>
+      <button class="btn primary" id="bFindG" title="Lancer la recherche">🔍 Rechercher</button>
       <button class="btn" id="bOcr" title="Lit le texte, les titres encadrés, la date, les téléphones et les mails de toutes les pages pas encore traitées">Reconnaître les textes</button><button class="btn" id="bCt" title="Noms, téléphones et mails repérés dans le cahier">Contacts</button>
     </div>
     <div id="cells"></div>
@@ -134,6 +136,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <label><span>Mots-clés (séparés par des espaces ou virgules)</span><input type="text" id="skTags"></label>
   <label><span>Note</span><textarea id="skNote" rows="3"></textarea></label>
 </div><div class="f"><button class="btn" id="skDel" style="margin-right:auto;color:#b3261e">Supprimer</button><button class="btn" id="skPage">Voir la page</button><button class="btn" id="skNo">Annuler</button><button class="btn primary" id="skOk">Enregistrer</button></div></dialog>
+<dialog id="dFind"><div class="h">Rechercher dans le cahier</div><div class="b"><input id="fq" type="search" placeholder="Mot, titre, texte, date, n°…" style="font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px"><div id="fr" style="margin-top:10px;display:grid;gap:6px"></div></div><div class="f"><button class="btn primary" id="fNo">Fermer</button></div></dialog>
 <dialog id="dRec"><div class="h">Reconnaître les textes</div><div class="b" style="display:grid;gap:10px">
   <div class="muted" id="recN"></div>
   <button class="btn primary" id="recPdf">Préparer pour Claude (un fichier PDF)</button>
@@ -272,6 +275,23 @@ $('#cells').addEventListener('drop',e=>{const c=e.target.closest('.cell');docume
   const to=DOC.pages.indexOf(b);DOC.pages=DOC.pages.filter(x=>x!==a);DOC.pages.splice(to,0,a);persist();refresh();});
 $('#cells').addEventListener('dragend',()=>{DRAG=null;document.querySelectorAll('.cell.over').forEach(x=>x.classList.remove('over'));});
 $('#q').addEventListener('input',()=>{QS=norm($('#q').value).trim();refresh();});
+
+/* ---------- bouton Rechercher ---------- */
+function snippet(p,ws){const t=String(p.ocr||'').replace(/\s+/g,' ');const n=norm(t);let i=-1;for(const w of ws){i=n.indexOf(w);if(i>=0)break;}if(i<0)return t.slice(0,90);const a=Math.max(0,i-30);return (a?'… ':'')+t.slice(a,a+110);}
+function runFind(){
+  const q=norm($('#fq').value).trim(),ws=q.split(/\s+/).filter(Boolean),box=$('#fr');box.innerHTML='';
+  if(!ws.length){box.innerHTML='<div class="muted">Tape un mot pour chercher dans les titres, les textes, les mots-clés et les dates.</div>';return;}
+  const res=DOC.pages.filter(p=>{const hay=norm([p.title,p.tags,(p.heads||[]).join(' '),p.ocr,p.date,fdate(p.date),'p'+pos(p),pos(p),p.type].join(' '));return ws.every(w=>hay.includes(w));});
+  if(!res.length){box.innerHTML='<div class="muted">Aucune page trouvée.</div>';return;}
+  res.slice(0,60).forEach(p=>{const b=document.createElement('button');b.className='btn';b.style.cssText='text-align:left;display:block;width:100%;white-space:normal';
+    const h=document.createElement('b');h.textContent='p. '+pos(p)+' · '+(p.title||'Page '+pos(p));const sp=document.createElement('div');sp.className='muted';sp.style.fontSize='12px';sp.textContent=snippet(p,ws);b.append(h,sp);
+    b.onclick=()=>{$('#dFind').close();FLT='all';QS='';$('#q').value='';$('#flt').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.t==='all'));refresh();setMode('view');go(LIST.findIndex(x=>x.id===p.id));};box.appendChild(b);});
+}
+$('#bFind').onclick=()=>{if(!DOC)return;$('#dFind').showModal();$('#fq').focus();$('#fq').select();runFind();};
+$('#fq').addEventListener('input',runFind);
+$('#fNo').onclick=()=>$('#dFind').close();
+$('#bFindG').onclick=()=>{QS=norm($('#q').value).trim();refresh();$('#q').focus();};
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')$('#bFindG').click();});
 $('#flt').onclick=e=>{const b=e.target.closest('button');if(!b)return;FLT=b.dataset.t;$('#flt').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));refresh();};
 function setMode(m){$('#view').hidden=m!=='view';$('#grid').hidden=m!=='grid';$('#skv').hidden=m!=='sk';if(m!=='view'&&TOOL==='zone')setTool('hand');$('#mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));if(m==='view')requestAnimationFrame(()=>go(POS));}
 $('#mode').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.m);};
