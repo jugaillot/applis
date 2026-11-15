@@ -42,7 +42,7 @@ main{flex:1;min-height:0;position:relative}
 #txtb .l{white-space:pre-wrap;min-height:1.1em}#txtb .li{display:flex;gap:8px}#txtb .li i{font-style:normal;flex:none;width:1.1em;text-align:center;color:var(--acc,#c05a2e)}
 #txtb .hd{margin:0 0 8px;font-weight:600;color:#666;font-size:13px}#txtb .sp{height:.7em}
 #nav{display:flex;align-items:center;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line)}
-#nav .info{flex:1;min-width:0;text-align:center}
+#nav .info{flex:1;min-width:0;text-align:center}#nav{overflow:hidden}#nav .btn{flex:none}@media (max-width:560px){#nav .lb{display:none}#nav{gap:5px;padding-left:8px;padding-right:8px}#nav .arr{padding-left:10px;padding-right:10px}}
 #nav .info b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #nav .info span{color:var(--mute);font-size:12px}
 .arr{font-size:22px;line-height:1;padding:6px 14px}
@@ -106,7 +106,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <div id="nav">
       <button class="btn arr" id="bPrev" title="Page précédente (←)">‹</button>
       <div class="info"><b id="nT">—</b><span id="nS"></span></div>
-      <button class="btn" id="bFind" title="Rechercher dans tout le cahier">🔍 Rechercher</button>
+      <button class="btn" id="bFind" title="Rechercher dans tout le cahier">🔍<span class="lb"> Rechercher</span></button>
       <button class="btn" id="bTxt" title="Afficher le texte de la page">Texte</button>
       <button class="btn" id="bInfo" title="Modifier les infos de cette page">Infos</button>
       <button class="btn arr" id="bNext" title="Page suivante (→)">›</button>
@@ -183,6 +183,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 <script src="../lib/sync.js"></script>
 <script src="../lib/save.js"></script>
 <script src="../lib/drop.js"></script>
+<script src="../lib/fs.js"></script>
 <script>
 (function(){'use strict';
 const $=s=>document.querySelector(s);
