@@ -155,7 +155,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <label><span>Titre (tapé)</span><input type="text" id="iTitle" placeholder="Une phrase pour retrouver la page"></label>
   <label><span>Mots-clés (tapés, séparés par des espaces ou virgules)</span><input type="text" id="iTags"></label>
   <label><span>Titres de parties lus (un par ligne, modifiables)</span><textarea id="iHeads" rows="2"></textarea></label>
-  <label><span>Texte lu automatiquement (modifiable)</span><textarea id="iOcr" rows="3"></textarea></label>
+  <label><span>Texte lu automatiquement (modifiable)</span><textarea id="iOcr" rows="6"></textarea></label>
   <button class="btn" id="iRead">Lire le texte de cette page</button>
 </div><div class="f"><button class="btn" id="iDel" style="margin-right:auto;color:#b3261e">Supprimer la page</button><button class="btn" id="iNo">Annuler</button><button class="btn primary" id="iOk">Enregistrer</button></div></dialog>
 
@@ -337,7 +337,7 @@ async function ocrApply(p,worker){
   const b=await AtelierSync.getBlob(blobKey(p));if(!b)throw new Error('image indisponible');const bm=await createImageBitmap(b);
   const cv=document.createElement('canvas');cv.width=bm.width;cv.height=bm.height;cv.getContext('2d').drawImage(bm,0,0);
   const r=(await worker.recognize(cv)).data,lines=(r.lines&&r.lines.length?r.lines.map(l=>l.text):(r.text||'').split('\n')).map(t=>applyFixes(t.trim())).filter(Boolean);
-  p.ocr=lines.join(' ').replace(/\s+/g,' ').slice(0,4000)||' ';
+  p.ocr=lines.join('\n').slice(0,4000)||' ';
   if(p.type!=='croquis'){p.frames=detectFrames(cv);p.heads=[];
     for(const f of p.frames.slice(0,8)){const ix=Math.round((f.x+0.012)*cv.width),iy=Math.round((f.y+0.012)*cv.height),iw=Math.round((f.w-0.024)*cv.width),ih=Math.round((f.h-0.024)*cv.height);if(iw<20||ih<10)continue;
       const c=document.createElement('canvas');c.width=iw;c.height=ih;c.getContext('2d').drawImage(cv,ix,iy,iw,ih,0,0,iw,ih);
@@ -382,16 +382,18 @@ $('#recPdf').onclick=async()=>{
 /* import des transcriptions : ## Page N / Texte : / Titres : a | b / Contacts : nom ; tel ; mail */
 $('#recImp').onclick=()=>{$('#dRec').close();$('#impT').value='';$('#dImp').showModal();};
 $('#impNo').onclick=()=>$('#dImp').close();
+const tidyText=t=>String(t).replace(/\r/g,'').split('\n').map(l=>l.replace(/[ \t]+/g,' ').trim()).join('\n').replace(/\n{3,}/g,'\n\n').trim();
 function parseImport(t){const out=[],parts=t.split(/^\s*#+\s*Page\s+(\d+)\s*$/mi);
   for(let i=1;i<parts.length;i+=2){const o={n:+parts[i],text:'',heads:[],contacts:[]};let cur='';
     parts[i+1].split('\n').forEach(l=>{const m=l.match(/^\s*(Texte|Titres?|Contacts?)\s*:\s*(.*)$/i);if(m){cur=/^texte/i.test(m[1])?'t':/^titre/i.test(m[1])?'h':'c';const v=m[2].trim();
         if(cur==='t')o.text=v;else if(cur==='c'){if(v&&!/^(aucun|—|-)$/i.test(v))o.contacts.push(v);}else{v.split('|').map(x=>x.trim()).filter(x=>x&&!/^(aucun|—|-)$/i.test(x)).forEach(x=>o.heads.push(x));}}
-      else if(l.trim()){if(cur==='t')o.text+=(o.text?' ':'')+l.trim();else if(cur==='c'&&!/^(aucun|—|-)$/i.test(l.trim()))o.contacts.push(l.trim().replace(/^[-•*]\s*/,''));else if(cur==='h')l.split('|').map(x=>x.trim().replace(/^[-•*]\s*/,'')).filter(Boolean).forEach(x=>o.heads.push(x));}});
+      else if(!l.trim()){if(cur==='t'&&o.text&&!o.text.endsWith('\n\n'))o.text+='\n';}
+      else if(l.trim()){if(cur==='t')o.text+=(o.text?'\n':'')+l.trim();else if(cur==='c'&&!/^(aucun|—|-)$/i.test(l.trim()))o.contacts.push(l.trim().replace(/^[-•*]\s*/,''));else if(cur==='h')l.split('|').map(x=>x.trim().replace(/^[-•*]\s*/,'')).filter(Boolean).forEach(x=>o.heads.push(x));}});
     out.push(o);}
   return out;}
 $('#impOk').onclick=()=>{const items=parseImport($('#impT').value);if(!items.length){alert('Aucune section « ## Page N » trouvée.');return;}
   let ok=0,miss=[];items.forEach(o=>{const p=DOC.pages.find(x=>pos(x)===o.n);if(!p){miss.push(o.n);return;}
-    p.ocr=o.text.replace(/\s+/g,' ').trim()||' ';p.heads=o.heads;DOC.contacts=(DOC.contacts||[]).filter(c=>c.page!==p.id||c.ok);
+    p.ocr=tidyText(o.text)||' ';p.heads=o.heads;DOC.contacts=(DOC.contacts||[]).filter(c=>c.page!==p.id||c.ok);
     o.contacts.forEach(l=>{const [name,phone,mail]=l.split(';').map(x=>(x||'').trim());if(name||phone||mail)DOC.contacts.push({id:nid(),page:p.id,ok:false,name:name||'',phone:phone||'',mail:mail||'',lu:name||''});});
     p.rd=2;ok++;});
   persist(true);updBtns();refresh();$('#dImp').close();alert(ok+' page(s) mises à jour.'+(miss.length?' Pages introuvables : '+miss.join(', ')+'.':''));};
@@ -404,7 +406,7 @@ async function showTr(p){TR=p;const left=DOC.pages.filter(x=>x.rd!==2).length;$(
   $('#trImg').src=(await pageURL(p))||p.thumb||'';}
 $('#trNo').onclick=()=>$('#dTr').close();
 $('#trSkip').onclick=()=>{const todo=DOC.pages.filter(x=>x.rd!==2&&x!==TR);if(!todo.length){$('#dTr').close();return;}const i=DOC.pages.indexOf(TR),nx=todo.find(x=>DOC.pages.indexOf(x)>i)||todo[0];showTr(nx);};
-$('#trOk').onclick=()=>{const p=TR;if(!p)return;p.ocr=$('#trT').value.replace(/\s+/g,' ').trim()||' ';p.heads=$('#trH').value.split('\n').map(x=>x.trim()).filter(Boolean);
+$('#trOk').onclick=()=>{const p=TR;if(!p)return;p.ocr=tidyText($('#trT').value)||' ';p.heads=$('#trH').value.split('\n').map(x=>x.trim()).filter(Boolean);
   DOC.contacts=(DOC.contacts||[]).filter(c=>c.page!==p.id);
   $('#trC').value.split('\n').map(x=>x.trim()).filter(Boolean).forEach(l=>{const [name,phone,mail]=l.split(';').map(x=>(x||'').trim());if(name||phone||mail)DOC.contacts.push({id:nid(),page:p.id,ok:false,name:name||'',phone:phone||'',mail:mail||'',lu:name||''});});
   p.rd=2;persist(true);updBtns();const todo=DOC.pages.filter(x=>x.rd!==2);if(!todo.length){$('#dTr').close();refresh();alert('Toutes les pages ont un texte.');return;}showTr(todo[0]);};
