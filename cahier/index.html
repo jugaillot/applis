@@ -132,20 +132,12 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <button class="btn primary" id="recPdf">Préparer pour Claude (un fichier PDF)</button>
   <div class="muted" style="margin-top:-6px">Tu déposes ce PDF dans claude.ai, Claude transcrit toutes les pages d’un coup, puis tu colles sa réponse avec « Importer ».</div>
   <button class="btn" id="recImp">Importer les transcriptions de Claude (coller le texte)</button>
-  <button class="btn" id="recTr">Transcrire moi-même (page par page)</button>
   <button class="btn" id="recReset" style="color:#b3261e">Remettre toutes les pages à zéro (effacer les textes lus)</button>
-  <button class="btn" id="recAuto">Lecture automatique de l’appli (peu fiable sur l’écriture à la main)</button>
 </div><div class="f"><button class="btn" id="recNo">Fermer</button></div></dialog>
 <dialog id="dImp"><div class="h">Importer les transcriptions</div><div class="b">
   <div class="muted" style="margin-bottom:8px">Colle ici la réponse de Claude (une section « ## Page N » par page, avec Texte :, Titres :, Contacts :).</div>
   <textarea id="impT" rows="12" style="width:100%" placeholder="## Page 4&#10;Texte : …&#10;Titres : …&#10;Contacts : Nom ; téléphone ; mail"></textarea>
 </div><div class="f"><button class="btn" id="impNo">Annuler</button><button class="btn primary" id="impOk">Importer</button></div></dialog>
-<dialog id="dTr" style="max-width:min(96vw,980px)"><div class="h" id="trH0">Transcription</div><div class="b">
-  <img id="trImg" style="max-width:100%;max-height:48vh;display:block;margin:0 auto 10px;border:1px solid var(--line);background:#fff">
-  <label><span>Texte de la page</span><textarea id="trT" rows="8"></textarea></label>
-  <label><span>Titres de parties (un par ligne)</span><textarea id="trH" rows="2"></textarea></label>
-  <label><span>Contacts (un par ligne : Nom ; téléphone ; mail)</span><textarea id="trC" rows="2"></textarea></label>
-</div><div class="f"><button class="btn" id="trNo" style="margin-right:auto">Fermer</button><button class="btn" id="trSkip">Passer</button><button class="btn primary" id="trOk">Enregistrer et page suivante</button></div></dialog>
 <dialog id="dCt"><div class="h">Contacts repérés dans le cahier</div><div class="b"><div class="muted" style="margin-bottom:8px">Lus automatiquement sur l’écriture à la main : vérifie et corrige, puis coche ✓ pour garder.</div><div id="ctl"></div></div><div class="f"><button class="btn primary" id="ctOk">Fermer</button></div></dialog>
 
 <!-- infos d'une page -->
@@ -154,9 +146,8 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <label><span>Type</span><select id="iT"><option value="note">Notes (texte)</option><option value="croquis">Croquis (dessin)</option></select></label>
   <label><span>Titre (tapé)</span><input type="text" id="iTitle" placeholder="Une phrase pour retrouver la page"></label>
   <label><span>Mots-clés (tapés, séparés par des espaces ou virgules)</span><input type="text" id="iTags"></label>
-  <label><span>Titres de parties lus (un par ligne, modifiables)</span><textarea id="iHeads" rows="2"></textarea></label>
-  <label><span>Texte lu automatiquement (modifiable)</span><textarea id="iOcr" rows="6"></textarea></label>
-  <button class="btn" id="iRead">Lire le texte de cette page</button>
+  <label><span>Titres de parties (un par ligne)</span><textarea id="iHeads" rows="2"></textarea></label>
+  <label><span>Texte de la page (modifiable)</span><textarea id="iOcr" rows="6"></textarea></label>
 </div><div class="f"><button class="btn" id="iDel" style="margin-right:auto;color:#b3261e">Supprimer la page</button><button class="btn" id="iNo">Annuler</button><button class="btn primary" id="iOk">Enregistrer</button></div></dialog>
 
 
@@ -272,99 +263,14 @@ let EDIT=null;
 function openInfo(p){EDIT=p;$('#iN').value=pos(p);$('#iD').value=p.date||'';$('#iT').value=p.type||'note';$('#iTitle').value=p.title||'';$('#iTags').value=p.tags||'';$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');$('#dInfo').showModal();}
 $('#bInfo').onclick=()=>{if(LIST[POS])openInfo(LIST[POS]);};
 $('#iNo').onclick=()=>$('#dInfo').close();
-$('#iOk').onclick=()=>{const p=EDIT;if(!p)return;const np=Math.max(1,Math.min(DOC.pages.length,+$('#iN').value||pos(p)));DOC.pages=DOC.pages.filter(x=>x!==p);DOC.pages.splice(np-1,0,p);p.date=$('#iD').value;p.type=$('#iT').value;p.title=$('#iTitle').value.trim();p.tags=$('#iTags').value.trim();learnFixes(p.ocr,$('#iOcr').value);learnFixes((p.heads||[]).join(' ; '),$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean).join(' ; '));p.ocr=$('#iOcr').value;p.heads=$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean);$('#dInfo').close();persist();refresh();};
+$('#iOk').onclick=()=>{const p=EDIT;if(!p)return;const np=Math.max(1,Math.min(DOC.pages.length,+$('#iN').value||pos(p)));DOC.pages=DOC.pages.filter(x=>x!==p);DOC.pages.splice(np-1,0,p);p.date=$('#iD').value;p.type=$('#iT').value;p.title=$('#iTitle').value.trim();p.tags=$('#iTags').value.trim();p.ocr=$('#iOcr').value;p.heads=$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean);$('#dInfo').close();persist();refresh();};
 $('#iDel').onclick=()=>{if(!EDIT||!confirm('Supprimer la page '+pos(EDIT)+' ?'))return;DOC.pages=DOC.pages.filter(x=>x!==EDIT);$('#dInfo').close();persist();refresh();};
-$('#iRead').onclick=async()=>{const p=EDIT;if(!p)return;busy('Lecture de la page…');try{const w=await ocrWorker();try{await ocrApply(p,w);}finally{await w.terminate();}$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');if(p.date&&!p.dAuto)$('#iD').value=p.date;persist();}catch(e){alert('Lecture impossible : '+(e.message||e));}busy();};
-
 /* ---------- lecture automatique du texte (OCR), chargée à la demande ---------- */
-let tessP=null;
-function loadTess(){if(window.Tesseract)return Promise.resolve();return tessP||(tessP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=()=>{tessP=null;rej(new Error('bibliothèque de lecture indisponible (connexion ?)'));};document.head.appendChild(s);}));}
-/* corrections mémorisées : « mot mal lu » → « mot corrigé par toi », réappliquées à chaque lecture */
-const wkey=w=>norm(w).replace(/[^a-z0-9'@.\-]/g,'');
-function learnFixes(oldT,newT){if(!DOC||oldT==null)return;const a=String(oldT).split(/\s+/).filter(Boolean),b=String(newT).split(/\s+/).filter(Boolean);if(!a.length||!b.length||a.length*b.length>250000)return;
-  const n=a.length,m=b.length,L=Array.from({length:n+1},()=>new Uint16Array(m+1));
-  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)L[i][j]=a[i]===b[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
-  const F=DOC.fixes=DOC.fixes||{};let i=0,j=0,da=[],db=[];
-  const flush=()=>{if(da.length&&da.length===db.length)da.forEach((w,k)=>{const x=wkey(w),y=db[k].replace(/^[^\wÀ-ÿ]+|[^\wÀ-ÿ]+$/g,'');if(x.length>=2&&y&&x!==wkey(y)&&!/^\d+$/.test(x))F[x]=y;});da=[];db=[];};
-  while(i<n&&j<m){if(a[i]===b[j]){flush();i++;j++;}else if(L[i+1][j]>=L[i][j+1]){da.push(a[i++]);}else{db.push(b[j++]);}}
-  while(i<n)da.push(a[i++]);while(j<m)db.push(b[j++]);flush();
-  const k=Object.keys(F);if(k.length>3000)k.slice(0,k.length-3000).forEach(x=>delete F[x]);}
-function applyFixes(t){const F=DOC&&DOC.fixes;if(!F||!t)return t;return String(t).replace(/[A-Za-zÀ-ÿ0-9'@.\-]+/g,w0=>{const tail=(w0.match(/[.\-']+$/)||[''])[0],w=tail?w0.slice(0,-tail.length):w0,f=F[wkey(w)];if(!f)return w0;return (/^[A-ZÀ-Ý]/.test(w)&&!/^[A-ZÀ-Ý]/.test(f)?f[0].toUpperCase()+f.slice(1):f)+tail;});}
-const ocrWorker=async()=>{await loadTess();return Tesseract.createWorker('fra');};
-/* cadres tracés autour d'un texte (titres de parties) : lignes d'encre fermées en rectangle plutôt large */
-function detectFrames(src){
-  const sc=Math.min(1,900/src.width),w=Math.round(src.width*sc),h=Math.round(src.height*sc);
-  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(src,0,0,w,h);
-  const d=x.getImageData(0,0,w,h).data,g=new Float32Array(w*h);for(let i=0;i<w*h;i++)g[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
-  const I=new Float64Array((w+1)*(h+1));for(let j=0;j<h;j++){let r=0;for(let i=0;i<w;i++){r+=g[j*w+i];I[(j+1)*(w+1)+i+1]=I[j*(w+1)+i+1]+r;}}
-  const R=Math.max(8,Math.round(w/12));let m=new Uint8Array(w*h);
-  for(let j=0;j<h;j++){const y0=Math.max(0,j-R),y1=Math.min(h,j+R+1);for(let i=0;i<w;i++){const x0=Math.max(0,i-R),x1=Math.min(w,i+R+1);const mean=(I[y1*(w+1)+x1]-I[y0*(w+1)+x1]-I[y1*(w+1)+x0]+I[y0*(w+1)+x0])/((x1-x0)*(y1-y0));m[j*w+i]=(g[j*w+i]<mean*0.75&&g[j*w+i]<150)?1:0;}}
-  for(let k=0;k<2;k++){const n=new Uint8Array(w*h);for(let j=1;j<h-1;j++)for(let i=1;i<w-1;i++){const q=j*w+i;if(m[q]||m[q-1]||m[q+1]||m[q-w]||m[q+w]||m[q-w-1]||m[q-w+1]||m[q+w-1]||m[q+w+1])n[q]=1;}m=n;}   // referme les petits trous du trait
-  const lab=new Int32Array(w*h),out=[],st=[];let L=0;
-  for(let q0=0;q0<w*h;q0++){if(!m[q0]||lab[q0])continue;L++;let x0=w,y0=h,x1=0,y1=0;st.length=0;st.push(q0);lab[q0]=L;
-    while(st.length){const q=st.pop(),qx=q%w,qy=(q-qx)/w;if(qx<x0)x0=qx;if(qx>x1)x1=qx;if(qy<y0)y0=qy;if(qy>y1)y1=qy;
-      for(const nq of [q-1,q+1,q-w,q+w]){if(nq<0||nq>=w*h||lab[nq]||!m[nq])continue;if((nq===q-1&&qx===0)||(nq===q+1&&qx===w-1))continue;lab[nq]=L;st.push(nq);}}
-    const bw=x1-x0+1,bh=y1-y0+1;
-    if(bw<0.14*w||bw>0.9*w||bh<0.03*h||bh>0.2*h||bw/bh<2.2||x0<0.02*w||y0<0.02*h||x1>0.98*w)continue;
-    const t=Math.max(4,Math.round(bh*0.22));
-    const side=(xa,ya,xb,yb)=>{let n=0,tot=0;for(let j=ya;j<yb;j++)for(let i=xa;i<xb;i++){}let hit=0;const horiz=(xb-xa)>(yb-ya);
-      const len=horiz?xb-xa:yb-ya;for(let k=0;k<len;k++){let on=0;const ii=horiz?xa+k:xa,jj=horiz?ya:ya+k;for(let u=0;u<(horiz?yb-ya:xb-xa)&&!on;u++){const px=horiz?ii:ii+u,py=horiz?jj+u:jj;if(lab[py*w+px]===L)on=1;}hit+=on;}return hit/len;};
-    const top=side(x0,y0,x1+1,y0+t),bot=side(x0,y1-t+1,x1+1,y1+1),lef=side(x0,y0,x0+t,y1+1),rig=side(x1-t+1,y0,x1+1,y1+1);
-    if(Math.min(top,bot,lef,rig)<0.72)continue;
-    out.push({x:x0/w,y:y0/h,w:bw/w,h:bh/h});}
-  return out.sort((a,b)=>a.y-b.y);
-}
-/* téléphones, noms (juste avant le numéro) et mails */
-function fixDigits(t){for(let k=0;k<2;k++)t=t.replace(/(?<=\d[\s.\-]?)[oO](?=[\s.\-]?\d)|(?<=\d)[oO]\b/g,'0').replace(/(?<=\d)[Il|](?=\d)/g,'1');return t;}
-function cleanName(t){return t.replace(/\b(t[ée]l[ée]?(phone)?|tel|port(able)?|mob(ile)?|fixe|e-?mail|mail|courriel)\b\.?/gi,' ').replace(/[:;,\-–—>=()\[\]]+/g,' ').replace(/\s+/g,' ').trim().slice(0,60);}
-function extractContacts(lines){
-  const res=[],em=/[A-Za-z0-9._+\-]+\s?@\s?[A-Za-z0-9\-]+(?:\s?\.\s?[A-Za-z0-9\-]+)+/,ph=/\+?\d[\d\s.\-]{7,}\d/;
-  lines=lines.map(l=>l.replace(/\s+/g,' ').trim());
-  for(let i=0;i<lines.length;i++){
-    const L=fixDigits(lines[i]);let name='',phone='',mail='',cut=L.length;
-    const me=L.match(em);if(me){mail=me[0].replace(/\s/g,'').toLowerCase();cut=Math.min(cut,me.index);}
-    const mp=L.match(ph);if(mp){const dg=mp[0].replace(/\D/g,'');if(dg.length>=9&&dg.length<=13){phone=mp[0].trim().replace(/[\s.\-]+/g,' ');cut=Math.min(cut,mp.index);}}
-    if(!phone&&!mail)continue;
-    name=cleanName(L.slice(0,cut));
-    if(!name&&i>0&&!/[@]|\d{3}/.test(lines[i-1])&&lines[i-1].length<=45&&!(res.length&&res[res.length-1].line===i-1))name=cleanName(lines[i-1]);
-    const last=res[res.length-1];
-    if(mail&&!phone&&!name&&last&&last.line===i-1&&!last.mail){last.mail=mail;continue;}
-    res.push({name,phone,mail,line:i});}
-  return res.map(({name,phone,mail})=>({name,phone,mail}));
-}
-/* lit une page : texte, titres encadrés, contacts, date près de la croix */
-async function ocrApply(p,worker){
-  const b=await AtelierSync.getBlob(blobKey(p));if(!b)throw new Error('image indisponible');const bm=await createImageBitmap(b);
-  const cv=document.createElement('canvas');cv.width=bm.width;cv.height=bm.height;cv.getContext('2d').drawImage(bm,0,0);
-  const r=(await worker.recognize(cv)).data,lines=(r.lines&&r.lines.length?r.lines.map(l=>l.text):(r.text||'').split('\n')).map(t=>applyFixes(t.trim())).filter(Boolean);
-  p.ocr=lines.join('\n').slice(0,4000)||' ';
-  if(p.type!=='croquis'){p.frames=detectFrames(cv);p.heads=[];
-    for(const f of p.frames.slice(0,8)){const ix=Math.round((f.x+0.012)*cv.width),iy=Math.round((f.y+0.012)*cv.height),iw=Math.round((f.w-0.024)*cv.width),ih=Math.round((f.h-0.024)*cv.height);if(iw<20||ih<10)continue;
-      const c=document.createElement('canvas');c.width=iw;c.height=ih;c.getContext('2d').drawImage(cv,ix,iy,iw,ih,0,0,iw,ih);
-      const t=applyFixes(((await worker.recognize(c)).data.text||'').replace(/\s+/g,' ').trim());if(t)p.heads.push(t.slice(0,120));}}
-  DOC.contacts=(DOC.contacts||[]).filter(c=>c.page!==p.id||c.ok);
-  extractContacts(lines).forEach(c=>{if(!(DOC.contacts||[]).some(o=>(c.mail&&o.mail===c.mail)||(c.phone&&o.phone.replace(/\D/g,'')===c.phone.replace(/\D/g,''))))DOC.contacts.push(Object.assign({id:nid(),page:p.id,ok:false,lu:c.name},c));});
-  if(p.dz&&p.dAuto){const z=p.dz,sx=Math.round(z.x*cv.width),sy=Math.round(z.y*cv.height),sw=Math.round(z.w*cv.width),sh=Math.round(z.h*cv.height);
-    const c=document.createElement('canvas');c.width=sw;c.height=sh;const cx=c.getContext('2d');cx.filter='grayscale(1) contrast(1.6)';cx.drawImage(cv,sx,sy,sw,sh,0,0,sw,sh);
-    const dt=parseDate((await worker.recognize(c)).data.text||'');if(dt){p.date=dt;p.dAuto=false;}}
-  p.rd=2;
-}
 function updBtns(){if(!DOC)return;const n=DOC.pages.filter(p=>p.rd!==2).length,k=(DOC.contacts||[]).length;$('#bOcr').textContent='Reconnaître les textes'+(n?' ('+n+')':'');$('#bOcr').disabled=false;$('#bCt').textContent='Contacts'+(k?' ('+k+')':'');}
-const doAuto=async()=>{
-  const todo=DOC.pages.filter(p=>p.rd!==2);if(!todo.length)return;
-  if(!navigator.onLine){alert('Il faut une connexion pour cette lecture.');return;}
-  if(!confirm('Lire '+todo.length+' page(s) : texte, titres encadrés, date, téléphones et mails ? Cela peut prendre un moment. Sur de l’écriture à la main, le résultat est approximatif : tu pourras tout corriger.'))return;
-  let w;try{w=await ocrWorker();}catch(e){alert('Lecture impossible : '+(e.message||e));return;}
-  let n=0;try{for(const p of todo){busy('Lecture '+(++n)+' / '+todo.length+'…');try{await ocrApply(p,w);}catch(e){busy();alert('Page '+pos(p)+' non lue : '+(e.message||e));}persist();}}finally{await w.terminate();}
-  busy();persist(true);refresh();
-  const k=(DOC.contacts||[]).filter(c=>!c.ok).length;if(k)setTimeout(()=>{if(confirm(k+' contact(s) repéré(s) à vérifier. Les voir maintenant ?'))openContacts();},100);
-};
 $('#bOcr').onclick=()=>{const n=DOC.pages.filter(p=>p.rd!==2).length;$('#recN').textContent=n+' page(s) pas encore lue(s).';$('#dRec').showModal();};
 $('#recNo').onclick=()=>$('#dRec').close();
-$('#recAuto').onclick=()=>{$('#dRec').close();doAuto();};
 $('#recReset').onclick=()=>{if(!confirm('Effacer les textes, titres et contacts lus de TOUTES les pages (les contacts gardés ✓ restent) ? Les images ne changent pas.'))return;
   DOC.pages.forEach(p=>{p.ocr='';p.heads=[];delete p.frames;delete p.rd;});DOC.contacts=(DOC.contacts||[]).filter(c=>c.ok);persist(true);updBtns();refresh();$('#recN').textContent=DOC.pages.length+' page(s) pas encore lue(s).';};
-$('#recTr').onclick=()=>{$('#dRec').close();openTr();};
 $('#recPdf').onclick=async()=>{
   let list=DOC.pages.filter(p=>p.rd!==2);
   if(!list.length){if(!confirm('Toutes les pages ont déjà un texte. Préparer quand même TOUTES les pages ?'))return;list=DOC.pages.slice();}
@@ -397,25 +303,12 @@ $('#impOk').onclick=()=>{const items=parseImport($('#impT').value);if(!items.len
     o.contacts.forEach(l=>{const [name,phone,mail]=l.split(';').map(x=>(x||'').trim());if(name||phone||mail)DOC.contacts.push({id:nid(),page:p.id,ok:false,name:name||'',phone:phone||'',mail:mail||'',lu:name||''});});
     p.rd=2;ok++;});
   persist(true);updBtns();refresh();$('#dImp').close();alert(ok+' page(s) mises à jour.'+(miss.length?' Pages introuvables : '+miss.join(', ')+'.':''));};
-/* transcription page par page (à la main, ou par Claude) */
-let TR=null;
-async function openTr(){const todo=DOC.pages.filter(p=>p.rd!==2);if(!todo.length){alert('Toutes les pages ont déjà un texte.');return;}showTr(todo[0]);if(!$('#dTr').open)$('#dTr').showModal();}
-async function showTr(p){TR=p;const left=DOC.pages.filter(x=>x.rd!==2).length;$('#trH0').textContent='Transcription · page '+pos(p)+' ('+left+' à faire)';
-  $('#trT').value=p.ocr&&p.ocr.trim()?p.ocr:'';$('#trH').value=(p.heads||[]).join('\n');
-  $('#trC').value=(DOC.contacts||[]).filter(c=>c.page===p.id).map(c=>[c.name,c.phone,c.mail].join(' ; ')).join('\n');
-  $('#trImg').src=(await pageURL(p))||p.thumb||'';}
-$('#trNo').onclick=()=>$('#dTr').close();
-$('#trSkip').onclick=()=>{const todo=DOC.pages.filter(x=>x.rd!==2&&x!==TR);if(!todo.length){$('#dTr').close();return;}const i=DOC.pages.indexOf(TR),nx=todo.find(x=>DOC.pages.indexOf(x)>i)||todo[0];showTr(nx);};
-$('#trOk').onclick=()=>{const p=TR;if(!p)return;p.ocr=tidyText($('#trT').value)||' ';p.heads=$('#trH').value.split('\n').map(x=>x.trim()).filter(Boolean);
-  DOC.contacts=(DOC.contacts||[]).filter(c=>c.page!==p.id);
-  $('#trC').value.split('\n').map(x=>x.trim()).filter(Boolean).forEach(l=>{const [name,phone,mail]=l.split(';').map(x=>(x||'').trim());if(name||phone||mail)DOC.contacts.push({id:nid(),page:p.id,ok:false,name:name||'',phone:phone||'',mail:mail||'',lu:name||''});});
-  p.rd=2;persist(true);updBtns();const todo=DOC.pages.filter(x=>x.rd!==2);if(!todo.length){$('#dTr').close();refresh();alert('Toutes les pages ont un texte.');return;}showTr(todo[0]);};
 /* contacts */
 function openContacts(){const l=$('#ctl');l.innerHTML='';const arr=DOC.contacts||[];
   if(!arr.length)l.innerHTML='<div class="empty">Aucun contact repéré pour l’instant. Utilise « Reconnaître les textes ».</div>';
   arr.forEach(c=>{const r=document.createElement('div');r.className='crow'+(c.ok?' ok':'');
     r.innerHTML='<input data-k="name" placeholder="Nom"><input data-k="phone" placeholder="Téléphone"><input data-k="mail" placeholder="Mail" style="grid-column:1/-1"><div class="bt"><button class="btn" data-a="ok"></button><span class="muted"></span><button class="btn" data-a="pg">Voir la page</button><button class="btn" data-a="del" style="color:#b3261e">Supprimer</button></div>';
-    r.querySelectorAll('input').forEach(i=>{i.value=c[i.dataset.k]||'';i.oninput=()=>{c[i.dataset.k]=i.value;persist();};if(i.dataset.k==='name')i.onchange=()=>{if(c.lu&&c.lu!==c.name){learnFixes(c.lu,c.name);c.lu=c.name;persist();}};});
+    r.querySelectorAll('input').forEach(i=>{i.value=c[i.dataset.k]||'';i.oninput=()=>{c[i.dataset.k]=i.value;persist();};});
     const okb=r.querySelector('[data-a=ok]');const pg=DOC.pages.find(p=>p.id===c.page);
     const upd=()=>{okb.textContent=c.ok?'✓ Gardé':'Garder ✓';r.classList.toggle('ok',!!c.ok);};upd();r.querySelector('.muted').textContent=pg?'page '+pos(pg):'';
     okb.onclick=()=>{c.ok=!c.ok;upd();persist();};
@@ -719,7 +612,7 @@ $('#slider').addEventListener('scroll',()=>{if(ZR)zoneClear();});
 
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
-window.__cahier={parseImport,openTr,detectPage,openCam,learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
+window.__cahier={parseImport,detectPage,openCam,detectMarkers,warp,parseDate,cur:()=>CUR};
 (async()=>{
   $('#bdg').appendChild(AtelierSync.badge());
   const last=ls.get('cahier.last');let data=null;
