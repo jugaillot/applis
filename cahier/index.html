@@ -127,6 +127,19 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <label><span>Mots-clés (séparés par des espaces ou virgules)</span><input type="text" id="skTags"></label>
   <label><span>Note</span><textarea id="skNote" rows="3"></textarea></label>
 </div><div class="f"><button class="btn" id="skDel" style="margin-right:auto;color:#b3261e">Supprimer</button><button class="btn" id="skPage">Voir la page</button><button class="btn" id="skNo">Annuler</button><button class="btn primary" id="skOk">Enregistrer</button></div></dialog>
+<dialog id="dRec"><div class="h">Reconnaître les textes</div><div class="b" style="display:grid;gap:10px">
+  <div class="muted" id="recN"></div>
+  <button class="btn primary" id="recCl">Avec Claude — copier la demande</button>
+  <div class="muted" style="margin-top:-6px">Sur un ordinateur avec Chrome et l’extension Claude ouverts : colle la demande dans claude.ai, Claude transcrit tes pages à la main dans l’appli.</div>
+  <button class="btn" id="recTr">Transcrire moi-même (page par page)</button>
+  <button class="btn" id="recAuto">Lecture automatique de l’appli (peu fiable sur l’écriture à la main)</button>
+</div><div class="f"><button class="btn" id="recNo">Fermer</button></div></dialog>
+<dialog id="dTr" style="max-width:min(96vw,980px)"><div class="h" id="trH0">Transcription</div><div class="b">
+  <img id="trImg" style="max-width:100%;max-height:48vh;display:block;margin:0 auto 10px;border:1px solid var(--line);background:#fff">
+  <label><span>Texte de la page</span><textarea id="trT" rows="8"></textarea></label>
+  <label><span>Titres de parties (un par ligne)</span><textarea id="trH" rows="2"></textarea></label>
+  <label><span>Contacts (un par ligne : Nom ; téléphone ; mail)</span><textarea id="trC" rows="2"></textarea></label>
+</div><div class="f"><button class="btn" id="trNo" style="margin-right:auto">Fermer</button><button class="btn" id="trSkip">Passer</button><button class="btn primary" id="trOk">Enregistrer et page suivante</button></div></dialog>
 <dialog id="dCt"><div class="h">Contacts repérés dans le cahier</div><div class="b"><div class="muted" style="margin-bottom:8px">Lus automatiquement sur l’écriture à la main : vérifie et corrige, puis coche ✓ pour garder.</div><div id="ctl"></div></div><div class="f"><button class="btn primary" id="ctOk">Fermer</button></div></dialog>
 
 <!-- infos d'une page -->
@@ -331,7 +344,7 @@ async function ocrApply(p,worker){
   p.rd=2;
 }
 function updBtns(){if(!DOC)return;const n=DOC.pages.filter(p=>p.rd!==2).length,k=(DOC.contacts||[]).length;$('#bOcr').textContent='Reconnaître les textes'+(n?' ('+n+')':'');$('#bOcr').disabled=!n;$('#bCt').textContent='Contacts'+(k?' ('+k+')':'');}
-$('#bOcr').onclick=async()=>{
+const doAuto=async()=>{
   const todo=DOC.pages.filter(p=>p.rd!==2);if(!todo.length)return;
   if(!navigator.onLine){alert('Il faut une connexion pour cette lecture.');return;}
   if(!confirm('Lire '+todo.length+' page(s) : texte, titres encadrés, date, téléphones et mails ? Cela peut prendre un moment. Sur de l’écriture à la main, le résultat est approximatif : tu pourras tout corriger.'))return;
@@ -340,6 +353,25 @@ $('#bOcr').onclick=async()=>{
   busy();persist(true);refresh();
   const k=(DOC.contacts||[]).filter(c=>!c.ok).length;if(k)setTimeout(()=>{if(confirm(k+' contact(s) repéré(s) à vérifier. Les voir maintenant ?'))openContacts();},100);
 };
+$('#bOcr').onclick=()=>{const n=DOC.pages.filter(p=>p.rd!==2).length;$('#recN').textContent=n+' page(s) pas encore lue(s).';$('#dRec').showModal();};
+$('#recNo').onclick=()=>$('#dRec').close();
+$('#recAuto').onclick=()=>{$('#dRec').close();doAuto();};
+$('#recTr').onclick=()=>{$('#dRec').close();openTr();};
+$('#recCl').onclick=async()=>{const t='Transcris les pages de mon cahier « '+(DOC.name||'Mon cahier')+' » qui n’ont pas encore de texte. Ouvre '+location.origin+'/cahier/ dans Chrome, ouvre mon cahier, clique « Reconnaître les textes » puis « Transcrire moi-même ». Pour chaque page, lis l’écriture à la main sur l’image, remplis « Texte de la page », « Titres de parties » (textes encadrés) et « Contacts » (Nom ; téléphone ; mail), puis clique « Enregistrer et page suivante » jusqu’à la fin. Au début, fais une seule page et montre-moi le résultat.';
+  try{await navigator.clipboard.writeText(t);$('#recCl').textContent='✓ Demande copiée — colle-la dans claude.ai';}catch(e){prompt('Copie cette demande :',t);}};
+/* transcription page par page (à la main, ou par Claude) */
+let TR=null;
+async function openTr(){const todo=DOC.pages.filter(p=>p.rd!==2);if(!todo.length){alert('Toutes les pages ont déjà un texte.');return;}showTr(todo[0]);if(!$('#dTr').open)$('#dTr').showModal();}
+async function showTr(p){TR=p;const left=DOC.pages.filter(x=>x.rd!==2).length;$('#trH0').textContent='Transcription · page '+pos(p)+' ('+left+' à faire)';
+  $('#trT').value=p.ocr&&p.ocr.trim()?p.ocr:'';$('#trH').value=(p.heads||[]).join('\n');
+  $('#trC').value=(DOC.contacts||[]).filter(c=>c.page===p.id).map(c=>[c.name,c.phone,c.mail].join(' ; ')).join('\n');
+  $('#trImg').src=(await pageURL(p))||p.thumb||'';}
+$('#trNo').onclick=()=>$('#dTr').close();
+$('#trSkip').onclick=()=>{const todo=DOC.pages.filter(x=>x.rd!==2&&x!==TR);if(!todo.length){$('#dTr').close();return;}const i=DOC.pages.indexOf(TR),nx=todo.find(x=>DOC.pages.indexOf(x)>i)||todo[0];showTr(nx);};
+$('#trOk').onclick=()=>{const p=TR;if(!p)return;p.ocr=$('#trT').value.replace(/\s+/g,' ').trim()||' ';p.heads=$('#trH').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  DOC.contacts=(DOC.contacts||[]).filter(c=>c.page!==p.id);
+  $('#trC').value.split('\n').map(x=>x.trim()).filter(Boolean).forEach(l=>{const [name,phone,mail]=l.split(';').map(x=>(x||'').trim());if(name||phone||mail)DOC.contacts.push({id:nid(),page:p.id,ok:false,name:name||'',phone:phone||'',mail:mail||'',lu:name||''});});
+  p.rd=2;persist(true);updBtns();const todo=DOC.pages.filter(x=>x.rd!==2);if(!todo.length){$('#dTr').close();refresh();alert('Toutes les pages ont un texte.');return;}showTr(todo[0]);};
 /* contacts */
 function openContacts(){const l=$('#ctl');l.innerHTML='';const arr=DOC.contacts||[];
   if(!arr.length)l.innerHTML='<div class="empty">Aucun contact repéré pour l’instant. Utilise « Reconnaître les textes ».</div>';
@@ -649,7 +681,7 @@ $('#slider').addEventListener('scroll',()=>{if(ZR)zoneClear();});
 
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
-window.__cahier={detectPage,openCam,learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
+window.__cahier={openTr,detectPage,openCam,learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
 (async()=>{
   $('#bdg').appendChild(AtelierSync.badge());
   const last=ls.get('cahier.last');let data=null;
