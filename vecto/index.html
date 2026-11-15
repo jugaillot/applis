@@ -1662,7 +1662,7 @@ $('#bPreview').addEventListener('click',()=>setPreview(!PV));
   function set(on,save){document.body.classList.toggle('amini',on);tg.title=on?'Ouvrir le panneau':'Réduire le panneau';
     if(save)try{localStorage.setItem(KEY,on?'1':'0');}catch(e){}
     requestAnimationFrame(()=>{try{resizeView();}catch(e){}});}
-  let on=false;try{on=localStorage.getItem(KEY)==='1';}catch(e){}
+  let on=matchMedia('(max-width:900px)').matches;try{const v=localStorage.getItem(KEY);if(v!=null)on=v==='1';}catch(e){}
   set(on,false);
   tg.addEventListener('click',()=>set(!document.body.classList.contains('amini'),true));
   document.querySelectorAll('#mini [data-px]').forEach(b=>b.addEventListener('click',()=>{const o=document.querySelector(b.dataset.px);if(o&&!o.disabled)o.click();}));
