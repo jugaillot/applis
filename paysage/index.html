@@ -3644,7 +3644,7 @@ $('#impOk').onclick=impRun;
   showDoc();
   if(!restored){ensureRoleLayers();drawPage();fitView();resetHistory();}
   renderLayers();setTool('select');syncPanel();
-  if(window.AtelierTabs)AtelierTabs.init({app:'paysage',save:()=>saveDoc(false),
+  if(window.AtelierTabs)AtelierTabs.init({app:'paysage',closeAfter:1,save:()=>saveDoc(false),
     get:()=>({id:S.doc.id,name:S.doc.name,data:projectData()}),
     set:async t=>{loadProject(t.data);S.doc={id:t.id||null,name:t.name||''};showDoc();setTool('select');IDB.set('paysage.autosave',Object.assign({},t.data,{doc:S.doc}));},
     blank:async()=>{blankDoc();},
