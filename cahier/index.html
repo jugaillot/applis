@@ -242,13 +242,24 @@ let EDIT=null;
 function openInfo(p){EDIT=p;$('#iN').value=pos(p);$('#iD').value=p.date||'';$('#iT').value=p.type||'note';$('#iTitle').value=p.title||'';$('#iTags').value=p.tags||'';$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');$('#dInfo').showModal();}
 $('#bInfo').onclick=()=>{if(LIST[POS])openInfo(LIST[POS]);};
 $('#iNo').onclick=()=>$('#dInfo').close();
-$('#iOk').onclick=()=>{const p=EDIT;if(!p)return;const np=Math.max(1,Math.min(DOC.pages.length,+$('#iN').value||pos(p)));DOC.pages=DOC.pages.filter(x=>x!==p);DOC.pages.splice(np-1,0,p);p.date=$('#iD').value;p.type=$('#iT').value;p.title=$('#iTitle').value.trim();p.tags=$('#iTags').value.trim();p.ocr=$('#iOcr').value;p.heads=$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean);$('#dInfo').close();persist();refresh();};
+$('#iOk').onclick=()=>{const p=EDIT;if(!p)return;const np=Math.max(1,Math.min(DOC.pages.length,+$('#iN').value||pos(p)));DOC.pages=DOC.pages.filter(x=>x!==p);DOC.pages.splice(np-1,0,p);p.date=$('#iD').value;p.type=$('#iT').value;p.title=$('#iTitle').value.trim();p.tags=$('#iTags').value.trim();learnFixes(p.ocr,$('#iOcr').value);learnFixes((p.heads||[]).join(' ; '),$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean).join(' ; '));p.ocr=$('#iOcr').value;p.heads=$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean);$('#dInfo').close();persist();refresh();};
 $('#iDel').onclick=()=>{if(!EDIT||!confirm('Supprimer la page '+pos(EDIT)+' ?'))return;DOC.pages=DOC.pages.filter(x=>x!==EDIT);$('#dInfo').close();persist();refresh();};
 $('#iRead').onclick=async()=>{const p=EDIT;if(!p)return;busy('Lecture de la page…');try{const w=await ocrWorker();try{await ocrApply(p,w);}finally{await w.terminate();}$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');if(p.date&&!p.dAuto)$('#iD').value=p.date;persist();}catch(e){alert('Lecture impossible : '+(e.message||e));}busy();};
 
 /* ---------- lecture automatique du texte (OCR), chargée à la demande ---------- */
 let tessP=null;
 function loadTess(){if(window.Tesseract)return Promise.resolve();return tessP||(tessP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=()=>{tessP=null;rej(new Error('bibliothèque de lecture indisponible (connexion ?)'));};document.head.appendChild(s);}));}
+/* corrections mémorisées : « mot mal lu » → « mot corrigé par toi », réappliquées à chaque lecture */
+const wkey=w=>norm(w).replace(/[^a-z0-9'@.\-]/g,'');
+function learnFixes(oldT,newT){if(!DOC||oldT==null)return;const a=String(oldT).split(/\s+/).filter(Boolean),b=String(newT).split(/\s+/).filter(Boolean);if(!a.length||!b.length||a.length*b.length>250000)return;
+  const n=a.length,m=b.length,L=Array.from({length:n+1},()=>new Uint16Array(m+1));
+  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)L[i][j]=a[i]===b[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
+  const F=DOC.fixes=DOC.fixes||{};let i=0,j=0,da=[],db=[];
+  const flush=()=>{if(da.length&&da.length===db.length)da.forEach((w,k)=>{const x=wkey(w),y=db[k].replace(/^[^\wÀ-ÿ]+|[^\wÀ-ÿ]+$/g,'');if(x.length>=2&&y&&x!==wkey(y)&&!/^\d+$/.test(x))F[x]=y;});da=[];db=[];};
+  while(i<n&&j<m){if(a[i]===b[j]){flush();i++;j++;}else if(L[i+1][j]>=L[i][j+1]){da.push(a[i++]);}else{db.push(b[j++]);}}
+  while(i<n)da.push(a[i++]);while(j<m)db.push(b[j++]);flush();
+  const k=Object.keys(F);if(k.length>3000)k.slice(0,k.length-3000).forEach(x=>delete F[x]);}
+function applyFixes(t){const F=DOC&&DOC.fixes;if(!F||!t)return t;return String(t).replace(/[A-Za-zÀ-ÿ0-9'@.\-]+/g,w0=>{const tail=(w0.match(/[.\-']+$/)||[''])[0],w=tail?w0.slice(0,-tail.length):w0,f=F[wkey(w)];if(!f)return w0;return (/^[A-ZÀ-Ý]/.test(w)&&!/^[A-ZÀ-Ý]/.test(f)?f[0].toUpperCase()+f.slice(1):f)+tail;});}
 const ocrWorker=async()=>{await loadTess();return Tesseract.createWorker('fra');};
 /* cadres tracés autour d'un texte (titres de parties) : lignes d'encre fermées en rectangle plutôt large */
 function detectFrames(src){
@@ -295,14 +306,14 @@ function extractContacts(lines){
 async function ocrApply(p,worker){
   const b=await AtelierSync.getBlob(blobKey(p));if(!b)throw new Error('image indisponible');const bm=await createImageBitmap(b);
   const cv=document.createElement('canvas');cv.width=bm.width;cv.height=bm.height;cv.getContext('2d').drawImage(bm,0,0);
-  const r=(await worker.recognize(cv)).data,lines=(r.lines&&r.lines.length?r.lines.map(l=>l.text):(r.text||'').split('\n')).map(t=>t.trim()).filter(Boolean);
+  const r=(await worker.recognize(cv)).data,lines=(r.lines&&r.lines.length?r.lines.map(l=>l.text):(r.text||'').split('\n')).map(t=>applyFixes(t.trim())).filter(Boolean);
   p.ocr=lines.join(' ').replace(/\s+/g,' ').slice(0,4000)||' ';
   if(p.type!=='croquis'){p.frames=detectFrames(cv);p.heads=[];
     for(const f of p.frames.slice(0,8)){const ix=Math.round((f.x+0.012)*cv.width),iy=Math.round((f.y+0.012)*cv.height),iw=Math.round((f.w-0.024)*cv.width),ih=Math.round((f.h-0.024)*cv.height);if(iw<20||ih<10)continue;
       const c=document.createElement('canvas');c.width=iw;c.height=ih;c.getContext('2d').drawImage(cv,ix,iy,iw,ih,0,0,iw,ih);
-      const t=((await worker.recognize(c)).data.text||'').replace(/\s+/g,' ').trim();if(t)p.heads.push(t.slice(0,120));}}
+      const t=applyFixes(((await worker.recognize(c)).data.text||'').replace(/\s+/g,' ').trim());if(t)p.heads.push(t.slice(0,120));}}
   DOC.contacts=(DOC.contacts||[]).filter(c=>c.page!==p.id||c.ok);
-  extractContacts(lines).forEach(c=>{if(!(DOC.contacts||[]).some(o=>(c.mail&&o.mail===c.mail)||(c.phone&&o.phone.replace(/\D/g,'')===c.phone.replace(/\D/g,''))))DOC.contacts.push(Object.assign({id:nid(),page:p.id,ok:false},c));});
+  extractContacts(lines).forEach(c=>{if(!(DOC.contacts||[]).some(o=>(c.mail&&o.mail===c.mail)||(c.phone&&o.phone.replace(/\D/g,'')===c.phone.replace(/\D/g,''))))DOC.contacts.push(Object.assign({id:nid(),page:p.id,ok:false,lu:c.name},c));});
   if(p.dz&&p.dAuto){const z=p.dz,sx=Math.round(z.x*cv.width),sy=Math.round(z.y*cv.height),sw=Math.round(z.w*cv.width),sh=Math.round(z.h*cv.height);
     const c=document.createElement('canvas');c.width=sw;c.height=sh;const cx=c.getContext('2d');cx.filter='grayscale(1) contrast(1.6)';cx.drawImage(cv,sx,sy,sw,sh,0,0,sw,sh);
     const dt=parseDate((await worker.recognize(c)).data.text||'');if(dt){p.date=dt;p.dAuto=false;}}
@@ -323,7 +334,7 @@ function openContacts(){const l=$('#ctl');l.innerHTML='';const arr=DOC.contacts|
   if(!arr.length)l.innerHTML='<div class="empty">Aucun contact repéré pour l’instant. Utilise « Reconnaître les textes ».</div>';
   arr.forEach(c=>{const r=document.createElement('div');r.className='crow'+(c.ok?' ok':'');
     r.innerHTML='<input data-k="name" placeholder="Nom"><input data-k="phone" placeholder="Téléphone"><input data-k="mail" placeholder="Mail" style="grid-column:1/-1"><div class="bt"><button class="btn" data-a="ok"></button><span class="muted"></span><button class="btn" data-a="pg">Voir la page</button><button class="btn" data-a="del" style="color:#b3261e">Supprimer</button></div>';
-    r.querySelectorAll('input').forEach(i=>{i.value=c[i.dataset.k]||'';i.oninput=()=>{c[i.dataset.k]=i.value;persist();};});
+    r.querySelectorAll('input').forEach(i=>{i.value=c[i.dataset.k]||'';i.oninput=()=>{c[i.dataset.k]=i.value;persist();};if(i.dataset.k==='name')i.onchange=()=>{if(c.lu&&c.lu!==c.name){learnFixes(c.lu,c.name);c.lu=c.name;persist();}};});
     const okb=r.querySelector('[data-a=ok]');const pg=DOC.pages.find(p=>p.id===c.page);
     const upd=()=>{okb.textContent=c.ok?'✓ Gardé':'Garder ✓';r.classList.toggle('ok',!!c.ok);};upd();r.querySelector('.muted').textContent=pg?'page '+pos(pg):'';
     okb.onclick=()=>{c.ok=!c.ok;upd();persist();};
@@ -566,7 +577,7 @@ $('#slider').addEventListener('scroll',()=>{if(ZR)zoneClear();});
 
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
-window.__cahier={detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
+window.__cahier={learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
 (async()=>{
   $('#bdg').appendChild(AtelierSync.badge());
   const last=ls.get('cahier.last');let data=null;
