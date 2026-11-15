@@ -129,12 +129,17 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 </div><div class="f"><button class="btn" id="skDel" style="margin-right:auto;color:#b3261e">Supprimer</button><button class="btn" id="skPage">Voir la page</button><button class="btn" id="skNo">Annuler</button><button class="btn primary" id="skOk">Enregistrer</button></div></dialog>
 <dialog id="dRec"><div class="h">Reconnaître les textes</div><div class="b" style="display:grid;gap:10px">
   <div class="muted" id="recN"></div>
-  <button class="btn primary" id="recCl">Avec Claude — copier la demande</button>
-  <div class="muted" style="margin-top:-6px">Sur un ordinateur avec Chrome et l’extension Claude ouverts : colle la demande dans claude.ai, Claude transcrit tes pages à la main dans l’appli.</div>
+  <button class="btn primary" id="recPdf">Préparer pour Claude (un fichier PDF)</button>
+  <div class="muted" style="margin-top:-6px">Tu déposes ce PDF dans claude.ai, Claude transcrit toutes les pages d’un coup, puis tu colles sa réponse avec « Importer ».</div>
+  <button class="btn" id="recImp">Importer les transcriptions de Claude (coller le texte)</button>
   <button class="btn" id="recTr">Transcrire moi-même (page par page)</button>
   <button class="btn" id="recReset" style="color:#b3261e">Remettre toutes les pages à zéro (effacer les textes lus)</button>
   <button class="btn" id="recAuto">Lecture automatique de l’appli (peu fiable sur l’écriture à la main)</button>
 </div><div class="f"><button class="btn" id="recNo">Fermer</button></div></dialog>
+<dialog id="dImp"><div class="h">Importer les transcriptions</div><div class="b">
+  <div class="muted" style="margin-bottom:8px">Colle ici la réponse de Claude (une section « ## Page N » par page, avec Texte :, Titres :, Contacts :).</div>
+  <textarea id="impT" rows="12" style="width:100%" placeholder="## Page 4&#10;Texte : …&#10;Titres : …&#10;Contacts : Nom ; téléphone ; mail"></textarea>
+</div><div class="f"><button class="btn" id="impNo">Annuler</button><button class="btn primary" id="impOk">Importer</button></div></dialog>
 <dialog id="dTr" style="max-width:min(96vw,980px)"><div class="h" id="trH0">Transcription</div><div class="b">
   <img id="trImg" style="max-width:100%;max-height:48vh;display:block;margin:0 auto 10px;border:1px solid var(--line);background:#fff">
   <label><span>Texte de la page</span><textarea id="trT" rows="8"></textarea></label>
@@ -360,8 +365,36 @@ $('#recAuto').onclick=()=>{$('#dRec').close();doAuto();};
 $('#recReset').onclick=()=>{if(!confirm('Effacer les textes, titres et contacts lus de TOUTES les pages (les contacts gardés ✓ restent) ? Les images ne changent pas.'))return;
   DOC.pages.forEach(p=>{p.ocr='';p.heads=[];delete p.frames;delete p.rd;});DOC.contacts=(DOC.contacts||[]).filter(c=>c.ok);persist(true);updBtns();refresh();$('#recN').textContent=DOC.pages.length+' page(s) pas encore lue(s).';};
 $('#recTr').onclick=()=>{$('#dRec').close();openTr();};
-$('#recCl').onclick=async()=>{const t='Transcris les pages de mon cahier « '+(DOC.name||'Mon cahier')+' » qui n’ont pas encore de texte. Ouvre '+location.origin+'/cahier/ dans Chrome, ouvre mon cahier, clique « Reconnaître les textes » puis « Transcrire moi-même ». Pour chaque page, lis l’écriture à la main sur l’image, remplis « Texte de la page », « Titres de parties » (textes encadrés) et « Contacts » (Nom ; téléphone ; mail), puis clique « Enregistrer et page suivante » jusqu’à la fin. Au début, fais une seule page et montre-moi le résultat.';
-  try{await navigator.clipboard.writeText(t);$('#recCl').textContent='✓ Demande copiée — colle-la dans claude.ai';}catch(e){prompt('Copie cette demande :',t);}};
+$('#recPdf').onclick=async()=>{
+  let list=DOC.pages.filter(p=>p.rd!==2);
+  if(!list.length){if(!confirm('Toutes les pages ont déjà un texte. Préparer quand même TOUTES les pages ?'))return;list=DOC.pages.slice();}
+  busy('Préparation du PDF…');
+  try{await new Promise((res,rej)=>{if(window.jspdf)return res();const sc=document.createElement('script');sc.src='../lib/jspdf.umd.min.js';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
+    const {jsPDF}=window.jspdf;let doc=null,n=0;
+    for(const p of list){busy('Préparation '+(++n)+' / '+list.length+'…');const b=await AtelierSync.getBlob(blobKey(p));if(!b)continue;
+      const bm=await createImageBitmap(b),c=document.createElement('canvas'),k=Math.min(1,1500/Math.max(bm.width,bm.height));c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
+      const W=180,H=W*c.height/c.width;if(!doc)doc=new jsPDF({unit:'mm',format:[W,H],orientation:H>W?'p':'l'});else doc.addPage([W,H],H>W?'p':'l');
+      doc.addImage(c.toDataURL('image/jpeg',0.82),'JPEG',0,0,W,H);doc.setFillColor(255,255,255);doc.rect(W-34,1,33,9,'F');doc.setTextColor(200,30,30);doc.setFontSize(13);doc.text('Page '+pos(p),W-32,7.5);}
+    if(!doc)throw new Error('aucune image');
+    const blob=doc.output('blob'),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cahier-pour-claude.pdf';document.body.appendChild(a);a.click();a.remove();
+    busy();alert('Le PDF « cahier-pour-claude.pdf » est téléchargé ('+list.length+' page(s)). Dépose-le dans claude.ai en écrivant : « Transcris ces pages de mon cahier au format Importer de l’appli ». Colle ensuite la réponse avec « Importer ».');
+  }catch(e){busy();alert('Préparation impossible : '+(e.message||e));}};
+/* import des transcriptions : ## Page N / Texte : / Titres : a | b / Contacts : nom ; tel ; mail */
+$('#recImp').onclick=()=>{$('#dRec').close();$('#impT').value='';$('#dImp').showModal();};
+$('#impNo').onclick=()=>$('#dImp').close();
+function parseImport(t){const out=[],parts=t.split(/^\s*#+\s*Page\s+(\d+)\s*$/mi);
+  for(let i=1;i<parts.length;i+=2){const o={n:+parts[i],text:'',heads:[],contacts:[]};let cur='';
+    parts[i+1].split('\n').forEach(l=>{const m=l.match(/^\s*(Texte|Titres?|Contacts?)\s*:\s*(.*)$/i);if(m){cur=/^texte/i.test(m[1])?'t':/^titre/i.test(m[1])?'h':'c';const v=m[2].trim();
+        if(cur==='t')o.text=v;else if(cur==='c'){if(v&&!/^(aucun|—|-)$/i.test(v))o.contacts.push(v);}else{v.split('|').map(x=>x.trim()).filter(x=>x&&!/^(aucun|—|-)$/i.test(x)).forEach(x=>o.heads.push(x));}}
+      else if(l.trim()){if(cur==='t')o.text+=(o.text?' ':'')+l.trim();else if(cur==='c'&&!/^(aucun|—|-)$/i.test(l.trim()))o.contacts.push(l.trim().replace(/^[-•*]\s*/,''));else if(cur==='h')l.split('|').map(x=>x.trim().replace(/^[-•*]\s*/,'')).filter(Boolean).forEach(x=>o.heads.push(x));}});
+    out.push(o);}
+  return out;}
+$('#impOk').onclick=()=>{const items=parseImport($('#impT').value);if(!items.length){alert('Aucune section « ## Page N » trouvée.');return;}
+  let ok=0,miss=[];items.forEach(o=>{const p=DOC.pages.find(x=>pos(x)===o.n);if(!p){miss.push(o.n);return;}
+    p.ocr=o.text.replace(/\s+/g,' ').trim()||' ';p.heads=o.heads;DOC.contacts=(DOC.contacts||[]).filter(c=>c.page!==p.id||c.ok);
+    o.contacts.forEach(l=>{const [name,phone,mail]=l.split(';').map(x=>(x||'').trim());if(name||phone||mail)DOC.contacts.push({id:nid(),page:p.id,ok:false,name:name||'',phone:phone||'',mail:mail||'',lu:name||''});});
+    p.rd=2;ok++;});
+  persist(true);updBtns();refresh();$('#dImp').close();alert(ok+' page(s) mises à jour.'+(miss.length?' Pages introuvables : '+miss.join(', ')+'.':''));};
 /* transcription page par page (à la main, ou par Claude) */
 let TR=null;
 async function openTr(){const todo=DOC.pages.filter(p=>p.rd!==2);if(!todo.length){alert('Toutes les pages ont déjà un texte.');return;}showTr(todo[0]);if(!$('#dTr').open)$('#dTr').showModal();}
@@ -684,7 +717,7 @@ $('#slider').addEventListener('scroll',()=>{if(ZR)zoneClear();});
 
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
-window.__cahier={openTr,detectPage,openCam,learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
+window.__cahier={parseImport,openTr,detectPage,openCam,learnFixes,applyFixes,fixes:()=>DOC.fixes,detectMarkers,warp,parseDate,detectFrames,extractContacts,cur:()=>CUR};
 (async()=>{
   $('#bdg').appendChild(AtelierSync.badge());
   const last=ls.get('cahier.last');let data=null;
