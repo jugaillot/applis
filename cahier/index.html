@@ -36,6 +36,11 @@ main{flex:1;min-height:0;position:relative}
 .slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:10px;position:relative}
 .slide img{max-width:100%;max-height:100%;box-shadow:0 2px 14px rgba(0,0,0,.3);background:#fff;touch-action:pan-x pinch-zoom}
 .slide .ph{color:var(--mute)}
+#txtp{position:absolute;top:0;right:0;bottom:62px;width:min(400px,100%);background:var(--panel);border-left:1px solid var(--line);box-shadow:-6px 0 18px rgba(0,0,0,.12);display:flex;flex-direction:column;z-index:6}
+#txtp .th{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;border-bottom:1px solid var(--line)}
+#txtb{overflow:auto;padding:12px 16px;font-size:15px;line-height:1.5}
+#txtb .l{white-space:pre-wrap;min-height:1.1em}#txtb .li{display:flex;gap:8px}#txtb .li i{font-style:normal;flex:none;width:1.1em;text-align:center;color:var(--acc,#c05a2e)}
+#txtb .hd{margin:0 0 8px;font-weight:600;color:#666;font-size:13px}#txtb .sp{height:.7em}
 #nav{display:flex;align-items:center;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line)}
 #nav .info{flex:1;min-width:0;text-align:center}
 #nav .info b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -97,9 +102,11 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <div id="tb"><button id="tHand" class="on" title="Feuilleter (glisser pour tourner les pages)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-1V4.5a1.5 1.5 0 0 1 3 0V11m0-4.5a1.5 1.5 0 0 1 3 0V13m0-3.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.7-2.3L4 15.5a1.6 1.6 0 0 1 2.4-2L8 15"/></svg></button><button id="tZone" title="Zone : entoure une partie de la page (croquis…) pour l’envoyer vers une autre appli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="9" y="9" width="6" height="6" rx="1" stroke-dasharray="2 2"/></svg></button></div>
   <div id="view">
     <div id="slider"></div>
+    <div id="txtp" hidden><div class="th"><span>Texte de la page</span><button class="btn" id="txtX">✕</button></div><div id="txtb"></div></div>
     <div id="nav">
       <button class="btn arr" id="bPrev" title="Page précédente (←)">‹</button>
       <div class="info"><b id="nT">—</b><span id="nS"></span></div>
+      <button class="btn" id="bTxt" title="Afficher le texte de la page">Texte</button>
       <button class="btn" id="bInfo" title="Modifier les infos de cette page">Infos</button>
       <button class="btn arr" id="bNext" title="Page suivante (→)">›</button>
     </div>
@@ -218,7 +225,18 @@ async function loadSlide(i){const s=$('#slider').children[i];if(!s||s.dataset.ok
   s.innerHTML='';const im=new Image();im.src=u;im.alt='Page '+pos(p);s.appendChild(im);}
 function go(i,smooth){POS=Math.max(0,Math.min(LIST.length-1,i));const sl=$('#slider');if(!smooth)sl.style.scrollBehavior='auto';sl.scrollLeft=POS*sl.clientWidth;sl.style.scrollBehavior='';loadSlide(POS);loadSlide(POS+1);loadSlide(POS-1);updNav();}
 $('#slider').addEventListener('scroll',()=>{clearTimeout(go.t);go.t=setTimeout(()=>{const sl=$('#slider');const i=Math.round(sl.scrollLeft/Math.max(1,sl.clientWidth));if(i!==POS){POS=Math.max(0,Math.min(LIST.length-1,i));updNav();}},60);});
-function updNav(){const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-1;$('#bInfo').disabled=!p;
+/* texte de la page : sauts de ligne, retraits et signets (▷ → • - …) respectés */
+const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function renderText(t){if(!t||!t.trim())return '<div class="hd">Pas encore de texte pour cette page.</div>';
+  return String(t).split('\n').map(l=>{if(!l.trim())return '<div class="sp"></div>';
+    const m=l.match(/^(\s*)([▷▶►▸→⇒➜>•·●○◦*+\-–—])\s+(.*)$/),ind=(m?m[1]:l.match(/^\s*/)[0]).replace(/\t/g,'  ').length*0.6;
+    if(m){const mk='>▷▶►▸→⇒➜'.includes(m[2])?'▷':'-–—'.includes(m[2])?'–':'•';return '<div class="li" style="margin-left:'+ind+'em"><i>'+mk+'</i><span class="l">'+esc(m[3])+'</span></div>';}
+    return '<div class="l" style="margin-left:'+ind+'em">'+esc(l.trim())+'</div>';}).join('');}
+function showTxt(){const p=LIST[POS];if(!$('#txtp').hidden){$('#txtb').innerHTML=((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
+$('#bTxt').onclick=()=>{$('#txtp').hidden=!$('#txtp').hidden;ls.set('cahier.txt',$('#txtp').hidden?'0':'1');showTxt();};
+$('#txtp').hidden=ls.get('cahier.txt')!=='1';
+$('#txtX').onclick=()=>{$('#txtp').hidden=true;ls.set('cahier.txt','0');};
+function updNav(){showTxt();const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-1;$('#bInfo').disabled=!p;
   $('#nT').textContent=p?(p.title||'Page '+pos(p)):'—';$('#nS').textContent=p?('p. '+pos(p)+' · '+fdate(p.date)+(p.type==='croquis'?' · croquis':'')+((p.heads||[]).length?' · '+p.heads.join(' / '):'')+'  ('+(POS+1)+' / '+LIST.length+')'):'';}
 $('#bPrev').onclick=()=>go(POS-1,true);$('#bNext').onclick=()=>go(POS+1,true);
 addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||!$('#crop').hidden||$('#view').hidden)return;if(/INPUT|TEXTAREA|SELECT/.test((e.target||{}).tagName))return;
@@ -288,13 +306,13 @@ $('#recPdf').onclick=async()=>{
 /* import des transcriptions : ## Page N / Texte : / Titres : a | b / Contacts : nom ; tel ; mail */
 $('#recImp').onclick=()=>{$('#dRec').close();$('#impT').value='';$('#dImp').showModal();};
 $('#impNo').onclick=()=>$('#dImp').close();
-const tidyText=t=>String(t).replace(/\r/g,'').split('\n').map(l=>l.replace(/[ \t]+/g,' ').trim()).join('\n').replace(/\n{3,}/g,'\n\n').trim();
+const tidyText=t=>String(t).replace(/\r/g,'').split('\n').map(l=>{const ind=(l.match(/^[ \t]*/)[0]).replace(/\t/g,'  ');return ind+l.trim().replace(/[ \t]+/g,' ');}).join('\n').replace(/\n{3,}/g,'\n\n').trim();
 function parseImport(t){const out=[],parts=t.split(/^\s*#+\s*Page\s+(\d+)\s*$/mi);
   for(let i=1;i<parts.length;i+=2){const o={n:+parts[i],text:'',heads:[],contacts:[]};let cur='';
     parts[i+1].split('\n').forEach(l=>{const m=l.match(/^\s*(Texte|Titres?|Contacts?)\s*:\s*(.*)$/i);if(m){cur=/^texte/i.test(m[1])?'t':/^titre/i.test(m[1])?'h':'c';const v=m[2].trim();
         if(cur==='t')o.text=v;else if(cur==='c'){if(v&&!/^(aucun|—|-)$/i.test(v))o.contacts.push(v);}else{v.split('|').map(x=>x.trim()).filter(x=>x&&!/^(aucun|—|-)$/i.test(x)).forEach(x=>o.heads.push(x));}}
       else if(!l.trim()){if(cur==='t'&&o.text&&!o.text.endsWith('\n\n'))o.text+='\n';}
-      else if(l.trim()){if(cur==='t')o.text+=(o.text?'\n':'')+l.trim();else if(cur==='c'&&!/^(aucun|—|-)$/i.test(l.trim()))o.contacts.push(l.trim().replace(/^[-•*]\s*/,''));else if(cur==='h')l.split('|').map(x=>x.trim().replace(/^[-•*]\s*/,'')).filter(Boolean).forEach(x=>o.heads.push(x));}});
+      else if(l.trim()){if(cur==='t')o.text+=(o.text?'\n':'')+l.replace(/\s+$/,'');else if(cur==='c'&&!/^(aucun|—|-)$/i.test(l.trim()))o.contacts.push(l.trim().replace(/^[-•*]\s*/,''));else if(cur==='h')l.split('|').map(x=>x.trim().replace(/^[-•*]\s*/,'')).filter(Boolean).forEach(x=>o.heads.push(x));}});
     out.push(o);}
   return out;}
 $('#impOk').onclick=()=>{const items=parseImport($('#impT').value);if(!items.length){alert('Aucune section « ## Page N » trouvée.');return;}
