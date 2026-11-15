@@ -117,7 +117,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       <input id="q" type="search" placeholder="Chercher : titre, mot-clé, texte, date, n°…">
       <span class="seg" id="flt"><button data-t="all" class="on">Tout</button><button data-t="note">Notes</button><button data-t="croquis">Croquis</button></span>
       <button class="btn primary" id="bFindG" title="Lancer la recherche">🔍 Rechercher</button>
-      <button class="btn" id="bOcr" title="Lit le texte, les titres encadrés, la date, les téléphones et les mails de toutes les pages pas encore traitées">Reconnaître les textes</button><button class="btn" id="bCt" title="Noms, téléphones et mails repérés dans le cahier">Contacts</button>
+      <button class="btn" id="bOcr" title="Préparer un PDF pour Claude, puis coller sa transcription">Transcription</button><button class="btn" id="bCt" title="Noms, téléphones et mails repérés dans le cahier">Contacts</button>
     </div>
     <div id="cells"></div>
   </div>
@@ -137,7 +137,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <label><span>Note</span><textarea id="skNote" rows="3"></textarea></label>
 </div><div class="f"><button class="btn" id="skDel" style="margin-right:auto;color:#b3261e">Supprimer</button><button class="btn" id="skPage">Voir la page</button><button class="btn" id="skNo">Annuler</button><button class="btn primary" id="skOk">Enregistrer</button></div></dialog>
 <dialog id="dFind"><div class="h">Rechercher dans le cahier</div><div class="b"><input id="fq" type="search" placeholder="Mot, titre, texte, date, n°…" style="font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px"><div id="fr" style="margin-top:10px;display:grid;gap:6px"></div></div><div class="f"><button class="btn primary" id="fNo">Fermer</button></div></dialog>
-<dialog id="dRec"><div class="h">Reconnaître les textes</div><div class="b" style="display:grid;gap:10px">
+<dialog id="dRec"><div class="h">Transcription par Claude</div><div class="b" style="display:grid;gap:10px">
   <div class="muted" id="recN"></div>
   <button class="btn primary" id="recPdf">Préparer pour Claude (un fichier PDF)</button>
   <div class="muted" style="margin-top:-6px">Tu déposes ce PDF dans claude.ai, Claude transcrit toutes les pages d’un coup, puis tu colles sa réponse avec « Importer ».</div>
@@ -304,7 +304,7 @@ $('#iNo').onclick=()=>$('#dInfo').close();
 $('#iOk').onclick=()=>{const p=EDIT;if(!p)return;const np=Math.max(1,Math.min(DOC.pages.length,+$('#iN').value||pos(p)));DOC.pages=DOC.pages.filter(x=>x!==p);DOC.pages.splice(np-1,0,p);p.date=$('#iD').value;p.type=$('#iT').value;p.title=$('#iTitle').value.trim();p.tags=$('#iTags').value.trim();p.ocr=$('#iOcr').value;p.heads=$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean);$('#dInfo').close();persist();refresh();};
 $('#iDel').onclick=()=>{if(!EDIT||!confirm('Supprimer la page '+pos(EDIT)+' ?'))return;DOC.pages=DOC.pages.filter(x=>x!==EDIT);$('#dInfo').close();persist();refresh();};
 /* ---------- lecture automatique du texte (OCR), chargée à la demande ---------- */
-function updBtns(){if(!DOC)return;const n=DOC.pages.filter(p=>p.rd!==2).length,k=(DOC.contacts||[]).length;$('#bOcr').textContent='Reconnaître les textes'+(n?' ('+n+')':'');$('#bOcr').disabled=false;$('#bCt').textContent='Contacts'+(k?' ('+k+')':'');}
+function updBtns(){if(!DOC)return;const n=DOC.pages.filter(p=>p.rd!==2).length,k=(DOC.contacts||[]).length;$('#bOcr').textContent='Transcription'+(n?' ('+n+')':'');$('#bOcr').disabled=false;$('#bCt').textContent='Contacts'+(k?' ('+k+')':'');}
 $('#bOcr').onclick=()=>{const n=DOC.pages.filter(p=>p.rd!==2).length;$('#recN').textContent=n+' page(s) pas encore lue(s).';$('#dRec').showModal();};
 $('#recNo').onclick=()=>$('#dRec').close();
 $('#recReset').onclick=()=>{if(!confirm('Effacer les textes, titres et contacts lus de TOUTES les pages (les contacts gardés ✓ restent) ? Les images ne changent pas.'))return;
@@ -343,7 +343,7 @@ $('#impOk').onclick=()=>{const items=parseImport($('#impT').value);if(!items.len
   persist(true);updBtns();refresh();$('#dImp').close();alert(ok+' page(s) mises à jour.'+(miss.length?' Pages introuvables : '+miss.join(', ')+'.':''));};
 /* contacts */
 function openContacts(){const l=$('#ctl');l.innerHTML='';const arr=DOC.contacts||[];
-  if(!arr.length)l.innerHTML='<div class="empty">Aucun contact repéré pour l’instant. Utilise « Reconnaître les textes ».</div>';
+  if(!arr.length)l.innerHTML='<div class="empty">Aucun contact repéré pour l’instant. Ils arrivent avec l’import des transcriptions de Claude.</div>';
   arr.forEach(c=>{const r=document.createElement('div');r.className='crow'+(c.ok?' ok':'');
     r.innerHTML='<input data-k="name" placeholder="Nom"><input data-k="phone" placeholder="Téléphone"><input data-k="mail" placeholder="Mail" style="grid-column:1/-1"><div class="bt"><button class="btn" data-a="ok"></button><span class="muted"></span><button class="btn" data-a="pg">Voir la page</button><button class="btn" data-a="del" style="color:#b3261e">Supprimer</button></div>';
     r.querySelectorAll('input').forEach(i=>{i.value=c[i.dataset.k]||'';i.oninput=()=>{c[i.dataset.k]=i.value;persist();};});
