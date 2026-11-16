@@ -178,6 +178,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span class="muted" id="docName" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
   <label class="btn" title="Ajouter des images ou des dessins SVG (aussi par glisser-déposer ou Ctrl+V)">Ajouter des images…<input type="file" id="fImg" accept="image/*,.svg" multiple hidden></label>
   <label class="btn" title="Ouvrir un PDF : ses textes deviennent des cadres modifiables, le reste une image de fond (une page sans texte devient une image)">Ouvrir un PDF…<input type="file" id="fPdf" accept=".pdf,application/pdf" hidden></label>
+  <label class="btn" title="Ouvrir un document Word (.docx) : le texte, les titres, le gras et l’italique sont mis en page sur des pages A4 chaînées">Ouvrir un Word…<input type="file" id="fDocx" accept=".docx,.doc" hidden></label>
   <label class="btn" title="Ouvrir une présentation PowerPoint : chaque diapo devient une page modifiable">Ouvrir un PowerPoint…<input type="file" id="fPptx" accept=".pptx" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bNew">Nouveau</button>
@@ -1098,6 +1099,50 @@ async function importPPTX(file){
   busy();await loadDoc(doc,null,d.name);hint('« '+file.name+' » ouvert : '+d.slides.length+' diapo'+(d.slides.length>1?'s':'')+' en pages modifiables. Enregistre-la pour la retrouver dans « Mes mises en page ».');
 }
 /* =====================================================================
+   Ouvrir un document Word (.docx) : le texte devient un flux dans des cadres chaînés sur des pages A4
+   (titres, gras, italique, souligné, listes, alignement ; les tableaux sont mis à plat ; les images ne sont pas reprises)
+   ===================================================================== */
+async function importDOCX(file){
+  if(/\.doc$/i.test(file.name)){alert('« '+file.name+' » est un ancien document Word (.doc), que je ne sais pas lire.\nDans Word ou LibreOffice : Fichier › Enregistrer sous › .docx, puis rouvre-le ici.');return;}
+  busy('Lecture de « '+file.name+' »…');let z,xml,sx;
+  try{z=await AtelierPPTX.unzip(await file.arrayBuffer());xml=await z.text('word/document.xml');sx=await z.text('word/styles.xml');}catch(e){busy();alert('« '+file.name+' » n’est pas un document Word lisible.');return;}
+  if(!xml){busy();alert('« '+file.name+' » n’est pas un document Word lisible.');return;}
+  if(!(await leaveOk())){busy();return;}
+  const P=t=>new DOMParser().parseFromString(t,'application/xml'),NS='*';
+  const dx=P(xml),styName={};if(sx){for(const st of P(sx).getElementsByTagNameNS(NS,'style')){const id=st.getAttribute('w:styleId'),nm=[...st.children].find(c=>c.localName==='name');if(id&&nm)styName[id]=(nm.getAttribute('w:val')||'').toLowerCase();}}
+  const ch=(el,ln)=>[...el.children].find(c=>c.localName===ln)||null;
+  const on=el=>el&&!/^(0|false|none)$/i.test(el.getAttribute('w:val')||'1');
+  let nImg=0,total=0;
+  const para=p=>{
+    const ppr=ch(p,'pPr'),sty=ppr&&ch(ppr,'pStyle'),nm=sty?(styName[sty.getAttribute('w:val')]||sty.getAttribute('w:val')||'').toLowerCase():'';
+    let cls='st-texte';if(/^(title|titre)$/.test(nm)||/(heading|titre)\s*1$/.test(nm))cls='st-titre';else if(/(heading|titre)\s*[2-6]$/.test(nm)||/^(subtitle|sous-titre)$/.test(nm))cls='st-sous';
+    const jc=ppr&&ch(ppr,'jc'),al=jc?({center:'center',right:'right',end:'right',both:'justify',distribute:'justify'}[jc.getAttribute('w:val')]||''):'';
+    const isList=!!(ppr&&ch(ppr,'numPr'));
+    let h='';for(const r of p.getElementsByTagNameNS(NS,'r')){
+      if(r.getElementsByTagNameNS(NS,'drawing').length||r.getElementsByTagNameNS(NS,'pict').length)nImg++;
+      const rp=ch(r,'rPr'),b=rp&&on(ch(rp,'b')),i=rp&&on(ch(rp,'i')),u=rp&&ch(rp,'u')&&!/none/i.test(ch(rp,'u').getAttribute('w:val')||'single');
+      let t='';for(const c of r.children){if(c.localName==='t')t+=esc(c.textContent);else if(c.localName==='tab')t+=' ';else if(c.localName==='br'||c.localName==='cr')t+='<br>';}
+      if(!t)continue;if(b)t='<b>'+t+'</b>';if(i)t='<i>'+t+'</i>';if(u)t='<u>'+t+'</u>';h+=t;}
+    total+=h.length+40;
+    const st=al?` style="text-align:${al}"`:'';
+    return `<p class="${cls}"${st}>${isList?'•&nbsp;':''}${h||'<br>'}</p>`;};
+  let html='';const body=dx.getElementsByTagNameNS(NS,'body')[0];
+  for(const c of body.children){
+    if(c.localName==='p')html+=para(c);
+    else if(c.localName==='tbl'){for(const tr of c.getElementsByTagNameNS(NS,'tr')){const cells=[...tr.children].filter(x=>x.localName==='tc').map(tc=>[...tc.getElementsByTagNameNS(NS,'t')].map(t=>t.textContent).join('')).filter(Boolean);if(cells.length){html+=`<p class="st-texte">${esc(cells.join(' · '))}</p>`;total+=cells.join('').length+40;}}}}
+  if(!html){busy();alert('Ce document Word ne contient pas de texte.');return;}
+  const doc=newDoc();doc.page={w:210,h:297,fmt:'A4',m:[20,20,20,20],cols:1,gut:6,bg:'#ffffff'};
+  const sid=uid();doc.stories={[sid]:html};
+  const mk=()=>({id:uid(),type:'text',x:20,y:20,w:170,h:257,pad:0,story:sid,next:null});
+  const n0=Math.max(1,Math.min(60,Math.ceil(total/2600)));doc.pages=[];let prev=null;
+  for(let i=0;i<n0;i++){const f=mk();if(prev)prev.next=f.id;prev=f;doc.pages.push({id:uid(),items:[f]});}
+  busy('Mise en page de « '+file.name+' »…');await loadDoc(doc,null,file.name.replace(/\.docx$/i,''));
+  // tant que le texte déborde du dernier cadre, on ajoute une page
+  let guard=0;while(guard++<200){const pgs=S.doc.pages,lastF=pgs[pgs.length-1].items[0];if(!(FR[lastF.id]&&FR[lastF.id].over))break;
+    const f=mk();lastF.next=f.id;pgs.push({id:uid(),items:[f]});render();}
+  commit();busy();hint('« '+file.name+' » ouvert : '+S.doc.pages.length+' page'+(S.doc.pages.length>1?'s':'')+' A4 de texte modifiable.'+(nImg?' Les '+nImg+' image'+(nImg>1?'s':'')+' du document ne sont pas reprises.':'')+' Enregistre-le pour le retrouver dans « Mes mises en page ».');
+}
+/* =====================================================================
    Ouvrir un PDF : chaque page devient une page de la mise en page.
    Les textes du PDF deviennent des cadres de texte modifiables (posés à leur place, avec leur police,
    leur taille et leur couleur) ; tout le reste (images, formes, fonds) reste en image derrière.
@@ -1172,6 +1217,7 @@ async function pdfLines(page,vp){
 }
 $('#fPdf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importPDF(f);};
 
+$('#fDocx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importDOCX(f);};
 $('#fPptx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importPPTX(f);};
 </script>
 <script src="../lib/pdf.min.js"></script>
@@ -1184,7 +1230,7 @@ $('#fPptx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)import
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
 const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
-AtelierDrop.init({app:'mise',own:true,accept:f=>isImg(f)||ext(f)==='svg'||f.type==='image/svg+xml'||ext(f)==='pptx'||ext(f)==='pdf',take:f=>ext(f)==='pptx'||ext(f)==='pdf',open:async fs=>{const pp=fs.filter(f=>ext(f)==='pptx');for(const f of pp)await importPPTX(f);for(const f of fs.filter(f=>ext(f)==='pdf'))await importPDF(f);const im=fs.filter(f=>ext(f)!=='pptx'&&ext(f)!=='pdf');if(im.length)addImageFiles(im);}});})();
+AtelierDrop.init({app:'mise',own:true,accept:f=>isImg(f)||ext(f)==='svg'||f.type==='image/svg+xml'||ext(f)==='pptx'||ext(f)==='pdf'||ext(f)==='docx'||ext(f)==='doc',take:f=>ext(f)==='pptx'||ext(f)==='pdf'||ext(f)==='docx'||ext(f)==='doc',open:async fs=>{for(const f of fs.filter(f=>ext(f)==='docx'||ext(f)==='doc'))await importDOCX(f);fs=fs.filter(f=>ext(f)!=='docx'&&ext(f)!=='doc');const pp=fs.filter(f=>ext(f)==='pptx');for(const f of pp)await importPPTX(f);for(const f of fs.filter(f=>ext(f)==='pdf'))await importPDF(f);const im=fs.filter(f=>ext(f)!=='pptx'&&ext(f)!=='pdf');if(im.length)addImageFiles(im);}});})();
 </script>
 <script src="../lib/help.js"></script>
 <script src="../lib/fs.js"></script>

@@ -183,6 +183,25 @@
         }
       ],
       "launch_type": "single-client"
+    },
+    {
+      "action": "/open/",
+      "accept": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+          ".docx"
+        ],
+        "application/msword": [
+          ".doc"
+        ]
+      },
+      "icons": [
+        {
+          "src": "/icons/file-doc.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
     }
   ]
 }
