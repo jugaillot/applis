@@ -81,6 +81,7 @@ body.noguides .gd{display:none}
 .sb.lnk{outline:.3mm dashed #e0533d}
 .hd{position:absolute;width:var(--hs);height:var(--hs);background:#fff;border:var(--hb) solid var(--sel);transform:translate(-50%,-50%);pointer-events:auto}
 .hd[data-h=nw],.hd[data-h=se]{cursor:nwse-resize}.hd[data-h=ne],.hd[data-h=sw]{cursor:nesw-resize}
+.sgb{position:absolute;border:var(--hb) dashed var(--sel);pointer-events:none}.sgh{position:absolute;width:calc(var(--hs)*2.8);height:calc(var(--hs)*2.8);background:var(--sel);border:var(--hb) solid #fff;border-radius:50%;transform:translate(-50%,-50%);pointer-events:auto;touch-action:none;cursor:nwse-resize}.sgh[data-h=ne],.sgh[data-h=sw]{cursor:nesw-resize}[data-tool=scale] .hd{display:none!important}
 .hd[data-h=n],.hd[data-h=s]{cursor:ns-resize}.hd[data-h=e],.hd[data-h=w]{cursor:ew-resize}
 .ofl{position:absolute;width:var(--os);height:var(--os);background:#fff;border:var(--hb) solid #e0533d;color:#e0533d;font:700 calc(var(--os) * .9)/1 system-ui;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer}
 .chainln{position:absolute;height:0;border-top:var(--hb) dashed rgba(224,83,61,.7);transform-origin:0 0}
@@ -188,6 +189,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <main>
   <nav id="tools"><div class="tgrid">
     <button class="tool" data-tool="select" title="Sélection (V) — Alt + glisser : dupliquer, Maj : garder les proportions"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 8-6 1.5L10 19z"/></svg></button>
+    <button class="tool" data-tool="scale" title="Agrandir : choisis un objet, tire sur les coins pour l’agrandir ou le réduire en gardant ses proportions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="10" height="10" rx="1"/><path d="M14 4h6v6M20 4l-8 8"/></svg></button>
     <button class="tool" data-tool="hand" title="Main : déplacer la vue (H, ou maintenir Espace)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4.5a1.5 1.5 0 0 1 3 0V11M14 10.5V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-.5a6 6 0 0 1-4.6-2.2L3.5 14.5a1.5 1.5 0 0 1 2.3-1.9L8 15V9.5a1.5 1.5 0 0 1 3 0"/></svg></button>
     <button class="tool" data-tool="text" title="Cadre de texte (T) : trace le cadre, puis écris"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5" stroke-dasharray="2 2"/><path d="M8 8h8M12 8v9"/></svg></button>
     <button class="tool" data-tool="image" title="Cadre d’image (I) : trace le cadre, puis choisis l’image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-6-6-9 9"/></svg></button>
@@ -460,6 +462,10 @@ function drawSel(){
     if(it.type==='text'&&FR[it.id]&&FR[it.id].over)h+=`<div class="ofl" data-ofl="${it.id}" style="left:100%;top:100%" title="Le texte ne tient pas : clique pour le faire suivre dans un autre cadre">+</div>`;
     h+='</div>';ov.insertAdjacentHTML('beforeend',h);
   }
+  // outil Agrandir : un cadre autour de la sélection avec 4 grosses poignées aux coins
+  if(S.tool==='scale'&&items.length&&!S.edit){const pi=pageOf(items[0].id),grp=items.filter(it=>pageOf(it.id)===pi);const ov=canvas.querySelector(`.pg[data-p="${pi}"] .ov`);
+    if(ov&&grp.length){const x0=Math.min(...grp.map(i=>i.x)),y0=Math.min(...grp.map(i=>i.y)),x1=Math.max(...grp.map(i=>i.x+i.w)),y1=Math.max(...grp.map(i=>i.y+i.h));
+      ov.insertAdjacentHTML('beforeend',`<div class="sgb" style="left:${x0}mm;top:${y0}mm;width:${x1-x0}mm;height:${y1-y0}mm">`+[['nw',0,0],['ne',100,0],['se',100,100],['sw',0,100]].map(([k,x,y])=>`<div class="sgh" data-h="${k}" style="left:${x}%;top:${y}%"></div>`).join('')+'</div>');}}
   // cadres chaînés au cadre choisi : liens en pointillés
   const t=items.length===1&&items[0].type==='text'?items[0]:null;
   if(t){const ch=chainOf(t.story);if(ch.length>1)for(let i=0;i<ch.length-1;i++){const a=ch[i],b=ch[i+1];const pa=pageOf(a.id),pb=pageOf(b.id);if(pa!==pb)continue;const ov=canvas.querySelector(`.pg[data-p="${pa}"] .ov`);
@@ -477,8 +483,9 @@ function setTool(t){work.dataset.tool=t;
   if(S.edit)endEdit();if(S.imgEdit)endImgEdit();if(S.link)endLink();
   S.tool=t;$$('#tools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
   work.classList.toggle('hand',t==='hand');work.classList.toggle('draw',/^(text|image|rect|ellipse|line)$/.test(t));
-  const H={select:'Clic : choisir · Maj+clic : ajouter · glisser : déplacer (Alt : dupliquer) · double-clic sur un texte : écrire, sur une image : recadrer',hand:'Glisser pour déplacer la vue',text:'Trace le cadre de texte, puis écris',image:'Trace le cadre, puis choisis l’image',rect:'Trace le rectangle (Maj : carré)',ellipse:'Trace l’ellipse (Maj : cercle)',line:'Trace la ligne (Maj : horizontale / verticale / 45°)'};
+  const H={scale:'Choisis un objet, puis tire sur un coin pour l’agrandir ou le réduire (proportions gardées)',select:'Clic : choisir · Maj+clic : ajouter · glisser : déplacer (Alt : dupliquer) · double-clic sur un texte : écrire, sur une image : recadrer',hand:'Glisser pour déplacer la vue',text:'Trace le cadre de texte, puis écris',image:'Trace le cadre, puis choisis l’image',rect:'Trace le rectangle (Maj : carré)',ellipse:'Trace l’ellipse (Maj : cercle)',line:'Trace la ligne (Maj : horizontale / verticale / 45°)'};
   hint(H[t]||'');syncToolbar();
+  drawSel();
 }
 function hint(t){$('#hint').textContent=t||'';$('#hint').hidden=!t;}
 </script>
@@ -507,6 +514,7 @@ work.addEventListener('pointerdown',e=>{
   const pi=pageAt(e.clientX,e.clientY);const [mx,my]=toMM(e.clientX,e.clientY,pi);
   if(S.link){const el=e.target.closest('.it.tx');if(el){finishLink(el.dataset.id);return;}startDraw(e,pi,mx,my,'text',true);return;}
   if(/^(text|image|rect|ellipse|line)$/.test(S.tool)){const el=e.target.closest('.it.tx');if(S.tool==='text'&&el){setSel([el.dataset.id]);startEdit(el.dataset.id,e);return;}startDraw(e,pi,mx,my,S.tool);return;}
+  const sgh=S.tool==='scale'&&e.target.closest('.sgh');if(sgh){startScale(e,sgh.dataset.h);return;}
   // sélection
   const hd=e.target.closest('.hd');if(hd&&S.sel.length===1){startResize(e,hd.dataset.h);return;}
   let el=e.target.closest('.it');
@@ -568,6 +576,18 @@ function startResize(e,h){
     it.w=nw;it.h=nh;it.x=cx-nw/2;it.y=cy-nh/2;
     const e2=itemEl(it.id);if(it.type==='image'||it.type==='line'){if(e2)e2.outerHTML=itemHTML(it);}else moveEl(it);
     if(it.type==='text')flowAll();drawSelLite();};
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);commit();};
+  addEventListener('pointermove',mv);addEventListener('pointerup',up);
+}
+function startScale(e,h){
+  e.preventDefault();e.stopPropagation();const its=selItems();if(!its.length)return;const pi=pageOf(its[0].id);const grp=its.filter(it=>pageOf(it.id)===pi);
+  const O=grp.map(it=>({it,x:it.x,y:it.y,w:it.w,h:it.h}));
+  const x0=Math.min(...O.map(o=>o.x)),y0=Math.min(...O.map(o=>o.y)),x1=Math.max(...O.map(o=>o.x+o.w)),y1=Math.max(...O.map(o=>o.y+o.h));
+  const ax=h.includes('w')?x1:x0,ay=h.includes('n')?y1:y0,bw=Math.max(1,x1-x0),bh=Math.max(1,y1-y0);
+  const mv=ev=>{const [x,y]=toMM(ev.clientX,ev.clientY,pi);let k=Math.max(Math.abs(x-ax)/bw,Math.abs(y-ay)/bh);k=Math.max(0.05,k);
+    for(const o of O){const it=o.it;it.x=ax+(o.x-ax)*k;it.y=ay+(o.y-ay)*k;it.w=Math.max(1,o.w*k);it.h=Math.max(1,o.h*k);
+      const e2=itemEl(it.id);if(it.type==='image'||it.type==='line'){if(e2)e2.outerHTML=itemHTML(it);}else moveEl(it);}
+    if(O.some(o=>o.it.type==='text'))flowAll();drawSel();};
   const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);commit();};
   addEventListener('pointermove',mv);addEventListener('pointerup',up);
 }
