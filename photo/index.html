@@ -124,13 +124,13 @@ input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-rad
 #dropAll{position:fixed;inset:0;background:rgba(240,138,75,.14);border:4px dashed var(--acc);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:var(--acc);z-index:50;pointer-events:none}
 @media (max-width:900px){
   body>header{flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding-right:54px}body>header::-webkit-scrollbar{display:none}body>header>*{flex:none}
-  main{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto minmax(0,1fr) auto!important}
-  #tools{grid-column:1;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;padding:4px 0}
-  #tools .tgrid{display:flex;flex-wrap:nowrap;width:max-content;padding:0 8px;gap:3px;align-items:center}#tools .tgrid>*{flex:none}
-  #tools .tsep{grid-column:auto;width:1px;height:26px;margin:0 6px}
-  #strip{grid-column:1;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;max-height:64px;padding:4px 8px;border-right:0;border-bottom:1px solid var(--line)}#strip>*{flex:none}#strip .th{width:52px;height:52px}#strip .muted{font-size:11px}
-  #center{grid-column:1}
-  aside{grid-column:1;max-height:50vh;border-left:0;border-top:1px solid var(--line)}
+  main{grid-template-columns:50px minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr) auto!important}
+  #tools{grid-column:1;grid-row:1/4;border-right:1px solid var(--line);border-bottom:0;overflow-x:hidden;overflow-y:auto;padding:6px 0}
+  #tools .tgrid{display:grid;grid-template-columns:36px;gap:3px;justify-content:center;width:auto;padding:0}#tools .tgrid>*{flex:none}
+  #tools .tsep{grid-column:auto;width:26px;height:1px;margin:3px auto}
+  #strip{grid-column:2;grid-row:1;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;max-height:64px;padding:4px 8px;border-right:0;border-bottom:1px solid var(--line)}#strip>*{flex:none}#strip .th{width:52px;height:52px}#strip .muted{font-size:11px}
+  #center{grid-column:2;grid-row:2}
+  aside{grid-column:2;grid-row:3;max-height:33vh;border-left:0;border-top:1px solid var(--line)}
   body.amini #mini{flex-direction:row;flex-wrap:wrap;justify-content:center}
 }
 

@@ -146,11 +146,17 @@ dialog{border:1px solid var(--line);border-radius:12px;padding:0;max-width:96vw}
   .crop{position:absolute;background:#000}
 }
 @media (max-width:900px){
-  main{grid-template-columns:1fr;grid-template-rows:auto 1fr}
-  #tools{grid-column:1/-1;border-right:0;border-bottom:1px solid var(--line);padding:4px}
-  .tgrid{display:flex;justify-content:flex-start;overflow-x:auto}
-  .tsep{width:1px;height:28px;margin:4px 2px}
-  aside{display:none}
+  main{grid-template-columns:44px minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,33%)}
+  #tools{grid-column:1;grid-row:1/3;border-right:1px solid var(--line);border-bottom:0;padding:6px 0;overflow-y:auto;overflow-x:hidden}
+  .tgrid{display:grid;grid-template-columns:36px;justify-content:center;overflow:visible}
+  .tsep{width:26px;height:1px;margin:3px auto}
+  #center{grid-column:2;grid-row:1}
+  aside{display:block;grid-column:2;grid-row:2;border-left:0;border-top:1px solid var(--line);overflow:auto;min-height:0}
+  body.amini main{grid-template-columns:44px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+  body.amini aside{display:flex;align-items:center;gap:8px;padding:4px 8px;overflow-x:auto}
+  body.amini #asideTop{position:static;margin:0;padding:0;flex-shrink:0}
+  body.amini #asideTg svg{transform:rotate(-90deg)}
+  body.amini #mini{flex-direction:row;align-items:center;flex-shrink:0;padding:0;gap:8px}
 }
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
@@ -881,7 +887,7 @@ $('#xMarks').onchange=()=>{S.doc.exp.marks=$('#xMarks').checked;commit(true);};
 (function(){let st={};try{st=JSON.parse(localStorage.getItem('atelierMise.secs')||'{}');}catch(e){}
   $$('aside section').forEach(sec=>{if(st[sec.dataset.sec]===false)sec.classList.add('closed');sec.querySelector('h2').onclick=()=>{sec.classList.toggle('closed');st[sec.dataset.sec]=!sec.classList.contains('closed');try{localStorage.setItem('atelierMise.secs',JSON.stringify(st));}catch(e){}};});
   const setMini=(on,save)=>{document.body.classList.toggle('amini',on);$('#asideTg').title=on?'Ouvrir le panneau':'Réduire le panneau';if(save)try{localStorage.setItem('atelierMise.mini',on?'1':'0');}catch(e){}setTimeout(()=>{applyZoom();},50);};
-  try{setMini(localStorage.getItem('atelierMise.mini')==='1');}catch(e){}
+  try{const v=localStorage.getItem('atelierMise.mini');setMini(v==null?matchMedia('(max-width:900px)').matches:v==='1');}catch(e){}
   $('#asideTg').onclick=()=>setMini(!document.body.classList.contains('amini'),true);
   $('#mini').addEventListener('click',e=>{const b=e.target.closest('.mb');if(!b)return;if(b.dataset.px){$(b.dataset.px).click();return;}setMini(false,true);const sec=$(`aside section[data-sec="${b.dataset.open}"]`);if(sec){sec.classList.remove('closed');sec.scrollIntoView({block:'start'});}});
 })();
