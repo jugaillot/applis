@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ouverture… — La Suite</title><link rel="manifest" href="../manifest.webmanifest"><meta name="theme-color" content="#f7f6f2">
+<style>html,body{height:100%;margin:0;background:#f7f6f2;font:15px system-ui,"Segoe UI",sans-serif;color:#77756f}body{display:flex;align-items:center;justify-content:center}</style>
+</head><body><div id="m">Ouverture…</div>
+<script src="../lib/drop.js"></script>
+<script>
+/* point d'entrée des fichiers ouverts depuis le bureau : envoie directement vers la bonne appli, sans passer par l'accueil */
+AtelierDrop.init({accept:()=>false});
+var got=false;
+if('launchQueue' in window)launchQueue.setConsumer(async function(p){
+  if(!p.files||!p.files.length)return;got=true;window.__laSuiteBusy=1;
+  try{const fs=await Promise.all(p.files.map(h=>h.getFile()));AtelierDrop.route(fs,null,true);}
+  catch(e){document.getElementById('m').textContent='Ouverture impossible : '+(e.message||e);}
+});
+setTimeout(function(){if(!got)location.replace('../');},2500);
+</script></body></html>
