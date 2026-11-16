@@ -157,6 +157,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bClear">Tout vider</button>
   <button class="btn" id="bPrint">Imprimer…</button>
   <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
+  <button class="btn" id="bSave" title="Remplace le fichier PDF ouvert par la version modifiée (ouvre-le avec « Ajouter des fichiers… » sur ordinateur)">Enregistrer</button>
   <button class="btn accent" id="bPdf">Exporter PDF</button>
 </header>
 <main>
@@ -538,7 +539,7 @@ function renderPages(){
 function updateButtons(){
   const has=S.sel.size>0;
   ['#pRotL','#pRotR','#pDup','#pDel'].forEach(s=>$(s).disabled=!has);
-  ['#bPdf','#bPrint','#bClear','#pAll','#pText','#bFull'].forEach(s=>$(s).disabled=!S.pages.length);
+  ['#bPdf','#bSave','#bPrint','#bClear','#pAll','#pText','#bFull'].forEach(s=>$(s).disabled=!S.pages.length);
 }
 
 /* ---------- aperçu des feuilles ---------- */
@@ -725,7 +726,7 @@ async function saveSplit(bytes){
     if(dir){const fh=await dir.getFileHandle(name,{create:true});const ws=await fh.createWritable();await ws.write(b);await ws.close();}
     else{dl(b,name);await new Promise(r=>setTimeout(r,350));}}
 }
-async function exportPDF(){
+async function exportPDF(over){
   if(!S.pages.length)return;let note='';
   try{
     let bytes=await buildPDF();
@@ -743,7 +744,8 @@ async function exportPDF(){
           bytes=best;note=fit?'PDF allégé : '+mo(bytes.length)+' au lieu de '+mo(orig)+' (pages converties en images à '+fit+' dpi).':'Impossible de descendre sous '+mo(lim)+' : la version la plus légère ('+mo(bytes.length)+') a été enregistrée.';}
       }
     }
-    if(S.opt.split)await saveSplit(bytes);else dl(bytes,`compil-${stamp()}.pdf`);markClean();
+    if(over&&SRC){const w=await SRC.createWritable();await w.write(bytes);await w.close();markClean();toast('« '+SRC.name+' » enregistré.');}
+    else if(S.opt.split)await saveSplit(bytes);else dl(bytes,`compil-${stamp()}.pdf`);markClean();
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
   const msgs=[];if(RASTERED)msgs.push(RASTERED+' page'+(RASTERED>1?'s':'')+' de ce PDF n’a pas pu être recopiée telle quelle (fichier un peu abîmé) : '+(RASTERED>1?'elles sont passées':'elle est passée')+' en image haute définition (300 dpi).');if(note)msgs.push(note);
@@ -987,7 +989,7 @@ $('#pRotR').onclick=()=>{selected().forEach(p=>p.rot=(p.rot+90)%360);renderPages
 $('#pDup').onclick=()=>{const out=[];const ns=new Set();S.pages.forEach(p=>{out.push(p);if(S.sel.has(p.uid)){const c=Object.assign({},p,{uid:'p'+(uid++)});out.push(c);ns.add(c.uid);}});S.pages=out;S.sel=ns;renderPages();renderSheets();};
 $('#pDel').onclick=()=>{S.pages=S.pages.filter(p=>!S.sel.has(p.uid));S.sel.clear();cleanupFiles();renderPages();renderSheets();};
 $('#pBlank').onclick=()=>{const b=blankPage();const sel=selected();if(sel.length){const i=S.pages.indexOf(sel[sel.length-1]);S.pages.splice(i+1,0,b);}else S.pages.push(b);renderPages();renderSheets();};
-$('#bClear').onclick=async()=>{if(unsaved()){const r=window.AtelierUnsaved?await AtelierUnsaved.ask('',{title:'Exporter le PDF avant de tout vider ?',text:'Les pages ont été modifiées depuis le dernier export. Si tu vides sans exporter, ces modifications seront perdues.',verb:'Exporter le PDF…'}):'discard';if(!r)return;if(r==='save'){await exportPDF();if(unsaved())return;}}else if(!confirm('Retirer toutes les pages ?'))return;S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();};
+$('#bClear').onclick=async()=>{if(unsaved()){const r=window.AtelierUnsaved?await AtelierUnsaved.ask('',{title:'Exporter le PDF avant de tout vider ?',text:'Les pages ont été modifiées depuis le dernier export. Si tu vides sans exporter, ces modifications seront perdues.',verb:'Exporter le PDF…'}):'discard';if(!r)return;if(r==='save'){await exportPDF();if(unsaved())return;}}else if(!confirm('Retirer toutes les pages ?'))return;SRC=null;S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();};
 function cleanupFiles(){const used=new Set(S.pages.map(p=>p.fileId));for(const [id,f] of S.files)if(!used.has(id)){if(f.doc)f.doc.destroy();S.files.delete(id);}}
 document.addEventListener('keydown',e=>{
   if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;
@@ -1003,7 +1005,21 @@ window.addEventListener('dragleave',e=>{if(!isFiles(e))return;dragDepth=Math.max
 window.addEventListener('dragover',e=>{if(isFiles(e))e.preventDefault();});
 window.addEventListener('drop',e=>{if(!isFiles(e))return;e.preventDefault();dragDepth=0;$('#dropAll').hidden=true;addFiles(e.dataTransfer.files);});
 $('#fIn').onchange=e=>{const f=[...e.target.files];e.target.value='';addFiles(f);};
-$('#bPdf').onclick=exportPDF;$('#bPrint').onclick=printPDF;
+let SRC=null;// fichier PDF ouvert (poignée du navigateur) : sert à l'écraser avec « Enregistrer »
+$('#bPdf').onclick=()=>exportPDF();
+$('#bSave').onclick=async()=>{
+  if(!S.pages.length)return;
+  if(!SRC){toast('Pour écraser un fichier, ouvre-le avec « Ajouter des fichiers… » (Chrome sur ordinateur). Export classique à la place.');return exportPDF();}
+  try{if(await SRC.queryPermission({mode:'readwrite'})!=='granted'&&await SRC.requestPermission({mode:'readwrite'})!=='granted'){toast('Autorisation refusée : le fichier n’a pas été modifié.');return;}}
+  catch(e){toast('Impossible d’écraser ce fichier : '+(e.message||e));return;}
+  return exportPDF(true);
+};
+(function(){const lab=$('#fIn').closest('label');if(!lab||!window.showOpenFilePicker)return;
+  lab.addEventListener('click',async e=>{e.preventDefault();
+    try{const hs=await showOpenFilePicker({multiple:true,types:[{description:'PDF, images, PowerPoint',accept:{'application/pdf':['.pdf'],'image/*':['.jpg','.jpeg','.png','.webp'],'application/vnd.openxmlformats-officedocument.presentationml.presentation':['.pptx']}}]});
+      const fs=await Promise.all(hs.map(h=>h.getFile()));if(!S.pages.length)SRC=hs.length===1&&/\.pdf$/i.test(hs[0].name)?hs[0]:null;addFiles(fs);}
+    catch(err){if(!err||err.name!=='AbortError')$('#fIn').click();}});})();
+$('#bPrint').onclick=printPDF;
 
 /* ---------- réglages ---------- */
 function segBind(id,key,num){
@@ -1278,7 +1294,7 @@ renderPages();renderSheets();
 <script>
 /* fichiers ouverts depuis l'ordinateur (« Ouvrir avec » Atelier) : nouveau document avec ces fichiers */
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;window.__laSuiteBusy=1;if(window.AtelierRecent)AtelierRecent.addHandles('compil',p.files);const fs=await Promise.all(p.files.map(h=>h.getFile()));
-  S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();addFiles(fs);});
+  S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();SRC=p.files.length===1&&/\.pdf$/i.test(p.files[0].name)?p.files[0]:null;addFiles(fs);});
 </script>
 <script src="../lib/pptx.js"></script>
 <script>
