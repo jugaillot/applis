@@ -1209,6 +1209,9 @@ async function editPdfText(p,X,Y){
   box.addEventListener('pointerdown',e=>{if(TOOL!=='select'&&TOOL!=='text')return;const h=sheetHit(e);if(h&&!h.p.blank)pageLines(h.p);},true);
   box.addEventListener('dblclick',e=>{
     if(TOOL!=='select'&&TOOL!=='text')return;if(e.target.closest('.an')||e.target.tagName==='TEXTAREA')return;
+    // un texte déjà modifié (devenu texte ajouté) : on le rouvre, même si on clique un peu à côté
+    const near=[...document.querySelectorAll('#sheets .an')].find(el=>{const r=el.getBoundingClientRect();return e.clientX>=r.left-10&&e.clientX<=r.right+10&&e.clientY>=r.top-8&&e.clientY<=r.bottom+8&&el._a&&el._a.type==='text';});
+    if(near){e.stopImmediatePropagation();e.preventDefault();annEdit(near);return;}
     const h=sheetHit(e);if(!h||h.p.blank)return;const pr=TXC.get(h.p)||pageLines(h.p);
     e.stopImmediatePropagation();e.preventDefault();
     const X=h.fx*h.p.w,Y=h.fy*h.p.h;const px=h.spx?h.p.w/h.spx:0;// unités de page par pixel écran
@@ -1217,7 +1220,7 @@ async function editPdfText(p,X,Y){
       if(!lines.length){toast('Cette page ne contient pas de texte modifiable (texte transformé en dessin, ou page scannée).');return;}
       TOLX=10*px;let hit=lineAt(lines,X,Y,TOLX);if(!hit){TOLX=40*px;hit=lineAt(lines,X,Y,TOLX);}
       if(hit){try{getSelection().removeAllRanges();}catch(err){}await editPdfText(h.p,X,Y);}
-      else openEditor(h.p,'crop');});
+      else if(TOOL==='text')toast('Pas de texte à cet endroit.');else openEditor(h.p,'crop');});
   },true);
 })();
 /* ---------- barre d'outils ---------- */
