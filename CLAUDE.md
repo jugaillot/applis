@@ -27,7 +27,7 @@ Dépôt GitHub `jugaillot/applis`. Hébergement OVH (mutualisé, PHP) : **déplo
 
 ## Bibliothèques communes (`lib/`)
 - `sync.js` — `AtelierSync` : enregistrement local (IndexedDB) + synchronisation serveur, fenêtre « Mes … » (`openDialog`) avec renommer ✎ et **historique des versions 🕘** (Ouvrir en copie / Revenir). Suit la version réellement ouverte (`seen`, `base`) : un contenu plus ancien ne peut plus écraser le serveur (il devient une copie « conflit »).
-- `tabs.js` — onglets de documents (Vecto, Paysage, CAD, Riso) ; à la fermeture d'un document jamais enregistré, propose Enregistrer / Ne pas enregistrer / Annuler.
+- `tabs.js` — onglets de documents (Vecto, Paysage, CAD, Riso, Mise en page ; PDF a ses propres onglets en mémoire dans `compil/index.html`, un par fichier ouvert via « Ouvrir… ») ; à la fermeture d'un document jamais enregistré, propose Enregistrer / Ne pas enregistrer / Annuler.
 - `unsaved.js` — fenêtre « Enregistrer ? » + alerte du navigateur à la fermeture.
 - `zoom.js` — outil Loupe (Z) et règle commune de la molette : **molette = défilement vertical, Alt + molette = zoom, Ctrl (ou Maj) + molette = horizontal**, pincement = zoom.
 - `drop.js` — glisser-déposer de fichiers et fenêtre « Ouvrir avec quelle appli ? », transmission d'une appli à l'autre (`?ouvrir=1`).

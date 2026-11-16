@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>La Suite Mise en page</title>
 <link rel="stylesheet" href="../lib/fonts.css">
-<script src="../lib/save.js"></script><script src="../lib/recent.js"></script><script src="../lib/sync.js"></script>
+<script src="../lib/save.js"></script><script src="../lib/recent.js"></script><script src="../lib/tabs.js"></script><script src="../lib/sync.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#e0533d;--soft:#f7f6f2;--board:#dcd9d2;--sel:#1e88ff}
 *{box-sizing:border-box}
@@ -183,7 +183,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span class="sp"></span>
   <button class="btn" id="bNew">Nouveau</button>
   <span id="syncBadge"></span>
-  <button class="btn" id="bOpen">Mes mises en page…</button>
+  <button class="btn" id="bOpen" title="Ouvrir une mise en page enregistrée (chacune dans son onglet)">Ouvrir…</button>
   <button class="btn" id="bSave" title="Ctrl+S">Enregistrer</button>
   <button class="btn primary" id="bPrint" title="Exporter : PDF / Imprimer ou IDML (InDesign)">Exporter…</button>
 </header>
@@ -985,14 +985,14 @@ function busy(msg){const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}
    Enregistrer, ouvrir
    ===================================================================== */
 let asT=0;
-function autosave(){clearTimeout(asT);asT=setTimeout(()=>{IDB.set('autosave',{doc:S.doc,id:S.id,name:S.name});if(S.id&&window.AtelierSync)AtelierSync.save('mise',S.id,S.name,S.doc,{lazy:true});},600);}
+function autosave(){clearTimeout(asT);asT=setTimeout(()=>{IDB.set('autosave',{doc:S.doc,id:S.id,name:S.name});if(window.AtelierTabs)AtelierTabs.update({id:S.id,name:S.name,data:S.doc});if(S.id&&window.AtelierSync)AtelierSync.save('mise',S.id,S.name,S.doc,{lazy:true});},600);}
 async function saveDoc(asNew){if(S.edit)endEdit();
   if(!window.AtelierSync){const b=new Blob([JSON.stringify(S.doc)],{type:'application/json'});AtelierSave.save(b,(S.name||'mise-en-page')+'.json');return;}
   if(!S.id||asNew||!S.name){const n=prompt('Nom de la mise en page :',S.name||'Affiche '+new Date().toLocaleDateString('fr-FR'));if(!n||!n.trim())return;S.name=n.trim();if(asNew)S.id=null;}
   S.id=await AtelierSync.save('mise',S.id,S.name,S.doc);autosave();syncPanels();hint('Enregistré : « '+S.name+' »');}
 /* avant de remplacer la mise en page : proposer de l'enregistrer si elle ne l'a jamais été */
 const unsavedDoc=()=>!S.id&&allItems().length>0;
-async function leaveOk(){if(!unsavedDoc())return true;if(S.edit)endEdit();const r=window.AtelierUnsaved?await AtelierUnsaved.ask(S.name||'Sans titre'):(confirm('La mise en page actuelle n’est pas enregistrée : continuer ?')?'discard':null);
+async function leaveOk(){if(window.AtelierTabs){if(allItems().length){if(S.edit)endEdit();await AtelierTabs.newTab();}return true;}if(!unsavedDoc())return true;if(S.edit)endEdit();const r=window.AtelierUnsaved?await AtelierUnsaved.ask(S.name||'Sans titre'):(confirm('La mise en page actuelle n’est pas enregistrée : continuer ?')?'discard':null);
   if(!r)return false;if(r==='save'){await saveDoc(false);return !!S.id;}return true;}
 addEventListener('DOMContentLoaded',()=>{if(window.AtelierUnsaved)AtelierUnsaved.watch(unsavedDoc);});
 async function loadDoc(d,id,name){
@@ -1003,10 +1003,10 @@ async function loadDoc(d,id,name){
   render();renderStyles();resetHistory();fitPage(0);autosave();}
 $('#bSave').onclick=()=>saveDoc(false);
 $('#bOpen').onclick=()=>{if(!window.AtelierSync)return;AtelierSync.openDialog({app:'mise',title:'Mes mises en page',current:S.id,
-  onOpen:async(id,data,inf)=>{try{if(id!==S.id&&!(await leaveOk()))return;await loadDoc(data,id,inf?inf.name:'');}catch(e){alert('Ouverture impossible : '+e.message);}},
+  onOpen:async(id,data,inf)=>{try{if(window.AtelierTabs){await AtelierTabs.open(id,inf?inf.name:'',data);return;}if(id!==S.id&&!(await leaveOk()))return;await loadDoc(data,id,inf?inf.name:'');}catch(e){alert('Ouverture impossible : '+e.message);}},
   onRename:(id,n)=>{if(id===S.id){S.name=n;syncPanels();}},
   extra:[{label:'Enregistrer sous un autre nom…',action:()=>saveDoc(true)}]});};
-$('#bNew').onclick=async()=>{if(unsavedDoc()){if(!(await leaveOk()))return;}else if(allItems().length&&!confirm('Commencer une nouvelle mise en page ?'))return;loadDoc(newDoc(),null,'');};
+$('#bNew').onclick=async()=>{if(window.AtelierTabs){if(S.edit)endEdit();AtelierTabs.newTab();return;}if(unsavedDoc()){if(!(await leaveOk()))return;}else if(allItems().length&&!confirm('Commencer une nouvelle mise en page ?'))return;loadDoc(newDoc(),null,'');};
 if(window.AtelierSync)$('#syncBadge').appendChild(AtelierSync.badge());
 
 /* =====================================================================
@@ -1060,6 +1060,11 @@ $('#bPrint').onclick=exportDoc;$('#xPrint').onclick=exportDoc;
   setTool('select');
   document.fonts.ready.then(()=>{if(!S.edit)render();});
   window.addEventListener('resize',()=>applyZoom());
+  if(window.AtelierTabs)await AtelierTabs.init({app:'mise',save:()=>saveDoc(false),restore:true,
+    get:()=>({id:S.id,name:S.name,data:S.doc}),
+    set:async t=>{await loadDoc(t.data,t.id,t.name);},
+    blank:async()=>{await loadDoc(newDoc(),null,'');},
+    isEmpty:()=>!allItems().length});
 })();
 </script>
 <script>

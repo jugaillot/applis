@@ -152,7 +152,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <body>
 <header>
   <h1><a href="../">La Suite</a> <span>PDF</span></h1>
-  <label class="btn primary">Ajouter des fichiers…<input type="file" id="fIn" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.pptx" hidden></label>
+  <button class="btn primary" id="bOpen" title="Ouvrir un ou plusieurs fichiers : chacun dans son propre onglet (Ctrl+O)">Ouvrir…</button>
+  <label class="btn" title="Ajoute les pages de ces fichiers au document de l’onglet actif (assemblage)">Ajouter des fichiers…<input type="file" id="fIn" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.pptx" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bClear">Tout vider</button>
   <button class="btn" id="bPrint">Imprimer…</button>
@@ -343,7 +344,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc='../lib/pdf.worker.min.js';
 function stateSig(){const skip=v=>v&&typeof v==='object'&&!(Array.isArray(v)||Object.getPrototypeOf(v)===Object.prototype);
   try{return JSON.stringify([S.pages.map(p=>Object.fromEntries(Object.entries(p).filter(([k,v])=>k!=='thumb'&&k[0]!=='_'&&!skip(v)))),S.opt],(k,v)=>skip(v)?undefined:v);}catch(e){return String(Math.random());}}
 let CLEAN='';const markClean=()=>{CLEAN=stateSig();};const unsaved=()=>S.pages.length>0&&stateSig()!==CLEAN;
-addEventListener('DOMContentLoaded',()=>{markClean();if(window.AtelierUnsaved)AtelierUnsaved.watch(unsaved);});
+addEventListener('DOMContentLoaded',()=>{markClean();if(window.AtelierUnsaved)AtelierUnsaved.watch(()=>unsaved()||(typeof TABS!=='undefined'&&TABS.some((t,k)=>k!==ACT&&t.st&&t.st.dirty)));});
 const S={files:new Map(),pages:[],sel:new Set(),anchor:null,opt:{fmt:'A4',w:210,h:297,or:'auto',n:1,mode:'suite',order:'z',m:5,g:5,fit:'fit',red:false,redMb:2,px:false,pxDpi:300,book:false}};
 let uid=1;
 const ZOOM={z:1,t:0};
@@ -358,7 +359,7 @@ function saveOpt(){try{localStorage.setItem('atelierCompil.opt',JSON.stringify(S
 async function addFiles(list){
   // présentations PowerPoint : converties en PDF (une page par diapo)
   if([...list].some(f=>/\.pptx$/i.test(f.name))){const out=[];for(const f of list){if(!/\.pptx$/i.test(f.name)){out.push(f);continue;}try{out.push(await pptxToPdf(f));}catch(e){alert('« '+f.name+' » : '+(e.message||e));}finally{await busy();}}list=out;}
-  const files=[...list];if(!files.length)return;const wasEmpty=!S.pages.length;
+  const files=[...list];if(!files.length)return;const wasEmpty=!S.pages.length;if(wasEmpty&&!TABS[ACT].name)TABS[ACT].name=files[0].name;
   for(const f of files){
     try{
       await busy('Lecture de « '+f.name+' »…');
@@ -540,6 +541,7 @@ function updateButtons(){
   const has=S.sel.size>0;
   ['#pRotL','#pRotR','#pDup','#pDel'].forEach(s=>$(s).disabled=!has);
   ['#bPdf','#bSave','#bPrint','#bClear','#pAll','#pText','#bFull'].forEach(s=>$(s).disabled=!S.pages.length);
+  if(typeof renderTabs==='function')renderTabs();
 }
 
 /* ---------- aperçu des feuilles ---------- */
@@ -1003,9 +1005,47 @@ const isFiles=e=>e.dataTransfer&&[...e.dataTransfer.types].includes('Files');
 window.addEventListener('dragenter',e=>{if(!isFiles(e))return;dragDepth++;$('#dropAll').hidden=false;});
 window.addEventListener('dragleave',e=>{if(!isFiles(e))return;dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)$('#dropAll').hidden=true;});
 window.addEventListener('dragover',e=>{if(isFiles(e))e.preventDefault();});
-window.addEventListener('drop',e=>{if(!isFiles(e))return;e.preventDefault();dragDepth=0;$('#dropAll').hidden=true;addFiles(e.dataTransfer.files);});
+window.addEventListener('drop',e=>{if(!isFiles(e))return;e.preventDefault();dragDepth=0;$('#dropAll').hidden=true;openFiles(e.dataTransfer.files);});
 $('#fIn').onchange=e=>{const f=[...e.target.files];e.target.value='';addFiles(f);};
 let SRC=null;// fichier PDF ouvert (poignée du navigateur) : sert à l'écraser avec « Enregistrer »
+
+/* ---------- onglets : un par fichier ouvert (gardés tant que la page reste ouverte) ---------- */
+const TABS=[{name:'',st:null}];let ACT=0,LOADING=0;
+(function(){const c=document.createElement('style');c.textContent=`#atabs{display:flex;align-items:flex-end;gap:2px;padding:4px 8px 0;background:var(--bg);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:thin;flex-shrink:0;min-height:31px}
+#atabs .atab{display:flex;align-items:center;gap:4px;max-width:200px;padding:4px 4px 4px 10px;border:1px solid var(--line);border-bottom:0;border-radius:7px 7px 0 0;background:var(--soft,#eceae5);font-size:12px;cursor:pointer;white-space:nowrap;color:var(--mute,#777)}
+#atabs .atab.on{background:var(--panel);color:var(--ink);font-weight:600;margin-bottom:-1px;padding-bottom:5px}
+#atabs .atab-t{overflow:hidden;text-overflow:ellipsis}
+#atabs .atab-x{border:0;background:none;cursor:pointer;width:18px;height:18px;border-radius:4px;font-size:14px;line-height:1;color:inherit;padding:0;flex-shrink:0}
+#atabs .atab-x:hover{background:rgba(0,0,0,.08)}
+#atabs .atab-add{border:0;background:none;cursor:pointer;font-size:17px;width:26px;height:26px;border-radius:6px;color:var(--mute,#777);flex-shrink:0}
+body.fs-view #atabs{display:none}`;document.head.appendChild(c);
+  const b=document.createElement('div');b.id='atabs';document.querySelector('header').after(b);
+  b.addEventListener('click',e=>{const x=e.target.closest('[data-x]');if(x){e.stopPropagation();closeTab(+x.dataset.x);return;}
+    if(e.target.closest('.atab-add')){newTab();return;}const t=e.target.closest('.atab');if(t)switchTab(+t.dataset.i);});
+  b.addEventListener('auxclick',e=>{const t=e.target.closest('.atab');if(t&&e.button===1)closeTab(+t.dataset.i);});})();
+function renderTabs(){const b=$('#atabs');if(!b)return;
+  if(!S.pages.length&&!LOADING)TABS[ACT].name='';
+  b.innerHTML=TABS.map((t,i)=>{const d=i===ACT?unsaved():!!(t.st&&t.st.dirty);const n=t.name||'Sans titre';
+    return `<div class="atab${i===ACT?' on':''}" data-i="${i}" title="${esc(n)}${d?' (modifié, pas encore exporté)':''}"><span class="atab-t">${esc(n)}${d?' •':''}</span><button class="atab-x" data-x="${i}" title="Fermer">×</button></div>`;}).join('')+'<button class="atab-add" title="Nouvel onglet vide">+</button>';
+  const on=b.querySelector('.atab.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest',inline:'nearest'});}
+function snapTab(){TABS[ACT].st={files:S.files,pages:S.pages,sel:S.sel,anchor:S.anchor,SRC,CLEAN,dirty:unsaved()};}
+function loadTab(){const s=TABS[ACT].st||{files:new Map(),pages:[],sel:new Set(),anchor:null,SRC:null,CLEAN:'',dirty:false};
+  S.files=s.files;S.pages=s.pages;S.sel=s.sel;S.anchor=s.anchor;SRC=s.SRC;CLEAN=s.CLEAN;if(!s.dirty)markClean();
+  renderPages();renderSheets();const w=$('#work');if(w)w.scrollTop=0;}
+function switchTab(i){if(LOADING||i===ACT||!TABS[i])return;snapTab();ACT=i;loadTab();}
+function newTab(){if(LOADING)return;snapTab();TABS.push({name:'',st:null});ACT=TABS.length-1;loadTab();}
+async function closeTab(i){if(LOADING||!TABS[i])return;if(i!==ACT)switchTab(i);
+  if(unsaved()){const r=window.AtelierUnsaved?await AtelierUnsaved.ask(TABS[ACT].name,{title:'Exporter le PDF avant de fermer l’onglet ?',text:'Les pages ont été modifiées depuis le dernier export. Si tu fermes sans exporter, ces modifications seront perdues.',verb:'Exporter le PDF…'}):(confirm('Fermer cet onglet sans exporter ?')?'discard':null);
+    if(!r)return;if(r==='save'){await exportPDF();if(unsaved())return;}}
+  S.pages=[];S.sel.clear();cleanupFiles();SRC=null;
+  if(TABS.length>1){TABS.splice(i,1);ACT=Math.min(i,TABS.length-1);loadTab();}else{TABS[0].name='';TABS[0].st=null;renderPages();renderSheets();}}
+/* ouvrir des fichiers : un onglet par fichier (l'onglet actif est réutilisé s'il est vide) */
+async function openFiles(list,hs){const fs=[...list];if(!fs.length)return;LOADING++;
+  try{for(let k=0;k<fs.length;k++){const f=fs[k];
+    if(S.pages.length){snapTab();TABS.push({name:'',st:null});ACT=TABS.length-1;loadTab();}
+    TABS[ACT].name=f.name;SRC=hs&&hs[k]&&/\.pdf$/i.test(f.name)?hs[k]:null;
+    await addFiles([f]);if(!S.pages.length)SRC=null;}}
+  finally{LOADING--;renderTabs();}}
 $('#bPdf').onclick=()=>exportPDF();
 $('#bSave').onclick=async()=>{
   if(!S.pages.length)return;
@@ -1014,11 +1054,15 @@ $('#bSave').onclick=async()=>{
   catch(e){toast('Impossible d’écraser ce fichier : '+(e.message||e));return;}
   return exportPDF(true);
 };
+const PICK=[{description:'PDF, images, PowerPoint',accept:{'application/pdf':['.pdf'],'image/*':['.jpg','.jpeg','.png','.webp'],'application/vnd.openxmlformats-officedocument.presentationml.presentation':['.pptx']}}];
+async function pickFiles(){// → {fs,hs} ; hs = poignées (Chrome ordinateur) pour pouvoir écraser le fichier
+  if(window.showOpenFilePicker){try{const hs=await showOpenFilePicker({multiple:true,types:PICK});return{fs:await Promise.all(hs.map(h=>h.getFile())),hs};}catch(err){if(err&&err.name==='AbortError')return null;}}
+  return new Promise(res=>{const i=document.createElement('input');i.type='file';i.multiple=true;i.accept='application/pdf,.pdf,image/jpeg,image/png,image/webp,.pptx';i.onchange=()=>res(i.files.length?{fs:[...i.files],hs:null}:null);i.click();});}
+$('#bOpen').onclick=async()=>{const r=await pickFiles();if(r)openFiles(r.fs,r.hs);};
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&e.key.toLowerCase()==='o'){e.preventDefault();$('#bOpen').click();}});
 (function(){const lab=$('#fIn').closest('label');if(!lab||!window.showOpenFilePicker)return;
   lab.addEventListener('click',async e=>{e.preventDefault();
-    try{const hs=await showOpenFilePicker({multiple:true,types:[{description:'PDF, images, PowerPoint',accept:{'application/pdf':['.pdf'],'image/*':['.jpg','.jpeg','.png','.webp'],'application/vnd.openxmlformats-officedocument.presentationml.presentation':['.pptx']}}]});
-      const fs=await Promise.all(hs.map(h=>h.getFile()));if(!S.pages.length)SRC=hs.length===1&&/\.pdf$/i.test(hs[0].name)?hs[0]:null;addFiles(fs);}
-    catch(err){if(!err||err.name!=='AbortError')$('#fIn').click();}});})();
+    const r=await pickFiles();if(!r)return;if(!S.pages.length)SRC=r.hs&&r.hs.length===1&&/\.pdf$/i.test(r.hs[0].name)?r.hs[0]:null;addFiles(r.fs);});})();
 $('#bPrint').onclick=printPDF;
 
 /* ---------- réglages ---------- */
@@ -1294,7 +1338,7 @@ renderPages();renderSheets();
 <script>
 /* fichiers ouverts depuis l'ordinateur (« Ouvrir avec » Atelier) : nouveau document avec ces fichiers */
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;window.__laSuiteBusy=1;if(window.AtelierRecent)AtelierRecent.addHandles('compil',p.files);const fs=await Promise.all(p.files.map(h=>h.getFile()));
-  S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();SRC=p.files.length===1&&/\.pdf$/i.test(p.files[0].name)?p.files[0]:null;addFiles(fs);});
+  openFiles(fs,p.files);});
 </script>
 <script src="../lib/pptx.js"></script>
 <script>
@@ -1314,7 +1358,7 @@ async function pptxToPdf(file){
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
 const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
-AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='application/pdf'||isImg(f)||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:fs=>addFiles(fs)});})();
+AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='application/pdf'||isImg(f)||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:fs=>openFiles(fs)});})();
 </script>
 <script src="../lib/help.js"></script>
 <script src="../lib/fs.js"></script>

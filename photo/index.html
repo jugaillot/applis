@@ -168,7 +168,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <header>
   <h1><a href="../">La Suite</a> <span>Photo</span></h1>
   <button class="btn" id="bNewDoc" title="Créer une image vierge, ou à partir d’une image copiée">Nouveau…</button>
-  <label class="btn primary">Ajouter des images…<input type="file" id="fIn" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,application/pdf,.pdf,.pptx" hidden></label>
+  <label class="btn primary" title="Ouvrir une ou plusieurs images : chacune apparaît dans la bande en bas, on passe de l’une à l’autre d’un clic">Ouvrir des images…<input type="file" id="fIn" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,application/pdf,.pdf,.pptx" hidden></label>
   <span class="sp"></span>
   <button class="btn" id="bApplyAll" title="Copier les réglages de cette image sur les autres">Appliquer à toutes…</button>
   <button class="btn" id="bCopy" title="Copier l’image retouchée pour la coller ailleurs (Ctrl+C)">Copier</button>
@@ -201,7 +201,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   </div></nav>
   <nav id="strip"></nav>
   <div id="center">
-    <div id="stage"><div id="empty">Glisse ici tes photos (JPG, PNG, WebP) ou des PDF,<br>colle une image avec Ctrl+V<br>ou utilise « Ajouter des images… »</div><canvas id="view" hidden></canvas><div id="cropBox" hidden></div><div id="brush" hidden></div><div id="cloneMk" hidden></div><button id="zoomPct" title="Molette : vertical · Alt + molette : zoom · Ctrl + molette : horizontal — clic ou Ctrl+0 : ajuster"></button></div>
+    <div id="stage"><div id="empty">Glisse ici tes photos (JPG, PNG, WebP) ou des PDF,<br>colle une image avec Ctrl+V<br>ou utilise « Ouvrir des images… »</div><canvas id="view" hidden></canvas><div id="cropBox" hidden></div><div id="brush" hidden></div><div id="cloneMk" hidden></div><button id="zoomPct" title="Molette : vertical · Alt + molette : zoom · Ctrl + molette : horizontal — clic ou Ctrl+0 : ajuster"></button></div>
     <div id="bar">
       <button class="btn sm" id="bBefore" title="Maintenir pour voir l’original (touche B)">Avant / après</button>
       <button class="btn sm" id="bCrop" title="Rogner (C)">✂ Rogner</button><button class="btn sm" id="bPersp" title="Redresser la perspective (K)">Perspective</button>
