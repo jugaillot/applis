@@ -80,6 +80,26 @@
       },
       "icons": [
         {
+          "src": "/icons/file-pdf-32.png",
+          "sizes": "32x32",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-pdf-48.png",
+          "sizes": "48x48",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-pdf-64.png",
+          "sizes": "64x64",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-pdf-128.png",
+          "sizes": "128x128",
+          "type": "image/png"
+        },
+        {
           "src": "/icons/file-pdf.png",
           "sizes": "256x256",
           "type": "image/png"
@@ -106,6 +126,26 @@
       },
       "icons": [
         {
+          "src": "/icons/file-image-32.png",
+          "sizes": "32x32",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-image-48.png",
+          "sizes": "48x48",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-image-64.png",
+          "sizes": "64x64",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-image-128.png",
+          "sizes": "128x128",
+          "type": "image/png"
+        },
+        {
           "src": "/icons/file-image.png",
           "sizes": "256x256",
           "type": "image/png"
@@ -126,6 +166,26 @@
       },
       "icons": [
         {
+          "src": "/icons/file-svg-32.png",
+          "sizes": "32x32",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-svg-48.png",
+          "sizes": "48x48",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-svg-64.png",
+          "sizes": "64x64",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-svg-128.png",
+          "sizes": "128x128",
+          "type": "image/png"
+        },
+        {
           "src": "/icons/file-svg.png",
           "sizes": "256x256",
           "type": "image/png"
@@ -141,6 +201,26 @@
         ]
       },
       "icons": [
+        {
+          "src": "/icons/file-pptx-32.png",
+          "sizes": "32x32",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-pptx-48.png",
+          "sizes": "48x48",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-pptx-64.png",
+          "sizes": "64x64",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-pptx-128.png",
+          "sizes": "128x128",
+          "type": "image/png"
+        },
         {
           "src": "/icons/file-pptx.png",
           "sizes": "256x256",
@@ -161,6 +241,26 @@
       },
       "icons": [
         {
+          "src": "/icons/file-doc-32.png",
+          "sizes": "32x32",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-doc-48.png",
+          "sizes": "48x48",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-doc-64.png",
+          "sizes": "64x64",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-doc-128.png",
+          "sizes": "128x128",
+          "type": "image/png"
+        },
+        {
           "src": "/icons/file-doc.png",
           "sizes": "256x256",
           "type": "image/png"
@@ -176,6 +276,26 @@
         ]
       },
       "icons": [
+        {
+          "src": "/icons/file-dxf-32.png",
+          "sizes": "32x32",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-dxf-48.png",
+          "sizes": "48x48",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-dxf-64.png",
+          "sizes": "64x64",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-dxf-128.png",
+          "sizes": "128x128",
+          "type": "image/png"
+        },
         {
           "src": "/icons/file-dxf.png",
           "sizes": "256x256",
@@ -195,6 +315,26 @@
         ]
       },
       "icons": [
+        {
+          "src": "/icons/file-doc-32.png",
+          "sizes": "32x32",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-doc-48.png",
+          "sizes": "48x48",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-doc-64.png",
+          "sizes": "64x64",
+          "type": "image/png"
+        },
+        {
+          "src": "/icons/file-doc-128.png",
+          "sizes": "128x128",
+          "type": "image/png"
+        },
         {
           "src": "/icons/file-doc.png",
           "sizes": "256x256",
