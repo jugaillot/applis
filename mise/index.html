@@ -197,7 +197,6 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <button class="tool" data-tool="image" title="Cadre d’image (I) : trace le cadre, puis choisis l’image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-6-6-9 9"/></svg></button>
     <button class="tool" data-tool="shape" id="tShape" title="Formes : rectangle (R), ellipse (E) — le choix se change dans la barre du haut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="10" width="10" height="10" rx="1"/><circle cx="15" cy="9" r="5.5"/></svg></button>
     <button class="tool" data-tool="line" title="Ligne (L) — Maj : horizontale, verticale ou à 45°"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19L19 5"/></svg></button>
-    <button class="tool" data-act="link" id="tLink" title="Faire suivre le texte du cadre choisi dans un autre cadre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="8" height="10" rx="1"/><rect x="13.5" y="10" width="8" height="10" rx="1"/><path d="M8 16.5c0 2 1.5 3 3.5 3h1M9.5 8h2.5"/><path d="M11 17.5l1.6 2-1.6 2"/></svg></button>
     <span class="tsep"></span>
     <button class="tool" data-act="zin" title="Zoom avant (Ctrl +) — molette sur la page : zoom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M7.5 10.5h6M10.5 7.5v6"/></svg></button>
     <button class="tool" data-act="zout" title="Zoom arrière (Ctrl −)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M7.5 10.5h6"/></svg></button>
@@ -206,10 +205,6 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <span class="tsep"></span>
     <button class="tool" data-act="undo" id="tUndo" title="Annuler (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
     <button class="tool" data-act="redo" id="tRedo" title="Rétablir (Ctrl+Y)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
-    <button class="tool" data-act="front" id="tFront" title="Mettre au premier plan (Ctrl+Maj+])"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="3" width="11" height="11" rx="1" stroke-dasharray="2 2"/><rect x="10" y="10" width="11" height="11" rx="1" fill="currentColor"/></svg></button>
-    <button class="tool" data-act="back" id="tBack" title="Mettre à l’arrière-plan (Ctrl+Maj+[)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="10" y="10" width="11" height="11" rx="1" stroke-dasharray="2 2"/><rect x="3" y="3" width="11" height="11" rx="1" fill="currentColor"/></svg></button>
-    <button class="tool" data-act="dup" id="tDup" title="Dupliquer (Ctrl+D)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="1.5"/><path d="M16 8V4.5A1.5 1.5 0 0 0 14.5 3h-10A1.5 1.5 0 0 0 3 4.5v10A1.5 1.5 0 0 0 4.5 16H8"/></svg></button>
-    <button class="tool" data-act="del" id="tDel" title="Supprimer (Suppr)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/></svg></button>
   </div></nav>
   <div id="center">
     <div id="toolBar"></div>
@@ -885,7 +880,6 @@ function syncPanels(){
   else ob.innerHTML=items.length?`<div class="muted">${items.length} objets choisis.</div><div class="btns"><button class="btn sm" data-oa="front">Premier plan</button><button class="btn sm" data-oa="back">Arrière-plan</button><button class="btn sm" data-oa="dup">Dupliquer</button><button class="btn sm" data-oa="del">Supprimer</button></div>`:'<div class="muted">Choisis un objet sur la page pour régler sa position et sa taille.</div>';
   // pages
   $('#pgList').innerHTML=S.doc.pages.map((p,i)=>`<div data-pg="${i}" class="${i===S.page?'on':''}"><b>Page ${i+1}</b><span class="muted">${p.items.length} obj.</span><button data-pa="up" title="Monter">↑</button><button data-pa="down" title="Descendre">↓</button><button data-pa="dup" title="Dupliquer la page">⧉</button><button data-pa="del" title="Supprimer la page">✕</button></div>`).join('');
-  ['#tFront','#tBack','#tDup','#tDel','#tLink'].forEach(id=>$(id).disabled=!items.length);$('#tLink').disabled=!(items.length===1&&items[0].type==='text');
   $('#docName').textContent=S.name?'· '+S.name:'';
 }
 function renderStyles(){const st=S.doc.styles;let open=renderStyles.open||'';
