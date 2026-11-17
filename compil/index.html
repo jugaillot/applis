@@ -965,7 +965,15 @@ PG.addEventListener('click',e=>{
   else if(e.ctrlKey||e.metaKey){S.sel.has(u)?S.sel.delete(u):S.sel.add(u);S.anchor=u;}
   else{const only=S.sel.size===1&&S.sel.has(u);S.sel.clear();if(!only)S.sel.add(u);S.anchor=u;}
   document.querySelectorAll('.pg').forEach(x=>x.classList.toggle('on',S.sel.has(x.dataset.u)));updateButtons();
+  if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey&&S.sel.has(u))showInPreview(S.pages[idx]);
 });
+/* clic sur une page : la feuille de l'aperçu qui la contient s'affiche (et clignote un instant) */
+function showInPreview(pg){
+  const cv=[...document.querySelectorAll('#sheets .sh canvas')].find(c=>c._sh&&c._sh.pages.includes(pg));if(!cv)return;
+  const w=cv.closest('.sh');w.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});
+  cv.style.transition='outline-color .2s';cv.style.outline='3px solid var(--acc,#7c6cf0)';cv.style.outlineOffset='2px';
+  setTimeout(()=>{cv.style.outline='';cv.style.outlineOffset='';},1200);
+}
 let dragU=null;
 PG.addEventListener('dragstart',e=>{const d=e.target.closest('.pg');if(!d)return;dragU=d.dataset.u;if(!S.sel.has(dragU)){S.sel.clear();S.sel.add(dragU);document.querySelectorAll('.pg').forEach(x=>x.classList.toggle('on',S.sel.has(x.dataset.u)));}e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragU);});
 PG.addEventListener('dragend',()=>{dragU=null;document.querySelectorAll('.pg').forEach(x=>x.classList.remove('dragover-before','dragover-after'));});
