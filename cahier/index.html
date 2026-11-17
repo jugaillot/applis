@@ -209,7 +209,7 @@ async function openDoc(id,data){
   if(DOC.pages.some(p=>p.n!=null)){DOC.pages.sort((a,b)=>((a.n||0)-(b.n||0))||((a.ts||0)-(b.ts||0)));DOC.pages.forEach(p=>{delete p.n;});persist();}// ancien classement par n° : devient l'ordre du cahier
 ls.set('cahier.last',DOC.id);
   $('#bName').textContent='📓 '+DOC.name;
-  refresh();go(0);
+  refresh();go(LIST.length-1);// à l'ouverture : la dernière page du cahier
 }
 function chooser(){AtelierSync.openDialog({app:'cahier',title:'Mes cahiers',onOpen:(id,data)=>openDoc(id,data),extra:[{label:'＋ Nouveau cahier',action:newDoc}]});}
 $('#bName').onclick=chooser;
