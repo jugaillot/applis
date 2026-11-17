@@ -196,7 +196,10 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <button class="tool" data-tool="text" title="Cadre de texte (T) : trace le cadre, puis écris"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5" stroke-dasharray="2 2"/><path d="M8 8h8M12 8v9"/></svg></button>
     <button class="tool" data-tool="image" title="Cadre d’image (I) : trace le cadre, puis choisis l’image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-6-6-9 9"/></svg></button>
     <button class="tool" data-tool="shape" id="tShape" title="Formes : rectangle (R), ellipse (E) — le choix se change dans la barre du haut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="10" width="10" height="10" rx="1"/><circle cx="15" cy="9" r="5.5"/></svg></button>
+    <button class="tool" data-tool="pen" title="Plume (P) — clic : points, glisser : courbes"><svg viewBox="0 0 24 24"><path d="M3 3l10 3.5 5.5 5.5-6.5 6.5-5.5-5.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 3l7.2 7.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11" cy="11" r="1.6" fill="currentColor"/></svg></button>
+    <button class="tool" data-tool="pencil" title="Crayon (N) — dessiner à main levée"><svg viewBox="0 0 24 24"><path d="M4 20c3-1 4-5 7-6s4 2 7-1 1-7 1-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     <button class="tool" data-tool="line" title="Ligne (L) — Maj : horizontale, verticale ou à 45°"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19L19 5"/></svg></button>
+    <button class="tool" data-tool="eye" title="Pipette (Y) — copier le style d’un objet vers l’objet choisi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-3 1-7 7-4 1 1-4 7-7z"/><path d="M12 6l6 6"/></svg></button>
     <span class="tsep"></span>
     <button class="tool" data-act="zin" title="Zoom avant (Ctrl +) — molette sur la page : zoom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M7.5 10.5h6M10.5 7.5v6"/></svg></button>
     <button class="tool" data-act="zout" title="Zoom arrière (Ctrl −)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M7.5 10.5h6"/></svg></button>
@@ -404,6 +407,7 @@ function itemHTML(it){
   const st=`left:${it.x}mm;top:${it.y}mm;width:${it.w}mm;height:${it.h}mm;${it.rot?`transform:rotate(${it.rot}deg);`:''}${it.op!=null&&it.op<100?`opacity:${it.op/100};`:''}`;
   const box=(it.fill&&it.fill!=='none'?`background:${it.fill};`:'')+(it.sw&&it.stroke&&it.stroke!=='none'?`box-shadow:inset 0 0 0 ${it.sw}mm ${it.stroke};`:'')+(it.rad?`border-radius:${it.rad}mm;`:'');
   if(it.type==='text'){const pad=it.pad||0;const va=it.va==='ctr'?'display:flex;flex-direction:column;justify-content:safe center;':it.va==='b'?'display:flex;flex-direction:column;justify-content:safe flex-end;':'';return `<div class="it tx" data-id="${it.id}" style="${st}${box}--pad2:${pad*2}mm"><div class="txin" style="left:${pad}mm;top:${pad}mm;width:calc(100% - ${pad*2}mm);height:calc(100% - ${pad*2}mm);${va}"></div></div>`;}
+  if(it.type==='path')return VT.html(it,st);
   if(it.type==='rect')return `<div class="it" data-id="${it.id}" style="${st}${box}"></div>`;
   if(it.type==='ellipse')return `<div class="it" data-id="${it.id}" style="${st}${box}border-radius:50%"></div>`;
   if(it.type==='line'){const [x1,y1,x2,y2]=it.dir?[0,it.h,it.w,0]:[0,0,it.w,it.h];const sw=it.sw||.5,pd=sw+3;
@@ -478,11 +482,11 @@ function drawSel(){
 function setSel(ids){S.sel=ids.slice();drawSel();syncPanels();}
 
 /* ---------- outils ---------- */
-function setTool(t){if(t==='shape')t=S.shapeKind||'rect';if(t==='rect'||t==='ellipse')S.shapeKind=t;work.dataset.tool=t;
+function setTool(t){if((typeof VT!=='undefined')&&VT.pen&&t!=='pen')VT.finishPen(false);if(t==='shape')t=S.shapeKind||'rect';if(t==='rect'||t==='ellipse'||t==='polygon'||t==='star')S.shapeKind=t;work.dataset.tool=t;
   if(S.edit)endEdit();if(S.imgEdit)endImgEdit();if(S.link)endLink();
-  S.tool=t;$$('#tools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t||(b.dataset.tool==='shape'&&(t==='rect'||t==='ellipse'))));
-  work.classList.toggle('hand',t==='hand');work.classList.toggle('draw',/^(text|image|rect|ellipse|line)$/.test(t));
-  const H={direct:'Clic sur une image : la déplacer dans son cadre · ligne : tirer ses extrémités (Maj : angle) · rectangle : poignée jaune pour arrondir les coins',scale:'Choisis un objet, puis tire sur un coin pour l’agrandir ou le réduire (proportions gardées)',select:'Clic : choisir · Maj+clic : ajouter · glisser : déplacer (Alt : dupliquer) · double-clic sur un texte : écrire, sur une image : recadrer',hand:'Glisser pour déplacer la vue',text:'Trace le cadre de texte, puis écris',image:'Trace le cadre, puis choisis l’image',rect:'Trace le rectangle (Maj : carré)',ellipse:'Trace l’ellipse (Maj : cercle)',line:'Trace la ligne (Maj : horizontale / verticale / 45°)'};
+  S.tool=t;$$('#tools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t||(b.dataset.tool==='shape'&&(t==='rect'||t==='ellipse'||t==='polygon'||t==='star'))));
+  work.classList.toggle('hand',t==='hand');work.classList.toggle('draw',/^(text|image|rect|ellipse|line|polygon|star|pen|pencil)$/.test(t));
+  const H={pen:'Clic : ajouter un point · glisser : courbe · clic sur le premier point : fermer · Entrée : terminer',pencil:'Glisser pour dessiner à main levée',eye:'Choisis l’objet à modifier, puis clique avec la pipette sur l’objet dont tu veux copier le style',polygon:'Trace le cadre du polygone (le nombre de côtés se règle dans la barre du haut)',star:'Trace le cadre de l’étoile (le nombre de branches se règle dans la barre du haut)',direct:'Clic sur une image : la déplacer dans son cadre · ligne : tirer ses extrémités (Maj : angle) · rectangle : poignée jaune pour arrondir les coins',scale:'Choisis un objet, puis tire sur un coin pour l’agrandir ou le réduire (proportions gardées)',select:'Clic : choisir · Maj+clic : ajouter · glisser : déplacer (Alt : dupliquer) · double-clic sur un texte : écrire, sur une image : recadrer',hand:'Glisser pour déplacer la vue',text:'Trace le cadre de texte, puis écris',image:'Trace le cadre, puis choisis l’image',rect:'Trace le rectangle (Maj : carré)',ellipse:'Trace l’ellipse (Maj : cercle)',line:'Trace la ligne (Maj : horizontale / verticale / 45°)'};
   hint(H[t]||'');syncToolbar();
   drawSel();
 }
@@ -512,7 +516,8 @@ work.addEventListener('pointerdown',e=>{
   if(S.imgEdit){const el=e.target.closest('.it');if(el&&el.dataset.id===S.imgEdit){startImgPan(e);return;}endImgEdit();}
   const pi=pageAt(e.clientX,e.clientY);const [mx,my]=toMM(e.clientX,e.clientY,pi);
   if(S.link){const el=e.target.closest('.it.tx');if(el){finishLink(el.dataset.id);return;}startDraw(e,pi,mx,my,'text',true);return;}
-  if(/^(text|image|rect|ellipse|line)$/.test(S.tool)){const el=e.target.closest('.it.tx');if(S.tool==='text'&&el){setSel([el.dataset.id]);startEdit(el.dataset.id,e);return;}startDraw(e,pi,mx,my,S.tool);return;}
+  if((typeof VT!=='undefined')&&VT.down(e,pi,mx,my))return;
+  if(/^(text|image|rect|ellipse|line|polygon|star)$/.test(S.tool)){const el=e.target.closest('.it.tx');if(S.tool==='text'&&el){setSel([el.dataset.id]);startEdit(el.dataset.id,e);return;}startDraw(e,pi,mx,my,S.tool);return;}
   if(S.tool==='direct'){const ep=e.target.closest('.hd[data-ep]');if(ep){startEnd(e,ep.dataset.ep);return;}if(e.target.closest('.rh')){startRad(e);return;}}
   const sgh=S.tool==='scale'&&e.target.closest('.sgh');if(sgh){startScale(e,sgh.dataset.h);return;}
   // sélection
@@ -617,6 +622,7 @@ function startDraw(e,pi,mx,my,type,forLink){
       r={x:x0,y:y0,w:type==='line'?60:type==='text'?cw:60,h:type==='line'?0:type==='text'?40:40,dir:0};}
     const it={id:uid(),type,x:r.x,y:r.y,w:Math.max(type==='line'?0:2,r.w),h:Math.max(type==='line'?0:2,r.h)};
     const D=S.doc.defaults||(S.doc.defaults={fill:'#e0533d',stroke:'#1d1d1f',sw:0.5});
+    if(type==='polygon'||type==='star')VT.shape(it,type);
     if(type==='rect'||type==='ellipse'){it.fill=D.fill;it.stroke=D.stroke;it.sw=0;}
     if(type==='line'){it.stroke=D.stroke;it.sw=D.sw||0.5;it.dir=r.dir;}
     if(type==='text'){it.pad=0;if(forLink&&S.link){linkNew(it,pi);return;}it.story=uid();S.doc.stories[it.story]='<p class="st-texte"><br></p>';}
@@ -803,8 +809,8 @@ function syncToolbar(){if(window.AtelierZoom&&AtelierZoom.on)return;
   else if(one&&(one.type==='rect'||one.type==='ellipse')){h=`<b>${one.type==='rect'?'Rectangle':'Ellipse'}</b>${fillStroke(one)}${one.type==='rect'?`<label>Arrondi<input type="number" id="tbRad" min="0" max="200" step="0.5" value="${one.rad||0}"> mm</label>`:''}`;}
   else if(one&&one.type==='line'){h=`<b>Ligne</b><label>Couleur ${colIn('tbStroke',one.stroke)}</label><label>Épaisseur<input type="number" id="tbSw" min="0.05" max="50" step="0.05" value="${one.sw||0.5}"> mm</label>`;}
   else if(one&&one.type==='svg'){h=`<b>Dessin</b><span class="muted">Dessin vectoriel (SVG) : il reste net à l’impression. Maj en tirant un coin : garder les proportions.</span>`;}
-  else if(/^(rect|ellipse|line)$/.test(S.tool)){const D=S.doc.defaults||(S.doc.defaults={fill:'#e0533d',stroke:'#1d1d1f',sw:0.5});
-    h=`<b>${{rect:'Rectangle',ellipse:'Ellipse',line:'Ligne'}[S.tool]}</b>${S.tool!=='line'?`<label>Forme <select id="tdShape"><option value="rect"${S.tool==='rect'?' selected':''}>Rectangle</option><option value="ellipse"${S.tool==='ellipse'?' selected':''}>Ellipse</option></select></label><label>Fond ${colIn('tdFill',D.fill)}</label>`:''}<label>Contour ${colIn('tdStroke',D.stroke)}</label><span class="muted">Trace la forme sur la page (Maj : ${S.tool==='line'?'45°':'proportions égales'}).</span>`;}
+  else if(/^(rect|ellipse|line|polygon|star|pen|pencil)$/.test(S.tool)){const D=S.doc.defaults||(S.doc.defaults={fill:'#e0533d',stroke:'#1d1d1f',sw:0.5});
+    h=`<b>${{rect:'Rectangle',ellipse:'Ellipse',line:'Ligne',polygon:'Polygone',star:'Étoile',pen:'Plume',pencil:'Crayon'}[S.tool]}</b>${/^(rect|ellipse|polygon|star)$/.test(S.tool)?`<label>Forme <select id="tdShape">${[['rect','Rectangle'],['ellipse','Ellipse'],['polygon','Polygone'],['star','Étoile']].map(o=>`<option value="${o[0]}"${S.tool===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select></label>`:''}${/^(polygon|star)$/.test(S.tool)?`<label>${S.tool==='star'?'Branches':'Côtés'}<input type="number" id="tdN" min="3" max="30" step="1" value="${S.tool==='star'?(S.nStar||5):(S.nPoly||6)}" style="width:60px"></label>`:''}${S.tool!=='line'?`<label>Fond ${colIn('tdFill',D.fill)}</label>`:''}<label>Contour ${colIn('tdStroke',D.stroke)}</label><span class="muted">Trace la forme sur la page (Maj : ${S.tool==='line'?'45°':'proportions égales'}).</span>`;}
   else if(S.tool==='text')h='<b>Cadre de texte</b><span class="muted">Trace le cadre sur la page (ou clique pour un cadre de la largeur d’une colonne), puis écris. Un texte trop long peut continuer dans un autre cadre avec « + ».</span>';
   else if(S.tool==='image')h='<b>Cadre d’image</b><span class="muted">Trace le cadre, puis choisis l’image. Tu peux aussi glisser des images sur la page.</span>';
   else if(items.length>1)h=`<b>${items.length} objets</b><span class="grp">${[['l','Aligner à gauche','⇤'],['ch','Centrer horizontalement','↔'],['r','Aligner à droite','⇥'],['t','Aligner en haut','⤒'],['cv','Centrer verticalement','↕'],['b','Aligner en bas','⤓']].map(([k,t,i])=>`<button class="btn sm ic" data-align="${k}" title="${t}">${i}</button>`).join('')}</span><span class="muted">Alignés entre eux.</span>`;
@@ -878,6 +884,7 @@ function syncPanels(){
       ${it.type==='text'?`<label class="chk"><input type="checkbox" data-o="bg"${it.fill&&it.fill!=='none'?' checked':''}> Fond du cadre</label><input type="color" data-o="fill" value="${it.fill&&it.fill!=='none'?it.fill:'#ffffff'}">`:''}
       <div class="btns"><button class="btn sm" data-oa="front">Premier plan</button><button class="btn sm" data-oa="back">Arrière-plan</button><button class="btn sm" data-oa="dup">Dupliquer</button><button class="btn sm" data-oa="del">Supprimer</button></div>`;}
   else ob.innerHTML=items.length?`<div class="muted">${items.length} objets choisis.</div><div class="btns"><button class="btn sm" data-oa="front">Premier plan</button><button class="btn sm" data-oa="back">Arrière-plan</button><button class="btn sm" data-oa="dup">Dupliquer</button><button class="btn sm" data-oa="del">Supprimer</button></div>`:'<div class="muted">Choisis un objet sur la page pour régler sa position et sa taille.</div>';
+  VT.objExtra(items);
   // pages
   $('#pgList').innerHTML=S.doc.pages.map((p,i)=>`<div data-pg="${i}" class="${i===S.page?'on':''}"><b>Page ${i+1}</b><span class="muted">${p.items.length} obj.</span><button data-pa="up" title="Monter">↑</button><button data-pa="down" title="Descendre">↓</button><button data-pa="dup" title="Dupliquer la page">⧉</button><button data-pa="del" title="Supprimer la page">✕</button></div>`).join('');
   $('#docName').textContent=S.name?'· '+S.name:'';
@@ -966,7 +973,7 @@ document.addEventListener('keydown',e=>{
   if(k==='Enter'&&S.sel.length===1){const it=selItems()[0];if(it.type==='text'){e.preventDefault();startEdit(it.id);return;}}
   if(k==='Delete'||k==='Backspace'){if(S.sel.length){e.preventDefault();deleteSel();}return;}
   if(k.startsWith('Arrow')&&S.sel.length){e.preventDefault();const s=e.shiftKey?10:1;nudge(k==='ArrowLeft'?-s:k==='ArrowRight'?s:0,k==='ArrowUp'?-s:k==='ArrowDown'?s:0);return;}
-  const T={v:'select',a:'direct',h:'hand',t:'text',i:'image',r:'rect',e:'ellipse',l:'line'}[k.toLowerCase()];if(T){setTool(T);return;}
+  const T={v:'select',a:'direct',p:'pen',n:'pencil',y:'eye',h:'hand',t:'text',i:'image',r:'rect',e:'ellipse',l:'line'}[k.toLowerCase()];if(T){setTool(T);return;}
   if(k===';'){$('#tGuides').click();return;}
 });
 document.addEventListener('keyup',e=>{if(e.key===' '&&S.space){S.space=false;work.classList.toggle('hand',S.tool==='hand');}});
@@ -1240,6 +1247,7 @@ $('#fPptx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)import
 <script src="../lib/pptx.js"></script>
 <script src="../lib/idml.js"></script>
 <script src="../lib/unsaved.js"></script>
+<script src="../lib/paper-core.min.js"></script>
 <script src="../lib/drop.js"></script>
 <script src="../lib/zoom.js"></script>
 <script>
@@ -1250,8 +1258,199 @@ AtelierDrop.init({app:'mise',own:true,accept:f=>isImg(f)||ext(f)==='svg'||f.type
 </script>
 <script src="../lib/help.js"></script>
 <script src="../lib/fs.js"></script>
+<script>
+/* =====================================================================
+   Outils venus de Vecto / Paysage : tracés (plume, crayon), formes (polygone, étoile),
+   pipette, combiner les formes, texte sur un tracé, vectoriser une image
+   ===================================================================== */
+const VT={pen:null};
+(function(){
+const P=paper;let ready=false;
+function init(){if(!ready){P.setup(document.createElement('canvas'));ready=true;}}
+const DEF=()=>S.doc.defaults||(S.doc.defaults={fill:'#e0533d',stroke:'#1d1d1f',sw:0.5});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const r2=v=>Math.round(v*100)/100;
+
+/* ----- affichage d'un tracé ----- */
+VT.html=function(it,st){
+  const vw=it.vw||it.w||1,vh=it.vh||it.h||1,id='tp'+it.id;
+  const stroke=it.hide?'none':(it.stroke&&it.stroke!=='none'&&it.sw?it.stroke:'none'),fill=it.hide?'none':(it.fill||'none');
+  const tx=it.tx?`<text font-size="${it.tsz||6}" fill="${it.tcol||'#000000'}" style="font-family:inherit"><textPath href="#${id}" startOffset="${it.toff||0}%">${esc(it.tx)}</textPath></text>`:'';
+  return `<div class="it" data-id="${it.id}" style="${st}"><svg viewBox="0 0 ${vw} ${vh}" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none"><path id="${id}" d="${it.d}" fill="${fill}" fill-rule="evenodd" stroke="${stroke}" stroke-width="${it.sw||0}" stroke-linejoin="round" stroke-linecap="round"/>${tx}</svg></div>`;
+};
+
+/* ----- création d'un objet tracé depuis un chemin Paper (coordonnées page, mm) ----- */
+function addPath(pi,path,style,index){
+  const b=path.bounds;path.translate(new P.Point(-b.x,-b.y));
+  const it=Object.assign({id:uid(),type:'path',x:r2(b.x),y:r2(b.y),w:Math.max(r2(b.width),0.1),h:Math.max(r2(b.height),0.1),vw:Math.max(r2(b.width),0.1),vh:Math.max(r2(b.height),0.1),d:path.pathData},style);
+  const arr=S.doc.pages[pi].items;if(index==null)arr.push(it);else arr.splice(index,0,it);
+  S.page=pi;S.sel=[it.id];commit();return it;
+}
+VT.addPath=addPath;
+
+/* ----- aperçu pendant le tracé ----- */
+function ovOf(pi){return canvas.querySelector(`.pg[data-p="${pi}"] .ov`);}
+function prev(pi,d){const ov=ovOf(pi);if(!ov)return;let s=ov.querySelector('svg.vtp');const Pg=S.doc.page;
+  if(!s){ov.insertAdjacentHTML('beforeend',`<svg class="vtp" viewBox="0 0 ${Pg.w} ${Pg.h}" style="position:absolute;left:0;top:0;width:${Pg.w}mm;height:${Pg.h}mm;overflow:visible;pointer-events:none"><path fill="none" stroke="#2b7fff" stroke-width="0.5" stroke-linejoin="round"/></svg>`);s=ov.querySelector('svg.vtp');}
+  s.firstChild.setAttribute('d',d);}
+function clearPrev(pi){const ov=ovOf(pi);if(ov){const s=ov.querySelector('svg.vtp');if(s)s.remove();}}
+
+/* ----- crayon ----- */
+function pencil(e,pi,mx,my){
+  e.preventDefault();init();const pts=[[mx,my]];prev(pi,`M${mx} ${my}`);
+  const mv=ev=>{const [x,y]=toMM(ev.clientX,ev.clientY,pi),l=pts[pts.length-1];if(Math.hypot(x-l[0],y-l[1])<0.3)return;pts.push([x,y]);prev(pi,'M'+pts.map(p=>p[0].toFixed(2)+' '+p[1].toFixed(2)).join('L'));};
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);clearPrev(pi);if(pts.length<2)return;
+    const path=new P.Path({insert:false});pts.forEach(p=>path.add(new P.Point(p[0],p[1])));path.simplify(0.4);
+    const D=DEF();addPath(pi,path,{fill:'none',stroke:D.stroke,sw:D.sw||0.5});};
+  addEventListener('pointermove',mv);addEventListener('pointerup',up);
+}
+
+/* ----- plume ----- */
+function drawPen(){const st=VT.pen;if(st)prev(st.pi,st.path.pathData||'');}
+function pen(e,pi,mx,my){
+  e.preventDefault();init();let st=VT.pen;if(st&&st.pi!==pi){VT.finishPen(false);st=null;}
+  if(!st)st=VT.pen={pi,path:new P.Path({insert:false})};
+  const thr=8/(S.zoom*PXMM),pt=new P.Point(mx,my);
+  if(st.path.segments.length>=2&&pt.getDistance(st.path.firstSegment.point)<thr){st.path.closed=true;VT.finishPen(true);return;}
+  const seg=st.path.add(pt);
+  const mv=ev=>{const [x,y]=toMM(ev.clientX,ev.clientY,pi),h=new P.Point(x,y).subtract(pt);if(h.length>0.4){seg.handleOut=h;seg.handleIn=h.multiply(-1);}drawPen();};
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);drawPen();};
+  addEventListener('pointermove',mv);addEventListener('pointerup',up);drawPen();
+  hint('Clic : ajouter un point · glisser : courbe · clic sur le premier point : fermer · Entrée ou double-clic : terminer · Échap : annuler');
+}
+VT.finishPen=function(closed){
+  const st=VT.pen;if(!st)return;VT.pen=null;clearPrev(st.pi);
+  if(st.path.segments.length<2)return;
+  const D=DEF();const it=addPath(st.pi,st.path,{fill:closed||st.path.closed?D.fill:'none',stroke:D.stroke,sw:D.sw||0.5});
+  if(S.tool==='pen'){setTool('select');setSel([it.id]);}
+};
+VT.cancelPen=function(){const st=VT.pen;if(!st)return;VT.pen=null;clearPrev(st.pi);};
+document.addEventListener('keydown',e=>{
+  if(!VT.pen||S.tool!=='pen')return;
+  if(e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();VT.finishPen(false);}
+  else if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();VT.cancelPen();hint('');}
+},true);
+work.addEventListener('dblclick',e=>{
+  if(!VT.pen||S.tool!=='pen')return;e.stopImmediatePropagation();
+  const s=VT.pen.path.segments;if(s.length>=3&&s[s.length-1].point.getDistance(s[s.length-2].point)<0.6)VT.pen.path.removeSegment(s.length-1);
+  VT.finishPen(false);
+},true);
+
+/* ----- pipette : copie le style d'un objet vers l'objet choisi (ou vers les prochaines formes) ----- */
+function eye(e){
+  e.preventDefault();const el=e.target.closest('.it'),src=el&&findItem(el.dataset.id);
+  if(!src){hint('Choisis d’abord l’objet à modifier, puis clique avec la pipette sur l’objet dont tu veux copier le style.');return;}
+  const targets=selItems().filter(t=>t.id!==src.id&&/^(rect|ellipse|path|line)$/.test(t.type));
+  if(targets.length){targets.forEach(t=>{if(t.type==='line'){if(src.stroke&&src.stroke!=='none')t.stroke=src.stroke;if(src.sw)t.sw=src.sw;}
+    else{if(src.fill!==undefined)t.fill=src.fill;if(src.stroke!==undefined)t.stroke=src.stroke;if(src.sw!==undefined)t.sw=src.sw;}});
+    commit();hint('Style appliqué.');}
+  else{const D=DEF();if(src.fill&&src.fill!=='none')D.fill=src.fill;if(src.stroke&&src.stroke!=='none')D.stroke=src.stroke;if(src.sw)D.sw=src.sw;hint('Style copié : les prochaines formes l’utiliseront. (Pour modifier un objet : choisis-le avant la pipette.)');}
+}
+
+VT.down=function(e,pi,mx,my){
+  const t=S.tool;
+  if(t==='pencil'){pencil(e,pi,mx,my);return true;}
+  if(t==='pen'){pen(e,pi,mx,my);return true;}
+  if(t==='eye'){eye(e);return true;}
+  return false;
+};
+
+/* ----- polygone, étoile (dans le cadre tracé) ----- */
+VT.shape=function(it,kind){
+  const n=Math.max(3,Math.min(30,Math.round(kind==='polygon'?(S.nPoly||6):(S.nStar||5)))),w=it.w,h=it.h,pts=[];
+  const m=kind==='star'?n*2:n;
+  for(let i=0;i<m;i++){const a=-Math.PI/2+i*2*Math.PI/m,k=kind==='star'&&i%2?0.45:1;pts.push([w/2+Math.cos(a)*w/2*k,h/2+Math.sin(a)*h/2*k]);}
+  const D=DEF();
+  Object.assign(it,{type:'path',vw:w,vh:h,d:'M'+pts.map(p=>p[0].toFixed(2)+' '+p[1].toFixed(2)).join('L')+'Z',fill:D.fill,stroke:D.stroke,sw:0});
+};
+
+/* ----- combiner les formes ----- */
+function toPaper(it){
+  init();let p=null;
+  if(it.type==='rect'){const r=new P.Rectangle(it.x,it.y,it.w,it.h);p=it.rad?new P.Path.Rectangle(r,new P.Size(Math.min(it.rad,it.w/2),Math.min(it.rad,it.h/2))):new P.Path.Rectangle(r);}
+  else if(it.type==='ellipse')p=new P.Path.Ellipse(new P.Rectangle(it.x,it.y,it.w,it.h));
+  else if(it.type==='path'){p=new P.CompoundPath({pathData:it.d,fillRule:'evenodd'});const sx=it.w/(it.vw||it.w||1),sy=it.h/(it.vh||it.h||1);p.scale(sx,sy,new P.Point(0,0));p.translate(new P.Point(it.x,it.y));}
+  else return null;
+  p.insert=false;if(it.rot)p.rotate(it.rot,new P.Point(it.x+it.w/2,it.y+it.h/2));
+  return p;
+}
+const COMB=it=>/^(rect|ellipse|path)$/.test(it.type);
+VT.combine=function(op){
+  const sel=selItems().filter(COMB);if(sel.length<2){alert('Choisis au moins deux formes (rectangle, ellipse ou tracé).');return;}
+  const pi=pageOf(sel[0].id);if(sel.some(i=>pageOf(i.id)!==pi)){alert('Les formes doivent être sur la même page.');return;}
+  const arr=S.doc.pages[pi].items,order=sel.slice().sort((a,b)=>arr.indexOf(a)-arr.indexOf(b));
+  const ps=order.map(toPaper);let res=ps[0];
+  try{for(let i=1;i<ps.length;i++)res=res[op](ps[i],{insert:false});}catch(err){alert('Combinaison impossible : '+err.message);return;}
+  if(!res||!res.bounds||!(res.bounds.width>0||res.bounds.height>0)){alert('Le résultat est vide.');return;}
+  const base=order[0],idx=arr.indexOf(base);
+  const style={fill:base.fill!==undefined?base.fill:DEF().fill,stroke:base.stroke,sw:base.sw||0};
+  const ids=new Set(order.map(i=>i.id));
+  S.doc.pages[pi].items=arr.filter(i=>!ids.has(i.id));
+  addPath(pi,res,style,Math.min(idx,S.doc.pages[pi].items.length));
+};
+
+/* ----- vectoriser une image ----- */
+let wk=null;
+VT.vectorize=async function(it,thr,keep){
+  const o=IMG.get(it.key);if(!o)return;
+  const img=await new Promise((ok,ko)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=()=>ko(new Error('image illisible'));im.src=o.url;});
+  const k=Math.min(10,1400/Math.max(it.w,it.h)),cw=Math.max(8,Math.round(it.w*k)),ch=Math.max(8,Math.round(it.h*k)),g=imgGeom(it,o);
+  const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cw,ch);
+  cx.drawImage(img,g.x*k,g.y*k,g.w*k,g.h*k);
+  const px=cx.getImageData(0,0,cw,ch).data,bits=new Int8Array(cw*ch);
+  for(let i=0;i<bits.length;i++){const l=0.3*px[i*4]+0.59*px[i*4+1]+0.11*px[i*4+2];bits[i]=l<thr?1:0;}
+  if(!wk)wk=new Worker('../vecto/potrace-worker.js');
+  const res=await new Promise((ok,ko)=>{wk.onmessage=ev=>ev.data.error?ko(new Error(ev.data.error)):ok(ev.data);wk.onerror=er=>ko(new Error(er.message||'calcul'));
+    wk.postMessage({id:1,w:cw,h:ch,data:bits,params:{turdsize:4,alphamax:1,opttolerance:0.4,optcurve:true,close:0}},[bits.buffer]);});
+  if(!res.shapes.length){alert('Aucune forme noire trouvée : essaie un seuil plus clair.');return;}
+  const pi=pageOf(it.id),arr=S.doc.pages[pi].items,idx=arr.indexOf(it);
+  const n={id:uid(),type:'path',x:it.x,y:it.y,w:it.w,h:it.h,vw:cw,vh:ch,d:res.shapes.map(s=>s.d).join(''),fill:'#000000',stroke:'none',sw:0};
+  if(it.rot)n.rot=it.rot;
+  arr.splice(idx+1,0,n);if(!keep)arr.splice(idx,1);
+  S.page=pi;S.sel=[n.id];commit();
+};
+
+/* ----- panneau « Objet » : réglages des tracés, combiner, vectoriser ----- */
+VT.objExtra=function(items){
+  const ob=$('#objBox');if(!ob)return;let h='';
+  const comb=items.length>=2&&items.every(COMB);
+  if(comb)h+=`<div class="muted" style="margin-top:6px">Combiner les formes</div><div class="btns"><button class="btn sm" data-vt="unite" title="Réunir en une seule forme">Unir</button><button class="btn sm" data-vt="subtract" title="Retirer les formes du dessus de la forme du dessous">Soustraire</button><button class="btn sm" data-vt="intersect" title="Garder ce qui est commun">Intersection</button><button class="btn sm" data-vt="exclude" title="Garder ce qui n’est pas commun">Exclusion</button></div>`;
+  if(items.length===1){const it=items[0];
+    if(it.type==='path'){const hasF=it.fill&&it.fill!=='none',hasS=it.stroke&&it.stroke!=='none';
+      h+=`<div class="muted" style="margin-top:6px">Tracé</div><div class="g2"><label class="chk"><input type="checkbox" data-vp="fillon"${hasF?' checked':''}> Fond</label><input type="color" data-vp="fill" value="${hasF?it.fill:'#e0533d'}">
+        <label class="chk"><input type="checkbox" data-vp="strokeon"${hasS&&it.sw?' checked':''}> Contour</label><input type="color" data-vp="stroke" value="${hasS?it.stroke:'#1d1d1f'}">
+        <label>Épaisseur (mm)<input type="number" min="0" max="50" step="0.1" data-vp="sw" value="${it.sw||0}"></label></div>
+        <div class="muted" style="margin-top:6px">Texte sur le tracé</div><input type="text" data-vp="tx" placeholder="Écris ici…" value="${esc(it.tx||'')}" style="width:100%">
+        <div class="g2"><label>Taille (mm)<input type="number" min="1" max="200" step="0.5" data-vp="tsz" value="${it.tsz||6}"></label><label>Début (%)<input type="number" min="0" max="100" step="1" data-vp="toff" value="${it.toff||0}"></label></div>
+        <div class="g2"><label>Couleur<input type="color" data-vp="tcol" value="${it.tcol||'#000000'}"></label><label class="chk"><input type="checkbox" data-vp="hide"${it.hide?' checked':''}> Cacher le tracé</label></div>`;}
+    if(it.type==='image'&&it.key)h+=`<div class="muted" style="margin-top:6px">Vectoriser</div><label>Seuil du noir<input type="range" min="40" max="220" value="128" id="vtThr"></label><label class="chk"><input type="checkbox" id="vtKeep"> Garder l’image</label><div class="btns"><button class="btn sm" data-vt="vectorize" title="Transforme le dessin noir de l’image en tracé net">Vectoriser</button></div>`;}
+  if(h)ob.insertAdjacentHTML('beforeend',h);
+};
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('#objBox [data-vt]');if(!b)return;const a=b.dataset.vt;
+  if(a==='vectorize'){const it=selItems()[0];if(!it)return;b.disabled=true;b.textContent='Calcul…';VT.vectorize(it,+$('#vtThr').value,$('#vtKeep').checked).catch(er=>alert('Vectorisation impossible : '+er.message)).finally(()=>{b.disabled=false;b.textContent='Vectoriser';});return;}
+  VT.combine(a);
+});
+document.addEventListener('input',e=>{
+  const t=e.target;if(!t.dataset||!t.dataset.vp||!t.closest('#objBox'))return;const it=selItems()[0];if(!it||it.type!=='path')return;const k=t.dataset.vp,D=DEF();
+  if(k==='fillon'){it.fill=t.checked?$('#objBox [data-vp=fill]').value:'none';}
+  else if(k==='fill'){it.fill=t.value;}
+  else if(k==='strokeon'){it.stroke=t.checked?$('#objBox [data-vp=stroke]').value:'none';if(t.checked&&!it.sw)it.sw=D.sw||0.5;}
+  else if(k==='stroke'){it.stroke=t.value;if(!it.sw)it.sw=D.sw||0.5;}
+  else if(k==='sw'){it.sw=Math.max(0,+t.value||0);}
+  else if(k==='tx'){it.tx=t.value;}
+  else if(k==='tsz'||k==='toff'){it[k]=+t.value;}
+  else if(k==='tcol'){it.tcol=t.value;}
+  else if(k==='hide'){it.hide=t.checked;}
+  const el=itemEl(it.id);if(el)el.outerHTML=itemHTML(it);drawSel();
+});
+document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.vp&&t.closest&&t.closest('#objBox'))commit();});
+/* nombre de côtés / de branches */
+tbEl.addEventListener('input',e=>{if(e.target.id==='tdN'){const v=Math.max(3,Math.min(30,Math.round(+e.target.value||0)));if(S.tool==='star')S.nStar=v;else S.nPoly=v;}});
+})();
+</script>
 <script>AtelierHelp.init({app:"mise",title:"La Suite Mise en page",sections:[
-{title:"Outils",keys:[["V","Sélection"],["A","Sélection directe : déplacer une image dans son cadre, tirer les extrémités d’une ligne, arrondir un rectangle"],["H ou Espace","Main : déplacer la vue"],["T","Cadre de texte"],["I","Cadre d’image"],["R / E / L","Rectangle, ellipse, ligne"],["Ouvrir un PDF…","Chaque page du PDF devient une page : ses textes deviennent des cadres modifiables (police, taille, couleur), le reste une image de fond verrouillée (Alt + clic pour la sélectionner) ; une page sans texte (scan) devient une image"],["Glisser un objet","Avec la flèche : au-delà du haut ou du bas de la page, il passe sur la page d’avant ou d’après ; à gauche ou à droite, il peut rester hors de la page"],["Ctrl + C / X / V","Copier, couper, coller des cadres de texte, images et formes (aussi d’une page à l’autre)"],["Z","Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; options au-dessus"],["Molette / Alt / Ctrl","Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"],["Ctrl 0","Voir la page entière"],[";","Afficher / masquer les repères"]]},
+{title:"Outils",keys:[["V","Sélection"],["A","Sélection directe : déplacer une image dans son cadre, tirer les extrémités d’une ligne, arrondir un rectangle"],["H ou Espace","Main : déplacer la vue"],["T","Cadre de texte"],["I","Cadre d’image"],["R / E / L","Rectangle, ellipse, ligne"],["P / N","Plume (clic : points, glisser : courbes, Entrée : terminer) · crayon à main levée"],["Y","Pipette : copier le style d’un objet vers l’objet choisi"],["Ouvrir un PDF…","Chaque page du PDF devient une page : ses textes deviennent des cadres modifiables (police, taille, couleur), le reste une image de fond verrouillée (Alt + clic pour la sélectionner) ; une page sans texte (scan) devient une image"],["Glisser un objet","Avec la flèche : au-delà du haut ou du bas de la page, il passe sur la page d’avant ou d’après ; à gauche ou à droite, il peut rester hors de la page"],["Ctrl + C / X / V","Copier, couper, coller des cadres de texte, images et formes (aussi d’une page à l’autre)"],["Z","Loupe : tracer un cadre pour zoomer dessus, clic : zoom avant, Alt + clic : zoom arrière ; options au-dessus"],["Molette / Alt / Ctrl","Molette : défilement vertical · Alt + molette : zoom · Ctrl + molette : horizontal · Ctrl + 0 : ajuster"],["Ctrl 0","Voir la page entière"],[";","Afficher / masquer les repères"]]},
 {title:"Objets",keys:[["Alt + glisser","Déposer une copie"],["Maj + glisser","Déplacer droit / garder les proportions"],["Ctrl + glisser","Sans magnétisme"],["Flèches","Déplacer de 1 mm (Maj : 10 mm)"],["Ctrl+D","Dupliquer"],["Ctrl+C / X / V","Copier, couper, coller (aussi images et dessins de Vecto)"],["Suppr","Supprimer"],["Ctrl+Maj+] / [","Premier plan / arrière-plan"],["Ctrl+Z / Y","Annuler / rétablir"]]},
 {title:"Texte",keys:[["Double-clic ou Entrée","Écrire dans le cadre"],["Échap","Terminer"],["Ctrl+B / I / U","Gras, italique, souligné"],["+ rouge","Le texte ne tient pas : clique pour le faire suivre dans un autre cadre"]],params:[["Styles","Titre, Sous-titre, Texte, Légende : modifie-les dans le panneau de droite, tous les textes suivent."],["Texte qui suit","Un texte peut couler d’un cadre à l’autre, même sur une autre page. « Détacher ce cadre » le retire de la suite."]]},
 {title:"Images",keys:[["Double-clic","Déplacer l’image dans son cadre (molette : zoom)"],["Glisser-déposer","Ajouter des images ; sur un cadre vide, l’image va dedans"]]},
