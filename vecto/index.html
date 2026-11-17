@@ -512,18 +512,20 @@ function resizeView(){const r=$('#stage').getBoundingClientRect(),tb=$('#toolBar
   addEventListener('DOMContentLoaded',()=>{const tb=$('#toolBar');if(!tb)return;new ResizeObserver(chk).observe(tb);new MutationObserver(chk).observe(tb,{attributes:true,attributeFilter:['hidden']});});
   if(document.readyState!=='loading')setTimeout(()=>{const tb=$('#toolBar');if(tb){new ResizeObserver(chk).observe(tb);new MutationObserver(chk).observe(tb,{attributes:true,attributeFilter:['hidden']});}},0);})();
 let showPts=false,ptsRaf=0;
+let penFlash=null;
 function drawPts(){if(ptsRaf)return;ptsRaf=requestAnimationFrame(()=>{ptsRaf=0;_drawPts();});}
 function _drawPts(){
   const c=$('#pts'),dpr=window.devicePixelRatio||1,r=c.getBoundingClientRect();
   if(c.width!==Math.round(r.width*dpr)||c.height!==Math.round(r.height*dpr)){c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);}
   const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,c.width,c.height);
-  if(!showPts)return;
+  if(!showPts&&S.tool!=='pen'&&!penFlash)return;
   x.setTransform(dpr,0,0,dpr,0,0);
-  const vb=view.bounds,s=3;
+  const vb=view.bounds,s=S.tool==='pen'?6:3;
   x.fillStyle='#fff';x.strokeStyle='#ff2d9b';x.lineWidth=1;
   userLayers().forEach(l=>{if(!l.visible)return;l.getItems({class:P.Path,match:p=>p.bounds.intersects(vb)}).forEach(p=>{
-    p.segments.forEach(sg=>{const v=view.projectToView(sg.point);if(v.x<-5||v.y<-5||v.x>r.width+5||v.y>r.height+5)return;x.fillRect(v.x-s/2,v.y-s/2,s,s);x.strokeRect(v.x-s/2,v.y-s/2,s,s);});
+    if(showPts||S.tool==='pen')p.segments.forEach(sg=>{const v=view.projectToView(sg.point);if(v.x<-5||v.y<-5||v.x>r.width+5||v.y>r.height+5)return;x.fillRect(v.x-s/2,v.y-s/2,s,s);x.strokeRect(v.x-s/2,v.y-s/2,s,s);});
   });});
+  if(penFlash){if(Date.now()-penFlash.t<1800&&S.tool==='pen'){const v=view.projectToView(penFlash.pt);x.beginPath();x.arc(v.x,v.y,6,0,7);x.fillStyle='#ff2d9b';x.fill();x.lineWidth=2;x.strokeStyle='#fff';x.stroke();setTimeout(drawPts,1900);}else penFlash=null;}
 }
 function afterView(){drawPts();$('#zLab').textContent=Math.round(view.zoom/(96/25.4)*100)+' %';drawUI();}
 function zoomAt(f,pt){const z0=view.zoom,z=Math.min(200,Math.max(0.05,z0*f));const p=pt||view.center;const c=view.center;view.zoom=z;view.center=p.add(c.subtract(p).multiply(z0/z));afterView();}
@@ -1057,7 +1059,7 @@ function penEditPts(e){
   if(!best)return false;const {p,loc}=best;
   const seg=p.segments.find(s=>s.point.getDistance(e.point)<=tol);
   if(seg){if(p.segments.length<=2)return true;seg.remove();commit();return true;}
-  p.divideAt(loc);commit();return true;
+  p.divideAt(loc);penFlash={pt:loc.point.clone(),t:Date.now()};commit();drawPts();return true;
 }
 function penDown(e){
   if(penEditPts(e))return;
