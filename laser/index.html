@@ -58,6 +58,11 @@ h2:first-child{margin-top:0}
     <div class="warn" id="warn"></div>
     <h2>Surface de la machine</h2>
     <div class="f"><input id="bw" type="number" min="10" step="10"> × <input id="bh" type="number" min="10" step="10"> mm</div>
+    <h2>Essai de connexion USB</h2>
+    <div class="note">Branche la machine à l’ordinateur en USB, allume-la, puis utilise Chrome ou Edge. Le test fait seulement bouger la tête, sans laser.</div>
+    <div class="f"><button id="bTest">Afficher un carré d’essai</button> <button id="bConn">Connecter la machine</button></div>
+    <div class="f"><button id="bSend" disabled>Envoyer le carré (sans laser)</button></div>
+    <div class="note" id="usb"></div>
     <h2>Sur la machine</h2>
     <ol class="steps">
       <li>Copie le fichier .rd sur une clé USB (FAT32), à la racine.</li>
@@ -76,6 +81,7 @@ const KEY='laser.reglages';
 let S={bed:[500,300],ox:0,oy:0,sc:100,cols:{}};
 try{Object.assign(S,JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+let TEST=false, PORT=null;
 let DOC=null; // {name, groups:{hex:[ [ [x,y]... ] ]}, w,h} en mm, origine = coin haut-gauche du dessin
 const DEF={cut:{speed:15,power:60,passes:1},eng:{speed:100,power:20,passes:1}};
 
@@ -150,7 +156,8 @@ function draw(){
   const [bw,bh]=S.bed, m=14, k=Math.min((r.width-2*m)/bw,(r.height-2*m)/bh); if(!(k>0))return;
   const X=m,Y=m; g.fillStyle='#fff'; g.fillRect(X,Y,bw*k,bh*k); g.strokeStyle='#999'; g.strokeRect(X,Y,bw*k,bh*k);
   g.fillStyle='#999'; g.font='11px system-ui'; g.fillText('origine',X+3,Y+11);
-  $('empty').style.display=DOC?'none':'flex'; $('bDl').disabled=!DOC;
+  $('empty').style.display=(DOC||TEST)?'none':'flex'; $('bDl').disabled=!DOC;
+  if(TEST){ g.strokeStyle='#e08a00'; g.setLineDash([5,4]); g.lineWidth=1.5; g.strokeRect(X+S.ox*k,Y+S.oy*k,TS*k,TS*k); g.setLineDash([]); }
   if(!DOC){return;} check();
   Object.entries(DOC.groups).forEach(([hex,paths])=>{
     const c=colSet(hex); g.strokeStyle=c.mode==='off'?'#ccc':hex; g.setLineDash(c.mode==='off'?[3,3]:[]); g.lineWidth=c.mode==='cut'?1.4:1;
@@ -187,6 +194,37 @@ function download(){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/octet-stream'})); a.download=nm+'.rd';
   document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
 }
+
+/* ---------- essai de connexion USB (port série) ---------- */
+const TS=30;
+function sq(){ const x=Math.round(S.ox*1000),y=Math.round(S.oy*1000),t=TS*1000; return [[x,y],[x+t,y],[x+t,y+t],[x,y+t],[x,y]]; }
+const usb=m=>$('usb').textContent=m;
+$('bTest').onclick=()=>{TEST=!TEST; $('bTest').textContent=TEST?'Masquer le carré d’essai':'Afficher un carré d’essai'; if(TEST&&(S.ox+TS>S.bed[0]||S.oy+TS>S.bed[1]))usb('Attention : le carré dépasse la surface de la machine.'); updSend(); draw();};
+function updSend(){ $('bSend').disabled=!(TEST&&PORT); }
+$('bConn').onclick=async()=>{
+  if(!('serial' in navigator)){usb('Ce navigateur ne sait pas parler à la machine : utilise Chrome ou Edge sur l’ordinateur.');return;}
+  try{
+    PORT=await navigator.serial.requestPort();
+    await PORT.open({baudRate:115200,flowControl:'hardware'});
+    try{await PORT.setSignals({dataTerminalReady:true,requestToSend:true});}catch(e){}
+    const i=PORT.getInfo?PORT.getInfo():{}; usb('Port ouvert'+(i.usbVendorId?' (USB '+i.usbVendorId.toString(16)+':'+(i.usbProductId||0).toString(16)+')':'')+'. Affiche le carré puis envoie-le.');
+    RX=0; (async()=>{try{const r=PORT.readable.getReader();for(;;){const {value,done}=await r.read();if(done)break;RX+=value.length;}}catch(e){}})();
+  }catch(e){ PORT=null; usb(e&&e.name==='NotFoundError'?'Aucun port choisi. Si la liste était vide, la machine n’apparaît pas comme port USB.':'Connexion impossible : '+(e.message||e)); }
+  updSend();
+};
+let RX=0;
+$('bSend').onclick=async()=>{
+  if(!PORT||!TEST)return;
+  if(S.ox+TS>S.bed[0]||S.oy+TS>S.bed[1]){usb('Le carré dépasse la surface de la machine.');return;}
+  if(!confirm('La tête va se déplacer sur '+TS+' × '+TS+' mm à partir de X '+S.ox+' Y '+S.oy+' mm. Pas de laser. Dégage la zone et continue ?'))return;
+  try{
+    const data=RD.build([{speed:100,power:0,color:0xff8000,paths:[sq()]}],{moveOnly:true});
+    const w=PORT.writable.getWriter(); const before=RX;
+    for(let i=0;i<data.length;i+=1000){ await w.write(data.subarray(i,i+1000)); await new Promise(r=>setTimeout(r,40)); }
+    w.releaseLock();
+    usb('Envoyé ('+data.length+' octets). Si la tête a bougé, la liaison fonctionne. Réponse de la machine : '+(RX-before)+' octets.');
+  }catch(e){ usb('Envoi impossible : '+(e.message||e)); }
+};
 
 /* ---------- ouverture ---------- */
 async function openFile(f){
