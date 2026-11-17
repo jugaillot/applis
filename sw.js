@@ -1,9 +1,9 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Scripts de l'atelier : réseau d'abord aussi. Grosses bibliothèques et polices : copie locale d'abord. */
-const VERSION = 'atelier-v368';
+const VERSION = 'atelier-v369';
 const PRECACHE = [
-  '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/', '/paysage/', '/civco/', '/mise/', '/bd/', '/cahier/', '/open/', '/bd/series.json', '/bd/manifest.webmanifest','/icons/bd-icon-192.png',
+  '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/', '/paysage/', '/civco/', '/mise/', '/bd/', '/cahier/', '/laser/', '/laser/rd.js', '/open/', '/bd/series.json', '/bd/manifest.webmanifest','/icons/bd-icon-192.png',
   '/vecto/potrace-worker.js', '/lib/sync.js','/lib/tabs.js', '/lib/help.js', '/lib/fs.js', '/lib/drop.js', '/lib/pptx.js', '/lib/idml.js', '/lib/save.js', '/lib/recent.js', '/lib/zoom.js', '/lib/unsaved.js', '/lib/inbox.js', '/envoyer/',
   '/lib/paper-core.min.js', '/lib/clipper.js', '/lib/jspdf.umd.min.js', '/lib/svg2pdf.umd.min.js',
   '/lib/pdf.min.js', '/lib/pdf.worker.min.js', '/lib/pdf-lib.min.js',

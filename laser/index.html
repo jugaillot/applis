@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La Suite Laser</title>
+<script src="../lib/paper-core.min.js"></script>
+<script src="../lib/drop.js"></script>
+<script src="rd.js"></script>
+<style>
+:root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#d6402b;--soft:#f7f6f2}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:16px;margin:0 8px 0 0}
+header a{color:var(--mute);text-decoration:none;margin-right:6px}
+button,select,input{font:inherit}
+button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer}
+button.pri{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+main{flex:1;display:flex;min-height:0}
+#view{flex:1;position:relative;min-width:0}
+canvas#cv{position:absolute;inset:0;width:100%;height:100%}
+#empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--mute);padding:20px;pointer-events:none}
+aside{width:340px;max-width:44vw;background:var(--panel);border-left:1px solid var(--line);overflow:auto;padding:12px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:14px 0 6px}
+h2:first-child{margin-top:0}
+.row{display:grid;grid-template-columns:22px 1fr 58px 58px 44px;gap:5px;align-items:center;margin-bottom:6px}
+.row.h{font-size:11px;color:var(--mute);margin-bottom:2px}
+.row .sw{width:20px;height:20px;border-radius:5px;border:1px solid #0003}
+.row select,.row input{width:100%;padding:4px;border:1px solid var(--line);border-radius:6px;min-width:0}
+.f{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.f input{width:70px;padding:4px;border:1px solid var(--line);border-radius:6px}
+.note{font-size:12px;color:var(--mute)}
+.warn{color:#b3261e;font-size:12px;margin:4px 0}
+.steps{font-size:12.5px;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:8px 10px 8px 26px;margin:8px 0}
+.steps li{margin:3px 0}
+@media(max-width:760px){main{flex-direction:column}aside{width:auto;max-width:none;border-left:0;border-top:1px solid var(--line);max-height:55vh}#view{min-height:240px}}
+</style>
+</head>
+<body>
+<header>
+  <a href="../" title="Accueil">‹ La Suite</a><h1>Laser</h1>
+  <button id="bOpen">Ouvrir…</button>
+  <button id="bDl" class="pri" disabled>Télécharger pour la machine (.rd)</button>
+  <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
+</header>
+<main>
+  <div id="view"><canvas id="cv"></canvas><div id="empty">Ouvre un dessin vectoriel (SVG) depuis Vecto ou Paysage,<br>ou dépose-le ici.</div></div>
+  <aside>
+    <h2>Couleurs du dessin</h2>
+    <div class="row h"><span></span><span>Action</span><span>Vitesse mm/s</span><span>Puiss. %</span><span>Passes</span></div>
+    <div id="cols" class="note">Aucun dessin ouvert.</div>
+    <h2>Position sur la machine</h2>
+    <div class="f">Coin haut-gauche à X <input id="ox" type="number" min="0" step="1"> Y <input id="oy" type="number" min="0" step="1"> mm</div>
+    <div class="f">Échelle <input id="sc" type="number" min="1" step="1" value="100"> %</div>
+    <div class="note" id="size"></div>
+    <div class="warn" id="warn"></div>
+    <h2>Surface de la machine</h2>
+    <div class="f"><input id="bw" type="number" min="10" step="10"> × <input id="bh" type="number" min="10" step="10"> mm</div>
+    <h2>Sur la machine</h2>
+    <ol class="steps">
+      <li>Copie le fichier .rd sur une clé USB (FAT32), à la racine.</li>
+      <li>Branche la clé sur le port USB de la machine.</li>
+      <li>Sur le panneau : Menu → Fichier USB (U-disk), choisis le fichier.</li>
+      <li>Place la tête au coin voulu, touche Origine, puis Cadre pour contrôler, puis Start.</li>
+    </ol>
+    <div class="note">Premier essai : un petit carré, puissance basse, lunettes de protection. Les réglages sont des points de départ à tester sur ta matière.</div>
+  </aside>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const KEY='laser.reglages';
+let S={bed:[500,300],ox:0,oy:0,sc:100,cols:{}};
+try{Object.assign(S,JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+let DOC=null; // {name, groups:{hex:[ [ [x,y]... ] ]}, w,h} en mm, origine = coin haut-gauche du dessin
+const DEF={cut:{speed:15,power:60,passes:1},eng:{speed:100,power:20,passes:1}};
+
+/* ---------- lecture du SVG ---------- */
+function mmOf(v){ if(!v)return null; const m=/^\s*([\d.]+)\s*(mm|cm|in|pt|pc|px)?\s*$/.exec(v); if(!m)return null;
+  const k={mm:1,cm:10,in:25.4,pt:25.4/72,pc:25.4/6,px:25.4/96}[m[2]||'px']; return parseFloat(m[1])*k; }
+function parseSVG(text,name){
+  const dom=new DOMParser().parseFromString(text,'image/svg+xml'); const root=dom.documentElement;
+  if(!root||root.nodeName.toLowerCase()!=='svg'||dom.querySelector('parsererror'))throw new Error('Ce fichier n’est pas un SVG lisible.');
+  const vb=(root.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
+  const wmm=mmOf(root.getAttribute('width')), hmm=mmOf(root.getAttribute('height'));
+  let k=25.4/96; // 1 unité = 1 px
+  if(vb.length===4&&vb[2]>0){ k=wmm?wmm/vb[2]:(hmm&&vb[3]>0?hmm/vb[3]:k); }
+  root.removeAttribute('width'); root.removeAttribute('height');
+  if(vb.length!==4){ /* pas de viewBox : les unités sont des px */ }
+  paper.setup(document.createElement('canvas'));
+  const item=paper.project.importSVG(new XMLSerializer().serializeToString(root),{expandShapes:true,insert:true});
+  const groups={}; let n=0;
+  (function walk(it,depth){
+    if(it.visible===false||it.opacity===0)return;
+    if(it instanceof paper.Path||it instanceof paper.CompoundPath){
+      const col=it.strokeColor||it.fillColor; if(!col)return;
+      let hex; try{hex=col.toCSS(true).toLowerCase();}catch(e){return;}
+      const tol=0.15/k, c=it.clone({insert:false}); c.flatten(tol);
+      const subs=c instanceof paper.CompoundPath?c.children:[c];
+      subs.forEach(p=>{
+        const pts=p.segments.map(s=>[s.point.x*k,s.point.y*k]);
+        if(pts.length<2)return;
+        if(p.closed&&(pts[0][0]!==pts[pts.length-1][0]||pts[0][1]!==pts[pts.length-1][1]))pts.push(pts[0].slice());
+        (groups[hex]=groups[hex]||[]).push(pts); n++;
+      });
+      return;
+    }
+    if(it.children)it.children.forEach(ch=>walk(ch,depth+1));
+  })(item,0);
+  if(!n)throw new Error('Aucun trait trouvé dans ce dessin.');
+  let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;
+  Object.values(groups).forEach(l=>l.forEach(p=>p.forEach(q=>{if(q[0]<x0)x0=q[0];if(q[1]<y0)y0=q[1];if(q[0]>x1)x1=q[0];if(q[1]>y1)y1=q[1];})));
+  Object.keys(groups).forEach(h=>groups[h]=groups[h].map(p=>p.map(q=>[q[0]-x0,q[1]-y0])));
+  return {name:(name||'dessin').replace(/\.[^.]+$/,''),groups,w:x1-x0,h:y1-y0};
+}
+
+/* ---------- réglages par couleur ---------- */
+function colSet(hex){ if(!S.cols[hex]){ const dark=lum(hex)<0.5; S.cols[hex]=Object.assign({mode:dark?'cut':'eng'},dark?DEF.cut:DEF.eng); } return S.cols[hex]; }
+function lum(h){ const v=parseInt(h.slice(1),16); return (0.3*(v>>16&255)+0.59*(v>>8&255)+0.11*(v&255))/255; }
+function drawCols(){
+  const box=$('cols'); box.innerHTML=''; box.className='';
+  if(!DOC){box.className='note';box.textContent='Aucun dessin ouvert.';return;}
+  Object.keys(DOC.groups).forEach(hex=>{
+    const c=colSet(hex), r=document.createElement('div'); r.className='row';
+    r.innerHTML='<span class="sw" style="background:'+hex+'"></span><select><option value="cut">Découper</option><option value="eng">Graver (trait)</option><option value="off">Ignorer</option></select><input type="number" min="1" step="1"><input type="number" min="1" max="100" step="1"><input type="number" min="1" max="20" step="1">';
+    const [sel,sp,pw,ps]=r.querySelectorAll('select,input');
+    sel.value=c.mode; sp.value=c.speed; pw.value=c.power; ps.value=c.passes;
+    const up=()=>{c.mode=sel.value;c.speed=Math.max(1,+sp.value||1);c.power=Math.min(100,Math.max(1,+pw.value||1));c.passes=Math.max(1,Math.min(20,+ps.value||1));save();draw();};
+    [sel,sp,pw,ps].forEach(e=>e.addEventListener('change',up));
+    box.appendChild(r);
+  });
+}
+
+/* ---------- placement, aperçu ---------- */
+const sc=()=>Math.max(0.01,(+S.sc||100)/100);
+function bounds(){ return DOC?{w:DOC.w*sc(),h:DOC.h*sc()}:{w:0,h:0}; }
+function check(){
+  const b=bounds(); $('size').textContent=DOC?'Taille : '+b.w.toFixed(1)+' × '+b.h.toFixed(1)+' mm':'';
+  const out=DOC&&(S.ox<0||S.oy<0||S.ox+b.w>S.bed[0]+0.01||S.oy+b.h>S.bed[1]+0.01);
+  $('warn').textContent=out?'Le dessin dépasse la surface de la machine.':'';
+  return !out;
+}
+function draw(){
+  const cv=$('cv'),r=cv.getBoundingClientRect(),dpr=devicePixelRatio||1; cv.width=r.width*dpr; cv.height=r.height*dpr;
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,r.width,r.height);
+  const [bw,bh]=S.bed, m=14, k=Math.min((r.width-2*m)/bw,(r.height-2*m)/bh); if(!(k>0))return;
+  const X=m,Y=m; g.fillStyle='#fff'; g.fillRect(X,Y,bw*k,bh*k); g.strokeStyle='#999'; g.strokeRect(X,Y,bw*k,bh*k);
+  g.fillStyle='#999'; g.font='11px system-ui'; g.fillText('origine',X+3,Y+11);
+  $('empty').style.display=DOC?'none':'flex'; $('bDl').disabled=!DOC;
+  if(!DOC){return;} check();
+  Object.entries(DOC.groups).forEach(([hex,paths])=>{
+    const c=colSet(hex); g.strokeStyle=c.mode==='off'?'#ccc':hex; g.setLineDash(c.mode==='off'?[3,3]:[]); g.lineWidth=c.mode==='cut'?1.4:1;
+    g.beginPath(); paths.forEach(p=>p.forEach((q,i)=>{const x=X+(S.ox+q[0]*sc())*k,y=Y+(S.oy+q[1]*sc())*k;i?g.lineTo(x,y):g.moveTo(x,y);})); g.stroke();
+  });
+  g.setLineDash([]);
+}
+
+/* ---------- fichier machine ---------- */
+function area(p){let a=1e18,b=1e18,c=-1e18,d=-1e18;p.forEach(q=>{a=Math.min(a,q[0]);b=Math.min(b,q[1]);c=Math.max(c,q[0]);d=Math.max(d,q[1]);});return (c-a)*(d-b);}
+function nearest(paths){
+  const left=paths.slice(),out=[]; let cx=0,cy=0;
+  while(left.length){ let bi=0,bd=1e30,rev=false;
+    left.forEach((p,i)=>{const s=p[0],e=p[p.length-1],d1=(s[0]-cx)**2+(s[1]-cy)**2,d2=(e[0]-cx)**2+(e[1]-cy)**2;
+      if(d1<bd){bd=d1;bi=i;rev=false;} if(d2<bd){bd=d2;bi=i;rev=true;}});
+    let p=left.splice(bi,1)[0]; if(rev)p=p.slice().reverse(); out.push(p); const e=p[p.length-1]; cx=e[0];cy=e[1]; }
+  return out;
+}
+function layers(){
+  const L=[]; const order=['eng','cut'];
+  order.forEach(mode=>Object.entries(DOC.groups).forEach(([hex,paths])=>{
+    const c=colSet(hex); if(c.mode!==mode)return;
+    const mm=paths.map(p=>p.map(q=>[Math.round((S.ox+q[0]*sc())*1000),Math.round((S.oy+q[1]*sc())*1000)]));
+    let ord=mode==='cut'?mm.slice().sort((a,b)=>area(a)-area(b)):nearest(mm);
+    let all=[]; for(let i=0;i<c.passes;i++)all=all.concat(ord);
+    L.push({speed:c.speed,power:c.power,color:parseInt(hex.slice(1),16),paths:all});
+  }));
+  return L;
+}
+function download(){
+  if(!DOC)return; if(!check()&&!confirm('Le dessin dépasse la surface de la machine. Télécharger quand même ?'))return;
+  const L=layers(); if(!L.length){alert('Rien à envoyer : toutes les couleurs sont ignorées.');return;}
+  const data=RD.build(L), nm=DOC.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]/g,'').slice(0,8).toUpperCase()||'LASER';
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/octet-stream'})); a.download=nm+'.rd';
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+
+/* ---------- ouverture ---------- */
+async function openFile(f){
+  try{ DOC=parseSVG(await f.text(),f.name); S.ox=Math.max(0,S.ox); drawCols(); fill(); draw(); }
+  catch(e){ alert(e.message||e); }
+}
+function fill(){ $('ox').value=S.ox; $('oy').value=S.oy; $('sc').value=S.sc; $('bw').value=S.bed[0]; $('bh').value=S.bed[1]; }
+$('bOpen').onclick=()=>$('file').click();
+$('file').onchange=e=>{const f=e.target.files[0]; e.target.value=''; if(f)openFile(f);};
+$('bDl').onclick=download;
+[['ox','ox'],['oy','oy'],['sc','sc']].forEach(([id,k])=>$(id).addEventListener('change',()=>{S[k]=+$(id).value||0;save();draw();}));
+['bw','bh'].forEach((id,i)=>$(id).addEventListener('change',()=>{S.bed[i]=Math.max(10,+$(id).value||10);save();draw();}));
+addEventListener('resize',draw);
+AtelierDrop.init({app:'laser',accept:f=>/\.svg$/i.test(f.name)||f.type==='image/svg+xml',open:fs=>openFile(fs[0])});
+fill(); draw();
+window.__laser={parseSVG,layers,get doc(){return DOC;},openFile};
+})();
+</script>
+<script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(r=>r.update()).catch(()=>{}));
+navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!window.__laSuiteBusy&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}window.__laSuiteLeaving=1;location.reload();}});}</script>
+</body>
+</html>

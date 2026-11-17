@@ -22,6 +22,7 @@ Dépôt GitHub `jugaillot/applis`. Hébergement OVH (mutualisé, PHP) : **déplo
 | `dossiers/` | Dossiers | documents Markdown stockés dans le dépôt GitHub `jugaillot/dossiers` (voir le CLAUDE.md de ce dépôt) |
 | `envoyer/` | Envoyer un dessin | page mobile : photographier, redresser, (pré)vectoriser et envoyer vers un document Paysage/Vecto ouvert sur l'ordinateur |
 | `cahier/` | Cahier | cahier numérique : pages à imprimer avec repères, photos redressées, feuilletage, planche, recherche, zone → autre appli |
+| `laser/` | Laser | prépare un SVG (Vecto/Paysage) pour le graveur CO2 G-Weike (contrôleur Ruida) : couleur → découper/graver, vitesse, puissance, passes ; exporte un `.rd` (`laser/rd.js`, vérifié avec MeerK40t) à copier sur clé USB |
 | `bd/`, `civco/` | BD, Civco | collection de BD ; petit jeu coopératif |
 | `index.html` | Accueil | rubriques Outils / Dessin / Projet / Perso, tuiles avec icône |
 
