@@ -211,7 +211,39 @@ ls.set('cahier.last',DOC.id);
   $('#bName').textContent='📓 '+DOC.name;
   refresh();go(LIST.length-1);// à l'ouverture : la dernière page du cahier
 }
-function chooser(){AtelierSync.openDialog({app:'cahier',title:'Mes cahiers',onOpen:(id,data)=>openDoc(id,data),extra:[{label:'＋ Nouveau cahier',action:newDoc}]});}
+/* fusionne les copies « (conflit …) » du cahier ouvert dans un seul cahier : toutes les pages et tous les croquis sont gardés,
+   pour une même page c'est la version du cahier principal qui reste ; les copies fusionnées sont ensuite supprimées */
+async function mergeConflicts(){
+  if(!DOC||!DOC.id){alert('Ouvre d’abord un cahier.');return;}
+  const RX=/\s*\(conflit[^)]*\)\s*$/,base=(DOC.name||'').replace(RX,'');
+  await AtelierSync.syncNow();
+  const all=await AtelierSync.list('cahier',{server:true});
+  const same=all.filter(x=>(x.name||'').replace(RX,'')===base);
+  const confs=same.filter(x=>RX.test(x.name||'')&&x.id!==DOC.id);
+  let main=same.filter(x=>!RX.test(x.name||''))[0];
+  if(RX.test(DOC.name||'')&&main&&main.id!==DOC.id){await openDoc(main.id,await AtelierSync.load(main.id));return mergeConflicts();}
+  if(!confs.length){alert('Aucune copie « conflit » pour « '+base+' ».');return;}
+  if(!confirm(confs.length+' copie'+(confs.length>1?'s':'')+' « conflit » de « '+base+' » vont être fusionnées dans ce cahier, puis supprimées.\nToutes les pages et tous les croquis sont gardés. Continuer ?'))return;
+  busy('Fusion des copies…');
+  try{
+    const mk=id=>'cahier.'+DOC.id+'.'+id,have=new Set(DOC.pages.map(p=>p.id));DOC.sketches=DOC.sketches||[];const haveS=new Set(DOC.sketches.map(k=>k.id));
+    let nP=0,nS=0;const addP=[],addS=[];
+    for(const c of confs.sort((a,b)=>a.updated-b.updated)){
+      const d=await AtelierSync.load(c.id);if(!d)continue;
+      const srcs=[...new Set([d.id,c.id].filter(Boolean))];
+      const copyBlob=async(sfx)=>{if(await AtelierSync.getBlob('cahier.'+DOC.id+'.'+sfx))return;for(const o of srcs){if(o===DOC.id)continue;const b=await AtelierSync.getBlob('cahier.'+o+'.'+sfx);if(b){await AtelierSync.saveBlob('cahier.'+DOC.id+'.'+sfx,b);return;}}};
+      for(const p of d.pages||[]){if(have.has(p.id))continue;have.add(p.id);busy('Fusion… page '+(++nP));await copyBlob(p.id);addP.push(p);}
+      for(const k of d.sketches||[]){if(haveS.has(k.id))continue;haveS.add(k.id);nS++;await copyBlob('s.'+k.id);addS.push(k);}
+    }
+    addP.sort((a,b)=>(a.ts||0)-(b.ts||0));DOC.pages=DOC.pages.concat(addP);DOC.sketches=DOC.sketches.concat(addS);
+    await persist(true);
+    for(const c of confs)await AtelierSync.remove(c.id);
+    refresh();
+    alert('Fusion terminée : '+addP.length+' page'+(addP.length>1?'s':'')+' et '+nS+' croquis ajoutés, '+confs.length+' copie'+(confs.length>1?'s':'')+' supprimée'+(confs.length>1?'s':'')+'.\nLes pages ajoutées sont à la fin du cahier (tu peux les replacer avec « Infos »).');
+  }catch(e){console.error(e);alert('Fusion impossible : '+(e.message||e));}
+  finally{busy();}
+}
+function chooser(){AtelierSync.openDialog({app:'cahier',title:'Mes cahiers',onOpen:(id,data)=>openDoc(id,data),extra:[{label:'＋ Nouveau cahier',action:newDoc},{label:'🔀 Fusionner les copies « conflit »',action:mergeConflicts}]});}
 $('#bName').onclick=chooser;
 
 /* ---------- affichage : feuilleter ---------- */
