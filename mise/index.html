@@ -195,6 +195,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <button class="tool" data-tool="text" title="Cadre de texte (T) : trace le cadre, puis écris"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5" stroke-dasharray="2 2"/><path d="M8 8h8M12 8v9"/></svg></button>
     <button class="tool" data-tool="image" title="Cadre d’image (I) : trace le cadre, puis choisis l’image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-6-6-9 9"/></svg></button>
     <button class="tool" data-tool="shape" id="tShape" title="Formes : rectangle (R), ellipse (E) — le choix se change dans la barre du haut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="10" width="10" height="10" rx="1"/><circle cx="15" cy="9" r="5.5"/></svg></button>
+    <button class="tool" data-tool="table" id="tTable" title="Tableau — trace le cadre, puis double-clic dans une cellule pour écrire"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 10h16M4 14.5h16M10 5v14M15 5v14"/></svg></button>
     <button class="tool" data-tool="pen" title="Plume (P) — clic : points, glisser : courbes"><svg viewBox="0 0 24 24"><path d="M3 3l10 3.5 5.5 5.5-6.5 6.5-5.5-5.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 3l7.2 7.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11" cy="11" r="1.6" fill="currentColor"/></svg></button>
     <button class="tool" data-tool="pencil" title="Crayon (N) — dessiner à main levée"><svg viewBox="0 0 24 24"><path d="M4 20c3-1 4-5 7-6s4 2 7-1 1-7 1-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     <button class="tool" data-tool="line" title="Ligne (L) — Maj : horizontale, verticale ou à 45°"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19L19 5"/></svg></button>
@@ -405,6 +406,7 @@ function itemHTML(it){
   const box=(it.fill&&it.fill!=='none'?`background:${it.fill};`:'')+(it.sw&&it.stroke&&it.stroke!=='none'?`box-shadow:inset 0 0 0 ${it.sw}mm ${it.stroke};`:'')+(it.rad?`border-radius:${it.rad}mm;`:'');
   if(it.type==='text'){const pad=it.pad||0;const va=it.va==='ctr'?'display:flex;flex-direction:column;justify-content:safe center;':it.va==='b'?'display:flex;flex-direction:column;justify-content:safe flex-end;':'';return `<div class="it tx" data-id="${it.id}" style="${st}${box}--pad2:${pad*2}mm"><div class="txin" style="left:${pad}mm;top:${pad}mm;width:calc(100% - ${pad*2}mm);height:calc(100% - ${pad*2}mm);${va}"></div></div>`;}
   if(it.type==='path')return VT.html(it,st);
+  if(it.type==='table')return TB.html(it,st);
   if(it.type==='rect')return `<div class="it" data-id="${it.id}" style="${st}${box}"></div>`;
   if(it.type==='ellipse')return `<div class="it" data-id="${it.id}" style="${st}${box}border-radius:50%"></div>`;
   if(it.type==='line'){const [x1,y1,x2,y2]=it.dir?[0,it.h,it.w,0]:[0,0,it.w,it.h];const sw=it.sw||.5,pd=sw+3;
@@ -482,8 +484,8 @@ function setSel(ids){S.sel=ids.slice();drawSel();syncPanels();}
 function setTool(t){if((typeof VT!=='undefined')&&VT.pen&&t!=='pen')VT.finishPen(false);if(t==='shape')t=S.shapeKind||'rect';if(t==='rect'||t==='ellipse'||t==='polygon'||t==='star')S.shapeKind=t;work.dataset.tool=t;
   if(S.edit)endEdit();if(S.imgEdit)endImgEdit();if(S.link)endLink();
   S.tool=t;$$('#tools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t||(b.dataset.tool==='shape'&&(t==='rect'||t==='ellipse'||t==='polygon'||t==='star'))));
-  work.classList.toggle('hand',t==='hand');work.classList.toggle('draw',/^(text|image|rect|ellipse|line|polygon|star|pen|pencil)$/.test(t));
-  const H={pen:'Clic : ajouter un point · glisser : courbe · clic sur le premier point : fermer · Entrée : terminer',pencil:'Glisser pour dessiner à main levée',eye:'Choisis l’objet à modifier, puis clique avec la pipette sur l’objet dont tu veux copier le style',polygon:'Trace le cadre du polygone (le nombre de côtés se règle dans la barre du haut)',star:'Trace le cadre de l’étoile (le nombre de branches se règle dans la barre du haut)',direct:'Clic sur une image : la déplacer dans son cadre · ligne : tirer ses extrémités (Maj : angle) · rectangle : poignée jaune pour arrondir les coins',scale:'Choisis un objet, puis tire sur un coin pour l’agrandir ou le réduire (proportions gardées)',select:'Clic : choisir · Maj+clic : ajouter · glisser : déplacer (Alt : dupliquer) · double-clic sur un texte : écrire, sur une image : recadrer',hand:'Glisser pour déplacer la vue',text:'Trace le cadre de texte, puis écris',image:'Trace le cadre, puis choisis l’image',rect:'Trace le rectangle (Maj : carré)',ellipse:'Trace l’ellipse (Maj : cercle)',line:'Trace la ligne (Maj : horizontale / verticale / 45°)'};
+  work.classList.toggle('hand',t==='hand');work.classList.toggle('draw',/^(text|image|rect|ellipse|line|polygon|star|table|pen|pencil)$/.test(t));
+  const H={table:'Trace le cadre du tableau · ensuite double-clic dans une cellule pour écrire',pen:'Clic : ajouter un point · glisser : courbe · clic sur le premier point : fermer · Entrée : terminer',pencil:'Glisser pour dessiner à main levée',eye:'Choisis l’objet à modifier, puis clique avec la pipette sur l’objet dont tu veux copier le style',polygon:'Trace le cadre du polygone (le nombre de côtés se règle dans la barre du haut)',star:'Trace le cadre de l’étoile (le nombre de branches se règle dans la barre du haut)',direct:'Clic sur une image : la déplacer dans son cadre · ligne : tirer ses extrémités (Maj : angle) · rectangle : poignée jaune pour arrondir les coins',scale:'Choisis un objet, puis tire sur un coin pour l’agrandir ou le réduire (proportions gardées)',select:'Clic : choisir · Maj+clic : ajouter · glisser : déplacer (Alt : dupliquer) · double-clic sur un texte : écrire, sur une image : recadrer',hand:'Glisser pour déplacer la vue',text:'Trace le cadre de texte, puis écris',image:'Trace le cadre, puis choisis l’image',rect:'Trace le rectangle (Maj : carré)',ellipse:'Trace l’ellipse (Maj : cercle)',line:'Trace la ligne (Maj : horizontale / verticale / 45°)'};
   hint(H[t]||'');syncToolbar();
   drawSel();
 }
@@ -514,7 +516,7 @@ work.addEventListener('pointerdown',e=>{
   const pi=pageAt(e.clientX,e.clientY);const [mx,my]=toMM(e.clientX,e.clientY,pi);
   if(S.link){const el=e.target.closest('.it.tx');if(el){finishLink(el.dataset.id);return;}startDraw(e,pi,mx,my,'text',true);return;}
   if((typeof VT!=='undefined')&&VT.down(e,pi,mx,my))return;
-  if(/^(text|image|rect|ellipse|line|polygon|star)$/.test(S.tool)){const el=e.target.closest('.it.tx');if(S.tool==='text'&&el){setSel([el.dataset.id]);startEdit(el.dataset.id,e);return;}startDraw(e,pi,mx,my,S.tool);return;}
+  if(/^(text|image|rect|ellipse|line|polygon|star|table)$/.test(S.tool)){const el=e.target.closest('.it.tx');if(S.tool==='text'&&el){setSel([el.dataset.id]);startEdit(el.dataset.id,e);return;}startDraw(e,pi,mx,my,S.tool);return;}
   if(S.tool==='direct'){const ep=e.target.closest('.hd[data-ep]');if(ep){startEnd(e,ep.dataset.ep);return;}if(e.target.closest('.rh')){startRad(e);return;}}
   const sgh=S.tool==='scale'&&e.target.closest('.sgh');if(sgh){startScale(e,sgh.dataset.h);return;}
   // sélection
@@ -620,6 +622,7 @@ function startDraw(e,pi,mx,my,type,forLink){
     const it={id:uid(),type,x:r.x,y:r.y,w:Math.max(type==='line'?0:2,r.w),h:Math.max(type==='line'?0:2,r.h)};
     const D=S.doc.defaults||(S.doc.defaults={fill:'#e0533d',stroke:'#1d1d1f',sw:0.5});
     if(type==='polygon'||type==='star')VT.shape(it,type);
+    if(type==='table')TB.init(it);
     if(type==='rect'||type==='ellipse'){it.fill=D.fill;it.stroke=D.stroke;it.sw=0;}
     if(type==='line'){it.stroke=D.stroke;it.sw=D.sw||0.5;it.dir=r.dir;}
     if(type==='text'){it.pad=0;if(forLink&&S.link){linkNew(it,pi);return;}it.story=uid();S.doc.stories[it.story]='<p class="st-texte"><br></p>';}
@@ -881,7 +884,7 @@ function syncPanels(){
       ${it.type==='text'?`<label class="chk"><input type="checkbox" data-o="bg"${it.fill&&it.fill!=='none'?' checked':''}> Fond du cadre</label><input type="color" data-o="fill" value="${it.fill&&it.fill!=='none'?it.fill:'#ffffff'}">`:''}
       <div class="btns"><button class="btn sm" data-oa="front">Premier plan</button><button class="btn sm" data-oa="back">Arrière-plan</button><button class="btn sm" data-oa="dup">Dupliquer</button><button class="btn sm" data-oa="del">Supprimer</button></div>`;}
   else ob.innerHTML=items.length?`<div class="muted">${items.length} objets choisis.</div><div class="btns"><button class="btn sm" data-oa="front">Premier plan</button><button class="btn sm" data-oa="back">Arrière-plan</button><button class="btn sm" data-oa="dup">Dupliquer</button><button class="btn sm" data-oa="del">Supprimer</button></div>`:'<div class="muted">Choisis un objet sur la page pour régler sa position et sa taille.</div>';
-  VT.objExtra(items);
+  VT.objExtra(items);if(typeof TB!=='undefined')TB.obj(items);
   // pages
   $('#pgList').innerHTML=S.doc.pages.map((p,i)=>`<div data-pg="${i}" class="${i===S.page?'on':''}"><b>Page ${i+1}</b><span class="muted">${p.items.length} obj.</span><button data-pa="up" title="Monter">↑</button><button data-pa="down" title="Descendre">↓</button><button data-pa="dup" title="Dupliquer la page">⧉</button><button data-pa="del" title="Supprimer la page">✕</button></div>`).join('');
   $('#docName').textContent=S.name?'· '+S.name:'';
@@ -1241,6 +1244,166 @@ $('#fDocx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)import
 $('#fPptx').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importPPTX(f);};
 </script>
 <script src="../lib/pdf.min.js"></script>
+
+<script>
+/* =====================================================================
+   Tableaux : lignes et colonnes (tailles relatives), cellules de texte, fusion, traits, fonds
+   ===================================================================== */
+const TB=(function(){
+const EMPTY='<p class="st-texte"><br></p>';
+const css=document.createElement('style');
+css.textContent=`.it.tb{overflow:visible}.tbt td{overflow:hidden;overflow-wrap:anywhere}.tbc{outline:none;min-height:1em}.tbc p{margin:0;text-align:inherit!important}.tbt td.tsel{box-shadow:inset 0 0 0 .5mm #1a73e8;background-image:linear-gradient(rgba(26,115,232,.13),rgba(26,115,232,.13))}.tbt.fs .tbc p,.tbt.fs .tbc span{font-size:var(--tfs)!important}`;
+document.head.appendChild(css);
+const sum=a=>a.reduce((x,y)=>x+y,0);
+function norm(it){
+  if(!it.cols||!it.cols.length)it.cols=[1,1,1];if(!it.rows||!it.rows.length)it.rows=[1,1,1,1];
+  if(!it.cells)it.cells=[];
+  for(let r=0;r<it.rows.length;r++){if(!it.cells[r])it.cells[r]=[];for(let c=0;c<it.cols.length;c++)if(!it.cells[r][c])it.cells[r][c]={h:EMPTY};}
+}
+function init(it){it.cols=[1,1,1];it.rows=[1,1,1,1];it.cells=[];norm(it);it.stroke='#1d1d1f';it.sw=0.3;it.pad=1.5;TB.sel={id:it.id,r1:0,c1:0,r2:0,c2:0};}
+function html(it,st){
+  norm(it);
+  const W=sum(it.cols)||1,H=sum(it.rows)||1;
+  const bd=it.sw&&it.stroke&&it.stroke!=='none'?`${it.sw}mm solid ${it.stroke}`:'none';
+  const pad=it.pad==null?1.5:it.pad;
+  const sel=(S.sel.length===1&&S.sel[0]===it.id&&TB.sel&&TB.sel.id===it.id)?TB.sel:null;
+  let h=`<div class="it tb" data-id="${it.id}" style="${st}"><table class="tbt${it.fs?' fs':''}" style="width:100%;height:100%;table-layout:fixed;border-collapse:collapse;${it.fs?`--tfs:${it.fs}pt;`:''}"><colgroup>`+it.cols.map(c=>`<col style="width:${c/W*100}%">`).join('')+'</colgroup>';
+  it.cells.forEach((row,r)=>{h+=`<tr style="height:${it.rows[r]/H*100}%">`;
+    row.forEach((c,ci)=>{if(c.hid)return;const on=sel&&r>=sel.r1&&r<=sel.r2&&ci>=sel.c1&&ci<=sel.c2;
+      h+=`<td data-r="${r}" data-c="${ci}"${c.cs>1?` colspan="${c.cs}"`:''}${c.rs>1?` rowspan="${c.rs}"`:''}${on?' class="tsel"':''} style="border:${bd};padding:${pad}mm;${c.f?`background:${c.f};`:''}text-align:${c.a||'left'};vertical-align:${c.v||'top'}"><div class="tbc">${c.h||EMPTY}</div></td>`;});
+    h+='</tr>';});
+  return h+'</table></div>';
+}
+function mark(el){if(!el)return;el.querySelectorAll('td.tsel').forEach(t=>t.classList.remove('tsel'));const s=TB.sel;if(!s)return;
+  el.querySelectorAll('td').forEach(t=>{const r=+t.dataset.r,c=+t.dataset.c;if(r>=s.r1&&r<=s.r2&&c>=s.c1&&c<=s.c2)t.classList.add('tsel');});}
+function refresh(it){const el=itemEl(it.id);if(el)el.outerHTML=itemHTML(it);drawSel();}
+function one(){const a=selItems();return a.length===1&&a[0].type==='table'?a[0]:null;}
+const rng=it=>{const s=TB.sel&&TB.sel.id===it.id?TB.sel:{r1:0,c1:0,r2:0,c2:0};return{r1:Math.min(s.r1,it.rows.length-1),c1:Math.min(s.c1,it.cols.length-1),r2:Math.min(s.r2,it.rows.length-1),c2:Math.min(s.c2,it.cols.length-1)};};
+
+/* ----- écrire dans une cellule ----- */
+let ED=null;
+function kd(e){if(e.key==='Escape'){e.preventDefault();e.stopPropagation();endEdit();return;}
+  if(e.key==='Tab'&&ED){e.preventDefault();const it=findItem(ED.id);if(!it)return;let r=ED.r,c=ED.c;const id=ED.id;
+    do{c+=e.shiftKey?-1:1;if(c>=it.cols.length){c=0;r++;}if(c<0){c=it.cols.length-1;r--;}}while(it.cells[r]&&it.cells[r][c]&&it.cells[r][c].hid);
+    if(r<0||r>=it.rows.length){endEdit();return;}endEdit();TB.sel={id,r1:r,c1:c,r2:r,c2:c};setTimeout(()=>{const t=findItem(id);if(t)edit(t,r,c);},0);}}
+function edit(it,r,c,ev){
+  if(ED)endEdit();const el=itemEl(it.id);const td=el&&el.querySelector(`td[data-r="${r}"][data-c="${c}"]`);if(!td)return;
+  const box=td.querySelector('.tbc');box.contentEditable='true';ED={id:it.id,r,c,box};
+  try{document.execCommand('defaultParagraphSeparator',false,'p');}catch(e){}
+  box.focus();let placed=false;
+  if(ev&&document.caretRangeFromPoint){const rg=document.caretRangeFromPoint(ev.clientX,ev.clientY);if(rg&&box.contains(rg.startContainer)){const s=getSelection();s.removeAllRanges();s.addRange(rg);placed=true;}}
+  if(!placed){const rg=document.createRange();rg.selectNodeContents(box);rg.collapse(false);const s=getSelection();s.removeAllRanges();s.addRange(rg);}
+  box.addEventListener('keydown',kd);hint('Écris dans la cellule · Tab : cellule suivante · Échap : terminer');
+}
+function endEdit(){
+  const E=ED;if(!E)return;ED=null;E.box.contentEditable='false';E.box.removeEventListener('keydown',kd);
+  const it=findItem(E.id);if(!it||!it.cells[E.r]||!it.cells[E.r][E.c])return;
+  it.cells[E.r][E.c].h=sanitize(E.box.innerHTML)||EMPTY;
+  // une ligne qui déborde s'agrandit
+  const el=itemEl(it.id);if(el){const k=S.zoom*PXMM,hs=[...el.querySelectorAll('tr')].map(t=>t.getBoundingClientRect().height/k),tot=sum(hs);
+    if(hs.length===it.rows.length&&tot>it.h+0.3){it.rows=hs;it.h=tot;}}
+  getSelection().removeAllRanges();commit();hint('');
+}
+
+/* ----- étirer un trait de séparation ----- */
+function edge(e,td,it){
+  const R=td.getBoundingClientRect(),t=5,r=+td.dataset.r,c=+td.dataset.c,cell=it.cells[r][c];
+  if(Math.abs(e.clientX-R.right)<=t)return{k:'c',i:c+(cell.cs||1)-1};
+  if(c>0&&Math.abs(e.clientX-R.left)<=t)return{k:'c',i:c-1};
+  if(Math.abs(e.clientY-R.bottom)<=t)return{k:'r',i:r+(cell.rs||1)-1};
+  if(r>0&&Math.abs(e.clientY-R.top)<=t)return{k:'r',i:r-1};
+  return null;}
+function drag(e,it,hit){
+  const scl=(a,t)=>{const s=sum(a)||1;return a.map(v=>v/s*t);};it.cols=scl(it.cols,it.w);it.rows=scl(it.rows,it.h);
+  const x0=e.clientX,y0=e.clientY,c0=it.cols.slice(),r0=it.rows.slice(),w0=it.w,h0=it.h,k=S.zoom*PXMM;
+  const mv=ev=>{
+    if(hit.k==='c'){const d=Math.max((ev.clientX-x0)/k,2-c0[hit.i]);it.cols=c0.slice();it.cols[hit.i]=c0[hit.i]+d;it.w=w0+d;}
+    else{const d=Math.max((ev.clientY-y0)/k,2-r0[hit.i]);it.rows=r0.slice();it.rows[hit.i]=r0[hit.i]+d;it.h=h0+d;}
+    refresh(it);};
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);commit();};
+  addEventListener('pointermove',mv);addEventListener('pointerup',up);
+}
+document.addEventListener('pointerdown',e=>{if(ED&&!ED.box.contains(e.target))endEdit();},true);
+work.addEventListener('pointerdown',e=>{
+  if(e.button!==0||S.tool==='hand'||S.space||/^(text|image|rect|ellipse|line|polygon|star|table|pen|pencil)$/.test(S.tool))return;
+  if(ED&&ED.box.contains(e.target))return;
+  const el=e.target.closest&&e.target.closest('.it.tb');if(!el)return;const it=findItem(el.dataset.id);if(!it)return;
+  const td=e.target.closest('td');if(!td)return;norm(it);
+  if(S.sel.length===1&&S.sel[0]===it.id){const hit=edge(e,td,it);if(hit){e.preventDefault();e.stopImmediatePropagation();drag(e,it,hit);return;}}
+  const r=+td.dataset.r,c=+td.dataset.c,cell=it.cells[r][c],r2=r+(cell.rs||1)-1,c2=c+(cell.cs||1)-1;
+  if(e.shiftKey&&TB.sel&&TB.sel.id===it.id&&S.sel.length===1&&S.sel[0]===it.id){
+    TB.sel={id:it.id,r1:Math.min(TB.sel.r1,r),c1:Math.min(TB.sel.c1,c),r2:Math.max(TB.sel.r2,r2),c2:Math.max(TB.sel.c2,c2)};mark(el);e.preventDefault();e.stopImmediatePropagation();return;}
+  TB.sel={id:it.id,r1:r,c1:c,r2,c2};setTimeout(()=>mark(itemEl(it.id)),0);
+},true);
+work.addEventListener('mousemove',e=>{
+  const t=e.target.closest&&e.target.closest('.it.tb td');let cur='';
+  if(t&&!ED&&S.tool!=='hand'){const it=findItem(t.closest('.it').dataset.id);if(it&&S.sel.length===1&&S.sel[0]===it.id){const h=edge(e,t,it);if(h)cur=h.k==='c'?'col-resize':'row-resize';}}
+  work.style.cursor=cur;});
+work.addEventListener('dblclick',e=>{
+  const td=e.target.closest&&e.target.closest('.it.tb td');if(!td)return;const it=findItem(td.closest('.it').dataset.id);if(!it)return;
+  e.stopImmediatePropagation();e.preventDefault();setSel([it.id]);
+  const r=+td.dataset.r,c=+td.dataset.c;TB.sel={id:it.id,r1:r,c1:c,r2:r,c2:c};
+  setTimeout(()=>{const t=findItem(it.id);if(t)edit(t,r,c,e);},0);
+},true);
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||ED)return;const a=document.activeElement;if(a&&(/INPUT|TEXTAREA|SELECT/.test(a.tagName)||a.isContentEditable))return;
+  const it=one();if(!it)return;e.preventDefault();e.stopImmediatePropagation();const s=rng(it);edit(it,s.r1,s.c1);},true);
+
+/* ----- lignes, colonnes, fusion ----- */
+function unmerge(it,r,c){const cell=it.cells[r][c];const rs=cell.rs||1,cs=cell.cs||1;if(rs<2&&cs<2)return;
+  for(let i=r;i<r+rs;i++)for(let j=c;j<c+cs;j++)if(it.cells[i]&&it.cells[i][j]&&(i!==r||j!==c))it.cells[i][j].hid=false;delete cell.rs;delete cell.cs;}
+function unmergeWhere(it,fn){for(let r=0;r<it.rows.length;r++)for(let c=0;c<it.cols.length;c++){const x=it.cells[r][c];if(!x.hid&&((x.rs||1)>1||(x.cs||1)>1)&&fn(r,c,x.rs||1,x.cs||1))unmerge(it,r,c);}}
+function act(it,a){
+  norm(it);const s=rng(it);
+  if(a==='addr'){unmergeWhere(it,(r,c,rs)=>r<=s.r2&&s.r2<r+rs-1);const o=sum(it.rows);it.rows.splice(s.r2+1,0,it.rows[s.r2]);
+    it.cells.splice(s.r2+1,0,it.cells[s.r2].map(c=>({h:EMPTY,f:c.f,a:c.a,v:c.v})));it.h=it.h*sum(it.rows)/o;TB.sel={id:it.id,r1:s.r2+1,c1:s.c1,r2:s.r2+1,c2:s.c2};}
+  else if(a==='delr'){if(it.rows.length-(s.r2-s.r1+1)<1)return;unmergeWhere(it,(r,c,rs)=>r<=s.r2&&r+rs-1>=s.r1);const o=sum(it.rows),n=s.r2-s.r1+1;it.rows.splice(s.r1,n);it.cells.splice(s.r1,n);it.h=it.h*sum(it.rows)/o;
+    const r=Math.min(s.r1,it.rows.length-1);TB.sel={id:it.id,r1:r,c1:s.c1,r2:r,c2:s.c2};}
+  else if(a==='addc'){unmergeWhere(it,(r,c,rs,cs)=>c<=s.c2&&s.c2<c+cs-1);const o=sum(it.cols);it.cols.splice(s.c2+1,0,it.cols[s.c2]);
+    it.cells.forEach(row=>{const x=row[s.c2];row.splice(s.c2+1,0,{h:EMPTY,f:x.f,a:x.a,v:x.v});});it.w=it.w*sum(it.cols)/o;TB.sel={id:it.id,r1:s.r1,c1:s.c2+1,r2:s.r2,c2:s.c2+1};}
+  else if(a==='delc'){if(it.cols.length-(s.c2-s.c1+1)<1)return;unmergeWhere(it,(r,c,rs,cs)=>c<=s.c2&&c+cs-1>=s.c1);const o=sum(it.cols),n=s.c2-s.c1+1;it.cols.splice(s.c1,n);it.cells.forEach(row=>row.splice(s.c1,n));it.w=it.w*sum(it.cols)/o;
+    const c=Math.min(s.c1,it.cols.length-1);TB.sel={id:it.id,r1:s.r1,c1:c,r2:s.r2,c2:c};}
+  else if(a==='merge'){if(s.r1===s.r2&&s.c1===s.c2)return;unmergeWhere(it,(r,c,rs,cs)=>r<=s.r2&&r+rs-1>=s.r1&&c<=s.c2&&c+cs-1>=s.c1);
+    const an=it.cells[s.r1][s.c1];let extra='';
+    for(let r=s.r1;r<=s.r2;r++)for(let c=s.c1;c<=s.c2;c++){if(r===s.r1&&c===s.c1)continue;const x=it.cells[r][c];if(x.h&&x.h!==EMPTY)extra+=x.h;x.hid=true;x.h=EMPTY;}
+    if(extra)an.h=(an.h&&an.h!==EMPTY?an.h:'')+extra;an.rs=s.r2-s.r1+1;an.cs=s.c2-s.c1+1;}
+  else if(a==='split'){unmergeWhere(it,(r,c,rs,cs)=>r<=s.r2&&r+rs-1>=s.r1&&c<=s.c2&&c+cs-1>=s.c1);}
+  else if(/^al-|^va-/.test(a)){for(let r=s.r1;r<=s.r2;r++)for(let c=s.c1;c<=s.c2;c++){if(a[0]==='a')it.cells[r][c].a=a.slice(3);else it.cells[r][c].v=a.slice(3);}}
+  commit();
+}
+function setCells(it,fn){const s=rng(it);for(let r=s.r1;r<=s.r2;r++)for(let c=s.c1;c<=s.c2;c++)fn(it.cells[r][c]);}
+
+/* ----- panneau « Objet » ----- */
+function obj(items){
+  if(items.length!==1||items[0].type!=='table')return;const it=items[0];norm(it);const s=rng(it),c0=it.cells[s.r1][s.c1]||{};
+  const hasS=it.stroke&&it.stroke!=='none'&&it.sw>0;
+  const b=(a,l,t)=>`<button class="btn sm" data-tb="${a}"${t?` title="${t}"`:''}>${l}</button>`;
+  const h=`<div class="muted" style="margin-top:6px">Tableau · ${it.rows.length} lignes × ${it.cols.length} colonnes</div>
+    <div class="muted">Double-clic dans une cellule pour écrire · Maj + clic pour choisir plusieurs cellules · tirer un trait pour changer une largeur ou une hauteur</div>
+    <div class="btns">${b('addr','+ Ligne','Ajouter une ligne sous la cellule choisie')}${b('delr','− Ligne','Supprimer la ligne choisie')}${b('addc','+ Colonne','Ajouter une colonne à droite de la cellule choisie')}${b('delc','− Colonne','Supprimer la colonne choisie')}</div>
+    <div class="btns">${b('merge','Fusionner','Réunir les cellules choisies en une seule')}${b('split','Séparer','Défaire la fusion')}</div>
+    <div class="muted" style="margin-top:6px">Cellules choisies</div>
+    <div class="g2"><label class="chk"><input type="checkbox" data-tbp="fillon"${c0.f?' checked':''}> Fond</label><input type="color" data-tbp="fill" value="${c0.f||'#e8e6df'}"></div>
+    <div class="btns">${b('al-left','Gauche')}${b('al-center','Centré')}${b('al-right','Droite')}</div>
+    <div class="btns">${b('va-top','Haut')}${b('va-middle','Milieu')}${b('va-bottom','Bas')}</div>
+    <div class="muted" style="margin-top:6px">Tout le tableau</div>
+    <div class="g2"><label class="chk"><input type="checkbox" data-tbp="strokeon"${hasS?' checked':''}> Traits</label><input type="color" data-tbp="stroke" value="${it.stroke&&it.stroke!=='none'?it.stroke:'#1d1d1f'}">
+    <label>Épaisseur (mm)<input type="number" min="0" max="5" step="0.1" data-tbp="sw" value="${it.sw||0}"></label><label>Marge (mm)<input type="number" min="0" max="20" step="0.5" data-tbp="pad" value="${it.pad==null?1.5:it.pad}"></label>
+    <label>Texte (pt)<input type="number" min="0" max="200" step="1" data-tbp="fs" placeholder="styles" value="${it.fs||''}"></label></div>`;
+  const ob=$('#objBox');if(ob)ob.insertAdjacentHTML('beforeend',h);
+}
+$('#objBox').addEventListener('click',e=>{const b=e.target.closest('[data-tb]');if(!b)return;const it=one();if(it)act(it,b.dataset.tb);});
+$('#objBox').addEventListener('change',e=>{const t=e.target,k=t.dataset&&t.dataset.tbp;if(!k)return;const it=one();if(!it)return;const q=n=>$('#objBox [data-tbp='+n+']');
+  if(k==='fillon'||k==='fill'){const on=k==='fill'?true:t.checked,v=q('fill').value;setCells(it,c=>{if(on)c.f=v;else delete c.f;});}
+  else if(k==='strokeon'){it.stroke=t.checked?q('stroke').value:'none';if(t.checked&&!it.sw)it.sw=0.3;}
+  else if(k==='stroke'){it.stroke=t.value;if(!it.sw)it.sw=0.3;}
+  else if(k==='sw'){it.sw=Math.max(0,+t.value||0);}
+  else if(k==='pad'){it.pad=Math.max(0,+t.value||0);}
+  else if(k==='fs'){if(+t.value>0)it.fs=+t.value;else delete it.fs;}
+  commit();});
+return{html,init,obj,sel:null};
+})();
+</script>
 <script src="../lib/pptx.js"></script>
 <script src="../lib/idml.js"></script>
 <script src="../lib/unsaved.js"></script>
