@@ -18,6 +18,19 @@ $lock = fopen($dir . '/.lock', 'c');
 function idx_read() { global $dir; $f = $dir . '/index.json'; if (!is_file($f)) return array('docs' => array(), 'blobs' => array()); $j = json_decode(file_get_contents($f), true); if (!is_array($j)) $j = array(); if (!isset($j['docs'])) $j['docs'] = array(); if (!isset($j['blobs'])) $j['blobs'] = array(); return $j; }
 function idx_write($j) { global $dir; $tmp = $dir . '/index.json.tmp'; file_put_contents($tmp, json_encode($j, JSON_UNESCAPED_UNICODE)); rename($tmp, $dir . '/index.json'); }
 
+// historique : les 10 versions les plus récentes + la dernière de chaque mois pour les plus anciennes
+function prune_versions($vd, $vi) {
+  usort($vi, function ($a, $b) { return ((float) $a['updated'] < (float) $b['updated']) ? -1 : 1; });
+  $n = count($vi); $keep = array(); $months = array();
+  for ($i = $n - 1; $i >= 0; $i--) {
+    if ($n - 1 - $i < 10) { $keep[$i] = 1; continue; }
+    $m = date('Y-m', (int) floor(((float) $vi[$i]['updated']) / 1000));
+    if (!isset($months[$m])) { $months[$m] = 1; $keep[$i] = 1; }
+  }
+  $out = array();
+  foreach ($vi as $i => $v) { if (isset($keep[$i])) $out[] = $v; else @unlink($vd . '/' . $v['rev'] . '.json'); }
+  return $out;
+}
 $a = isset($_GET['a']) ? $_GET['a'] : '';
 $id = isset($_GET['id']) ? $_GET['id'] : '';
 
@@ -49,7 +62,7 @@ if ($a === 'put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   $rev = $cur ? (int) $cur['rev'] : 0;
   if ($cur && empty($cur['deleted']) && !$force && $base !== $rev) { flock($lock, LOCK_UN); out(409, array('error' => 'conflit', 'rev' => $rev, 'updated' => $cur['updated'], 'dev' => isset($cur['dev']) ? $cur['dev'] : '')); }
   // historique : on garde la version remplacée quand un autre appareil écrit par-dessus, quand on revient à une
-  // ancienne version, et au moins une toutes les 15 minutes (30 versions au plus par document)
+  // ancienne version, et au moins une toutes les 15 minutes (10 dernières + 1 par mois pour les plus anciennes)
   $dev = isset($_GET['dev']) ? substr(preg_replace('/[^A-Za-z0-9]/', '', $_GET['dev']), 0, 20) : '';
   $f = $dir . '/docs/' . $id . '.json';
   if ($cur && empty($cur['deleted']) && is_file($f)) {
@@ -60,7 +73,7 @@ if ($a === 'put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_GET['keep']) || ($dev !== '' && $prevDev !== '' && $dev !== $prevDev) || now_ms() - $lastAt > 15 * 60 * 1000) {
       @copy($f, $vd . '/' . $rev . '.json');
       $vi[] = array('rev' => $rev, 'updated' => (float) $cur['updated'], 'dev' => $prevDev, 'size' => (int) $cur['size'], 'saved' => now_ms());
-      while (count($vi) > 30) { $old = array_shift($vi); @unlink($vd . '/' . $old['rev'] . '.json'); }
+      $vi = prune_versions($vd, $vi);
       file_put_contents($vd . '/index.json', json_encode($vi));
     }
   }
@@ -178,6 +191,17 @@ if ($a === 'inbox_del' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   out(200, array('ok' => true));
 }
 
+if ($a === 'prune' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  // nettoie l'historique de tous les documents selon la règle ci-dessus
+  flock($lock, LOCK_EX); $freed = 0; $base = $dir . '/versions';
+  if (is_dir($base)) foreach (scandir($base) as $d) { if (!okid($d) || !is_file($base . '/' . $d . '/index.json')) continue;
+    $vd = $base . '/' . $d; $vi = json_decode(file_get_contents($vd . '/index.json'), true); if (!is_array($vi)) continue;
+    $before = 0; foreach (glob($vd . '/*.json') ?: array() as $f) $before += filesize($f);
+    $vi = prune_versions($vd, $vi); file_put_contents($vd . '/index.json', json_encode($vi));
+    $after = 0; foreach (glob($vd . '/*.json') ?: array() as $f) $after += filesize($f); $freed += $before - $after; }
+  flock($lock, LOCK_UN);
+  out(200, array('ok' => true, 'freed' => $freed));
+}
 if ($a === 'usage') {
   // espace utilisé sur le serveur, par type (documents, images/fichiers, historique, boîte de réception)
   function dsize($d) { $n = 0; if (!is_dir($d)) return $n; $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($d, FilesystemIterator::SKIP_DOTS)); foreach ($it as $f) if ($f->isFile()) $n += (float) $f->getSize(); return $n; }

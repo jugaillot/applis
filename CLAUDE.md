@@ -58,3 +58,6 @@ Dépôt GitHub `jugaillot/applis`. Hébergement OVH (mutualisé, PHP) : **déplo
 ## Git
 - Messages de commit en français : `<Appli> : <ce qui change>`.
 - Pied de commit (obligatoire) : `Co-Authored-By: Claude …` + `Claude-Session: …` tels que fournis par la session.
+
+## Enregistrement serveur par appli
+Vecto, Paysage, CAD, Riso, Mise en page, Cahier, BD, Civco, Dossiers, **Laser** (autosave du SVG + réglages), **Photo** et **PDF** (boutons « Garder sur le serveur » / « Mes … » : originaux en blobs + réglages ; envois automatiques ensuite). L'aide de chaque appli affiche l'espace utilisé (`api.php?a=usage`).

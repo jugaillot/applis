@@ -163,7 +163,7 @@ navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!window
 /* une erreur au démarrage ne laisse plus une page vide : on l'affiche, avec un moyen de repartir */
 setTimeout(()=>{window.__bootOk=true;},10000);
 window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.message)||'erreur';if(/ResizeObserver loop/.test(m))return;const d=document.getElementById('bootErr')||document.body&&document.body.appendChild(Object.assign(document.createElement('div'),{id:'bootErr'}));if(!d)return;d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#fff3f0;border:1px solid #e3a59a;border-radius:10px;padding:10px 14px;font:13px system-ui;color:#5a1d12;box-shadow:0 6px 24px rgba(0,0,0,.15)';d.innerHTML='<b>Le démarrage a rencontré un problème</b> : '+String(m).replace(/</g,'&lt;')+'<br><button onclick="location.reload()" style="margin-top:6px">Recharger</button>';});</script>
-<script src="../lib/save.js"></script><script src="../lib/recent.js"></script></head>
+<script src="../lib/save.js"></script><script src="../lib/recent.js"></script><script src="../lib/sync.js"></script></head>
 <body>
 <header>
   <h1><a href="../" target="_blank" rel="noopener">La Suite</a> <span>Photo</span></h1>
@@ -174,6 +174,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bCopy" title="Copier l’image retouchée pour la coller ailleurs (Ctrl+C)">Copier</button>
   <button class="btn" id="bPrint" title="Imprimer l’image retouchée (Ctrl+P)">Imprimer</button>
   <button class="btn primary" id="bSaveOne" title="Enregistrer l’image retouchée sur son fichier d’origine (Ctrl+S). Sans fichier d’origine, propose de le créer.">Enregistrer</button>
+  <button class="btn" id="bKeep" title="Garder ces images (originaux + réglages) sur le serveur pour les retrouver sur un autre ordinateur">Garder sur le serveur</button>
+  <button class="btn" id="bMy" title="Rouvrir un travail gardé sur le serveur">Mes images</button><span id="syncBadge"></span>
   <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
   <button class="btn" id="bExportOne" title="Exporter une copie (Ctrl+Maj+S)">Exporter cette image</button>
   <button class="btn accent" id="bExportAll">Exporter tout (ZIP)</button>
@@ -1412,7 +1414,64 @@ async function pdfToImages(file){
   return out;
 }
 </script>
-<script>if(window.AtelierRecent)AtelierRecent.init({app:'photo'});</script>
+<script>if(window.AtelierRecent)AtelierRecent.init({app:'photo',openDocs:()=>$('#bMy').click()});</script>
+<script>
+/* ---------- garder le travail sur le serveur (OVH) : originaux + réglages de toutes les images de la bande ---------- */
+(function(){
+if(!window.AtelierSync){['#bKeep','#bMy'].forEach(q=>$(q).hidden=true);return;}
+let PID=null,PNAME='',T=0,last='';
+$('#syncBadge').appendChild(AtelierSync.badge());
+const bid=()=>Math.random().toString(36).slice(2,9);
+const sig=()=>S.items.map(i=>i.bid+'|'+i.name+'|'+stSig(i)).join('#');
+async function persist(){
+  if(!PID||!S.items.length)return;
+  const items=[];
+  for(const it of S.items){
+    if(!it.bid)it.bid=bid();
+    if(it.bsaved!==PID){await AtelierSync.saveBlob('photo.'+PID+'.'+it.bid,it.file);it.bsaved=PID;}
+    items.push({bid:it.bid,name:it.name,fname:it.file.name||(it.name+'.png'),type:it.file.type||'image/png',W:it.W,H:it.H,st:it.st});
+  }
+  const cu=S.items.find(i=>i.id===S.cur);
+  PID=await AtelierSync.save('photo',PID,PNAME,{items,cur:cu?cu.bid:null});
+  last=sig();
+}
+async function keep(){
+  if(!S.items.length){alert('Ouvre d’abord au moins une image.');return;}
+  if(!PID){const n=prompt('Nom de ce travail sur le serveur :',S.items.length>1?'Photos '+new Date().toLocaleDateString('fr-FR'):S.items[0].name);if(!n)return;PNAME=n;PID='';}
+  S.items.forEach(i=>{if(!i.bid)i.bid=bid();});
+  if(!PID)PID=await AtelierSync.save('photo',null,PNAME,{items:[],cur:null});
+  await busy('Envoi sur le serveur…');try{await persist();}finally{await busy();}
+}
+async function open(id,data,inf){
+  try{
+    await busy('Ouverture…');
+    S.items=[];S.cur=null;S.sel.clear();PID=id;PNAME=(inf&&inf.name)||'';
+    for(let k=0;k<data.items.length;k++){
+      const d=data.items[k];await busy('Lecture '+(k+1)+' / '+data.items.length+'…');
+      const b=await AtelierSync.getBlob('photo.'+id+'.'+d.bid);if(!b)continue;
+      const f=new File([b],d.fname||'image.png',{type:d.type||b.type});
+      const prev=await decode(f,2000);
+      const thumb=document.createElement('canvas');const kk=Math.min(1,160/Math.max(prev.width,prev.height));thumb.width=Math.round(prev.width*kk);thumb.height=Math.round(prev.height*kk);thumb.getContext('2d').drawImage(prev,0,0,thumb.width,thumb.height);
+      const it={id:'i'+(uid++),file:f,handle:null,name:d.name,W:d.W||prev.origW||prev.width,H:d.H||prev.origH||prev.height,prev,thumb,st:Object.assign(DEF(),d.st),hist:[],fut:[],bid:d.bid,bsaved:id};
+      it.saved=stSig(it);S.items.push(it);
+      if(d.bid===data.cur)S.cur=it.id;
+    }
+    if(!S.cur&&S.items.length)S.cur=S.items[0].id;
+    await busy();renderStrip();if(S.cur)await select(S.cur,true);
+    last=sig();
+  }catch(e){await busy();alert('Ouverture impossible : '+(e.message||e));}
+}
+function mine(){AtelierSync.openDialog({app:'photo',title:'Mes images gardées sur le serveur',current:PID,onOpen:open});}
+$('#bKeep').onclick=()=>keep().catch(e=>alert('Envoi impossible : '+(e.message||e)));
+$('#bMy').onclick=mine;
+$('#bKeep').textContent='Garder sur le serveur';
+/* une fois le travail gardé, les changements suivants sont envoyés tout seuls */
+setInterval(()=>{if(!PID||!S.items.length)return;const g=sig();if(g!==last){clearTimeout(T);T=setTimeout(()=>persist().catch(()=>{}),800);}},3000);
+addEventListener('atelier-conflict',e=>{if(e.detail.id!==PID)return;PID=e.detail.copyId;PNAME=e.detail.name;S.items.forEach(i=>i.bsaved=null);persist().catch(()=>{});alert('Ce travail a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
+window.__photoKeep={keep,open,get pid(){return PID;}};
+})();
+</script>
+
 <script>$('#bXfer').onclick=()=>AtelierDrop.transfer('photo',(cur()?fname(cur()):'image.jpg'),(cur()&&cur().st.out.fmt==='png'?'image/png':'image/jpeg'),async()=>{const it=cur();if(!it)return null;await busy('Préparation de l’image…');try{const c=await renderFull(it);const b=await encode(it,c);return new File([b],fname(it),{type:b.type});}finally{await busy();}});</script>
 </body>
 </html>

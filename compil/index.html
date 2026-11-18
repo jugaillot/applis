@@ -148,13 +148,15 @@ navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!window
 /* une erreur au démarrage ne laisse plus une page vide : on l'affiche, avec un moyen de repartir */
 setTimeout(()=>{window.__bootOk=true;},10000);
 window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.message)||'erreur';if(/ResizeObserver loop/.test(m))return;const d=document.getElementById('bootErr')||document.body&&document.body.appendChild(Object.assign(document.createElement('div'),{id:'bootErr'}));if(!d)return;d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#fff3f0;border:1px solid #e3a59a;border-radius:10px;padding:10px 14px;font:13px system-ui;color:#5a1d12;box-shadow:0 6px 24px rgba(0,0,0,.15)';d.innerHTML='<b>Le démarrage a rencontré un problème</b> : '+String(m).replace(/</g,'&lt;')+'<br><button onclick="location.reload()" style="margin-top:6px">Recharger</button>';});</script>
-<script src="../lib/save.js"></script><script src="../lib/recent.js"></script></head>
+<script src="../lib/save.js"></script><script src="../lib/recent.js"></script><script src="../lib/sync.js"></script></head>
 <body>
 <header>
   <h1><a href="../" target="_blank" rel="noopener">La Suite</a> <span>PDF</span></h1>
   <button class="btn primary" id="bOpen" title="Ouvrir un ou plusieurs fichiers : chacun dans son propre onglet (Ctrl+O)">Ouvrir…</button>
   <label class="btn" title="Ajoute les pages de ces fichiers au document de l’onglet actif (assemblage)">Ajouter des fichiers…<input type="file" id="fIn" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.pptx" hidden></label>
   <span class="sp"></span>
+  <button class="btn" id="bKeep" title="Garder ce document (fichiers sources, pages, annotations) sur le serveur pour le retrouver sur un autre ordinateur">Garder sur le serveur</button>
+  <button class="btn" id="bMy" title="Rouvrir un document gardé sur le serveur">Mes PDF</button><span id="syncBadge"></span>
   <button class="btn" id="bClear">Tout vider</button>
   <button class="btn" id="bPrint">Imprimer…</button>
   <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
@@ -1432,7 +1434,57 @@ AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='appl
     else if(e.key.toLowerCase()==='z')$('#fsFit').click();},true);
 })();
 </script>
-<script>if(window.AtelierRecent)AtelierRecent.init({app:'compil'});</script>
+<script>if(window.AtelierRecent)AtelierRecent.init({app:'compil',openDocs:()=>$('#bMy').click()});</script>
+<script>
+/* ---------- garder le document de l'onglet sur le serveur (OVH) : fichiers sources + pages + annotations ---------- */
+(function(){
+if(!window.AtelierSync){['#bKeep','#bMy'].forEach(q=>$(q).hidden=true);return;}
+$('#syncBadge').appendChild(AtelierSync.badge());
+let T=0;
+const tab=()=>TABS[ACT];
+const extOf=f=>f.type==='pdf'?'pdf':(f.mime==='png'?'png':'jpg');
+function stateOf(){
+  const used=[...new Set(S.pages.map(p=>p.fileId).filter(Boolean))];
+  const files=used.map((id,i)=>{const f=S.files.get(id);return{id,att:'atelier-src-'+i+'.'+extOf(f),name:f.name,type:f.type,mime:f.mime||null};});
+  return{v:1,opt:S.opt,files,pages:S.pages.map(p=>({file:p.fileId,index:p.index,rot:p.rot,crop:p.crop||null,levels:p.levels||null,ann:p.ann||null,blank:!!p.blank,w:p.w,h:p.h}))};
+}
+async function persist(){
+  const t=tab();if(!t||!t.pid||!S.pages.length)return;
+  const st=stateOf();
+  for(const fd of st.files){const f=S.files.get(fd.id);
+    if(f.bsaved!==t.pid){await AtelierSync.saveBlob('compil.'+t.pid+'.'+fd.id,new Blob([f.bytes],{type:f.type==='pdf'?'application/pdf':(f.mime==='png'?'image/png':'image/jpeg')}));f.bsaved=t.pid;}}
+  t.pid=await AtelierSync.save('compil',t.pid,t.pname||t.name||'PDF',st);
+  t.psig=stateSig();
+}
+async function keep(){
+  if(!S.pages.length){alert('Ouvre d’abord un document.');return;}
+  const t=tab();
+  if(!t.pid){const n=prompt('Nom de ce document sur le serveur :',(t.name||'Document').replace(/\.[^.]+$/,''));if(!n)return;t.pname=n;t.pid=await AtelierSync.save('compil',null,n,{v:1,opt:S.opt,files:[],pages:[]});}
+  await busy('Envoi sur le serveur…');try{await persist();}finally{await busy();}renderTabs();
+}
+async function open(id,st,inf){
+  try{
+    LOADING++;
+    if(S.pages.length){snapTab();TABS.push({name:'',st:null});ACT=TABS.length-1;loadTab();}
+    const t=tab();t.name=(inf&&inf.name)||'PDF';t.pname=t.name;t.pid=id;SRC=null;
+    const att={'atelier-compil.json':{content:new TextEncoder().encode(JSON.stringify(st))}};
+    for(const fd of st.files){await busy('Téléchargement — '+fd.name);const b=await AtelierSync.getBlob('compil.'+id+'.'+fd.id);if(!b)continue;att[fd.att]={content:new Uint8Array(await b.arrayBuffer())};}
+    await restoreAtelier(att,t.name);
+    S.files.forEach(f=>{f.bsaved=id;});
+    await busy();renderPages();renderSheets();markClean();t.psig=stateSig();
+  }catch(e){await busy();alert('Ouverture impossible : '+(e.message||e));}
+  finally{LOADING--;renderTabs();}
+}
+function mine(){AtelierSync.openDialog({app:'compil',title:'Mes PDF gardés sur le serveur',current:tab()&&tab().pid,onOpen:open});}
+$('#bKeep').onclick=()=>keep().catch(e=>alert('Envoi impossible : '+(e.message||e)));
+$('#bMy').onclick=mine;
+/* une fois le document gardé, les changements suivants sont envoyés tout seuls */
+setInterval(()=>{const t=tab();if(!t||!t.pid||LOADING||!S.pages.length)return;if(stateSig()!==t.psig){clearTimeout(T);T=setTimeout(()=>persist().catch(()=>{}),800);}},3000);
+addEventListener('atelier-conflict',e=>{const t=TABS.find(x=>x.pid===e.detail.id);if(!t)return;t.pid=e.detail.copyId;t.pname=e.detail.name;S.files.forEach(f=>f.bsaved=null);persist().catch(()=>{});alert('Ce document a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
+window.__compilKeep={keep,open,get pid(){return tab().pid;}};
+})();
+</script>
+
 <script>/* Ctrl+P = bouton Imprimer / Export PDF de l'appli */
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#bPrint');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
 <script>$('#bXfer').onclick=()=>AtelierDrop.transfer('compil','document.pdf','application/pdf',async()=>{await busy('Préparation du PDF…');try{return new File([await buildPDF()],'document.pdf',{type:'application/pdf'});}finally{await busy();}});</script>

@@ -6,6 +6,8 @@
 <title>La Suite Laser</title>
 <script src="../lib/paper-core.min.js"></script>
 <script src="../lib/drop.js"></script>
+<script src="../lib/recent.js"></script>
+<script src="../lib/sync.js"></script>
 <script src="rd.js"></script>
 <style>
 :root{--bg:#f1efea;--panel:#fff;--ink:#1d1d1f;--mute:#77756f;--line:#e3e0d9;--acc:#d6402b;--soft:#f7f6f2}
@@ -42,6 +44,7 @@ h2:first-child{margin-top:0}
 <header>
   <a href="../" target="_blank" rel="noopener" title="Accueil">‹ La Suite</a><h1>Laser</h1>
   <button id="bOpen">Ouvrir…</button>
+  <button id="bMy">Mes dessins</button><span id="syncBadge"></span>
   <button id="bDl" class="pri" disabled>Télécharger pour la machine (.rd)</button>
   <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
 </header>
@@ -121,7 +124,7 @@ function parseSVG(text,name){
   let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;
   Object.values(groups).forEach(l=>l.forEach(p=>p.forEach(q=>{if(q[0]<x0)x0=q[0];if(q[1]<y0)y0=q[1];if(q[0]>x1)x1=q[0];if(q[1]>y1)y1=q[1];})));
   Object.keys(groups).forEach(h=>groups[h]=groups[h].map(p=>p.map(q=>[q[0]-x0,q[1]-y0])));
-  return {name:(name||'dessin').replace(/\.[^.]+$/,''),groups,w:x1-x0,h:y1-y0};
+  return {name:(name||'dessin').replace(/\.[^.]+$/,''),groups,w:x1-x0,h:y1-y0,src:text};
 }
 
 /* ---------- réglages par couleur ---------- */
@@ -135,7 +138,7 @@ function drawCols(){
     r.innerHTML='<span class="sw" style="background:'+hex+'"></span><select><option value="cut">Découper</option><option value="eng">Graver (trait)</option><option value="off">Ignorer</option></select><input type="number" min="1" step="1"><input type="number" min="1" max="100" step="1"><input type="number" min="1" max="20" step="1">';
     const [sel,sp,pw,ps]=r.querySelectorAll('select,input');
     sel.value=c.mode; sp.value=c.speed; pw.value=c.power; ps.value=c.passes;
-    const up=()=>{c.mode=sel.value;c.speed=Math.max(1,+sp.value||1);c.power=Math.min(100,Math.max(1,+pw.value||1));c.passes=Math.max(1,Math.min(20,+ps.value||1));save();draw();};
+    const up=()=>{c.mode=sel.value;c.speed=Math.max(1,+sp.value||1);c.power=Math.min(100,Math.max(1,+pw.value||1));c.passes=Math.max(1,Math.min(20,+ps.value||1));save();draw();autosave();};
     [sel,sp,pw,ps].forEach(e=>e.addEventListener('change',up));
     box.appendChild(r);
   });
@@ -228,14 +231,24 @@ $('bSend').onclick=async()=>{
 
 /* ---------- ouverture ---------- */
 async function openFile(f){
-  try{ DOC=parseSVG(await f.text(),f.name); S.ox=Math.max(0,S.ox); drawCols(); fill(); draw(); }
+  try{ DOC=parseSVG(await f.text(),f.name); ID=null; S.ox=Math.max(0,S.ox); drawCols(); fill(); draw(); autosave(); }
   catch(e){ alert(e.message||e); }
 }
+/* ---------- enregistrement sur le serveur (OVH) : le dessin + ses réglages ---------- */
+let ID=null,asT=0;
+function docData(){ return {name:DOC.name,src:DOC.src,ox:S.ox,oy:S.oy,sc:S.sc,cols:S.cols}; }
+function autosave(){ if(!window.AtelierSync||!DOC)return; clearTimeout(asT); asT=setTimeout(async()=>{ try{ ID=await AtelierSync.save('laser',ID,DOC.name,docData()); }catch(e){} },1200); }
+function loadDoc(id,d,inf){ try{ DOC=parseSVG(d.src,d.name); ID=id; S.ox=d.ox||0; S.oy=d.oy||0; S.sc=d.sc||100; S.cols=d.cols||{}; DOC.name=(inf&&inf.name)||d.name||DOC.name; drawCols(); fill(); draw(); save(); }catch(e){ alert('Ouverture impossible : '+(e.message||e)); } }
+function openMy(){ AtelierSync.openDialog({app:'laser',title:'Mes dessins (Laser)',current:ID,onOpen:(id,data,inf)=>loadDoc(id,data,inf)}); }
+if(window.AtelierSync){
+  $('bMy').onclick=openMy; $('syncBadge').appendChild(AtelierSync.badge());
+  addEventListener('atelier-conflict',e=>{ if(e.detail.id!==ID)return; ID=e.detail.copyId; if(DOC)DOC.name=e.detail.name; alert('Ce dessin a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».'); });
+}else $('bMy').hidden=true;
 function fill(){ $('ox').value=S.ox; $('oy').value=S.oy; $('sc').value=S.sc; $('bw').value=S.bed[0]; $('bh').value=S.bed[1]; }
 $('bOpen').onclick=()=>$('file').click();
 $('file').onchange=e=>{const f=e.target.files[0]; e.target.value=''; if(f)openFile(f);};
 $('bDl').onclick=download;
-[['ox','ox'],['oy','oy'],['sc','sc']].forEach(([id,k])=>$(id).addEventListener('change',()=>{S[k]=+$(id).value||0;save();draw();}));
+[['ox','ox'],['oy','oy'],['sc','sc']].forEach(([id,k])=>$(id).addEventListener('change',()=>{S[k]=+$(id).value||0;save();draw();autosave();}));
 ['bw','bh'].forEach((id,i)=>$(id).addEventListener('change',()=>{S.bed[i]=Math.max(10,+$(id).value||10);save();draw();}));
 addEventListener('resize',draw);
 AtelierDrop.init({app:'laser',accept:f=>/\.svg$/i.test(f.name)||f.type==='image/svg+xml',open:fs=>openFile(fs[0])});
