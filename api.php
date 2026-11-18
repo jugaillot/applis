@@ -178,4 +178,12 @@ if ($a === 'inbox_del' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   out(200, array('ok' => true));
 }
 
+if ($a === 'usage') {
+  // espace utilisé sur le serveur, par type (documents, images/fichiers, historique, boîte de réception)
+  function dsize($d) { $n = 0; if (!is_dir($d)) return $n; $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($d, FilesystemIterator::SKIP_DOTS)); foreach ($it as $f) if ($f->isFile()) $n += (float) $f->getSize(); return $n; }
+  flock($lock, LOCK_SH); $j = idx_read(); flock($lock, LOCK_UN); $apps = array();
+  foreach ($j['docs'] as $d) { if (!empty($d['deleted'])) continue; $k = isset($d['app']) && $d['app'] ? $d['app'] : 'autre'; if (!isset($apps[$k])) $apps[$k] = array('n' => 0, 'size' => 0); $apps[$k]['n']++; $apps[$k]['size'] += (float) (isset($d['size']) ? $d['size'] : 0); }
+  out(200, array('docs' => dsize($dir . '/docs'), 'blobs' => dsize($dir . '/blobs'), 'versions' => dsize($dir . '/versions'), 'inbox' => dsize($dir . '/inbox'), 'apps' => (object) $apps));
+}
+
 out(400, array('error' => 'action inconnue'));
