@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>La Suite — Cahier</title>
 <meta name="theme-color" content="#1d1d1f">
 <link rel="icon" href="/icons/icon-192.png">
@@ -34,7 +34,8 @@ main{flex:1;min-height:0;position:relative}
 #slider{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;background:#d9d5cc}
 #slider::-webkit-scrollbar{display:none}
 .slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:10px;position:relative}
-.slide img{max-width:100%;max-height:100%;box-shadow:0 2px 14px rgba(0,0,0,.3);background:#fff;touch-action:pan-x pinch-zoom}
+.slide img{max-width:100%;max-height:100%;box-shadow:0 2px 14px rgba(0,0,0,.3);background:#fff;touch-action:pan-x;transform-origin:center;will-change:transform}
+#slider.zoomed{overflow-x:hidden}#slider.zoomed .slide img{touch-action:none;cursor:grab}#slider.zoomed .slide{overflow:visible}
 .slide .ph{color:var(--mute)}
 #txtp{position:absolute;top:0;right:0;bottom:62px;width:min(400px,100%);background:var(--panel);border-left:1px solid var(--line);box-shadow:-6px 0 18px rgba(0,0,0,.12);display:flex;flex-direction:column;z-index:6}
 #txtp .th{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;border-bottom:1px solid var(--line)}
@@ -184,6 +185,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 <script src="../lib/save.js"></script>
 <script src="../lib/drop.js"></script>
 <script src="../lib/fs.js"></script>
+<script src="../lib/zoom.js"></script>
 <script>
 (function(){'use strict';
 const $=s=>document.querySelector(s);
@@ -272,7 +274,8 @@ function showTxt(){const p=LIST[POS];if(!$('#txtp').hidden){$('#txtb').innerHTML
 $('#bTxt').onclick=()=>{$('#txtp').hidden=!$('#txtp').hidden;ls.set('cahier.txt',$('#txtp').hidden?'0':'1');showTxt();};
 $('#txtp').hidden=ls.get('cahier.txt')!=='1';
 $('#txtX').onclick=()=>{$('#txtp').hidden=true;ls.set('cahier.txt','0');};
-function updNav(){showTxt();const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-1;$('#bInfo').disabled=!p;
+let zPos=-1;
+function updNav(){if(zPos!==POS){zPos=POS;if(typeof zReset==='function')zReset();}showTxt();const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-1;$('#bInfo').disabled=!p;
   $('#nT').textContent=p?(p.title||'Page '+pos(p)):'—';$('#nS').textContent=p?('p. '+pos(p)+' · '+fdate(p.date)+(p.type==='croquis'?' · croquis':'')+((p.heads||[]).length?' · '+p.heads.join(' / '):'')+'  ('+(POS+1)+' / '+LIST.length+')'):'';}
 $('#bPrev').onclick=()=>go(POS-1,true);$('#bNext').onclick=()=>go(POS+1,true);
 addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||!$('#crop').hidden||$('#view').hidden)return;if(/INPUT|TEXTAREA|SELECT/.test((e.target||{}).tagName))return;
@@ -670,6 +673,24 @@ function setTool(t){TOOL=t;$('#tHand').classList.toggle('on',t==='hand');$('#tZo
 $('#tHand').onclick=()=>setTool('hand');$('#tZone').onclick=()=>{if($('#view').hidden)setMode('view');setTool('zone');};
 function curImg(){const s=$('#slider').children[POS];return s&&s.querySelector('img');}
 function zoneClear(){ZR=null;ZD=null;const b=$('#selBox');if(b)b.remove();const z=$('#zbar');if(z)z.remove();}
+/* ---- zoom de la page affichée : pincement, molette (Alt), double-clic, loupe, main ---- */
+const Z={s:1,x:0,y:0};
+function zApply(){const im=curImg(),sl=$('#slider');if(!im)return;
+  const sd=im.parentNode,w=im.offsetWidth*Z.s,h=im.offsetHeight*Z.s,mx=Math.max(0,(w-sd.clientWidth)/2+20),my=Math.max(0,(h-sd.clientHeight)/2+20);
+  Z.x=Math.max(-mx,Math.min(mx,Z.x));Z.y=Math.max(-my,Math.min(my,Z.y));
+  im.style.transform=(Z.s===1&&!Z.x&&!Z.y)?'':`translate(${Z.x}px,${Z.y}px) scale(${Z.s})`;
+  sl.classList.toggle('zoomed',Z.s>1.001);}
+function zReset(){Z.s=1;Z.x=Z.y=0;document.querySelectorAll('.slide img').forEach(i=>i.style.transform='');$('#slider').classList.remove('zoomed');}
+function zZoomBy(f,cx,cy){const im=curImg();if(!im)return;const r=im.getBoundingClientRect(),k=Math.max(1,Math.min(8,Z.s*f))/Z.s;
+  const ccx=r.left+r.width/2,ccy=r.top+r.height/2;Z.x+=(cx-ccx)*(1-k);Z.y+=(cy-ccy)*(1-k);Z.s*=k;if(Z.s<1.001){Z.s=1;Z.x=Z.y=0;}zApply();}
+function zActual(){const im=curImg();if(!im||!im.naturalWidth)return;const r=im.getBoundingClientRect();zZoomBy(Math.max(1,im.naturalWidth/(im.offsetWidth*Z.s)),r.left+r.width/2,r.top+r.height/2);}
+if(window.AtelierZoom)AtelierZoom.init({area:'#slider',tools:'#tb',wheel:true,zoomBy:zZoomBy,panBy:(dx,dy)=>{Z.x+=dx;Z.y+=dy;zApply();},fit:zReset,actual:zActual,
+  pct:()=>{const im=curImg();return im&&im.naturalWidth?im.offsetWidth*Z.s/im.naturalWidth*100:100;}});
+{const ptrs=new Map();let last=null;const sl=$('#slider');
+  sl.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,1);if(Z.s>1&&TOOL!=='zone'&&ptrs.size===1&&e.target.tagName==='IMG'){last={x:e.clientX,y:e.clientY};sl.setPointerCapture(e.pointerId);}});
+  sl.addEventListener('pointermove',e=>{if(!last||ptrs.size!==1)return;Z.x+=e.clientX-last.x;Z.y+=e.clientY-last.y;last={x:e.clientX,y:e.clientY};zApply();});
+  const end=e=>{ptrs.delete(e.pointerId);last=null;};sl.addEventListener('pointerup',end);sl.addEventListener('pointercancel',end);
+  sl.addEventListener('dblclick',e=>{if(TOOL==='zone')return;const im=curImg();if(!im)return;const r=im.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)return;if(Z.s>1)zReset();else zZoomBy(2.5,e.clientX,e.clientY);});}
 $('#slider').addEventListener('pointerdown',e=>{if(TOOL!=='zone')return;const im=curImg();if(!im)return;const r=im.getBoundingClientRect();
   if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)return;
   zoneClear();ZD={x:e.clientX,y:e.clientY,r};$('#slider').setPointerCapture(e.pointerId);

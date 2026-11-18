@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>La Suite Paysage insulaire</title>
 <script src="../lib/paper-core.min.js"></script>
 <script src="../lib/clipper.js"></script>
@@ -3160,7 +3160,7 @@ async function vxAuto(f,p){
     if(!VX.shapes.length)throw new Error('aucune forme trouvée');await busy();await vxPlace();}
   catch(e){await busy();alert('Placement impossible : '+(e.message||e));}
 }
-addEventListener('DOMContentLoaded',()=>{if(window.AtelierZoom)AtelierZoom.init({area:cv,tools:'#tools',before:'#tools [data-tool=hand] + *',wheel:true,
+addEventListener('DOMContentLoaded',()=>{if(window.AtelierZoom)AtelierZoom.init({pinch:false,area:cv,tools:'#tools',before:'#tools [data-tool=hand] + *',wheel:true,
   zoomBy:(f,x,y)=>{const r=cv.getBoundingClientRect();zoomAt(f,view.viewToProject(new P.Point(x-r.left,y-r.top)));},
   panBy:(dx,dy)=>{view.center=view.center.subtract(new P.Point(dx,dy).divide(view.zoom));afterView();},
   fit:fitView,actual:()=>zoomAt((96/25.4)/view.zoom,view.center),pct:()=>view.zoom/(96/25.4)*100});});
