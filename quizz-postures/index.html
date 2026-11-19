@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#23338A">
+<title>Quizz des postures</title>
+<link rel="apple-touch-icon" href="/icons/quizz-postures-icon-192.png">
+<link rel="manifest" href="/quizz-postures/manifest.webmanifest" crossorigin="use-credentials">
+<style>
+/* Navigation mobile : thème en couleur, puis numéro de carte, puis les deux situations */
+:root{--bg:#FBF9F5;--fg:#1f2430;--mute:#667;--card:#fff;--line:#e3ded3;--c0:#F5A83C;--c1:#23338A;--c2:#1C9BA5;--c3:#DE6E9E;--good:#2f8f3a;--doubt:#c77a10;--fant:#8a8fa0;
+--display:'Kaushan Script',cursive;--body:'Nunito',system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171f;--fg:#eceef5;--mute:#9aa0b4;--card:#1f222d;--line:#343846;--c1:#6c7de0;--good:#58c466;--doubt:#f0b14a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15171f;--fg:#eceef5;--mute:#9aa0b4;--card:#1f222d;--line:#343846;--c1:#6c7de0;--good:#58c466;--doubt:#f0b14a;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.35;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px;max-width:640px;margin:0 auto}
+h1{font-family:var(--display);font-weight:400;font-size:26px;margin:0 0 10px}
+.themes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tb{border:0;border-radius:16px;padding:14px 10px;color:#fff;font:700 16px var(--body);min-height:64px;cursor:pointer;opacity:.55;text-align:center}
+.tb[aria-pressed=true]{opacity:1;outline:3px solid var(--fg);outline-offset:2px}
+.nums{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:8px;margin:16px 0}
+.nb{border:2.5px solid var(--c);background:var(--card);color:var(--c);border-radius:14px;height:54px;font:400 24px var(--display);cursor:pointer}
+.nb[aria-pressed=true]{background:var(--c);color:#fff}
+.lab{font-size:13px;color:var(--mute);margin:12px 0 -6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.post{border-radius:16px;border:3px solid var(--c);background:var(--card);overflow:hidden;margin-bottom:14px}
+.ph{background:var(--c);color:#fff;padding:10px 14px;font-weight:700}
+.ph small{display:block;font-weight:400;opacity:.9;font-size:13px;margin-top:2px}
+.sit{padding:14px;border-top:1px solid var(--line)}
+.sit:first-of-type{border-top:0}
+.st{font-weight:700;font-size:17px;margin:0 0 4px}
+.sl{font-size:12px;font-weight:700;color:var(--c);letter-spacing:.06em}
+.a{display:flex;gap:10px;margin:8px 0;align-items:flex-start;padding:6px 8px;border-radius:10px}
+.a b{flex:none;width:30px;height:30px;border-radius:50%;background:var(--fg);color:var(--bg);display:flex;align-items:center;justify-content:center}
+.a span{min-width:0}
+.rv .a.b{background:color-mix(in srgb,var(--good) 20%,transparent)}
+.rv .a.d{background:color-mix(in srgb,var(--doubt) 20%,transparent)}
+.tag{display:none;font-size:12px;font-weight:700;margin-top:2px}
+.rv .b .tag,.rv .d .tag,.rv .f .tag{display:block}
+.b .tag{color:var(--good)}.d .tag{color:var(--doubt)}.f .tag{color:var(--fant)}
+.show{width:100%;border:2px solid var(--c);background:transparent;color:var(--c);border-radius:12px;padding:10px;font:700 15px var(--body);cursor:pointer;margin-top:4px}
+.exp{padding:12px 14px;background:color-mix(in srgb,var(--c) 10%,var(--card));font-size:14px;border-top:1px solid var(--line)}
+.hint{color:var(--mute);margin-top:18px}
+button:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kaushan+Script&family=Nunito:wght@400;700&display=swap">
+</head><body>
+<h1>Quizz des postures</h1>
+<div class="themes" id="themes"></div>
+<div class="lab" id="nl"></div>
+<div class="nums" id="nums"></div>
+<div id="out"><p class="hint">Touche une couleur, puis le numéro de la carte tirée.</p></div>
+<script>
+let T=[];
+const COL=['var(--c0)','var(--c1)','var(--c2)','var(--c3)'];
+const TAG={b:'✓ Bonne réponse',d:'Idée reçue : paraît raisonnable',f:'Réponse fantaisiste'};
+let ti=null,ci=null;
+const $=id=>document.getElementById(id);
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function drawThemes(){$('themes').innerHTML=T.map((t,i)=>`<button class="tb" style="background:${COL[i]}" aria-pressed="${i===ti}" data-i="${i}">${t.name}<br><small>${t.cards.length} cartes</small></button>`).join('')}
+function drawNums(){
+  if(ti===null){$('nums').innerHTML='';$('nl').textContent='';return}
+  $('nl').textContent=T[ti].name+' · numéro de la carte';
+  $('nums').style.setProperty('--c',COL[ti]);
+  $('nums').innerHTML=T[ti].cards.map((c,j)=>`<button class="nb" style="--c:${COL[ti]}" aria-pressed="${j===ci}" data-j="${j}">${c.n}</button>`).join('')}
+function drawCard(){
+  if(ti===null||ci===null){return}
+  const c=T[ti].cards[ci];
+  $('out').innerHTML=`<div class="post" style="--c:${COL[ti]}"><div class="ph">${T[ti].name} · carte ${c.n}<small>${esc(c.title)}</small></div>`+
+  c.sits.map((s,k)=>`<div class="sit" data-k="${k}"><div class="sl">SITUATION ${'AB'[k]}</div><p class="st">${esc(s.t)}</p><div class="ans">`+
+   s.a.map(a=>`<div class="a ${a.r}"><b>${a.k}</b><span>${esc(a.t)}<div class="tag">${TAG[a.r]}</div></span></div>`).join('')+
+   `</div><button class="show">Voir la réponse</button></div>`).join('')+
+  `<div class="exp"><b>La posture :</b> ${esc(c.exp)}</div></div>`;
+  location.hash=`t${ti+1}-${c.n}`;
+}
+$('themes').onclick=e=>{const b=e.target.closest('.tb');if(!b)return;ti=+b.dataset.i;ci=null;drawThemes();drawNums();$('out').innerHTML='<p class="hint">Touche le numéro de la carte tirée.</p>';location.hash='t'+(ti+1)};
+$('nums').onclick=e=>{const b=e.target.closest('.nb');if(!b)return;ci=+b.dataset.j;drawNums();drawCard();scrollTo({top:0})};
+$('out').onclick=e=>{const b=e.target.closest('.show');if(!b)return;const s=b.closest('.sit');const on=s.classList.toggle('rv');b.textContent=on?'Masquer la réponse':'Voir la réponse'};
+function fromHash(){const m=location.hash.match(/^#t(\d)(?:-(\d+))?$/);if(!m)return;const i=+m[1]-1;if(!T[i])return;ti=i;ci=null;if(m[2]){const j=T[i].cards.findIndex(c=>c.n==m[2]);if(j>=0)ci=j}drawThemes();drawNums();drawCard()}
+Promise.all([1,2,3,4].map(i=>fetch('postures-'+i+'.json').then(r=>r.json()))).then(r=>{T=r;drawThemes();fromHash()}).catch(()=>{$('out').innerHTML='<p class="hint">Impossible de charger les données.</p>'});
+drawThemes();
+</script>
+<script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(r=>r.update()).catch(()=>{}));
+/* une nouvelle version vient d'être installée : on recharge une fois pour l'afficher */
+navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!window.__laSuiteBusy&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}window.__laSuiteLeaving=1;location.reload();}});}</script>
+</body></html>
