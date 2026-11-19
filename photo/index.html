@@ -1465,6 +1465,7 @@ function mine(){AtelierSync.openDialog({app:'photo',title:'Mes images gardées s
 $('#bKeep').onclick=()=>keep().catch(e=>alert('Envoi impossible : '+(e.message||e)));
 $('#bMy').onclick=mine;
 /* une fois le travail gardé, les changements suivants sont envoyés tout seuls */
+setInterval(()=>{if(!PID||!S.items.length)return;const g=sig();if(g!==last){clearTimeout(T);T=setTimeout(()=>persist().catch(()=>{}),800);}},3000);
 addEventListener('atelier-conflict',e=>{if(e.detail.id!==PID)return;PID=e.detail.copyId;PNAME=e.detail.name;S.items.forEach(i=>i.bsaved=null);persist().catch(()=>{});alert('Ce travail a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
 window.__photoKeep={keep,open,get pid(){return PID;}};
 })();

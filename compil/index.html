@@ -1479,6 +1479,7 @@ function mine(){AtelierSync.openDialog({app:'compil',title:'Mes PDF gardés sur 
 $('#bKeep').onclick=()=>keep().catch(e=>alert('Envoi impossible : '+(e.message||e)));
 $('#bMy').onclick=mine;
 /* une fois le document gardé, les changements suivants sont envoyés tout seuls */
+setInterval(()=>{const t=tab();if(!t||!t.pid||LOADING||!S.pages.length)return;if(stateSig()!==t.psig){clearTimeout(T);T=setTimeout(()=>persist().catch(()=>{}),800);}},3000);
 addEventListener('atelier-conflict',e=>{const t=TABS.find(x=>x.pid===e.detail.id);if(!t)return;t.pid=e.detail.copyId;t.pname=e.detail.name;S.files.forEach(f=>f.bsaved=null);persist().catch(()=>{});alert('Ce document a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
 window.__compilKeep={keep,open,get pid(){return tab().pid;}};
 })();

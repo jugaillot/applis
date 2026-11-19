@@ -713,6 +713,8 @@ async function saveProject(asNew){
   catch(e){alert('Enregistrement impossible : '+(e.message||e));}
   await busy();
 }
+/* une fois enregistré sur le serveur, les changements suivants suivent tout seuls */
+let _rLast='';setInterval(()=>{if(!S.doc||!S.doc.id||!window.AtelierSync)return;try{const j=JSON.stringify(buildProject());if(!_rLast){_rLast=j;return;}if(j!==_rLast){_rLast=j;AtelierSync.save('riso',S.doc.id,S.doc.name,JSON.parse(j),{lazy:true});}}catch(e){}},5000);
 function openDocs(){
   AtelierSync.openDialog({app:'riso',title:'Mes projets riso',current:S.doc.id,
     onOpen:async(id,P,inf)=>{if(window.AtelierTabs){AtelierTabs.open(id,inf?inf.name:id,P);return;}await openProjectData(P);S.doc={id,name:inf?inf.name:id};showDoc();},

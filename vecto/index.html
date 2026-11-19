@@ -623,7 +623,7 @@ function resetHistory(){S.undo=[];S.redo=[];lastSnap=snapshot();syncPanel();}
 
 /* ---------- autosauvegarde ---------- */
 let asT=0;
-function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{const d=projectData();IDB.set('vecto.autosave',Object.assign({},d,{doc:S.doc}));if(window.AtelierTabs)AtelierTabs.update({id:S.doc.id,name:S.doc.name,data:d});},1500);}
+function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{const d=projectData();IDB.set('vecto.autosave',Object.assign({},d,{doc:S.doc}));if(window.AtelierTabs)AtelierTabs.update({id:S.doc.id,name:S.doc.name,data:d});if(S.doc.id&&window.AtelierSync)AtelierSync.save('vecto',S.doc.id,S.doc.name,d,{lazy:true});},1500);}
 function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'— sans titre';if(window.AtelierTabs)AtelierTabs.refresh();}
 async function saveDoc(asNew){
   if(!window.AtelierSync)return download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`vecto-${stamp()}.json`);

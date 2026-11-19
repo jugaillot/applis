@@ -1075,7 +1075,7 @@ const IDBk={async get(k){try{return await new Promise((res)=>{const r=indexedDB.
   async set(k,v){try{await new Promise((res)=>{const r=indexedDB.open('atelier',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('kv'))r.result.createObjectStore('kv');};r.onsuccess=()=>{const t=r.result.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=res;};r.onerror=res;});}catch(e){}}};
 const projectData=()=>({app:'atelier-plan',v:1,doc:S.doc});
 let asT=0;
-function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{IDBk.set('plan.autosave',{data:projectData(),meta:S.meta,view:S.view});if(window.AtelierTabs)AtelierTabs.update({id:S.meta.id,name:S.meta.name,data:projectData()});},1200);}
+function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{IDBk.set('plan.autosave',{data:projectData(),meta:S.meta,view:S.view});if(window.AtelierTabs)AtelierTabs.update({id:S.meta.id,name:S.meta.name,data:projectData()});if(S.meta.id&&window.AtelierSync)AtelierSync.save('plan',S.meta.id,S.meta.name,projectData(),{lazy:true});},1200);}
 function showDoc(){$('#docName').textContent=S.meta.name?'— '+S.meta.name:'— sans titre';if(window.AtelierTabs)AtelierTabs.refresh();}
 function loadData(d){if(!d||d.app!=='atelier-plan')throw new Error('ce fichier n’est pas un plan');S.doc=Object.assign({unit:'mm',dec:1,grid:10,txt:30,dimT:25,dimA:12,layers:DEF_LAYERS(),cur:'L1',objs:[]},d.doc);if(!S.doc.layers.length)S.doc.layers=DEF_LAYERS();if(!S.doc.layers.some(l=>l.id===S.doc.cur))S.doc.cur=S.doc.layers[0].id;S.sel.clear();S.hot=[];S.undo=[];S.redo=[];syncDocProps();refreshPanels();}
 async function saveDoc(asNew){
