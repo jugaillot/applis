@@ -1054,8 +1054,15 @@ async function openFiles(list,hs){const fs=[...list];if(!fs.length)return;LOADIN
   try{for(let k=0;k<fs.length;k++){const f=fs[k];
     if(S.pages.length){snapTab();TABS.push({name:'',st:null});ACT=TABS.length-1;loadTab();}
     TABS[ACT].name=f.name;SRC=hs&&hs[k]&&/\.pdf$/i.test(f.name)?hs[k]:null;
-    await addFiles([f]);if(!S.pages.length)SRC=null;}}
+    await addFiles([f]);if(!S.pages.length)SRC=null;else if(/\.pdf$/i.test(f.name)||f.type==='application/pdf')actualOnOpen();}}
   finally{LOADING--;renderTabs();}}
+/* à l'ouverture d'un PDF : la feuille s'affiche à sa taille réelle (100 %), en haut de la première page */
+async function actualOnOpen(){
+  for(let i=0;i<40;i++){const c=document.querySelector('#sheets canvas');if(c&&c._sh)break;await new Promise(r=>setTimeout(r,100));}
+  const c=document.querySelector('#sheets canvas');if(!c||!c._sh)return;
+  const r=$('#work').getBoundingClientRect();ZOOM.anchor={k:0,u:.5,v:0,tx:r.left+r.width/2,ty:Math.max(r.top,$('#shBar').getBoundingClientRect().bottom)+20};
+  setZoom(96/25.4*sheetMM()/240,false);
+}
 $('#bPdf').onclick=()=>exportPDF();
 $('#bSave').onclick=async()=>{
   if(!S.pages.length)return;
