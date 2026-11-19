@@ -155,7 +155,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn primary" id="bOpen" title="Ouvrir un ou plusieurs fichiers : chacun dans son propre onglet (Ctrl+O)">Ouvrir…</button>
   <label class="btn" title="Ajoute les pages de ces fichiers au document de l’onglet actif (assemblage)">Ajouter des fichiers…<input type="file" id="fIn" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.pptx" hidden></label>
   <span class="sp"></span>
-  <button class="btn" id="bKeep" title="Garder ce document (fichiers sources, pages, annotations) sur le serveur pour le retrouver sur un autre ordinateur">Garder sur le serveur</button>
+  <button class="btn" id="bKeep" title="Enregistrer ce document (fichiers sources, pages, annotations) sur le serveur pour le retrouver sur un autre ordinateur">Enregistrer sur le serveur</button>
   <button class="btn" id="bMy" title="Rouvrir un document gardé sur le serveur">Mes PDF</button><span id="syncBadge"></span>
   <button class="btn" id="bClear">Tout vider</button>
   <button class="btn" id="bPrint">Imprimer…</button>
@@ -1479,7 +1479,6 @@ function mine(){AtelierSync.openDialog({app:'compil',title:'Mes PDF gardés sur 
 $('#bKeep').onclick=()=>keep().catch(e=>alert('Envoi impossible : '+(e.message||e)));
 $('#bMy').onclick=mine;
 /* une fois le document gardé, les changements suivants sont envoyés tout seuls */
-setInterval(()=>{const t=tab();if(!t||!t.pid||LOADING||!S.pages.length)return;if(stateSig()!==t.psig){clearTimeout(T);T=setTimeout(()=>persist().catch(()=>{}),800);}},3000);
 addEventListener('atelier-conflict',e=>{const t=TABS.find(x=>x.pid===e.detail.id);if(!t)return;t.pid=e.detail.copyId;t.pname=e.detail.name;S.files.forEach(f=>f.bsaved=null);persist().catch(()=>{});alert('Ce document a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
 window.__compilKeep={keep,open,get pid(){return tab().pid;}};
 })();

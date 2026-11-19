@@ -174,7 +174,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bCopy" title="Copier l’image retouchée pour la coller ailleurs (Ctrl+C)">Copier</button>
   <button class="btn" id="bPrint" title="Imprimer l’image retouchée (Ctrl+P)">Imprimer</button>
   <button class="btn primary" id="bSaveOne" title="Enregistrer l’image retouchée sur son fichier d’origine (Ctrl+S). Sans fichier d’origine, propose de le créer.">Enregistrer</button>
-  <button class="btn" id="bKeep" title="Garder ces images (originaux + réglages) sur le serveur pour les retrouver sur un autre ordinateur">Garder sur le serveur</button>
+  <button class="btn" id="bKeep" title="Enregistrer ces images (originaux + réglages) sur le serveur pour les retrouver sur un autre ordinateur">Enregistrer sur le serveur</button>
   <button class="btn" id="bMy" title="Rouvrir un travail gardé sur le serveur">Mes images</button><span id="syncBadge"></span>
   <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
   <button class="btn" id="bExportOne" title="Exporter une copie (Ctrl+Maj+S)">Exporter cette image</button>
@@ -1464,9 +1464,7 @@ async function open(id,data,inf){
 function mine(){AtelierSync.openDialog({app:'photo',title:'Mes images gardées sur le serveur',current:PID,onOpen:open});}
 $('#bKeep').onclick=()=>keep().catch(e=>alert('Envoi impossible : '+(e.message||e)));
 $('#bMy').onclick=mine;
-$('#bKeep').textContent='Garder sur le serveur';
 /* une fois le travail gardé, les changements suivants sont envoyés tout seuls */
-setInterval(()=>{if(!PID||!S.items.length)return;const g=sig();if(g!==last){clearTimeout(T);T=setTimeout(()=>persist().catch(()=>{}),800);}},3000);
 addEventListener('atelier-conflict',e=>{if(e.detail.id!==PID)return;PID=e.detail.copyId;PNAME=e.detail.name;S.items.forEach(i=>i.bsaved=null);persist().catch(()=>{});alert('Ce travail a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
 window.__photoKeep={keep,open,get pid(){return PID;}};
 })();

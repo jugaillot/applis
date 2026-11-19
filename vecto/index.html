@@ -211,7 +211,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bNew">Nouveau</button>
   <span id="syncBadge"></span>
   <button class="btn" id="bOpen" title="Ouvrir un dessin enregistré (chacun dans son onglet)">Ouvrir…</button><input type="file" id="fProj" accept=".json,application/json" hidden>
-  <button class="btn" id="bSave" title="Enregistrer (Ctrl+S) — sur cet appareil et sur le serveur">Enregistrer</button>
+  <button class="btn" id="bSave" title="Enregistrer sur le serveur (Ctrl+S) pour le retrouver sur un autre ordinateur">Enregistrer sur le serveur</button>
   <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
   <button class="btn" id="bSvg">Export SVG</button>
   <button class="btn" id="bPdf">Export PDF</button>
@@ -623,7 +623,7 @@ function resetHistory(){S.undo=[];S.redo=[];lastSnap=snapshot();syncPanel();}
 
 /* ---------- autosauvegarde ---------- */
 let asT=0;
-function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{const d=projectData();IDB.set('vecto.autosave',Object.assign({},d,{doc:S.doc}));if(window.AtelierTabs)AtelierTabs.update({id:S.doc.id,name:S.doc.name,data:d});if(S.doc.id&&window.AtelierSync)AtelierSync.save('vecto',S.doc.id,S.doc.name,d,{lazy:true});},1500);}
+function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{const d=projectData();IDB.set('vecto.autosave',Object.assign({},d,{doc:S.doc}));if(window.AtelierTabs)AtelierTabs.update({id:S.doc.id,name:S.doc.name,data:d});},1500);}
 function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'— sans titre';if(window.AtelierTabs)AtelierTabs.refresh();}
 async function saveDoc(asNew){
   if(!window.AtelierSync)return download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`vecto-${stamp()}.json`);

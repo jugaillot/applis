@@ -60,4 +60,7 @@ Dépôt GitHub `jugaillot/applis`. Hébergement OVH (mutualisé, PHP) : **déplo
 - Pied de commit (obligatoire) : `Co-Authored-By: Claude …` + `Claude-Session: …` tels que fournis par la session.
 
 ## Enregistrement serveur par appli
-Vecto, Paysage, CAD, Riso, Mise en page, Cahier, BD, Civco, Dossiers, **Laser** (autosave du SVG + réglages), **Photo** et **PDF** (boutons « Garder sur le serveur » / « Mes … » : originaux en blobs + réglages ; envois automatiques ensuite). L'aide de chaque appli affiche l'espace utilisé (`api.php?a=usage`).
+Deux comportements seulement :
+- **Automatique** (une fois le document enregistré une première fois) : Paysage, Mise en page, Cahier (et BD, Civco, Dossiers).
+- **À la demande**, bouton « Enregistrer sur le serveur » (Ctrl+S) : Vecto, CAD, Riso, Laser, Photo, PDF. Aucun envoi automatique ; seul un brouillon local est gardé.
+L'aide de chaque appli affiche l'espace utilisé (`api.php?a=usage`) et propose « Nettoyer l'historique ».
