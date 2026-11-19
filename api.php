@@ -70,7 +70,7 @@ if ($a === 'put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $vi = is_file($vd . '/index.json') ? json_decode(file_get_contents($vd . '/index.json'), true) : array(); if (!is_array($vi)) $vi = array();
     $lastAt = 0; foreach ($vi as $v) $lastAt = max($lastAt, (float) $v['saved']);
     $prevDev = isset($cur['dev']) ? $cur['dev'] : '';
-    if (!empty($_GET['keep']) || ($dev !== '' && $prevDev !== '' && $dev !== $prevDev) || now_ms() - $lastAt > 15 * 60 * 1000) {
+    if (!empty($_GET['keep']) || ($dev !== '' && $prevDev !== '' && $dev !== $prevDev) || now_ms() - $lastAt > 30 * 60 * 1000) {
       @copy($f, $vd . '/' . $rev . '.json');
       $vi[] = array('rev' => $rev, 'updated' => (float) $cur['updated'], 'dev' => $prevDev, 'size' => (int) $cur['size'], 'saved' => now_ms());
       $vi = prune_versions($vd, $vi);
