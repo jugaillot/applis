@@ -220,7 +220,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <section data-sec="place">
       <h2 class="fold"><span class="tw">▼</span>Placement</h2>
       <div class="g2">
-        <label>Marge (mm)<input type="number" id="oM" min="0" step="1" value="5"></label>
+        <label>Marge (mm)<input type="number" id="oM" min="0" step="1" value="0"></label>
         <label>Espacement (mm)<input type="number" id="oG" min="0" step="1" value="5"></label>
       </div>
       <div class="muted" style="margin-top:8px">Taille des pages</div>
@@ -347,14 +347,14 @@ function stateSig(){const skip=v=>v&&typeof v==='object'&&!(Array.isArray(v)||Ob
   try{return JSON.stringify([S.pages.map(p=>Object.fromEntries(Object.entries(p).filter(([k,v])=>k!=='thumb'&&k[0]!=='_'&&!skip(v)))),S.opt],(k,v)=>skip(v)?undefined:v);}catch(e){return String(Math.random());}}
 let CLEAN='';const markClean=()=>{CLEAN=stateSig();};const unsaved=()=>S.pages.length>0&&stateSig()!==CLEAN;
 addEventListener('DOMContentLoaded',()=>{markClean();if(window.AtelierUnsaved)AtelierUnsaved.watch(()=>unsaved()||(typeof TABS!=='undefined'&&TABS.some((t,k)=>k!==ACT&&t.st&&t.st.dirty)));});
-const S={files:new Map(),pages:[],sel:new Set(),anchor:null,opt:{fmt:'A4',w:210,h:297,or:'auto',n:1,mode:'suite',order:'z',m:5,g:5,fit:'fit',red:false,redMb:2,px:false,pxDpi:300,book:false}};
+const S={files:new Map(),pages:[],sel:new Set(),anchor:null,opt:{fmt:'A4',w:210,h:297,or:'auto',n:1,mode:'suite',order:'z',m:0,g:5,fit:'fit',red:false,redMb:2,px:false,pxDpi:300,book:false}};
 let uid=1;
 const ZOOM={z:1,t:0};
 const busy=msg=>{const b=$('#busy');if(msg){b.textContent=msg;b.hidden=false;}else b.hidden=true;return new Promise(r=>setTimeout(r,20));};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- préférences ---------- */
-try{const p=JSON.parse(localStorage.getItem('atelierCompil.opt')||'null');if(p)Object.assign(S.opt,p);}catch(e){}
+try{const p=JSON.parse(localStorage.getItem('atelierCompil.opt')||'null');if(p){if(p.m===5&&!localStorage.getItem('atelierCompil.m0'))p.m=0;Object.assign(S.opt,p);}localStorage.setItem('atelierCompil.m0','1');}catch(e){}
 function saveOpt(){try{localStorage.setItem('atelierCompil.opt',JSON.stringify(S.opt));}catch(e){}}
 
 /* ---------- import ---------- */
