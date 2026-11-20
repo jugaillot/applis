@@ -51,6 +51,7 @@ progress{width:100%;height:8px}
 </div>
 <div id="secUn" hidden>
   <div class="h"><span id="unTitle">Contenu du zip</span> <button id="bAll" class="pri">Tout enregistrer dans un dossier…</button></div>
+  <div class="bar"><button id="bEach" hidden>Télécharger tous les fichiers un par un</button></div>
   <ul id="lstUn"></ul>
 </div>
 <progress id="pg" max="1" value="0" hidden></progress>
@@ -127,15 +128,18 @@ async function allUnzipped(){
     try{const root=await showDirectoryPicker({mode:'readwrite'});
       for(const p of ks){const parts=p.split('/');let d=root;for(const s of parts.slice(0,-1))d=await d.getDirectoryHandle(s,{create:true});
         const fh=await d.getFileHandle(parts[parts.length-1],{create:true});const w=await fh.createWritable();await w.write(UN.files[p]);await w.close();}
-      msg('Fichiers écrits dans le dossier choisi.');return;}catch(e){if(e&&e.name==='AbortError')return;}
+      msg('Fichiers écrits dans le dossier choisi.');$('#bEach').hidden=true;return;}
+    catch(e){if(e&&e.name==='AbortError')return;
+      msg('Le navigateur refuse ce dossier : il bloque le Bureau, Documents et Téléchargements eux-mêmes. Crée un dossier dedans (par exemple Bureau\\mon-dossier) et choisis-le, ou télécharge les fichiers un par un.');$('#bEach').hidden=false;return;}
   }
-  msg('Ce navigateur ne peut pas écrire un dossier : utilise « Télécharger » fichier par fichier.');
+  msg('Ce navigateur ne peut pas écrire dans un dossier : télécharge les fichiers un par un.');$('#bEach').hidden=false;
 }
+async function eachFile(){for(const p of Object.keys(UN.files)){save(new Blob([UN.files[p]]),p.split('/').pop());await new Promise(r=>setTimeout(r,300));}}
 $('#bFiles').onclick=()=>$('#fFiles').click();$('#bDir').onclick=()=>$('#fDir').click();
 $('#fFiles').onchange=e=>{take([...e.target.files].map(f=>({file:f})));e.target.value='';};
 $('#fDir').onchange=e=>{take([...e.target.files].map(f=>({file:f})));e.target.value='';};
 $('#bClear').onclick=()=>{ADD=[];renderAdd();msg('');};
-$('#bMake').onclick=makeZip;$('#bAll').onclick=allUnzipped;
+$('#bEach').onclick=eachFile;$('#bMake').onclick=makeZip;$('#bAll').onclick=allUnzipped;
 $('#zName').oninput=e=>{e.target.dataset.auto='0';};
 const dz=$('#drop');
 ['dragenter','dragover'].forEach(t=>addEventListener(t,e=>{e.preventDefault();dz.classList.add('over');}));
