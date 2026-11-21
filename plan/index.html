@@ -868,6 +868,13 @@ defCmd('AIDE',['?','HELP'],'Aide',async()=>{
    ===================================================================== */
 let panning=null,winStart=null,gripMode=null;
 cv.addEventListener('contextmenu',e=>e.preventDefault());
+/* au doigt : un doigt = la souris (sélection par cadre, tracé, déplacement) ; le navigateur ne fait plus défiler la page */
+cv.style.touchAction='none';
+{let on=false;const fire=(type,t,el)=>el.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,view:window,clientX:t.clientX,clientY:t.clientY,button:0,buttons:type==='mouseup'?0:1}));
+ cv.addEventListener('touchstart',e=>{if(e.touches.length!==1){if(on){on=false;fire('mouseup',e.touches[0],window);}return;}e.preventDefault();on=true;const t=e.touches[0];fire('mousemove',t,cv);fire('mousedown',t,cv);},{passive:false});
+ cv.addEventListener('touchmove',e=>{if(!on)return;e.preventDefault();fire('mousemove',e.touches[0],cv);},{passive:false});
+ const end=e=>{if(!on)return;on=false;e.preventDefault();fire('mouseup',e.changedTouches[0],window);};
+ cv.addEventListener('touchend',end,{passive:false});cv.addEventListener('touchcancel',end,{passive:false});}
 cv.addEventListener('mousemove',e=>{
   const r=cv.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;
   if(panning){S.view.x=panning.vx-(sx-panning.sx)/S.view.z;S.view.y=panning.vy+(sy-panning.sy)/S.view.z;}
