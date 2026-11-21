@@ -24,6 +24,7 @@ header h1{font-size:16px;margin:0}header h1 a{color:inherit;text-decoration:none
 main{flex:1;min-height:0;position:relative}
 /* feuilleter */
 #view{position:absolute;inset:0 0 0 50px;display:flex;flex-direction:column}
+.side{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:40px;height:84px;border:0;border-radius:12px;background:rgba(29,29,31,.38);color:#fff;font-size:34px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 0 4px}.side:hover{background:rgba(29,29,31,.7)}.side[hidden]{display:none}#sidePrev{left:8px}#sideNext{right:8px}@media(pointer:coarse){.side{width:34px;height:70px;background:rgba(29,29,31,.28)}}
 #tb{position:absolute;left:0;top:0;bottom:0;width:50px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0;z-index:5}
 #tb button{width:40px;height:40px;border:1px solid transparent;border-radius:10px;background:none;cursor:pointer;color:var(--mute);display:flex;align-items:center;justify-content:center;padding:0}
 #tb button.on{background:var(--ink);color:#fff}#tb button svg{width:22px;height:22px}
@@ -103,6 +104,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <div id="tb"><button id="tHand" class="on" title="Feuilleter (glisser pour tourner les pages)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-1V4.5a1.5 1.5 0 0 1 3 0V11m0-4.5a1.5 1.5 0 0 1 3 0V13m0-3.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.7-2.3L4 15.5a1.6 1.6 0 0 1 2.4-2L8 15"/></svg></button><button id="tZone" title="Zone : entoure une partie de la page (croquis…) pour l’envoyer vers une autre appli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="9" y="9" width="6" height="6" rx="1" stroke-dasharray="2 2"/></svg></button></div>
   <div id="view">
     <div id="slider"></div>
+    <button class="side" id="sidePrev" title="Page précédente (←)" hidden>‹</button><button class="side" id="sideNext" title="Page suivante (→)" hidden>›</button>
     <div id="txtp" hidden><div class="th"><span>Texte de la page</span><button class="btn" id="txtX">✕</button></div><div id="txtb"></div></div>
     <div id="nav">
       <button class="btn arr" id="bPrev" title="Page précédente (←)">‹</button>
@@ -275,7 +277,8 @@ $('#bTxt').onclick=()=>{$('#txtp').hidden=!$('#txtp').hidden;ls.set('cahier.txt'
 $('#txtp').hidden=ls.get('cahier.txt')!=='1';
 $('#txtX').onclick=()=>{$('#txtp').hidden=true;ls.set('cahier.txt','0');};
 let zPos=-1;
-function updNav(){if(zPos!==POS){zPos=POS;if(typeof zReset==='function')zReset();}showTxt();const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-1;$('#bInfo').disabled=!p;
+function updSide(){const off=!LIST.length||TOOL==='zone'||$('#slider').classList.contains('zoomed');$('#sidePrev').hidden=off||POS<=0;$('#sideNext').hidden=off||POS>=LIST.length-1;}
+function updNav(){if(zPos!==POS){zPos=POS;if(typeof zReset==='function')zReset();}updSide();showTxt();const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-1;$('#bInfo').disabled=!p;
   $('#nT').textContent=p?(p.title||'Page '+pos(p)):'—';$('#nS').textContent=p?('p. '+pos(p)+' · '+fdate(p.date)+(p.type==='croquis'?' · croquis':'')+((p.heads||[]).length?' · '+p.heads.join(' / '):'')+'  ('+(POS+1)+' / '+LIST.length+')'):'';}
 $('#bPrev').onclick=()=>go(POS-1,true);$('#bNext').onclick=()=>go(POS+1,true);
 addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||!$('#crop').hidden||$('#view').hidden)return;if(/INPUT|TEXTAREA|SELECT/.test((e.target||{}).tagName))return;
@@ -669,13 +672,13 @@ $('#nOk').onclick=async()=>{
 
 /* ---------- barre d'outils : Zone (entourer une partie de la page pour l'envoyer ailleurs) ---------- */
 let TOOL='hand',ZR=null,ZD=null;
-function setTool(t){TOOL=t;$('#tHand').classList.toggle('on',t==='hand');$('#tZone').classList.toggle('on',t==='zone');$('#slider').classList.toggle('zone',t==='zone');if(t!=='zone')zoneClear();else{if($('#view').hidden)setMode('view');go(POS);}}
+function setTool(t){TOOL=t;setTimeout(()=>{if(typeof updSide==='function')updSide();},0);$('#tHand').classList.toggle('on',t==='hand');$('#tZone').classList.toggle('on',t==='zone');$('#slider').classList.toggle('zone',t==='zone');if(t!=='zone')zoneClear();else{if($('#view').hidden)setMode('view');go(POS);}}
 $('#tHand').onclick=()=>setTool('hand');$('#tZone').onclick=()=>{if($('#view').hidden)setMode('view');setTool('zone');};
 function curImg(){const s=$('#slider').children[POS];return s&&s.querySelector('img');}
 function zoneClear(){ZR=null;ZD=null;const b=$('#selBox');if(b)b.remove();const z=$('#zbar');if(z)z.remove();}
 /* ---- zoom de la page affichée : pincement, molette (Alt), double-clic, loupe, main ---- */
 const Z={s:1,x:0,y:0};
-function zApply(){const im=curImg(),sl=$('#slider');if(!im)return;
+function zApply(){setTimeout(()=>{if(typeof updSide==='function')updSide();},0);const im=curImg(),sl=$('#slider');if(!im)return;
   const sd=im.parentNode,w=im.offsetWidth*Z.s,h=im.offsetHeight*Z.s,mx=Math.max(0,(w-sd.clientWidth)/2+20),my=Math.max(0,(h-sd.clientHeight)/2+20);
   Z.x=Math.max(-mx,Math.min(mx,Z.x));Z.y=Math.max(-my,Math.min(my,Z.y));
   im.style.transform=(Z.s===1&&!Z.x&&!Z.y)?'':`translate(${Z.x}px,${Z.y}px) scale(${Z.s})`;
@@ -712,6 +715,7 @@ async function zoneAct(a){if(a==='sk'){await skCreate();return;}const nm='cahier
   else{try{await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);$('#zbar').firstChild.textContent='Copié ✓';}catch(e){alert('Copie impossible : '+(e.message||e));}}}
 addEventListener('keydown',e=>{if(e.key==='Escape'&&TOOL==='zone'){if(ZR||ZD)zoneClear();else setTool('hand');}});
 $('#slider').addEventListener('scroll',()=>{if(ZR)zoneClear();});
+$('#sidePrev').onclick=()=>go(POS-1,true);$('#sideNext').onclick=()=>go(POS+1,true);
 
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
