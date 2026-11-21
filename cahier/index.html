@@ -36,7 +36,8 @@ main{flex:1;min-height:0;position:relative}
 #slider::-webkit-scrollbar{display:none}#slider:not(.zone):not(.zoomed){cursor:grab}#slider:not(.zone) .slide img{-webkit-user-drag:none;user-select:none}
 .slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:10px;position:relative}
 .slide img{max-width:100%;max-height:100%;box-shadow:0 2px 14px rgba(0,0,0,.3);background:#fff;touch-action:pan-x;transform-origin:center;will-change:transform}
-#slider.two .slide{flex:0 0 50%;min-width:0;box-sizing:border-box}
+#slider.two .slide{flex:0 0 50%;min-width:0;box-sizing:border-box;scroll-snap-align:start}
+#view.withtxt #slider{margin-right:min(400px,100%)}
 #slider.zoomed{overflow-x:hidden}#slider.zoomed .slide img{touch-action:none;cursor:grab}#slider.zoomed .slide{overflow:visible}
 .slide .ph{color:var(--mute)}
 #txtp{position:absolute;top:0;right:0;bottom:62px;width:min(400px,100%);background:var(--panel);border-left:1px solid var(--line);box-shadow:-6px 0 18px rgba(0,0,0,.12);display:flex;flex-direction:column;z-index:6}
@@ -282,9 +283,10 @@ function renderText(t){if(!t||!t.trim())return '<div class="hd">Pas encore de te
     if(m){const mk='>▷▶►▸→⇒➜'.includes(m[2])?'▷':'-–—'.includes(m[2])?'–':'•';return '<div class="li" style="margin-left:'+ind+'em"><i>'+mk+'</i><span class="l">'+esc(m[3])+'</span></div>';}
     return '<div class="l" style="margin-left:'+ind+'em">'+esc(l.trim())+'</div>';}).join('');}
 function showTxt(){const p=LIST[POS];if(!$('#txtp').hidden){$('#txtb').innerHTML=((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
-$('#bTxt').onclick=()=>{$('#txtp').hidden=!$('#txtp').hidden;ls.set('cahier.txt',$('#txtp').hidden?'0':'1');showTxt();};
-$('#txtp').hidden=ls.get('cahier.txt')!=='1';
-$('#txtX').onclick=()=>{$('#txtp').hidden=true;ls.set('cahier.txt','0');};
+function txtLay(){$('#view').classList.toggle('withtxt',!$('#txtp').hidden);requestAnimationFrame(()=>{layout();go(POS);});}
+$('#bTxt').onclick=()=>{$('#txtp').hidden=!$('#txtp').hidden;ls.set('cahier.txt',$('#txtp').hidden?'0':'1');showTxt();txtLay();};
+$('#txtp').hidden=ls.get('cahier.txt')!=='1';$('#view').classList.toggle('withtxt',!$('#txtp').hidden);
+$('#txtX').onclick=()=>{$('#txtp').hidden=true;ls.set('cahier.txt','0');txtLay();};
 let zPos=-1;
 function updSide(){const off=!LIST.length||TOOL==='zone'||$('#slider').classList.contains('zoomed');$('#sidePrev').hidden=off||POS<=0;$('#sideNext').hidden=off||POS>=LIST.length-nStep();}
 function updNav(){if(zPos!==POS){zPos=POS;if(typeof zReset==='function')zReset();}updSide();layout();showTxt();const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-nStep();$('#bInfo').disabled=!p;
