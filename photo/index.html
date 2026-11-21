@@ -1472,5 +1472,6 @@ window.__photoKeep={keep,open,get pid(){return PID;}};
 </script>
 
 <script>$('#bXfer').onclick=()=>AtelierDrop.transfer('photo',(cur()?fname(cur()):'image.jpg'),(cur()&&cur().st.out.fmt==='png'?'image/png':'image/jpeg'),async()=>{const it=cur();if(!it)return null;await busy('Préparation de l’image…');try{const c=await renderFull(it);const b=await encode(it,c);return new File([b],fname(it),{type:b.type});}finally{await busy();}});</script>
+<script src="../lib/mpanel.js"></script><script>AtelierMPanel.init({bp:900});</script>
 </body>
 </html>

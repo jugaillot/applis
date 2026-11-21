@@ -1316,5 +1316,6 @@ AtelierDrop.init({app:'plan',accept:f=>ext(f)==='dxf',open:async fs=>feed('#fDxf
 <script>if(window.AtelierRecent)AtelierRecent.init({app:'plan',openDocs:()=>openDocs()});</script>
 <script>/* Ctrl+P = bouton Imprimer / Export PDF de l'appli */
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#bPdf');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
+<script src="../lib/mpanel.js"></script><script>AtelierMPanel.init({bp:900});</script>
 </body>
 </html>

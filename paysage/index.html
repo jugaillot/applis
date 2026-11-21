@@ -3763,5 +3763,6 @@ AtelierDrop.init({app:'paysage',accept:f=>['svg','pdf','ai','json'].includes(ext
 <script>/* Ctrl+P = bouton Imprimer / Export PDF de l'appli */
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#bPdf');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
 <script>$('#bXfer').onclick=()=>AtelierDrop.transfer('paysage','paysage.svg','image/svg+xml',async()=>new File([buildSVG()],`${fileBase()}.svg`,{type:'image/svg+xml'}));</script>
+<script src="../lib/mpanel.js"></script><script>AtelierMPanel.init({bp:900,rows:true});</script>
 </body>
 </html>
