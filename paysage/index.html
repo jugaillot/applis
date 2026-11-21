@@ -779,6 +779,7 @@ function syncPanel(){
 /* couleur du calque Couleur en C M J N (conversion simple, sans profil d'imprimante) */
 function hexToCmyk(h){const n=parseInt(h.slice(1),16),r=(n>>16&255)/255,g=(n>>8&255)/255,b=(n&255)/255,k=1-Math.max(r,g,b);if(k>=1)return[0,0,0,100];return[(1-r-k)/(1-k),(1-g-k)/(1-k),(1-b-k)/(1-k),k].map(v=>Math.round(v*100));}
 function cmykToHex(c){const k=1-c[3]/100,f=v=>Math.round(255*(1-c[v]/100)*k).toString(16).padStart(2,'0');return'#'+f(0)+f(1)+f(2);}
+let cmykOpen=false;
 function cmykNow(){return S.cmyk&&cmykToHex(S.cmyk)===S.color?S.cmyk:(S.cmyk=hexToCmyk(S.color));}
 function renderLayers(){
   const A=layerByRole('aqua'),D=layerByRole('dessin');
@@ -786,7 +787,7 @@ function renderLayers(){
   $('#layers').innerHTML=['blanc','couleur','aqua'].map(r=>{const n=cnt(r),vis=roleVisible(r),lk=roleLocked(r);
     const dot=r==='aqua'?'background:linear-gradient(135deg,#e7b04f,#f6dca0)':`background:${roleColor(r)}`;
     let extra='';
-    if(r==='couleur'){const cm=cmykNow();extra=`<div class="lx"><span class="muted">Couleur du dessin</span><input type="color" data-la="col" value="${S.color}"></div><div class="cmyk">${[['c','C','#00a6d6'],['m','M','#e6007e'],['y','J','#f2c200'],['k','N','#333']].map(([k,l,col],i)=>`<label><b style="color:${col}">${l}</b><input type="range" min="0" max="100" step="1" value="${cm[i]}" data-la="cmyk" data-k="${i}" style="accent-color:${col}"><span class="cv">${cm[i]}</span></label>`).join('')}</div>`;}
+    if(r==='couleur'){const cm=cmykNow();extra=`<div class="lx"><span class="muted">Couleur du dessin</span><input type="color" data-la="col" value="${S.color}"></div>${cmykOpen?`<div class="cmyk">${[['c','C','#00a6d6'],['m','M','#e6007e'],['y','J','#f2c200'],['k','N','#333']].map(([k,l,col],i)=>`<label><b style="color:${col}">${l}</b><input type="range" min="0" max="100" step="1" value="${cm[i]}" data-la="cmyk" data-k="${i}" style="accent-color:${col}"><span class="cv">${cm[i]}</span></label>`).join('')}</div>`:''}`;}
     if(r==='aqua')extra=`<div class="lx"><label class="btn sm">${S.aqua.key?'Changer l’image…':'Choisir l’image (JPG)…'}<input type="file" data-la="img" accept="image/*" hidden></label>${S.aqua.key?`<button class="btn sm${S.aquaEdit?' on':''}" data-la="adj" title="Déplacer, agrandir ou tourner l’aquarelle sous les formes">${S.aquaEdit?'✓ Terminer':'Ajuster l’image'}</button>`:''}<span class="aqTr"><button class="btn sm${S.aqua.trace?' on':''}" data-la="trace" title="Voir toutes les zones de l’aquarelle en aplat uni (l’image est masquée) — n’entre pas dans les exports">Tracé</button><input type="color" data-la="tcol" value="${S.aqua.tcol||'#e7b04f'}" title="Couleur du tracé"></span></div>`;
     return`<div class="layer${r===activeRole?' on':''}" data-r="${r}">
     <button class="ico${vis?'':' off'}" data-la="vis" title="Afficher / masquer">👁</button>
@@ -3119,6 +3120,8 @@ LY.addEventListener('click',e=>{
   if(S.tool!=='bucket'&&!S.aquaEdit){const mv=movableSelection();if(mv.length&&!mv.every(it=>itemRoles(it).every(x=>x===r))){moveToRole(mv,r);return;}}
   setRole(r);ensureLayer();renderLayers();if(S.tool==='bucket')bkLayerChanged();
 });
+/* un clic sur la pastille « Couleur du dessin » montre / cache les barres C M J N (au lieu de la fenêtre de couleur RVB) */
+LY.addEventListener('click',e=>{const c=e.target.closest&&e.target.closest('input[data-la=col]');if(c){e.preventDefault();cmykOpen=!cmykOpen;renderLayers();}},true);
 LY.addEventListener('input',e=>{if(e.target.dataset.la==='cmyk'){const box=e.target.closest('.cmyk'),v=[...box.querySelectorAll('input[type=range]')].map(x=>+x.value);S.cmyk=v;S.color=cmykToHex(v);box.querySelectorAll('.cv').forEach((x,i)=>x.textContent=v[i]);const ci=e.target.closest('.layer').querySelector('input[data-la=col]');if(ci)ci.value=S.color;enforceColors();P.view.update();renderSwatches();return;}
   if(e.target.dataset.la==='tcol'){S.aqua.tcol=e.target.value;enforceColors();P.view.update();scheduleAutosave();return;}if(e.target.dataset.la==='col'){S.color=e.target.value;S.cmyk=hexToCmyk(S.color);{const bx=e.target.closest('.layer').querySelector('.cmyk');if(bx){const rs=bx.querySelectorAll('input[type=range]'),cv=bx.querySelectorAll('.cv');S.cmyk.forEach((x,i)=>{rs[i].value=x;cv[i].textContent=x;});}}enforceColors();P.view.update();renderSwatches();clearTimeout(colT);colT=setTimeout(()=>commit(),400);}});
 let colT=0;
