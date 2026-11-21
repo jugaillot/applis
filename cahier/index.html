@@ -69,6 +69,9 @@ main{flex:1;min-height:0;position:relative}
 #pinfo label{display:block;margin:0 0 9px;font-size:13px}#pinfo label>span{display:block;color:var(--mute);font-size:12px;margin-bottom:2px}
 #pinfo input[type=text],#pinfo input[type=number],#pinfo input[type=date],#pinfo select,#pinfo textarea{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;box-sizing:border-box}
 #pinfo .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#mode button,#flt button[data-ic],.tseg button{display:inline-flex;align-items:center;justify-content:center;padding:5px 11px}
+#mode button svg,#flt svg,.tseg svg{width:20px;height:20px}
+.tseg{display:inline-flex;width:auto}
 #bTxt.on,#bInfo.on{background:var(--ink);color:#fff}
 /* fenêtres */
 dialog{border:1px solid var(--line);border-radius:14px;padding:0;width:min(520px,94vw);max-height:92vh;font:inherit;color:var(--ink)}
@@ -103,7 +106,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 <header>
   <h1><a href="../" target="_blank" rel="noopener">La Suite</a> <span>Cahier</span></h1>
   <button class="btn" id="bName" title="Mes cahiers">📓 …</button>
-  <span class="seg" id="mode"><button data-m="view" class="on">Feuilleter</button><button data-m="grid">Planche</button><button data-m="sk">Croquis</button></span>
+  <span class="seg" id="mode"><button data-m="view" class="on" data-ic="book" title="Feuilleter" aria-label="Feuilleter"></button><button data-m="grid" data-ic="grid" title="Planche" aria-label="Planche"></button><button data-m="sk" data-ic="pen" title="Croquis" aria-label="Croquis"></button></span>
   <span class="sp"></span>
   <button class="btn acc" id="bAdd" title="Photographier ou importer des pages">＋ Ajouter des pages</button>
   <button class="btn" id="bGal" title="Choisir des photos déjà prises" hidden>🖼</button>
@@ -116,7 +119,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <button class="side" id="sidePrev" title="Page précédente (←)" hidden>‹</button><button class="side" id="sideNext" title="Page suivante (→)" hidden>›</button>
     <div id="txtp" hidden><div class="th"><span id="txtTitle">Texte de la page</span><button class="btn" id="txtX">✕</button></div><div id="txtb"></div><div id="pinfo" hidden><div class="b">
   <div class="two"><label><span>Position dans le cahier</span><input type="number" id="iN" min="1"></label><label><span>Date</span><input type="date" id="iD"></label></div>
-  <label><span>Type</span><select id="iT"><option value="note">Notes (texte)</option><option value="croquis">Croquis (dessin)</option></select></label>
+  <label><span>Type</span><span class="seg tseg" id="iT"><button type="button" data-v="note" data-ic="note" title="Notes (texte)" aria-label="Notes"></button><button type="button" data-v="croquis" data-ic="pen" title="Croquis (dessin)" aria-label="Croquis"></button></span></label>
   <label><span>Titre (tapé)</span><input type="text" id="iTitle" placeholder="Une phrase pour retrouver la page"></label>
   <label><span>Mots-clés (tapés, séparés par des espaces ou virgules)</span><input type="text" id="iTags"></label>
   <label><span>Titres de parties (un par ligne)</span><textarea id="iHeads" rows="2"></textarea></label>
@@ -135,7 +138,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <div id="grid" hidden>
     <div id="tools">
       <input id="q" type="search" placeholder="Chercher : titre, mot-clé, texte, date, n°…">
-      <span class="seg" id="flt"><button data-t="all" class="on">Tout</button><button data-t="note">Notes</button><button data-t="croquis">Croquis</button></span>
+      <span class="seg" id="flt"><button data-t="all" class="on">Tout</button><button data-t="note" data-ic="note" title="Notes (texte)" aria-label="Notes"></button><button data-t="croquis" data-ic="pen" title="Croquis (dessin)" aria-label="Croquis"></button></span>
       <button class="btn primary" id="bFindG" title="Lancer la recherche">🔍 Rechercher</button>
       <button class="btn" id="bOcr" title="Préparer un PDF pour Claude, puis coller sa transcription">Transcription</button><button class="btn" id="bCt" title="Noms, téléphones et mails repérés dans le cahier">Contacts</button>
     </div>
@@ -179,7 +182,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <img id="nwImg" style="max-width:100%;max-height:34vh;display:block;margin:0 auto 10px;border:1px solid var(--line)">
   <div class="muted" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap"><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nClean"> Fond blanc</label><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nColor"> Couleur</label><label style="display:flex;gap:6px;align-items:center;flex:1 1 100%">Contraste <input type="range" id="nCt" min="0" max="100" style="flex:1"></label></div>
   <label><span>Date</span><input type="date" id="nD"><small id="nDhint" class="muted"></small></label>
-  <label><span>Type</span><select id="nType"><option value="note">Notes (texte)</option><option value="croquis">Croquis (dessin)</option></select></label>
+  <label><span>Type</span><span class="seg tseg" id="nType"><button type="button" data-v="note" data-ic="note" title="Notes (texte)" aria-label="Notes"></button><button type="button" data-v="croquis" data-ic="pen" title="Croquis (dessin)" aria-label="Croquis"></button></span></label>
   <label><span>Titre (tapé)</span><input type="text" id="nTitle"></label>
   <label><span>Mots-clés</span><input type="text" id="nTags"></label>
 </div><div class="f"><button class="btn" id="nSkip">Ignorer cette photo</button><button class="btn" id="nAdj" title="Revenir aux 4 coins pour les déplacer">↩ Ajuster les coins</button><button class="btn primary" id="nOk">Ajouter au cahier</button></div></dialog>
@@ -200,6 +203,16 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 <script src="../lib/zoom.js"></script>
 <script>
 (function(){'use strict';
+const IC={
+ book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5V19c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13.5"/></svg>',
+ grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>',
+ note:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M9 11h6.5M9 14.5h6.5M9 18h4"/></svg>',
+ pen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/></svg>'};
+document.querySelectorAll('[data-ic]').forEach(b=>{b.innerHTML=IC[b.dataset.ic]||'';});
+/* choix du type : deux icônes, mais on lit / écrit toujours .value comme avant */
+document.querySelectorAll('.tseg').forEach(el=>{let v='note';const paint=()=>el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  Object.defineProperty(el,'value',{get(){return v;},set(x){v=x==='croquis'?'croquis':'note';paint();}});
+  el.addEventListener('click',e=>{const b=e.target.closest('button');if(b){v=b.dataset.v;paint();}});paint();});
 const $=s=>document.querySelector(s);
 const ls={get:k=>{try{return localStorage.getItem(k);}catch(e){return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
 const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
