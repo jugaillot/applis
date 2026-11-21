@@ -171,7 +171,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <img id="nwImg" style="max-width:100%;max-height:34vh;display:block;margin:0 auto 10px;border:1px solid var(--line)">
   <div class="muted" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap"><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nClean"> Fond blanc</label><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nColor"> Couleur</label><label style="display:flex;gap:6px;align-items:center;flex:1 1 100%">Contraste <input type="range" id="nCt" min="0" max="100" style="flex:1"></label></div>
   <label><span>Date</span><input type="date" id="nD"><small id="nDhint" class="muted"></small></label>
-  <label><span>Type</span><select id="nT"><option value="note">Notes (texte)</option><option value="croquis">Croquis (dessin)</option></select></label>
+  <label><span>Type</span><select id="nType"><option value="note">Notes (texte)</option><option value="croquis">Croquis (dessin)</option></select></label>
   <label><span>Titre (tapé)</span><input type="text" id="nTitle"></label>
   <label><span>Mots-clés</span><input type="text" id="nTags"></label>
 </div><div class="f"><button class="btn" id="nSkip">Ignorer cette photo</button><button class="btn" id="nAdj" title="Revenir aux 4 coins pour les déplacer">↩ Ajuster les coins</button><button class="btn primary" id="nOk">Ajouter au cahier</button></div></dialog>
@@ -671,7 +671,7 @@ $('#nColor').onchange=()=>{ls.set('cahier.color',$('#nColor').checked?'1':'0');p
 $('#nClean').onchange=()=>{ls.set('cahier.clean',$('#nClean').checked?'1':'0');$('#nCt').disabled=!$('#nClean').checked;preview();};
 $('#nCt').oninput=()=>{ls.set('cahier.ct',$('#nCt').value);preview();};
 function askMeta(){
-  const st=SET();$('#nClean').checked=st.clean;$('#nColor').checked=st.color;$('#nCt').value=Math.round(st.t*100);$('#nCt').disabled=!st.clean;PV=null;preview();$('#nD').value='';$('#nD').dataset.touched='';$('#nDhint').textContent='Facultatif : laisse vide si tu ne veux pas de date.';$('#nT').value=ls.get('cahier.type')||'note';$('#nTitle').value='';$('#nTags').value='';
+  const st=SET();$('#nClean').checked=st.clean;$('#nColor').checked=st.color;$('#nCt').value=Math.round(st.t*100);$('#nCt').disabled=!st.clean;PV=null;preview();$('#nD').value='';$('#nD').dataset.touched='';$('#nDhint').textContent='Facultatif : laisse vide si tu ne veux pas de date.';$('#nType').value=ls.get('cahier.type')||'note';$('#nTitle').value='';$('#nTags').value='';
   $('#nwH').textContent='Nouvelle page'+(QUEUE.length?' (encore '+QUEUE.length+' photo'+(QUEUE.length>1?'s':'')+')':'');
   $('#dNew').showModal();
 }
@@ -681,7 +681,7 @@ $('#nSkip').onclick=()=>{CUR=null;$('#dNew').close();nextPhoto();};
 $('#dNew').addEventListener('cancel',e=>e.preventDefault());
 $('#nOk').onclick=async()=>{
   if(JSON.stringify(SET())!==CUR.st)await build(CUR);
-  const p={id:nid(),date:$('#nD').value,type:$('#nT').value,title:$('#nTitle').value.trim(),tags:$('#nTags').value.trim(),ocr:'',thumb:CUR.thumb,ar:CUR.ar,ts:Date.now()};
+  const p={id:nid(),date:$('#nD').value,type:$('#nType').value,title:$('#nTitle').value.trim(),tags:$('#nTags').value.trim(),ocr:'',thumb:CUR.thumb,ar:CUR.ar,ts:Date.now()};
   if(CUR.pad){const W=CUR.Wo,H=CUR.Ho,mi=CUR.mi;p.dz={x:(mi+0.05*W)/W,y:Math.max(0,mi-0.04*H)/H,w:0.5,h:0.08};p.dAuto=!$('#nD').dataset.touched;}
   ls.set('cahier.type',p.type);
   await AtelierSync.saveBlob(blobKey(p),CUR.blob);DOC.pages.push(p);CUR=null;$('#dNew').close();persist(true);
