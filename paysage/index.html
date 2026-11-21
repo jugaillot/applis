@@ -1255,7 +1255,10 @@ function hullMask(pts,cw,ch){
 }
 /* ---------- pot : contours mémorisés, aperçu provisoire, « Remplir toutes les zones » ---------- */
 let prevLayer=null;
-function bkLayer(){if(!prevLayer||!P.project.layers.includes(prevLayer)){prevLayer=P.project.layers.find(l=>l.name==='__prev')||null;}if(!prevLayer){prevLayer=new P.Layer({name:'__prev'});prevLayer.insertBelow(uiLayer);if(activeLayer)activeLayer.activate();}return prevLayer;}
+function bkLayer(){if(!prevLayer||!P.project.layers.includes(prevLayer)){prevLayer=P.project.layers.find(l=>l.name==='__prev')||null;}if(!prevLayer){prevLayer=new P.Layer({name:'__prev'});prevLayer.insertBelow(uiLayer);if(activeLayer)activeLayer.activate();}
+  /* l'aperçu doit rester AU-DESSUS du dessin : annuler, rouvrir ou recréer des calques insèrent des calques par-dessus lui */
+  if(prevLayer.nextSibling!==uiLayer){const al=activeLayer;prevLayer.insertBelow(uiLayer);if(al)al.activate();}
+  prevLayer.visible=true;prevLayer.opacity=1;return prevLayer;}
 function bkClearPreview(){if(prevLayer)prevLayer.children.filter(c=>!(c.data&&c.data.limit)).forEach(c=>c.remove());}
 /* ---------- pot : limiter le remplissage à une zone entourée au lasso ---------- */
 function bkLimitMask(C){
