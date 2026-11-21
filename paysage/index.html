@@ -708,6 +708,24 @@ function resetHistory(){enforceColors();S.undo=[];S.redo=[];lastSnap=snapshot();
 
 /* ---------- autosauvegarde ---------- */
 /* enregistrement automatique : toutes les 5 minutes (si quelque chose a changé), en quittant la page, ou à la demande avec « Enregistrer » */
+/* Diagnostic de fluidité (Ctrl + Alt + D) : mesure ce qui ralentit l'affichage sur le document ouvert, à copier-coller */
+function perfReport(){
+  const now=()=>performance.now(),t=()=>{let a=0;for(let i=0;i<5;i++){const t0=now();P.view.update();a+=now()-t0;}return Math.round(a/5*10)/10;};
+  const paths=P.project.getItems({class:P.Path,match:x=>!(x.data&&x.data.sys)});
+  const segs=paths.reduce((n,x)=>n+x.segments.length,0);
+  const out=['Fluidité — '+(S.doc.name||'sans titre'),'Formes : '+paths.length+' · points : '+segs,'Affichage : '+Math.round(view.viewSize.width)+' × '+Math.round(view.viewSize.height)+' px, zoom '+Math.round(view.zoom/(96/25.4)*100)+' %, écran ×'+(window.devicePixelRatio||1)];
+  if(aquaRaster)out.push('Image d’aquarelle : '+aquaRaster.width+' × '+aquaRaster.height+' px');
+  out.push('Une image s’affiche en : '+t()+' ms (ce qui est bien : moins de 16)');
+  if(aquaRaster){const v=aquaRaster.visible;aquaRaster.visible=false;out.push('… sans l’image d’aquarelle : '+t()+' ms');aquaRaster.visible=v;}
+  userLayers().forEach(l=>{const v=l.visible;l.visible=false;out.push('… sans le calque « '+(l.name||'?')+' » : '+t()+' ms');l.visible=v;});
+  const uv=uiLayer.visible;uiLayer.visible=false;out.push('… sans les poignées : '+t()+' ms');uiLayer.visible=uv;
+  P.view.update();
+  let d=document.getElementById('perfDlg');if(!d){d=document.createElement('dialog');d.id='perfDlg';d.style.cssText='border:1px solid #e3e0d9;border-radius:12px;padding:14px;max-width:min(560px,94vw);font:13px/1.4 system-ui,sans-serif';document.body.appendChild(d);}
+  d.innerHTML='<pre style="white-space:pre-wrap;margin:0 0 10px"></pre><div style="display:flex;gap:8px;justify-content:flex-end"><button id="perfCp">Copier</button><button id="perfX">Fermer</button></div>';
+  d.querySelector('pre').textContent=out.join('\n');d.querySelector('#perfCp').onclick=()=>{navigator.clipboard.writeText(out.join('\n'));};d.querySelector('#perfX').onclick=()=>d.close();
+  d.showModal();
+}
+addEventListener('keydown',e=>{if(e.ctrlKey&&e.altKey&&(e.key==='d'||e.key==='D')){e.preventDefault();try{perfReport();}catch(x){alert('Mesure impossible : '+x.message);}}},true);
 let asDirty=false;
 function scheduleAutosave(){asDirty=true;}
 function flushAutosave(){
