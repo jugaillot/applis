@@ -107,6 +107,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #cam .shut{width:72px;height:72px;border-radius:50%;border:5px solid #fff;background:#fff;box-shadow:inset 0 0 0 4px #000;cursor:pointer}
 #cam .shut:active{background:#ccc}#cam .btn{background:#2c2c2e;border-color:#3a3a3c;color:#fff;min-width:96px}
 #busy{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:60;color:#fff;font-weight:600;text-align:center;padding:20px}
+.hic{display:inline-flex;align-items:center;justify-content:center;padding:5px 9px}.hic svg{width:18px;height:18px}
 </style>
 </head>
 <body>
@@ -115,6 +116,8 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <button class="btn" id="bName" title="Mes cahiers">📓 …</button>
   <span class="seg" id="mode"><button data-m="view" class="on" data-ic="book" title="Feuilleter" aria-label="Feuilleter"></button><button data-m="grid" data-ic="grid" title="Planche" aria-label="Planche"></button><button data-m="sk" data-ic="pen" title="Croquis" aria-label="Croquis"></button></span>
   <span class="sp"></span>
+  <button class="btn hic" id="rCt" data-ic="user" title="Contacts repérés dans le cahier" aria-label="Contacts"></button>
+  <button class="btn hic" id="rOcr" data-ic="scan" title="Transcription : préparer un PDF pour Claude et coller sa transcription" aria-label="Transcription"></button>
   <button class="btn" id="bXfer" title="Envoyer la page affichée vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
   <button class="btn acc" id="bAdd" title="Photographier ou importer des pages">＋ Ajouter des pages</button>
   <button class="btn" id="bGal" title="Choisir des photos déjà prises" hidden>🖼</button>
@@ -141,8 +144,6 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       <button id="bInfo" data-ic="info" title="Infos de cette page" aria-label="Infos"></button>
       <button id="bType" title="Type de la page : cliquer pour passer de Notes à Croquis" aria-label="Type de la page"></button>
       <button id="bTwo" title="Afficher 2 pages côte à côte quand la fenêtre est assez large" hidden>▯▯</button>
-      <button id="rCt" data-ic="user" title="Contacts repérés dans le cahier" aria-label="Contacts" style="margin-top:10px"></button>
-      <button id="rOcr" data-ic="scan" title="Transcription : préparer un PDF pour Claude et coller sa transcription" aria-label="Transcription"></button>
       <button id="rDel" data-ic="trash" title="Supprimer cette page" aria-label="Supprimer la page" style="margin-top:auto;color:#b3261e"></button>
     </div>
   </div>
