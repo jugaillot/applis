@@ -3161,6 +3161,9 @@ LY.addEventListener('click',e=>{
 });
 /* un clic sur la pastille « Couleur du dessin » montre / cache les barres C M J N (au lieu de la fenêtre de couleur RVB) */
 LY.addEventListener('click',e=>{const c=e.target.closest&&e.target.closest('input[data-la=col]');if(c){e.preventDefault();cmykOpen=!cmykOpen;renderLayers();}},true);
+/* les barres se referment dès qu'on clique ailleurs (ou Échap) */
+document.addEventListener('pointerdown',e=>{if(!cmykOpen)return;const t=e.target;if(t.closest&&(t.closest('.cmyk')||t.closest('input[data-la=col]')))return;cmykOpen=false;renderLayers();},true);
+addEventListener('keydown',e=>{if(e.key==='Escape'&&cmykOpen){cmykOpen=false;renderLayers();}},true);
 LY.addEventListener('input',e=>{if(e.target.dataset.la==='cmyk'){const box=e.target.closest('.cmyk'),v=[...box.querySelectorAll('input[type=range]')].map(x=>+x.value);S.cmyk=v;S.color=cmykToHex(v);box.querySelectorAll('.cv').forEach((x,i)=>x.textContent=v[i]);const ci=e.target.closest('.layer').querySelector('input[data-la=col]');if(ci)ci.value=S.color;enforceColors();P.view.update();renderSwatches();return;}
   if(e.target.dataset.la==='tcol'){S.aqua.tcol=e.target.value;enforceColors();P.view.update();scheduleAutosave();return;}if(e.target.dataset.la==='col'){S.color=e.target.value;S.cmyk=hexToCmyk(S.color);{const bx=e.target.closest('.layer').querySelector('.cmyk');if(bx){const rs=bx.querySelectorAll('input[type=range]'),cv=bx.querySelectorAll('.cv');S.cmyk.forEach((x,i)=>{rs[i].value=x;cv[i].textContent=x;});}}enforceColors();P.view.update();renderSwatches();clearTimeout(colT);colT=setTimeout(()=>commit(),400);}});
 let colT=0;
