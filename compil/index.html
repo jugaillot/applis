@@ -358,6 +358,10 @@ try{const p=JSON.parse(localStorage.getItem('atelierCompil.opt')||'null');if(p){
 function saveOpt(){try{localStorage.setItem('atelierCompil.opt',JSON.stringify(S.opt));}catch(e){}}
 
 /* ---------- import ---------- */
+/* format de page pour l'impression : les formats courants sont nommés (A4, A3…) pour que la fenêtre d'impression les sélectionne au lieu de reprendre le dernier choix */
+function pgSize(w,h){w=+w;h=+h;const STD={A6:[105,148],A5:[148,210],A4:[210,297],A3:[297,420],A2:[420,594],A1:[594,841],Letter:[215.9,279.4],Legal:[215.9,355.6]};
+  for(const n in STD){const [a,b]=STD[n];if(Math.abs(w-a)<1.5&&Math.abs(h-b)<1.5)return n+' portrait';if(Math.abs(w-b)<1.5&&Math.abs(h-a)<1.5)return n+' landscape';}
+  return w+'mm '+h+'mm';}
 async function addFiles(list){
   // présentations PowerPoint : converties en PDF (une page par diapo)
   if([...list].some(f=>/\.pptx$/i.test(f.name))){const out=[];for(const f of list){if(!/\.pptx$/i.test(f.name)){out.push(f);continue;}try{out.push(await pptxToPdf(f));}catch(e){alert('« '+f.name+' » : '+(e.message||e));}finally{await busy();}}list=out;}
@@ -774,13 +778,13 @@ async function printPDF(){
       await pg.render({canvasContext:x,viewport:vp}).promise;
       const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));c.width=c.height=1;
       const wmm=(v1.width*25.4/72).toFixed(2),hmm=(v1.height*25.4/72).toFixed(2);const key=wmm+'x'+hmm;
-      if(!sizes.has(key)){const nm='pg'+sizes.size;sizes.set(key,nm);css+=`@page ${nm}{size:${wmm}mm ${hmm}mm;margin:0}.${nm}{page:${nm};width:${wmm}mm;height:${hmm}mm}`;}
+      if(!sizes.has(key)){const nm='pg'+sizes.size;sizes.set(key,nm);css+=`@page ${nm}{size:${pgSize(wmm,hmm)};margin:0}.${nm}{page:${nm};width:${wmm}mm;height:${hmm}mm}`;}
       const im=document.createElement('img');im.className=sizes.get(key);im.src=URL.createObjectURL(blob);box.appendChild(im);
       pg.cleanup();
     }
     const first=[...sizes.keys()][0].split('x');
     if(sizes.size===1)css=css.replace(/@page pg0\{[^}]*\}\.pg0\{[^}]*\}/,'.pg0{width:'+first[0]+'mm;height:'+first[1]+'mm}');
-    css+=`@page{size:${first[0]}mm ${first[1]}mm;margin:0}`;
+    css+=`@page{size:${pgSize(first[0],first[1])};margin:0}`;
     const st=document.createElement('style');st.textContent=css;box.appendChild(st);
     await Promise.all([...box.querySelectorAll('img')].map(im=>im.decode?im.decode().catch(()=>{}):0));
     try{pdf.destroy();}catch(e){}

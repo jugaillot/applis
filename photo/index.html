@@ -952,7 +952,7 @@ async function printCurrent(){
   try{
     const c=await renderFull(it);const b=await toBlob(c,0.95);const url=URL.createObjectURL(b);const land=c.width>c.height;
     const f=document.createElement('iframe');f.style.cssText='position:fixed;width:0;height:0;border:0;right:0;bottom:0';document.body.appendChild(f);
-    const d=f.contentDocument;d.open();d.write(`<!doctype html><html><head><title>${it.name}</title><style>@page{size:${land?'landscape':'portrait'};margin:8mm}html,body{margin:0;height:100%}body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%;object-fit:contain}</style></head><body><img src="${url}"></body></html>`);d.close();
+    const d=f.contentDocument;d.open();d.write(`<!doctype html><html><head><title>${it.name}</title><style>@page{size:A4 ${land?'landscape':'portrait'};margin:8mm}html,body{margin:0;height:100%}body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%;object-fit:contain}</style></head><body><img src="${url}"></body></html>`);d.close();
     const img=d.querySelector('img');await new Promise(r=>{if(img.complete)r();else{img.onload=r;img.onerror=r;}});
     await busy();f.contentWindow.focus();f.contentWindow.print();
     setTimeout(()=>{f.remove();URL.revokeObjectURL(url);},60000);

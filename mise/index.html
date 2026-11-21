@@ -1034,7 +1034,7 @@ async function printDoc(){
   if(S.edit)endEdit();if(S.imgEdit)endImgEdit();const sel=S.sel;S.sel=[];render();
   const P=S.doc.page,X=S.doc.exp;const bl=X.bleed?3:0,mk=X.marks?10:0;const W=P.w+2*(bl+mk),H=P.h+2*(bl+mk);
   const pr=$('#print');pr.innerHTML='';
-  let st=$('#printPage');if(!st){st=document.createElement('style');st.id='printPage';document.head.appendChild(st);}st.textContent=`@page{size:${W}mm ${H}mm;margin:0}`;
+  let st=$('#printPage');if(!st){st=document.createElement('style');st.id='printPage';document.head.appendChild(st);}st.textContent=`@page{size:${(()=>{const STD={A6:[105,148],A5:[148,210],A4:[210,297],A3:[297,420],A2:[420,594],A1:[594,841]};for(const n in STD){const [a,b]=STD[n];if(Math.abs(W-a)<1.5&&Math.abs(H-b)<1.5)return n+' portrait';if(Math.abs(W-b)<1.5&&Math.abs(H-a)<1.5)return n+' landscape';}return W+'mm '+H+'mm';})()};margin:0}`;
   $$('#canvas .pg').forEach((pg,i)=>{const pp=document.createElement('div');pp.className='pp';pp.style.cssText=`width:${W}mm;height:${H}mm`;
     // zone visible : la page + les fonds perdus
     const clip=document.createElement('div');clip.style.cssText=`position:absolute;left:${mk}mm;top:${mk}mm;width:${P.w+2*bl}mm;height:${P.h+2*bl}mm;overflow:hidden;background:${bl?P.bg||'#fff':'transparent'}`;
