@@ -714,6 +714,7 @@ function perfReport(){
   const paths=P.project.getItems({class:P.Path,match:x=>!(x.data&&x.data.sys)});
   const segs=paths.reduce((n,x)=>n+x.segments.length,0);
   const out=['Fluidité — '+(S.doc.name||'sans titre'),'Formes : '+paths.length+' · points : '+segs,'Affichage : '+Math.round(view.viewSize.width)+' × '+Math.round(view.viewSize.height)+' px, zoom '+Math.round(view.zoom/(96/25.4)*100)+' %, écran ×'+(window.devicePixelRatio||1)];
+  out.push('État : outil '+S.tool+' · espace '+(typeof spaceDown!=='undefined'&&spaceDown)+' · aperçu '+!!PV+' · retouche aquarelle '+!!S.aquaEdit+' · geste '+(drag?drag.mode:'aucun')+' · occupé '+!!BUSY.on+' · sélection '+sel.length+' · calques verrouillés '+userLayers().filter(l=>l.locked).length+' · mémoire '+(performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+' Mo':'?'));
   if(aquaRaster)out.push('Image d’aquarelle : '+aquaRaster.width+' × '+aquaRaster.height+' px');
   out.push('Une image s’affiche en : '+t()+' ms (ce qui est bien : moins de 16)');
   if(aquaRaster){const v=aquaRaster.visible;aquaRaster.visible=false;out.push('… sans l’image d’aquarelle : '+t()+' ms');aquaRaster.visible=v;}
@@ -925,6 +926,7 @@ function drawMarquee(a,b){if(marquee)marquee.remove();uiLayer.activate();marquee
 function endMarquee(){if(marquee){marquee.remove();marquee=null;}}
 
 tool.onMouseDown=function(e){
+  if(spaceDown&&Date.now()-spaceAt>1500){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}// la touche Espace n'est plus tenue (touche relâchée hors de la page)
   if(PV&&S.tool!=='hand'&&!spaceDown&&e.event.button!==1)return;
   if(S.rotMode&&e.event.button!==1&&!spaceDown){const ps=S.tool==='direct'?dirPartialSegs():null;const T=ps||cmdTargets().filter(t=>t&&t.parent);if(T.length){let b=null;T.forEach(t=>{const r=t instanceof P.Segment?new P.Rectangle(t.point,t.point):t.bounds;b=b?b.unite(r):r.clone();});drag={mode:'rot',items:T,center:b.center,start:e.point,pa:0,rotTool:true};}return;}
   const now=Date.now(),dbl=now-lastDown.t<350&&lastDown.p&&lastDown.p.getDistance(e.point)<px(6);lastDown={t:now,p:e.point};
@@ -3174,14 +3176,14 @@ $('#bToLayer').onclick=()=>{if(!sel.length||S.aquaEdit)return;moveToRole(movable
 
 /* clavier */
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&e.detail>0)b.blur();},true);
-let spaceDown=false;
+let spaceDown=false,spaceAt=0;
 document.addEventListener('keydown',e=>{
   if($('#vxDlg').open||$('#docDlg').open||$('#phDlg').open||$('#ungDlg').open||$('#impDlg').open||$('#pdfDlg').open)return;
   if(BK.pending&&(e.key==='Enter'||e.key==='Escape')){e.preventDefault();e.key==='Enter'?bkValidate():bkCancel();return;}
   const tag=document.activeElement&&document.activeElement.tagName;
   if(/INPUT|SELECT|TEXTAREA/.test(tag))return;
   const k=e.key,ctrl=e.ctrlKey||e.metaKey;
-  if(k===' '){if(!spaceDown){spaceDown=true;cv.style.cursor='grab';}e.preventDefault();return;}
+  if(k===' '){spaceAt=Date.now();if(!spaceDown){spaceDown=true;cv.style.cursor='grab';}e.preventDefault();return;}
   if(ctrl&&(k==='z'||k==='Z')){e.preventDefault();e.shiftKey?redo():undo();return;}
   if(ctrl&&(k==='y'||k==='Y')){e.preventDefault();redo();return;}
   if(ctrl&&(k==='d'||k==='D')){e.preventDefault();cmd('dup');return;}
@@ -3217,6 +3219,9 @@ document.addEventListener('keydown',e=>{
   const map={q:'lasso',v:'select',a:'direct',c:'curve',p:'pen',n:'pencil',m:'shape',l:'shape',h:'hand',k:'bucket',e:'eraser',f:'blob'};
   if(map[k.toLowerCase()])setTool(map[k.toLowerCase()]);
 });
+/* au retour sur la page : plus aucune touche ni geste « coincé » */
+function unstick(){spaceDown=false;ctrlHeld=false;if(drag&&drag.mode==='pan')drag=null;cv.style.cursor=S.tool==='hand'?'grab':'default';}
+addEventListener('blur',unstick);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')unstick();});
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=S.tool==='hand'?'grab':'default';}});
 /* molette : seule ou avec Alt = zoom, Ctrl = horizontal, Maj = vertical ; clic molette + glisser = main */
 let ctrlHeld=false;
