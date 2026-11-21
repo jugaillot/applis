@@ -46,7 +46,7 @@ main{flex:1;min-height:0;position:relative}
 #txtb .l{white-space:pre-wrap;min-height:1.1em}#txtb .li{display:flex;gap:8px}#txtb .li i{font-style:normal;flex:none;width:1.1em;text-align:center;color:var(--acc,#c05a2e)}
 #txtb .hd{margin:0 0 8px;font-weight:600;color:#666;font-size:13px}#txtb .sp{height:.7em}
 #nav{display:flex;align-items:center;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line)}
-#nav .info{flex:1;min-width:0;text-align:center}#nav{overflow:hidden}#nav .btn{flex:none}@media (max-width:560px){#nav .lb{display:none}#nav{gap:5px;padding-left:8px;padding-right:8px}#nav .arr{padding-left:10px;padding-right:10px}}
+#nav .info{flex:1;min-width:0}#nav .info>*,#nav .info b,#nav .info span{display:none!important}#nav{overflow:hidden}#nav .btn{flex:none}@media (max-width:560px){#nav .lb{display:none}#nav{gap:5px;padding-left:8px;padding-right:8px}#nav .arr{padding-left:10px;padding-right:10px}}
 #nav .info b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #nav .info span{color:var(--mute);font-size:12px}
 .arr{font-size:22px;line-height:1;padding:6px 14px}
@@ -724,6 +724,15 @@ $('#nOk').onclick=async()=>{
 /* ---------- barre d'outils : Zone (entourer une partie de la page pour l'envoyer ailleurs) ---------- */
 let TOOL='hand',ZR=null,ZD=null;
 function setTool(t){TOOL=t;setTimeout(()=>{if(typeof layout==='function')layout();if(typeof updSide==='function')updSide();},0);$('#tHand').classList.toggle('on',t==='hand');$('#tZone').classList.toggle('on',t==='zone');$('#slider').classList.toggle('zone',t==='zone');if(t!=='zone')zoneClear();else{if($('#view').hidden)setMode('view');go(POS);}}
+$('#tb').insertAdjacentHTML('beforeend','<button id="tRot" title="Tourner la page de 90° (dans le sens des aiguilles d’une montre)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4.5h-4.5"/></svg></button>');
+$('#tRot').onclick=async()=>{const p=LIST[selIdx()];if(!p)return;const k=blobKey(p),b=await AtelierSync.getBlob(k);if(!b){alert('Image de la page introuvable.');return;}
+  const bm=await createImageBitmap(b),c=document.createElement('canvas');c.width=bm.height;c.height=bm.width;const x=c.getContext('2d');x.translate(c.width,0);x.rotate(Math.PI/2);x.drawImage(bm,0,0);
+  const nb=await new Promise(r=>c.toBlob(r,'image/jpeg',0.9));if(!nb)return;
+  const t=document.createElement('canvas');t.width=150;t.height=Math.round(c.height*150/c.width);t.getContext('2d').drawImage(c,0,0,t.width,t.height);
+  await AtelierSync.saveBlob(k,nb);p.thumb=t.toDataURL('image/jpeg',0.6);p.ar=(c.width/c.height).toFixed(3);
+  if(p.dz){const d=p.dz;p.dz={x:1-d.y-d.h,y:d.x,w:d.h,h:d.w};}
+  if(URLS.has(k)){URL.revokeObjectURL(URLS.get(k));URLS.delete(k);}
+  persist(true);const keep=POS;buildSlides();go(keep);};
 $('#tHand').onclick=()=>setTool('hand');$('#tZone').onclick=()=>{if($('#view').hidden)setMode('view');setTool('zone');};
 function curImg(){const s=$('#slider').children[POS];return s&&s.querySelector('img');}
 function zoneClear(){ZR=null;ZD=null;const b=$('#selBox');if(b)b.remove();const z=$('#zbar');if(z)z.remove();}
