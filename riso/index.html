@@ -329,7 +329,14 @@ function toCanvas(src){if(src instanceof HTMLCanvasElement)return src;const c=do
 function capCanvas(img,max){let w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;const k=Math.min(1,max/Math.max(w,h));const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c;}
 
 /* ---------- groupes & calques ---------- */
-function newGroup(name,kind,w,h){const fb=frameBox();const g={id:nid('g'),name,kind,w,h,cx:fb.x+fb.w/2,cy:fb.y+fb.h/2,scale:1,rot:0,sep:null};S.groups.push(g);S.sel=g.id;return g;}
+/* premier fichier ouvert : la feuille (ou le format final) prend le sens du fichier, paysage ou portrait */
+function autoOrient(w,h){
+  if(!(w>0&&h>0))return;const land=w>h*1.02,P=S.paper;
+  if(P.fin&&P.fin!=='full'){const fo=land?'paysage':'portrait';if(P.fo!==fo){P.fo=fo;savePrefs();syncPaperUI();}return;}
+  const[pw,ph]=pageSize();if((pw>ph)===land)return;
+  Object.assign(S.paper,{fmt:'custom',w:ph,h:pw});savePrefs();syncPaperUI();
+}
+function newGroup(name,kind,w,h){if(!S.groups.length)autoOrient(w,h);const fb=frameBox();const g={id:nid('g'),name,kind,w,h,cx:fb.x+fb.w/2,cy:fb.y+fb.h/2,scale:1,rot:0,sep:null};S.groups.push(g);S.sel=g.id;return g;}
 function makeLayer(g,o){return Object.assign({id:nid('l'),groupId:g.id,name:'Calque',ink:'noir',visible:true,density:100,lo:0,hi:100,tone:0,invert:false,flat:false,trame:'aucune',lpi:45,angle:45,seuil:50,src:null,svgText:null,ver:1,open:false,cache:null},o);}
 function addLayer(g,o){const L=makeLayer(g,o);S.layers.push(L);return L;}
 function deleteGroup(g,ask=true){

@@ -2722,6 +2722,12 @@ function importSVGText(text,name,opts){
   const wAttr=svg.getAttribute('width')||'';
   const wmm=/(mm|cm|in|pt|pc)\s*$/.test(wAttr)||!fromAI?parseLen(wAttr):0;
   if(vb.length===4&&vb[2]>0&&wmm)unit=wmm/vb[2];
+  /* document encore vide : la page prend le sens (paysage / portrait) du fichier ouvert */
+  if(!opts.center){
+    const rw=(vb.length===4&&vb[2]>0&&vb[3]>0)?vb[2]/vb[3]:(parseFloat(wAttr)/parseFloat(svg.getAttribute('height')||'')||0);
+    const vide=userLayers().every(l=>!l.children.some(c=>c.className!=='Raster'));
+    if(vide&&rw&&Math.abs(rw-1)>0.02&&(rw>1)!==(S.page.w>S.page.h)){S.page={w:S.page.h,h:S.page.w,fmt:S.page.fmt};drawPage();fitView();}
+  }
   ensureLayer(true);
   const item=P.project.importSVG(new XMLSerializer().serializeToString(svg),{expandShapes:true,insert:false});
   applyClips(item);item.clipped=false;
