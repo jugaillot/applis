@@ -610,7 +610,7 @@ function _drawPts(){
   });});
   if(penFlash){if(Date.now()-penFlash.t<1800&&S.tool==='pen'){const v=view.projectToView(penFlash.pt);x.beginPath();x.arc(v.x,v.y,6,0,7);x.fillStyle='#ff2d9b';x.fill();x.lineWidth=2;x.strokeStyle='#fff';x.stroke();setTimeout(drawPts,1900);}else penFlash=null;}
 }
-function afterView(){drawPts();$('#zLab').textContent=Math.round(view.zoom/(96/25.4)*100)+' %';drawUI();}
+function afterView(){aquaWinSync();drawPts();$('#zLab').textContent=Math.round(view.zoom/(96/25.4)*100)+' %';drawUI();}
 function zoomAt(f,pt){const z0=view.zoom,z=Math.min(200,Math.max(0.05,z0*f));const p=pt||view.center;const c=view.center;view.zoom=z;view.center=p.add(c.subtract(p).multiply(z0/z));afterView();}
 const px=n=>n/view.zoom;
 
@@ -3349,7 +3349,7 @@ window.addEventListener('resize',()=>{resizeView();});
    import PDF / AI, PDF par calque
    ===================================================================== */
 const APP='paysage';
-let aquaRaster=null;
+let aquaRaster=null,aquaWin=null,aquaWinKey=null;
 const fileBase=()=>(S.doc.name?S.doc.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w-]+/g,'-').replace(/^-|-$/g,'').toLowerCase():'paysage-'+stamp());
 
 /* aquarelle en « tracé » : les zones se voient en aplat de couleur (l'image est masquée) ; à l'export et dans l'historique elles restent noires */
@@ -3362,8 +3362,8 @@ function aquaBlack(fn){const A=layerByRole('aqua');if(!A)return fn();
 function withoutRaster(fn){
   if(aquaRaster)strayRasters();
   if(!aquaRaster||!aquaRaster.parent)return aquaBlack(fn);
-  const parent=aquaRaster.parent;aquaRaster.remove();
-  try{return aquaBlack(fn);}finally{parent.addChild(aquaRaster);}
+  const parent=aquaRaster.parent,win=aquaWin&&aquaWin.parent?aquaWin:null;aquaRaster.remove();if(win)win.remove();
+  try{return aquaBlack(fn);}finally{parent.addChild(aquaRaster);if(win)win.insertAbove(aquaRaster);}
 }
 /* une seule image d'aquarelle : on retire les copies égarées (chargements simultanés, anciens historiques) */
 function strayRasters(){P.project.getItems({match:x=>x instanceof P.Raster&&x.name==='Aquarelle (image)'&&x!==aquaRaster}).forEach(x=>x.remove());}
@@ -3373,6 +3373,35 @@ function styleRaster(){
   if(S.aquaEdit){aquaRaster.blendMode='normal';aquaRaster.opacity=0.55;aquaRaster.locked=false;}
   else{aquaRaster.blendMode='source-atop';aquaRaster.opacity=1;aquaRaster.locked=true;}
   aquaRaster.visible=!(S.aqua&&S.aqua.trace&&!S.aquaEdit);
+  aquaWinSync(true);
+}
+/* Très gros zoom : le navigateur n'affiche plus une image dont la taille à l'écran dépasse ~16 000 px (elle « s'efface »).
+   Dans ce cas on affiche à la place seulement la partie visible, découpée dans l'image (« fenêtre »). */
+function aquaWinOff(){if(aquaWin){aquaWin.remove();aquaWin=null;}aquaWinKey=null;if(aquaRaster&&aquaRaster.data&&aquaRaster.data.hidByWin){aquaRaster.data.hidByWin=false;aquaRaster.visible=!(S.aqua&&S.aqua.trace&&!S.aquaEdit);}}
+function aquaWinSync(force){
+  try{
+    if(!aquaRaster||!aquaRaster.parent||S.aquaEdit||!aquaRaster.visible&&!(aquaRaster.data&&aquaRaster.data.hidByWin)){aquaWinOff();return;}
+    const src=aquaRaster.image||aquaRaster.canvas,iw=src&&(src.naturalWidth||src.width),ih=src&&(src.naturalHeight||src.height);if(!src||!iw||!ih){aquaWinOff();return;}
+    const m=aquaRaster.matrix,sc=Math.sqrt(Math.abs(m.a*m.d-m.b*m.c))*view.zoom;
+    if(Math.max(iw,ih)*sc<=9000){aquaWinOff();return;}
+    // partie visible, en pixels de l'image
+    const inv=m.inverted(),vb=view.bounds,pts=[vb.topLeft,vb.topRight,vb.bottomRight,vb.bottomLeft].map(q=>inv.transform(q));
+    let x0=Math.min(...pts.map(q=>q.x))+iw/2,x1=Math.max(...pts.map(q=>q.x))+iw/2,y0=Math.min(...pts.map(q=>q.y))+ih/2,y1=Math.max(...pts.map(q=>q.y))+ih/2;
+    const mx=(x1-x0)*0.5,my=(y1-y0)*0.5;x0=Math.max(0,Math.floor(x0-mx));y0=Math.max(0,Math.floor(y0-my));x1=Math.min(iw,Math.ceil(x1+mx));y1=Math.min(ih,Math.ceil(y1+my));
+    const cw=x1-x0,ch=y1-y0;
+    if(cw<=0||ch<=0){if(aquaWin)aquaWin.visible=false;aquaRaster.data.hidByWin=true;aquaRaster.visible=false;return;}
+    const key=[x0,y0,cw,ch,iw,ih,m.values.join(',')].join('|');
+    if(!force&&aquaWin&&aquaWin.parent&&aquaWinKey===key)return;
+    // si la fenêtre actuelle couvre déjà ce qu'on voit, on la garde
+    const need=[x0+mx,y0+my,x1-mx,y1-my];
+    if(!force&&aquaWin&&aquaWin.parent&&aquaWin.data.w&&aquaWin.data.m===m.values.join(',')){const w=aquaWin.data.w;if(need[0]>=w[0]&&need[1]>=w[1]&&need[2]<=w[0]+w[2]&&need[3]<=w[1]+w[3]){aquaWin.visible=true;return;}}
+    const c=document.createElement('canvas');c.width=cw;c.height=ch;c.getContext('2d').drawImage(src,x0,y0,cw,ch,0,0,cw,ch);
+    if(aquaWin)aquaWin.remove();
+    const r=new P.Raster(c);r.remove();r.data.sys=true;r.data.w=[x0,y0,cw,ch];r.data.m=m.values.join(',');r.data.sc=sc;r.name='Aquarelle (fenêtre)';
+    r.matrix=m.clone().translate(x0+cw/2-iw/2,y0+ch/2-ih/2);r.blendMode=aquaRaster.blendMode;r.opacity=aquaRaster.opacity;r.locked=true;
+    aquaRaster.parent.addChild(r);r.insertAbove(aquaRaster);aquaWin=r;aquaWinKey=key;
+    aquaRaster.data.hidByWin=true;aquaRaster.visible=false;
+  }catch(e){console.error(e);}
 }
 /* chaque calque impose sa couleur */
 function enforceColors(){
