@@ -33,7 +33,7 @@ main{flex:1;min-height:0;position:relative}
 #zbar{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;z-index:41;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 4px 18px rgba(0,0,0,.25);max-width:94vw}
 .cell[draggable=true]{cursor:grab}.cell.over{outline:3px solid var(--acc)}
 #slider{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;background:#d9d5cc}
-#slider::-webkit-scrollbar{display:none}#slider:not(.zone):not(.zoomed){cursor:grab}#slider:not(.zone) .slide img{-webkit-user-drag:none;user-select:none}
+#slider::-webkit-scrollbar{display:none}#slider.two .slide.sel img{outline:3px solid var(--acc)}#slider:not(.zone):not(.zoomed){cursor:grab}#slider:not(.zone) .slide img{-webkit-user-drag:none;user-select:none}
 .slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:10px;position:relative}
 .slide img{max-width:100%;max-height:100%;box-shadow:0 2px 14px rgba(0,0,0,.3);background:#fff;touch-action:pan-x;transform-origin:center;will-change:transform}
 #slider.two .slide{flex:0 0 50%;min-width:0;box-sizing:border-box;scroll-snap-align:start}
@@ -282,14 +282,17 @@ function renderText(t){if(!t||!t.trim())return '<div class="hd">Pas encore de te
     const m=l.match(/^(\s*)([▷▶►▸→⇒➜>•·●○◦*+\-–—])\s+(.*)$/),ind=(m?m[1]:l.match(/^\s*/)[0]).replace(/\t/g,'  ').length*0.6;
     if(m){const mk='>▷▶►▸→⇒➜'.includes(m[2])?'▷':'-–—'.includes(m[2])?'–':'•';return '<div class="li" style="margin-left:'+ind+'em"><i>'+mk+'</i><span class="l">'+esc(m[3])+'</span></div>';}
     return '<div class="l" style="margin-left:'+ind+'em">'+esc(l.trim())+'</div>';}).join('');}
-function showTxt(){const p=LIST[POS];if(!$('#txtp').hidden){$('#txtb').innerHTML=((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
+let SELP=0;
+function selIdx(){return POS+(nStep()===2&&SELP===1&&POS+1<LIST.length?1:0);}
+function markSel(){document.querySelectorAll('#slider .slide').forEach((sd,i)=>sd.classList.toggle('sel',nStep()===2&&i===selIdx()));}
+function showTxt(){markSel();const p=LIST[selIdx()];if(!$('#txtp').hidden){$('#txtb').innerHTML=((p&&nStep()===2)?'<div class="hd">Page '+pos(p)+' (clique sur l’autre page pour voir son texte)</div>':'')+((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
 function txtLay(){$('#view').classList.toggle('withtxt',!$('#txtp').hidden);requestAnimationFrame(()=>{layout();go(POS);});}
 $('#bTxt').onclick=()=>{$('#txtp').hidden=!$('#txtp').hidden;ls.set('cahier.txt',$('#txtp').hidden?'0':'1');showTxt();txtLay();};
 $('#txtp').hidden=ls.get('cahier.txt')!=='1';$('#view').classList.toggle('withtxt',!$('#txtp').hidden);
 $('#txtX').onclick=()=>{$('#txtp').hidden=true;ls.set('cahier.txt','0');txtLay();};
 let zPos=-1;
 function updSide(){const off=!LIST.length||TOOL==='zone'||$('#slider').classList.contains('zoomed');$('#sidePrev').hidden=off||POS<=0;$('#sideNext').hidden=off||POS>=LIST.length-nStep();}
-function updNav(){if(zPos!==POS){zPos=POS;if(typeof zReset==='function')zReset();}updSide();layout();showTxt();const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-nStep();$('#bInfo').disabled=!p;
+function updNav(){if(zPos!==POS){zPos=POS;SELP=0;if(typeof zReset==='function')zReset();}updSide();layout();showTxt();const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-nStep();$('#bInfo').disabled=!p;
   $('#nT').textContent=p?(p.title||'Page '+pos(p)):'—';$('#nS').textContent=p?('p. '+pos(p)+' · '+fdate(p.date)+(p.type==='croquis'?' · croquis':'')+((p.heads||[]).length?' · '+p.heads.join(' / '):'')+'  ('+(POS+1)+' / '+LIST.length+')'):'';}
 $('#bTwo').onclick=()=>{TWO=!TWO;ls.set('cahier.two',TWO?'1':'0');layout();};
 addEventListener('resize',()=>layout());
@@ -300,12 +303,12 @@ addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||!$('#c
 /* la main (souris) : glisser pour tourner les pages, comme au doigt */
 {const sl=$('#slider');let d=null;
   sl.addEventListener('dragstart',e=>{if(TOOL==='hand')e.preventDefault();});
-  sl.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0||TOOL!=='hand'||Z.s>1.001||!LIST.length)return;d={x:e.clientX,s:sl.scrollLeft,m:false};});
-  sl.addEventListener('pointermove',e=>{if(!d)return;const dx=e.clientX-d.x;if(!d.m){if(Math.abs(dx)<5)return;d.m=true;sl.style.scrollSnapType='none';sl.style.scrollBehavior='auto';sl.style.cursor='grabbing';try{sl.setPointerCapture(e.pointerId);}catch(x){}}sl.scrollLeft=d.s-dx;});
+  sl.addEventListener('pointerdown',e=>{sl.dataset.moved='';if(e.pointerType!=='mouse'||e.button!==0||TOOL!=='hand'||Z.s>1.001||!LIST.length)return;d={x:e.clientX,s:sl.scrollLeft,m:false};});
+  sl.addEventListener('pointermove',e=>{if(!d)return;const dx=e.clientX-d.x;if(!d.m){if(Math.abs(dx)<5)return;d.m=true;sl.dataset.moved='1';sl.style.scrollSnapType='none';sl.style.scrollBehavior='auto';sl.style.cursor='grabbing';try{sl.setPointerCapture(e.pointerId);}catch(x){}}sl.scrollLeft=d.s-dx;});
   const end=e=>{if(!d)return;const o=d;d=null;if(!o.m)return;const dx=e.clientX-o.x;sl.style.scrollSnapType='';sl.style.cursor='';sl.style.scrollBehavior='';
     const w=pageW();let i=Math.round(o.s/w);if(Math.abs(dx)>w*0.15)i+=dx<0?nStep():-nStep();sl.style.scrollBehavior='auto';sl.scrollLeft=sl.scrollLeft;go(i,true);};
   sl.addEventListener('pointerup',end);sl.addEventListener('pointercancel',end);
-  sl.addEventListener('click',e=>{},true);}
+  sl.addEventListener('click',e=>{if(TOOL!=='hand'||nStep()!==2||sl.dataset.moved==='1')return;const sd=e.target.closest&&e.target.closest('.slide');if(!sd)return;const i=+sd.dataset.i-POS;if(i===0||i===1){SELP=i;showTxt();}},true);}
 /* ---------- planche, filtre, recherche ---------- */
 let FLT='all',QS='';
 function matches(p){
