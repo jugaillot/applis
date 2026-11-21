@@ -2218,6 +2218,7 @@ function pathfinder(op){
   let T=cmdTargets().map(topOf).filter((t,i,a)=>t&&t.parent&&a.indexOf(t)===i);
   if(typeof roleOf==='function')T=T.filter(t=>roleOf(t.layer)!=='aqua');
   T=T.filter(t=>!(t instanceof P.Raster)&&PF.leaves(t).length);
+  if(op==='unite'&&T.length===1){const T1=T.slice();runHeavy('Réunion…',tok=>doMerge(T1,tok));return;}
   if(T.length<2){alert('Sélectionne au moins deux formes.');return;}
   T.sort((a,b)=>{const x=PF.order(a),y=PF.order(b);return x[0]-y[0]||x[1]-y[1];});// du fond vers l'avant
   const O=T.map(t=>({it:t,name:t.name,leaves:PF.leaves(t)}));O.forEach(o=>o.sil=PF.sil(o));
@@ -2284,7 +2285,7 @@ async function doMerge(sel,tok){
           if(p.fillColor&&(p.closed||p instanceof P.CompoundPath)){const L=cpLeaf(p);if(L.closed.length)its.push({p,poly:cpRegion(L.closed,p.fillRule==='evenodd'),k:keyOf(p,p.fillColor)});}
           if(p.strokeColor&&p.strokeWidth>0){const L=cpLeaf(p),hw=p.strokeWidth/2;const poly=cpOff(L.closed,hw,p.strokeJoin,C.EndType.etClosedLine).concat(cpOff(L.open,hw,p.strokeJoin,cpEnd(p.strokeCap)));if(poly.length)its.push({p,poly,k:keyOf(p,p.strokeColor)});}
         }
-        if(its.length<2){alert('Sélectionne au moins deux formes ou tracés.');return;}
+        if(its.length<1){alert('Sélectionne au moins une forme ou un tracé.');return;}
         const part=new Map();its.forEach(it=>{const l=it.p.layer;if(!part.has(l))part.set(l,[]);part.get(l).push(it);});
         const out=[],par=new Set(leaves.map(p=>p.parent));
         const ring=r=>{r=C.Clipper.CleanPolygon(r,4);if(r.length<3)return null;const q=new P.Path({segments:r.map(z=>[z.X/CPK,z.Y/CPK]),closed:true,insert:false});if(q.segments.length>12)q.simplify(0.004);return q;};
@@ -2308,7 +2309,7 @@ async function doMerge(sel,tok){
         if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))items.push({p,g:p.clone({insert:false}),k:keyOf(p,p.fillColor)});
         if(p.strokeColor&&p.strokeWidth>0){let s=null;try{s=strokeToShape(p,true);}catch(e){}if(s){if(s.parent)s.remove();items.push({p,g:s,k:keyOf(p,p.strokeColor)});}}
       }
-      if(items.length<2){alert('Sélectionne au moins deux formes ou tracés.');return;}
+      if(items.length<1){alert('Sélectionne au moins une forme ou un tracé.');return;}
       const part=new Map();items.forEach(it=>{const l=it.p.layer;if(!part.has(l))part.set(l,[]);part.get(l).push(it);});
       const out=[],par=new Set(leaves.map(p=>p.parent));
       for(const arr of part.values()){
@@ -2325,6 +2326,7 @@ async function doBool(name,sel,tok){
       // formes concernées (du dessous vers le dessus) ; un trait sans fond compte par sa forme de trait
       const leaves=sel.flatMap(s=>s instanceof P.Group?leafPaths(s):[s]).filter(p=>(p instanceof P.Path||p instanceof P.CompoundPath)&&!(typeof isOutline==='function'&&isOutline(p))).sort((a,b)=>a.isAbove(b)?1:-1);
       await stepCheck(tok);const shapes=leaves.map(p=>{if(p.fillColor&&(p.closed||p instanceof P.CompoundPath))return p;if(p.strokeColor&&p.strokeWidth>0){const s=strokeToShape(p,true);if(s&&s.parent)s.remove();return s;}return null;}).filter(Boolean);
+      if(name==='unite'&&shapes.length===1)return doMerge(sel,tok);// un seul objet : on aplatit ses superpositions
       if(shapes.length<2){alert('Sélectionne au moins deux formes.');return;}
       let res=shapes[0];
       if(name==='unite'&&shapes.length>2){// réunion deux à deux (bien plus rapide qu'en ajoutant une forme après l'autre)
