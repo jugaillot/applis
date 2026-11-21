@@ -1,7 +1,7 @@
 /* Atelier — fonctionnement hors connexion.
    Pages : réseau d'abord (pour avoir la dernière version), copie locale si pas de connexion.
    Scripts de l'atelier : réseau d'abord aussi. Grosses bibliothèques et polices : copie locale d'abord. */
-const VERSION = 'atelier-v415';
+const VERSION = 'atelier-v416';
 const PRECACHE = [
   '/', '/riso/', '/vecto/', '/compil/', '/plan/', '/photo/', '/dossiers/', '/paysage/', '/civco/', '/mise/', '/bd/', '/quizz-postures/', '/quizz-postures/manifest.webmanifest', '/quizz-postures/postures-1.json', '/quizz-postures/postures-2.json', '/quizz-postures/postures-3.json', '/quizz-postures/postures-4.json', '/icons/quizz-postures-icon-192.png', '/icons/quizz-postures-icon-512.png', '/icons/quizz-postures-icon-maskable-512.png', '/cahier/', '/laser/', '/laser/rd.js', '/zip/', '/lib/fflate.min.js', '/open/', '/bd/series.json', '/bd/manifest.webmanifest','/icons/bd-icon-192.png','/icons/file-zip.png','/icons/file-zip-32.png','/icons/file-zip-48.png','/icons/file-zip-64.png','/icons/file-zip-128.png',
   '/vecto/potrace-worker.js', '/lib/sync.js','/lib/tabs.js', '/lib/help.js', '/lib/fs.js', '/lib/drop.js', '/lib/pptx.js', '/lib/idml.js', '/lib/save.js', '/lib/recent.js', '/lib/zoom.js', '/lib/unsaved.js', '/lib/inbox.js', '/envoyer/',

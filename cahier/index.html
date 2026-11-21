@@ -63,6 +63,13 @@ main{flex:1;min-height:0;position:relative}
 .cell div{padding:5px 8px;font-size:12px}.cell b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cell span{color:var(--mute)}
 .cell.sk{border-color:var(--acc)}
 .empty{color:var(--mute);text-align:center;padding:40px 16px}
+#pinfo{flex:1;min-height:0;display:flex;flex-direction:column}
+#pinfo .b{padding:12px 16px;overflow:auto;flex:1}
+#pinfo .f{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#pinfo label{display:block;margin:0 0 9px;font-size:13px}#pinfo label>span{display:block;color:var(--mute);font-size:12px;margin-bottom:2px}
+#pinfo input[type=text],#pinfo input[type=number],#pinfo input[type=date],#pinfo select,#pinfo textarea{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;box-sizing:border-box}
+#pinfo .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#bTxt.on,#bInfo.on{background:var(--ink);color:#fff}
 /* fenêtres */
 dialog{border:1px solid var(--line);border-radius:14px;padding:0;width:min(520px,94vw);max-height:92vh;font:inherit;color:var(--ink)}
 dialog::backdrop{background:rgba(0,0,0,.4)}
@@ -107,7 +114,14 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <div id="view">
     <div id="slider"></div>
     <button class="side" id="sidePrev" title="Page précédente (←)" hidden>‹</button><button class="side" id="sideNext" title="Page suivante (→)" hidden>›</button>
-    <div id="txtp" hidden><div class="th"><span>Texte de la page</span><button class="btn" id="txtX">✕</button></div><div id="txtb"></div></div>
+    <div id="txtp" hidden><div class="th"><span id="txtTitle">Texte de la page</span><button class="btn" id="txtX">✕</button></div><div id="txtb"></div><div id="pinfo" hidden><div class="b">
+  <div class="two"><label><span>Position dans le cahier</span><input type="number" id="iN" min="1"></label><label><span>Date</span><input type="date" id="iD"></label></div>
+  <label><span>Type</span><select id="iT"><option value="note">Notes (texte)</option><option value="croquis">Croquis (dessin)</option></select></label>
+  <label><span>Titre (tapé)</span><input type="text" id="iTitle" placeholder="Une phrase pour retrouver la page"></label>
+  <label><span>Mots-clés (tapés, séparés par des espaces ou virgules)</span><input type="text" id="iTags"></label>
+  <label><span>Titres de parties (un par ligne)</span><textarea id="iHeads" rows="2"></textarea></label>
+  <label><span>Texte de la page (modifiable)</span><textarea id="iOcr" rows="6"></textarea></label>
+</div><div class="f"><button class="btn" id="iDel" style="margin-right:auto;color:#b3261e">Supprimer la page</button><button class="btn" id="iNo">Annuler</button><button class="btn primary" id="iOk">Enregistrer</button></div></div></div>
     <div id="nav">
       <button class="btn arr" id="bPrev" title="Page précédente (←)">‹</button>
       <div class="info"><b id="nT">—</b><span id="nS"></span></div>
@@ -157,14 +171,7 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 <dialog id="dCt"><div class="h">Contacts repérés dans le cahier</div><div class="b"><div class="muted" style="margin-bottom:8px">Lus automatiquement sur l’écriture à la main : vérifie et corrige, puis coche ✓ pour garder.</div><div id="ctl"></div></div><div class="f"><button class="btn primary" id="ctOk">Fermer</button></div></dialog>
 
 <!-- infos d'une page -->
-<dialog id="dInfo"><div class="h">Infos de la page</div><div class="b">
-  <div class="two"><label><span>Position dans le cahier</span><input type="number" id="iN" min="1"></label><label><span>Date</span><input type="date" id="iD"></label></div>
-  <label><span>Type</span><select id="iT"><option value="note">Notes (texte)</option><option value="croquis">Croquis (dessin)</option></select></label>
-  <label><span>Titre (tapé)</span><input type="text" id="iTitle" placeholder="Une phrase pour retrouver la page"></label>
-  <label><span>Mots-clés (tapés, séparés par des espaces ou virgules)</span><input type="text" id="iTags"></label>
-  <label><span>Titres de parties (un par ligne)</span><textarea id="iHeads" rows="2"></textarea></label>
-  <label><span>Texte de la page (modifiable)</span><textarea id="iOcr" rows="6"></textarea></label>
-</div><div class="f"><button class="btn" id="iDel" style="margin-right:auto;color:#b3261e">Supprimer la page</button><button class="btn" id="iNo">Annuler</button><button class="btn primary" id="iOk">Enregistrer</button></div></dialog>
+
 
 
 <!-- nouvelle page : infos -->
@@ -272,7 +279,7 @@ function isTwo(){try{const sl=$('#slider');return TWO&&LIST.length>1&&sl.clientW
 const nStep=()=>$('#slider').classList.contains('two')?2:1;
 const pageW=()=>{const sl=$('#slider');return Math.max(1,sl.clientWidth/nStep());};
 function layout(){const sl=$('#slider'),two=isTwo();if(two!==sl.classList.contains('two')){sl.classList.toggle('two',two);go(POS);}
-  const b=$('#bTwo');if(b){b.hidden=!(sl.clientWidth>=1.45*sl.clientHeight&&LIST.length>1);b.classList.toggle('on',TWO);}}
+  const b=$('#bTwo');if(b){b.hidden=!(sl.clientWidth>=1.45*sl.clientHeight&&LIST.length>1);b.classList.toggle('on',sl.classList.contains('two'));b.textContent=sl.classList.contains('two')?'▯▯':'▯';b.title=sl.classList.contains('two')?'2 pages affichées : passer à 1 page':'1 page affichée : passer à 2 pages côte à côte';}}
 function go(i,smooth){const sl=$('#slider');POS=Math.max(0,Math.min(LIST.length-nStep(),i));if(POS<0)POS=0;if(!smooth)sl.style.scrollBehavior='auto';sl.scrollLeft=POS*pageW();sl.style.scrollBehavior='';loadSlide(POS);loadSlide(POS+1);loadSlide(POS-1);updNav();}
 $('#slider').addEventListener('scroll',()=>{clearTimeout(go.t);go.t=setTimeout(()=>{const sl=$('#slider');const i=Math.round(sl.scrollLeft/pageW());if(i!==POS){POS=Math.max(0,Math.min(LIST.length-nStep(),i));updNav();}},60);});
 /* texte de la page : sauts de ligne, retraits et signets (▷ → • - …) respectés */
@@ -285,11 +292,19 @@ function renderText(t){if(!t||!t.trim())return '<div class="hd">Pas encore de te
 let SELP=0;
 function selIdx(){return POS+(nStep()===2&&SELP===1&&POS+1<LIST.length?1:0);}
 function markSel(){document.querySelectorAll('#slider .slide').forEach((sd,i)=>sd.classList.toggle('sel',nStep()===2&&i===selIdx()));}
-function showTxt(){markSel();const p=LIST[selIdx()];if(!$('#txtp').hidden){$('#txtb').innerHTML=((p&&nStep()===2)?'<div class="hd">Page '+pos(p)+' (clique sur l’autre page pour voir son texte)</div>':'')+((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
+function showTxt(){markSel();const p=LIST[selIdx()];if(PM==='info'&&p&&EDIT!==p)fillInfo(p);if(PM==='txt'){$('#txtb').innerHTML=((p&&nStep()===2)?'<div class="hd">Page '+pos(p)+' (clique sur l’autre page pour voir son texte)</div>':'')+((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
+function fillInfo(p){EDIT=p;$('#iN').value=pos(p);$('#iD').value=p.date||'';$('#iT').value=p.type||'note';$('#iTitle').value=p.title||'';$('#iTags').value=p.tags||'';$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');}
+/* panneau de droite : « Texte » ou « Infos » (un seul à la fois) */
+let PM=ls.get('cahier.txt')==='1'?'txt':null;
+function setPanel(m){PM=m;const tp=$('#txtp');tp.hidden=!m;$('#txtb').hidden=m!=='txt';$('#pinfo').hidden=m!=='info';$('#txtTitle').textContent=m==='info'?'Infos de la page':'Texte de la page';
+  $('#bTxt').classList.toggle('on',m==='txt');$('#bInfo').classList.toggle('on',m==='info');ls.set('cahier.txt',m==='txt'?'1':'0');
+  if(m==='info'){const p=LIST[selIdx()];if(p)fillInfo(p);else{setPanel(null);return;}}
+  showTxt();txtLay();}
 function txtLay(){$('#view').classList.toggle('withtxt',!$('#txtp').hidden);requestAnimationFrame(()=>{layout();go(POS);});}
-$('#bTxt').onclick=()=>{$('#txtp').hidden=!$('#txtp').hidden;ls.set('cahier.txt',$('#txtp').hidden?'0':'1');showTxt();txtLay();};
-$('#txtp').hidden=ls.get('cahier.txt')!=='1';$('#view').classList.toggle('withtxt',!$('#txtp').hidden);
-$('#txtX').onclick=()=>{$('#txtp').hidden=true;ls.set('cahier.txt','0');txtLay();};
+$('#bTxt').onclick=()=>setPanel(PM==='txt'?null:'txt');
+$('#bInfo').onclick=()=>{if(PM==='info')setPanel(null);else if(LIST[selIdx()])setPanel('info');};
+$('#txtX').onclick=()=>setPanel(null);
+{const m=PM;PM=null;if(m)setPanel(m);else{$('#txtp').hidden=true;}}
 let zPos=-1;
 function updSide(){const off=!LIST.length||TOOL==='zone'||$('#slider').classList.contains('zoomed');$('#sidePrev').hidden=off||POS<=0;$('#sideNext').hidden=off||POS>=LIST.length-nStep();}
 function updNav(){if(zPos!==POS){zPos=POS;SELP=0;if(typeof zReset==='function')zReset();}updSide();layout();showTxt();const p=LIST[POS];$('#bPrev').disabled=POS<=0;$('#bNext').disabled=POS>=LIST.length-nStep();$('#bInfo').disabled=!p;
@@ -362,11 +377,9 @@ $('#mode').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset
 
 /* ---------- infos d'une page ---------- */
 let EDIT=null;
-function openInfo(p){EDIT=p;$('#iN').value=pos(p);$('#iD').value=p.date||'';$('#iT').value=p.type||'note';$('#iTitle').value=p.title||'';$('#iTags').value=p.tags||'';$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');$('#dInfo').showModal();}
-$('#bInfo').onclick=()=>{if(LIST[POS])openInfo(LIST[POS]);};
-$('#iNo').onclick=()=>$('#dInfo').close();
-$('#iOk').onclick=()=>{const p=EDIT;if(!p)return;const np=Math.max(1,Math.min(DOC.pages.length,+$('#iN').value||pos(p)));DOC.pages=DOC.pages.filter(x=>x!==p);DOC.pages.splice(np-1,0,p);p.date=$('#iD').value;p.type=$('#iT').value;p.title=$('#iTitle').value.trim();p.tags=$('#iTags').value.trim();p.ocr=$('#iOcr').value;p.heads=$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean);$('#dInfo').close();persist();refresh();renderSk();};
-$('#iDel').onclick=()=>{if(!EDIT||!confirm('Supprimer la page '+pos(EDIT)+' ?'))return;DOC.pages=DOC.pages.filter(x=>x!==EDIT);$('#dInfo').close();persist();refresh();};
+$('#iNo').onclick=()=>setPanel('txt');
+$('#iOk').onclick=()=>{const p=EDIT;if(!p)return;const np=Math.max(1,Math.min(DOC.pages.length,+$('#iN').value||pos(p)));DOC.pages=DOC.pages.filter(x=>x!==p);DOC.pages.splice(np-1,0,p);p.date=$('#iD').value;p.type=$('#iT').value;p.title=$('#iTitle').value.trim();p.tags=$('#iTags').value.trim();p.ocr=$('#iOcr').value;p.heads=$('#iHeads').value.split('\n').map(x=>x.trim()).filter(Boolean);persist();refresh();renderSk();setPanel('txt');};
+$('#iDel').onclick=()=>{if(!EDIT||!confirm('Supprimer la page '+pos(EDIT)+' ?'))return;DOC.pages=DOC.pages.filter(x=>x!==EDIT);persist();refresh();setPanel('txt');};
 /* ---------- lecture automatique du texte (OCR), chargée à la demande ---------- */
 function updBtns(){if(!DOC)return;const n=DOC.pages.filter(p=>p.rd!==2).length,k=(DOC.contacts||[]).length;$('#bOcr').textContent='Transcription'+(n?' ('+n+')':'');$('#bOcr').disabled=false;$('#bCt').textContent='Contacts'+(k?' ('+k+')':'');}
 $('#bOcr').onclick=()=>{const n=DOC.pages.filter(p=>p.rd!==2).length;$('#recN').textContent=n+' page(s) pas encore lue(s).';$('#dRec').showModal();};
