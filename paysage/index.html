@@ -708,7 +708,13 @@ function resetHistory(){enforceColors();S.undo=[];S.redo=[];lastSnap=snapshot();
 
 /* ---------- autosauvegarde ---------- */
 let asT=0;
-function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(()=>{const d=projectData();IDB.set('paysage.autosave',Object.assign({},d,{doc:S.doc}));if(window.AtelierTabs)AtelierTabs.update({id:S.doc.id,name:S.doc.name,data:d});if(S.doc.id&&window.AtelierSync)AtelierSync.save('paysage',S.doc.id,S.doc.name,d,{lazy:true});},1500);}
+let asDur=0;
+addEventListener('pointerdown',()=>{window.__ptrDown=1;},true);addEventListener('pointerup',()=>{window.__ptrDown=0;},true);addEventListener('pointercancel',()=>{window.__ptrDown=0;},true);
+/* enregistrement automatique : plus le document est lourd, plus on attend avant de recommencer ; jamais pendant un geste (souris enfoncée) */
+function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(function run(){
+  if(window.__ptrDown||document.querySelector('dialog[open]')){asT=setTimeout(run,1500);return;}
+  const go=()=>{const t0=performance.now();const d=projectData();IDB.set('paysage.autosave',Object.assign({},d,{doc:S.doc}));if(window.AtelierTabs)AtelierTabs.update({id:S.doc.id,name:S.doc.name,data:d});if(S.doc.id&&window.AtelierSync)AtelierSync.save('paysage',S.doc.id,S.doc.name,d,{lazy:true});asDur=performance.now()-t0;};
+  if(window.requestIdleCallback)requestIdleCallback(go,{timeout:4000});else go();},Math.max(2500,Math.min(30000,asDur*20)));}
 function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'— sans titre';if(window.AtelierTabs)AtelierTabs.refresh();}
 async function saveDoc(asNew){
   if(!window.AtelierSync)return download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`paysage-${stamp()}.json`);
