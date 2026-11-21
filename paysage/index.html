@@ -3044,7 +3044,18 @@ function stackItems(){// du plus bas au plus haut, sans doublon parent/enfant
   const its=movableSelection();return its.filter(i=>!its.some(o=>o!==i&&o.isAncestor(i))).sort((a,b)=>a.isAbove(b)?1:-1);}
 function movableSelection(){
   let items;
-  if(S.tool==='direct'){items=P.project.getItems({class:P.Path,match:p=>p.selected&&selectable(p)}).map(p=>p.parent instanceof P.CompoundPath?p.parent:p);items=[...new Set(items)];}
+  if(S.tool==='direct'){
+    /* une zone choisie dans un objet composé (trous, îlots) : seule cette zone change de calque, le reste de l'objet reste en place */
+    const paths=P.project.getItems({class:P.Path,match:p=>p.selected&&selectable(p)});
+    items=[];
+    for(const p of paths){const cp=p.parent;
+      if(cp instanceof P.CompoundPath){
+        if(cp.children.every(c=>c.selected))items.push(cp);
+        else{const np=p.clone({insert:false});np.transform(cp.matrix);np.copyAttributes(cp,true);np.data=Object.assign({},cp.data);np.insertAbove(cp);np.selected=true;p.remove();items.push(np);}
+      }else items.push(p);}
+    items=[...new Set(items)];
+    P.project.getItems({class:P.CompoundPath,match:c=>!c.children.length}).forEach(c=>c.remove());
+  }
   else items=sel.slice();
   return items.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
 }
