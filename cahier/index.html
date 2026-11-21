@@ -37,14 +37,20 @@ main{flex:1;min-height:0;position:relative}
 .slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;padding:10px;position:relative}
 .slide img{max-width:100%;max-height:100%;box-shadow:0 2px 14px rgba(0,0,0,.3);background:#fff;touch-action:pan-x;transform-origin:center;will-change:transform}
 #slider.two .slide{flex:0 0 50%;min-width:0;box-sizing:border-box;scroll-snap-align:start}
-#view.withtxt #slider{margin-right:min(400px,100%)}
+#slider{margin-right:52px}
+#view.withtxt #slider{margin-right:calc(52px + min(400px,100% - 52px))}
+#view.withtxt #sideNext{right:calc(60px + min(400px,100% - 52px))}#sideNext{right:60px}
+@media (max-width:700px){#view.withtxt #slider{margin-right:52px;margin-bottom:48vh;margin-bottom:48dvh}#view.withtxt #sideNext{right:60px}#view.withtxt .side{top:calc((100% - 48vh)/2);top:calc((100% - 48dvh)/2)}#txtp{top:auto!important;left:0;right:52px!important;width:auto!important;height:48vh;height:48dvh;border-left:0;border-top:1px solid var(--line)}}
 #slider.zoomed{overflow-x:hidden}#slider.zoomed .slide img{touch-action:none;cursor:grab}#slider.zoomed .slide{overflow:visible}
 .slide .ph{color:var(--mute)}
-#txtp{position:absolute;top:0;right:0;bottom:62px;width:min(400px,100%);background:var(--panel);border-left:1px solid var(--line);box-shadow:-6px 0 18px rgba(0,0,0,.12);display:flex;flex-direction:column;z-index:6}
+#txtp{position:absolute;top:0;right:52px;bottom:0;width:min(400px,100% - 52px);background:var(--panel);border-left:1px solid var(--line);box-shadow:-6px 0 18px rgba(0,0,0,.12);display:flex;flex-direction:column;z-index:6}
 #txtp .th{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:600;border-bottom:1px solid var(--line)}
 #txtb{overflow:auto;padding:12px 16px;font-size:15px;line-height:1.5}
 #txtb .l{white-space:pre-wrap;min-height:1.1em}#txtb .li{display:flex;gap:8px}#txtb .li i{font-style:normal;flex:none;width:1.1em;text-align:center;color:var(--acc,#c05a2e)}
 #txtb .hd{margin:0 0 8px;font-weight:600;color:#666;font-size:13px}#txtb .sp{height:.7em}
+#rail{position:absolute;top:0;right:0;bottom:0;width:52px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0;z-index:7}
+#rail button{width:40px;height:40px;border:1px solid transparent;border-radius:10px;background:none;cursor:pointer;color:var(--mute);display:flex;align-items:center;justify-content:center;padding:0;font-size:15px;font-family:inherit}
+#rail button:hover{background:rgba(0,0,0,.05)}#rail button.on{background:var(--ink);color:#fff}#rail button svg{width:22px;height:22px}#rail button[hidden]{display:none}#bType{color:var(--ink)!important}
 #nav{display:flex;align-items:center;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line)}
 #nav .info{flex:1;min-width:0}#nav .info>*,#nav .info b,#nav .info span{display:none!important}#nav{overflow:hidden}#nav .btn{flex:none}@media (max-width:560px){#nav .lb{display:none}#nav{gap:5px;padding-left:8px;padding-right:8px}#nav .arr{padding-left:10px;padding-right:10px}}
 #nav .info b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -125,15 +131,15 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <label><span>Titres de parties (un par ligne)</span><textarea id="iHeads" rows="2"></textarea></label>
   <label><span>Texte de la page (modifiable)</span><textarea id="iOcr" rows="6"></textarea></label>
 </div><div class="f"><button class="btn" id="iDel" style="margin-right:auto;color:#b3261e">Supprimer la page</button><button class="btn" id="iNo">Annuler</button><button class="btn primary" id="iOk">Enregistrer</button></div></div></div>
-    <div id="nav">
-      <button class="btn arr" id="bPrev" title="Page précédente (←)">‹</button>
-      <div class="info"><b id="nT">—</b><span id="nS"></span></div>
-      <button class="btn" id="bTwo" title="Afficher 2 pages côte à côte quand la fenêtre est assez large" hidden>▯▯</button>
-      <button class="btn" id="bFind" title="Rechercher dans tout le cahier">🔍<span class="lb"> Rechercher</span></button>
-      <button class="btn" id="bTxt" title="Afficher le texte de la page">Texte</button>
-      <button class="btn" id="bInfo" title="Modifier les infos de cette page">Infos</button>
-      <button class="btn arr" id="bNext" title="Page suivante (→)">›</button>
+    <div hidden><button id="bPrev"></button><button id="bNext"></button><b id="nT"></b><span id="nS"></span></div>
+    <div id="rail">
+      <button id="bFind" data-ic="search" title="Rechercher dans tout le cahier" aria-label="Rechercher"></button>
+      <button id="bTxt" data-ic="txt" title="Texte de la page" aria-label="Texte"></button>
+      <button id="bInfo" data-ic="info" title="Infos de cette page" aria-label="Infos"></button>
+      <button id="bType" title="Type de la page : cliquer pour passer de Notes à Croquis" aria-label="Type de la page"></button>
+      <button id="bTwo" title="Afficher 2 pages côte à côte quand la fenêtre est assez large" hidden>▯▯</button>
     </div>
+  </div>
   </div>
   <div id="grid" hidden>
     <div id="tools">
@@ -207,6 +213,9 @@ const IC={
  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5V19c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13.5"/></svg>',
  grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>',
  note:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M9 11h6.5M9 14.5h6.5M9 18h4"/></svg>',
+ search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>',
+ txt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 6.5h14M5 11h14M5 15.5h14M5 20h8"/></svg>',
+ info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/></svg>',
  pen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/></svg>'};
 document.querySelectorAll('[data-ic]').forEach(b=>{b.innerHTML=IC[b.dataset.ic]||'';});
 /* choix du type : deux icônes, mais on lit / écrit toujours .value comme avant */
@@ -305,7 +314,8 @@ function renderText(t){if(!t||!t.trim())return '<div class="hd">Pas encore de te
 let SELP=0;
 function selIdx(){return POS+(nStep()===2&&SELP===1&&POS+1<LIST.length?1:0);}
 function markSel(){document.querySelectorAll('#slider .slide').forEach((sd,i)=>sd.classList.toggle('sel',nStep()===2&&i===selIdx()));}
-function showTxt(){markSel();const p=LIST[selIdx()];if(PM==='info'&&p&&EDIT!==p)fillInfo(p);if(PM==='txt'){$('#txtb').innerHTML=((p&&nStep()===2)?'<div class="hd">Page '+pos(p)+' (clique sur l’autre page pour voir son texte)</div>':'')+((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
+function updType(){const p=LIST[selIdx()],b=$('#bType');b.disabled=!p;b.innerHTML=p?IC[p.type==='croquis'?'pen':'note']:'';b.title=p?(p.type==='croquis'?'Croquis (dessin) — cliquer pour passer en Notes (texte)':'Notes (texte) — cliquer pour passer en Croquis (dessin)'):'';}
+function showTxt(){markSel();updType();const p=LIST[selIdx()];if(PM==='info'&&p&&EDIT!==p)fillInfo(p);if(PM==='txt'){$('#txtb').innerHTML=((p&&nStep()===2)?'<div class="hd">Page '+pos(p)+' (clique sur l’autre page pour voir son texte)</div>':'')+((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
 function fillInfo(p){EDIT=p;$('#iN').value=pos(p);$('#iD').value=p.date||'';$('#iT').value=p.type||'note';$('#iTitle').value=p.title||'';$('#iTags').value=p.tags||'';$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');}
 /* panneau de droite : « Texte » ou « Infos » (un seul à la fois) */
 let PM=ls.get('cahier.txt')==='1'?'txt':null;
@@ -314,6 +324,7 @@ function setPanel(m){PM=m;const tp=$('#txtp');tp.hidden=!m;$('#txtb').hidden=m!=
   if(m==='info'){const p=LIST[selIdx()];if(p)fillInfo(p);else{setPanel(null);return;}}
   showTxt();txtLay();}
 function txtLay(){$('#view').classList.toggle('withtxt',!$('#txtp').hidden);requestAnimationFrame(()=>{layout();go(POS);});}
+$('#bType').onclick=()=>{const p=LIST[selIdx()];if(!p)return;const id=p.id;p.type=p.type==='croquis'?'note':'croquis';persist(true);refresh();const i=LIST.findIndex(x=>x.id===id);if(i>=0)go(i);else updNav();if(PM==='info'){const q=LIST[selIdx()];if(q)fillInfo(q);}};
 $('#bTxt').onclick=()=>setPanel(PM==='txt'?null:'txt');
 $('#bInfo').onclick=()=>{if(PM==='info')setPanel(null);else if(LIST[selIdx()])setPanel('info');};
 $('#txtX').onclick=()=>setPanel(null);
