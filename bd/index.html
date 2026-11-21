@@ -352,4 +352,5 @@ window.addEventListener('atelier-docs',async()=>{await loadState();render()});
 (async()=>{await Promise.all([loadMeta(),loadState()]);if(window.AtelierSync)$('bdg').appendChild(AtelierSync.badge());render()})();
 </script><div id="lb" hidden><img alt=""><span style="color:#fff"></span></div>
 <script>document.getElementById('lb').onclick=function(){if(history.state&&history.state.lb)history.back();else{this.hidden=true;this.firstChild.removeAttribute('src')}}</script>
+<script>addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&String(e.key).toLowerCase()==='s'){e.preventDefault();}});</script>
 </body></html>

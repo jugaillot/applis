@@ -1511,5 +1511,6 @@ window.__compilKeep={keep,open,get pid(){return tab().pid;}};
 <script>/* Ctrl+P = bouton Imprimer / Export PDF de l'appli */
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#bPrint');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
 <script>$('#bXfer').onclick=()=>AtelierDrop.transfer('compil','document.pdf','application/pdf',async()=>{await busy('Préparation du PDF…');try{return new File([await buildPDF()],'document.pdf',{type:'application/pdf'});}finally{await busy();}});</script>
+<script>addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&String(e.key).toLowerCase()==='s'){e.preventDefault();try{window.__compilKeep&&window.__compilKeep.keep();}catch(x){}}});</script>
 </body>
 </html>

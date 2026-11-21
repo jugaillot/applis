@@ -41,4 +41,5 @@ if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(()=>{document
 <script>AtelierDrop.init({accept:()=>false});
 /* double-clic sur un fichier : ouverture directe dans l'appli naturelle du format (autres applis : glisser-déposer ou « Ouvrir » dans l'appli) */
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(!p.files||!p.files.length)return;window.__laSuiteBusy=1;const fs=await Promise.all(p.files.map(h=>h.getFile()));AtelierDrop.route(fs,null,true);});</script>
+<script>addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&String(e.key).toLowerCase()==='s'){e.preventDefault();}});</script>
 </body></html>

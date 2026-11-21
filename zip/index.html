@@ -151,5 +151,6 @@ if('launchQueue' in window)launchQueue.setConsumer(async p=>{if(p.files&&p.files
 </script>
 <script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(r=>r.update()).catch(()=>{}));
 navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!window.__laSuiteBusy&&!sessionStorage.getItem('atelier-maj')){try{sessionStorage.setItem('atelier-maj','1');}catch(e){}window.__laSuiteLeaving=1;location.reload();}});}</script>
+<script>addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&String(e.key).toLowerCase()==='s'){e.preventDefault();}});</script>
 </body>
 </html>

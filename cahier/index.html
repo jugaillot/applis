@@ -729,4 +729,5 @@ window.__cahier={parseImport,detectPage,openCam,detectMarkers,warp,parseDate,cur
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}));
 })();
 </script>
+<script>addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&String(e.key).toLowerCase()==='s'){e.preventDefault();}});</script>
 </body></html>

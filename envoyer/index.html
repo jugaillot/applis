@@ -253,5 +253,6 @@ $('#fGal').onchange=e=>{const f=[...e.target.files];e.target.value='';take(f);};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('#crop').hidden&&$('#vec').hidden)loadDocs();});
 loadDocs();
 </script>
+<script>addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&String(e.key).toLowerCase()==='s'){e.preventDefault();}});</script>
 </body>
 </html>
