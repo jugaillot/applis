@@ -108,6 +108,18 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #cam .shut:active{background:#ccc}#cam .btn{background:#2c2c2e;border-color:#3a3a3c;color:#fff;min-width:96px}
 #busy{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:60;color:#fff;font-weight:600;text-align:center;padding:20px}
 .hic{display:inline-flex;align-items:center;justify-content:center;padding:5px 9px}.hic svg{width:18px;height:18px}
+/* téléphone : bandeau du haut qui défile, propriétés en barre repliée en bas */
+@media (max-width:700px){
+header{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}header::-webkit-scrollbar{display:none}header>*{flex:none}
+#rail{top:auto;left:0;right:0;bottom:0;width:auto;height:52px;flex-direction:row;justify-content:flex-start;overflow-x:auto;border-left:0;border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));box-sizing:content-box;scrollbar-width:none}
+#rail button{flex:none}#rail #rDel{margin-top:0!important;margin-left:auto}
+#slider{margin-right:0;margin-bottom:calc(52px + env(safe-area-inset-bottom))}
+#sideNext,#view.withtxt #sideNext{right:8px}
+#view.withtxt #slider{margin-right:0;margin-bottom:calc(52px + 33vh + env(safe-area-inset-bottom));margin-bottom:calc(52px + 33dvh + env(safe-area-inset-bottom))}
+#view.withtxt #sideNext{right:8px}
+#txtp{top:auto!important;left:0;right:0!important;width:auto!important;bottom:calc(52px + env(safe-area-inset-bottom))!important;height:33vh;height:33dvh;border-left:0;border-top:1px solid var(--line)}
+#grid,#skv{bottom:calc(52px + env(safe-area-inset-bottom))}
+}
 </style>
 </head>
 <body>
