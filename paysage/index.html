@@ -3191,9 +3191,15 @@ async function vxAuto(f,p){
     if(!VX.shapes.length)throw new Error('aucune forme trouvée');await busy();await vxPlace();}
   catch(e){await busy();alert('Placement impossible : '+(e.message||e));}
 }
+const ZQ={f:1,x:0,y:0,dx:0,dy:0,raf:0,go(){if(this.raf)return;this.raf=requestAnimationFrame(()=>{const q=ZQ;q.raf=0;
+  if(q.dx||q.dy){view.center=view.center.subtract(new P.Point(q.dx,q.dy).divide(view.zoom));}
+  if(q.f!==1){const r=cv.getBoundingClientRect();zoomAt(q.f,view.viewToProject(new P.Point(q.x-r.left,q.y-r.top)));}
+  else if(q.dx||q.dy)afterView();
+  q.f=1;q.dx=q.dy=0;});}};
 addEventListener('DOMContentLoaded',()=>{if(window.AtelierZoom)AtelierZoom.init({pinch:false,area:cv,tools:'#tools',before:'#tools [data-tool=hand] + *',wheel:true,
-  zoomBy:(f,x,y)=>{const r=cv.getBoundingClientRect();zoomAt(f,view.viewToProject(new P.Point(x-r.left,y-r.top)));},
-  panBy:(dx,dy)=>{view.center=view.center.subtract(new P.Point(dx,dy).divide(view.zoom));afterView();},
+  /* la molette envoie beaucoup d'événements : on les regroupe, une seule mise à jour de l'affichage par image (sinon, sur un gros dessin, ils s'empilent et l'appli rame) */
+  zoomBy:(f,x,y)=>{ZQ.f*=f;ZQ.x=x;ZQ.y=y;ZQ.go();},
+  panBy:(dx,dy)=>{ZQ.dx+=dx;ZQ.dy+=dy;ZQ.go();},
   fit:fitView,actual:()=>zoomAt((96/25.4)/view.zoom,view.center),pct:()=>view.zoom/(96/25.4)*100});});
 cv.addEventListener('dblclick',e=>e.preventDefault());
 /* SVG de la sélection : se colle en vectoriel dans Illustrator, Inkscape, Affinity… */
