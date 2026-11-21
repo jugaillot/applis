@@ -714,7 +714,7 @@ function perfReport(){
   const paths=P.project.getItems({class:P.Path,match:x=>!(x.data&&x.data.sys)});
   const segs=paths.reduce((n,x)=>n+x.segments.length,0);
   const out=['Fluidité — '+(S.doc.name||'sans titre'),'Formes : '+paths.length+' · points : '+segs,'Affichage : '+Math.round(view.viewSize.width)+' × '+Math.round(view.viewSize.height)+' px, zoom '+Math.round(view.zoom/(96/25.4)*100)+' %, écran ×'+(window.devicePixelRatio||1)];
-  out.push('État : outil '+S.tool+' · espace '+(typeof spaceDown!=='undefined'&&spaceDown)+' · aperçu '+!!PV+' · retouche aquarelle '+!!S.aquaEdit+' · geste '+(drag?drag.mode:'aucun')+' · occupé '+!!BUSY.on+' · sélection '+sel.length+' · calques verrouillés '+userLayers().filter(l=>l.locked).length+' · mémoire '+(performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+' Mo':'?'));
+  out.push('État : outil '+S.tool+' · espace '+(typeof spaceDown!=='undefined'&&spaceDown)+' · aperçu '+!!PV+' · retouche aquarelle '+!!S.aquaEdit+' · geste '+(drag?drag.mode:'aucun')+' · occupé '+!!BUSY.on+' · sélection '+sel.length+' · calques verrouillés '+userLayers().filter(l=>l.locked).length+' · rotation '+!!S.rotMode+' · objets sélectionnables '+userLayers().reduce((n,l)=>n+l.children.filter(c=>selectable(c)).length,0)+'/'+userLayers().reduce((n,l)=>n+l.children.length,0)+' · mémoire '+(performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+' Mo':'?'));
   if(aquaRaster)out.push('Image d’aquarelle : '+aquaRaster.width+' × '+aquaRaster.height+' px');
   out.push('Une image s’affiche en : '+t()+' ms (ce qui est bien : moins de 16)');
   if(aquaRaster){const v=aquaRaster.visible;aquaRaster.visible=false;out.push('… sans l’image d’aquarelle : '+t()+' ms');aquaRaster.visible=v;}
@@ -2571,10 +2571,13 @@ async function vxPlace(){
   const g=buildVx(VX.shapes,VX.whites||[],{name:VX.name,scale:VX.scale,mode:VX.mode,blanc:p.blanc,params:p,src:VX.srcKey,black:'#000000'});
   // pixels d'origine → mm
   let k;
+  // dessin reçu du portable : placé et dimensionné d'après ce qu'on voit à l'écran (et pas la feuille de travail)
+  const vb=VX.viewFit?P.view.bounds:null;VX.viewFit=false;
   if(VX.place==='dpi'){k=25.4/(+$('#vxDpi').value||300);}
+  else if(vb){k=Math.min(vb.width*0.8/VX.img.naturalWidth,vb.height*0.8/VX.img.naturalHeight);}
   else{const m=10;k=Math.min((S.page.w-2*m)/VX.img.naturalWidth,(S.page.h-2*m)/VX.img.naturalHeight);}
   xf(g,new P.Matrix().scale(k,new P.Point(0,0)));
-  moveIt(g,(VX.at||new P.Point(S.page.w/2,S.page.h/2)).subtract(g.position));VX.at=null;
+  moveIt(g,(vb?vb.center:(VX.at||new P.Point(S.page.w/2,S.page.h/2))).subtract(g.position));VX.at=null;
   const parts=placeVx(g);
   setTool('select');setSel(parts);commit();
   if(p.blanc&&p.ouv>0)vxFillOpen(parts,p.ouv);
@@ -2816,7 +2819,7 @@ function segBind(id,key,cb){$('#'+id).addEventListener('click',e=>{const b=e.tar
 segBind('vxPlace','place',()=>{$('#vxDpiBox').hidden=VX.place!=='dpi';});
 segBind('vxMode','mode');
 segBind('vxShow','show',vxDraw);
-$('#vxCancel').onclick=()=>$('#vxDlg').close();
+$('#vxCancel').onclick=()=>{VX.viewFit=false;$('#vxDlg').close();};
 $('#bRevec').onclick=openRevec;
 /* décaler : agrandit (+) ou réduit (−) les formes d'un nombre de mm */
 function doOffset(){
@@ -3231,7 +3234,7 @@ addEventListener('blur',()=>{ctrlHeld=false;});
 /* molette (zoom / Maj : horizontal / Ctrl : vertical) et loupe : communs à La Suite */
 /* photos envoyées depuis le portable (page « Envoyer un dessin ») : elles arrivent dans la vectorisation */
 addEventListener('DOMContentLoaded',()=>{if(window.AtelierInbox)AtelierInbox.init({app:'paysage',docId:()=>S.doc&&S.doc.id,
-  open:async(f,vx)=>{if(vx)return vxAuto(f,vx);VX.edit=null;vxDialogMode(false);if(!$('#vxDlg').open)$('#vxDlg').showModal();await vxOpenFile(f);}});});
+  open:async(f,vx)=>{VX.viewFit=true;if(vx)return vxAuto(f,vx);VX.edit=null;vxDialogMode(false);if(!$('#vxDlg').open)$('#vxDlg').showModal();await vxOpenFile(f);}});});
 /* dessin déjà vectorisé sur le portable : on refait le calcul ici en pleine définition, avec ses réglages, et on le place */
 async function vxAuto(f,p){
   await busy('Vectorisation du dessin reçu…');
