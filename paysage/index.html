@@ -707,20 +707,22 @@ function redo(){if(!S.redo.length)return;if(window.BK&&BK.pending)bkCancel();con
 function resetHistory(){enforceColors();S.undo=[];S.redo=[];lastSnap=snapshot();syncPanel();}
 
 /* ---------- autosauvegarde ---------- */
-let asT=0;
-let asDur=0;
-addEventListener('pointerdown',()=>{window.__ptrDown=1;},true);addEventListener('pointerup',()=>{window.__ptrDown=0;},true);addEventListener('pointercancel',()=>{window.__ptrDown=0;},true);
-/* enregistrement automatique : plus le document est lourd, plus on attend avant de recommencer ; jamais pendant un geste (souris enfoncée) */
-function scheduleAutosave(){clearTimeout(asT);asT=setTimeout(function run(){
-  if(window.__ptrDown||document.querySelector('dialog[open]')){asT=setTimeout(run,1500);return;}
-  const go=()=>{const t0=performance.now();const d=projectData();IDB.set('paysage.autosave',Object.assign({},d,{doc:S.doc}));if(window.AtelierTabs)AtelierTabs.update({id:S.doc.id,name:S.doc.name,data:d});if(S.doc.id&&window.AtelierSync)AtelierSync.save('paysage',S.doc.id,S.doc.name,d,{lazy:true});asDur=performance.now()-t0;};
-  if(window.requestIdleCallback)requestIdleCallback(go,{timeout:4000});else go();},Math.max(2500,Math.min(30000,asDur*20)));}
+/* enregistrement automatique : toutes les 5 minutes (si quelque chose a changé), en quittant la page, ou à la demande avec « Enregistrer » */
+let asDirty=false;
+function scheduleAutosave(){asDirty=true;}
+function flushAutosave(){
+  if(!asDirty)return;asDirty=false;
+  try{const d=projectData();IDB.set('paysage.autosave',Object.assign({},d,{doc:S.doc}));if(window.AtelierTabs)AtelierTabs.update({id:S.doc.id,name:S.doc.name,data:d});if(S.doc.id&&window.AtelierSync)AtelierSync.save('paysage',S.doc.id,S.doc.name,d);}catch(e){console.error(e);}
+}
+setInterval(()=>{if(!window.__ptrDown)flushAutosave();},5*60*1000);
+addEventListener('pagehide',flushAutosave);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushAutosave();});
 function showDoc(){$('#docName').textContent=S.doc.name?'— '+S.doc.name:'— sans titre';if(window.AtelierTabs)AtelierTabs.refresh();}
 async function saveDoc(asNew){
   if(!window.AtelierSync)return download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`paysage-${stamp()}.json`);
   if(!S.doc.id||asNew){const n=prompt('Nom de la composition :',S.doc.name||('Paysage '+new Date().toLocaleDateString('fr-FR')));if(!n||!n.trim())return;S.doc={id:null,name:n.trim()};}
   S.doc.id=await AtelierSync.save('paysage',S.doc.id,S.doc.name,projectData());
-  IDB.set('paysage.autosave',Object.assign({},projectData(),{doc:S.doc}));showDoc();
+  IDB.set('paysage.autosave',Object.assign({},projectData(),{doc:S.doc}));asDirty=false;showDoc();
 }
 function openDocs(){
   AtelierSync.openDialog({app:'paysage',title:'Mes compositions',current:S.doc.id,lockUnsynced:true,
