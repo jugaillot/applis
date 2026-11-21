@@ -716,7 +716,7 @@ const HINTS={'':'Choisis un outil (ou les touches S, G, E).',stamp:'Alt + clic s
 function setTool(t){
   TOOL.tool=t||'';if(TOOL.tool&&S.cropMode)toggleCrop(false);
   document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===TOOL.tool&&(TOOL.tool!==''||b.closest('#tSeg'))));
-  const st=$('#stage');st.classList.toggle('tooling',TOOL.tool==='stamp'||TOOL.tool==='erase');st.classList.toggle('tool-fill',TOOL.tool==='fill');
+  const st=$('#stage');st.style.touchAction=TOOL.tool?'none':'pan-x pan-y';/* au doigt : l'outil dessine, la page ne défile pas */st.classList.toggle('tooling',TOOL.tool==='stamp'||TOOL.tool==='erase');st.classList.toggle('tool-fill',TOOL.tool==='fill');
   $('#tHint').textContent=HINTS[TOOL.tool];$('#tBrush').hidden=!(TOOL.tool==='stamp'||TOOL.tool==='erase');$('#tFillBox').hidden=TOOL.tool!=='fill';$('#tColBox').hidden=!(TOOL.tool==='fill'||TOOL.tool==='erase');
   $('#tColor').value=TOOL.tool==='fill'?TOOL.fillColor:TOOL.eraseColor;
   if(TOOL.tool)$('#dTool').open=true;
