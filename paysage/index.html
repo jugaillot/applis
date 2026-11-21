@@ -726,6 +726,27 @@ function perfReport(){
   d.showModal();
 }
 addEventListener('keydown',e=>{if(e.ctrlKey&&e.altKey&&(e.key==='d'||e.key==='D')){e.preventDefault();try{perfReport();}catch(x){alert('Mesure impossible : '+x.message);}}},true);
+/* toute pastille de couleur (papier, tracé de l'aquarelle…) : petites barres C M J N à la place de la fenêtre RVB */
+(function(){
+  let pop=null,cur=null,vals=[0,0,0,0];
+  function close(){if(pop){pop.remove();pop=null;cur=null;}}
+  function apply(fin){if(!cur)return;cur.value=cmykToHex(vals);cur.dispatchEvent(new Event('input',{bubbles:true}));if(fin)cur.dispatchEvent(new Event('change',{bubbles:true}));}
+  function open(inp){
+    close();cur=inp;vals=hexToCmyk(inp.value||'#000000');
+    pop=document.createElement('div');pop.style.cssText='position:fixed;z-index:99999;background:#fff;border:1px solid #cfcbc2;border-radius:10px;padding:8px 10px;box-shadow:0 6px 24px rgba(0,0,0,.25);width:230px;font:12px system-ui,sans-serif';
+    pop.innerHTML=[['C','#00a6d6'],['M','#e6007e'],['J','#f2c200'],['N','#333']].map(([l,c],i)=>`<label style="display:flex;align-items:center;gap:6px;margin:3px 0"><b style="width:12px;color:${c}">${l}</b><input type="range" min="0" max="100" value="${vals[i]}" data-i="${i}" style="flex:1;accent-color:${c}"><span style="width:26px;text-align:right;color:#77756f">${vals[i]}</span></label>`).join('');
+    document.body.appendChild(pop);
+    const r=inp.getBoundingClientRect();pop.style.left=Math.max(8,Math.min(innerWidth-246,r.left-100))+'px';pop.style.top=Math.min(innerHeight-130,r.bottom+6)+'px';
+    pop.addEventListener('input',e=>{const i=+e.target.dataset.i;vals[i]=+e.target.value;e.target.nextElementSibling.textContent=vals[i];apply(false);});
+    pop.addEventListener('change',()=>apply(true));
+  }
+  document.addEventListener('click',e=>{
+    const c=e.target.closest&&e.target.closest('input[type=color]');
+    if(c&&c.dataset.la!=='col'){e.preventDefault();e.stopPropagation();pop&&cur===c?close():open(c);return;}
+    if(pop&&!pop.contains(e.target))close();
+  },true);
+  addEventListener('keydown',e=>{if(e.key==='Escape')close();},true);
+})();
 let asDirty=false;
 function scheduleAutosave(){asDirty=true;}
 function flushAutosave(){
