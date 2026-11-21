@@ -3085,7 +3085,7 @@ function followLayer(items){
 }
 function stackItems(){// du plus bas au plus haut, sans doublon parent/enfant
   const its=movableSelection();return its.filter(i=>!its.some(o=>o!==i&&o.isAncestor(i))).sort((a,b)=>a.isAbove(b)?1:-1);}
-function movableSelection(){
+function movableSelection(split){
   let items;
   if(S.tool==='direct'){
     /* une zone choisie dans un objet composé (trous, îlots) : seule cette zone change de calque, le reste de l'objet reste en place */
@@ -3093,11 +3093,11 @@ function movableSelection(){
     items=[];
     for(const p of paths){const cp=p.parent;
       if(cp instanceof P.CompoundPath){
-        if(cp.children.every(c=>c.selected))items.push(cp);
+        if(!split||cp.children.every(c=>c.selected))items.push(cp);
         else{const np=p.clone({insert:false});np.transform(cp.matrix);np.copyAttributes(cp,true);np.data=Object.assign({},cp.data);np.insertAbove(cp);np.selected=true;p.remove();items.push(np);}
       }else items.push(p);}
     items=[...new Set(items)];
-    P.project.getItems({class:P.CompoundPath,match:c=>!c.children.length}).forEach(c=>c.remove());
+    if(split)P.project.getItems({class:P.CompoundPath,match:c=>!c.children.length}).forEach(c=>c.remove());
   }
   else items=sel.slice();
   return items.filter(it=>it&&it.parent&&!(it.data&&it.data.sys));
@@ -3156,7 +3156,7 @@ LY.addEventListener('click',e=>{
   if(act==='trace'){S.aqua.trace=!S.aqua.trace;styleRaster();enforceColors();renderLayers();P.view.update();scheduleAutosave();return;}
   if(act==='col'||act==='img'||act==='tcol')return;
   if(e.target.closest('label'))return;
-  if(S.tool!=='bucket'&&!S.aquaEdit){const mv=movableSelection();if(mv.length&&!mv.every(it=>itemRoles(it).every(x=>x===r))){moveToRole(mv,r);return;}}
+  if(S.tool!=='bucket'&&!S.aquaEdit){const mv=movableSelection(true);if(mv.length&&!mv.every(it=>itemRoles(it).every(x=>x===r))){moveToRole(mv,r);return;}}
   setRole(r);ensureLayer();renderLayers();if(S.tool==='bucket')bkLayerChanged();
 });
 /* un clic sur la pastille « Couleur du dessin » montre / cache les barres C M J N (au lieu de la fenêtre de couleur RVB) */
@@ -3165,7 +3165,7 @@ LY.addEventListener('input',e=>{if(e.target.dataset.la==='cmyk'){const box=e.tar
   if(e.target.dataset.la==='tcol'){S.aqua.tcol=e.target.value;enforceColors();P.view.update();scheduleAutosave();return;}if(e.target.dataset.la==='col'){S.color=e.target.value;S.cmyk=hexToCmyk(S.color);{const bx=e.target.closest('.layer').querySelector('.cmyk');if(bx){const rs=bx.querySelectorAll('input[type=range]'),cv=bx.querySelectorAll('.cv');S.cmyk.forEach((x,i)=>{rs[i].value=x;cv[i].textContent=x;});}}enforceColors();P.view.update();renderSwatches();clearTimeout(colT);colT=setTimeout(()=>commit(),400);}});
 let colT=0;
 LY.addEventListener('change',e=>{if(e.target.dataset.la==='cmyk'){clearTimeout(colT);commit();return;}if(e.target.dataset.la==='img'){const f=e.target.files[0];e.target.value='';if(f)setAquaImage(f);}});
-$('#bToLayer').onclick=()=>{if(!sel.length||S.aquaEdit)return;moveToRole(movableSelection(),activeRole);};
+$('#bToLayer').onclick=()=>{if(!sel.length||S.aquaEdit)return;moveToRole(movableSelection(true),activeRole);};
 
 /* clavier */
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&e.detail>0)b.blur();},true);
