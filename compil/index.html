@@ -362,7 +362,8 @@ function saveOpt(){try{localStorage.setItem('atelierCompil.opt',JSON.stringify(S
 function pgSize(w,h){w=+w;h=+h;const STD={A6:[105,148],A5:[148,210],A4:[210,297],A3:[297,420],A2:[420,594],A1:[594,841],Letter:[215.9,279.4],Legal:[215.9,355.6]};
   for(const n in STD){const [a,b]=STD[n];if(Math.abs(w-a)<1.5&&Math.abs(h-b)<1.5)return n+' portrait';if(Math.abs(w-b)<1.5&&Math.abs(h-a)<1.5)return n+' landscape';}
   return w+'mm '+h+'mm';}
-async function addFiles(list){
+async function addFiles(list){const wasEmpty=!S.pages.length;try{return await addFiles0(list);}finally{if(wasEmpty&&S.pages.length)actualOnOpen();}}
+async function addFiles0(list){
   // présentations PowerPoint : converties en PDF (une page par diapo)
   if([...list].some(f=>/\.pptx$/i.test(f.name))){const out=[];for(const f of list){if(!/\.pptx$/i.test(f.name)){out.push(f);continue;}try{out.push(await pptxToPdf(f));}catch(e){alert('« '+f.name+' » : '+(e.message||e));}finally{await busy();}}list=out;}
   const files=[...list];if(!files.length)return;const wasEmpty=!S.pages.length;if(wasEmpty&&!TABS[ACT].name)TABS[ACT].name=files[0].name;
@@ -1058,14 +1059,17 @@ async function openFiles(list,hs){const fs=[...list];if(!fs.length)return;LOADIN
   try{for(let k=0;k<fs.length;k++){const f=fs[k];
     if(S.pages.length){snapTab();TABS.push({name:'',st:null});ACT=TABS.length-1;loadTab();}
     TABS[ACT].name=f.name;SRC=hs&&hs[k]&&/\.pdf$/i.test(f.name)?hs[k]:null;
-    await addFiles([f]);if(!S.pages.length)SRC=null;else if(/\.pdf$/i.test(f.name)||f.type==='application/pdf')actualOnOpen();}}
+    await addFiles([f]);if(!S.pages.length)SRC=null;}}
   finally{LOADING--;renderTabs();}}
-/* à l'ouverture d'un PDF : la feuille s'affiche à sa taille réelle (100 %), en haut de la première page */
+/* à l'ouverture d'un fichier : la première feuille s'affiche en entier (ajustée à la zone visible) */
 async function actualOnOpen(){
   for(let i=0;i<40;i++){const c=document.querySelector('#sheets canvas');if(c&&c._sh)break;await new Promise(r=>setTimeout(r,100));}
   const c=document.querySelector('#sheets canvas');if(!c||!c._sh)return;
-  const r=$('#work').getBoundingClientRect();ZOOM.anchor={k:0,u:.5,v:0,tx:r.left+r.width/2,ty:Math.max(r.top,$('#shBar').getBoundingClientRect().bottom)+20};
-  setZoom(96/25.4*sheetMM()/240,false);
+  const w=$('#work').getBoundingClientRect(),top=Math.max(w.top,$('#shBar').getBoundingClientRect().bottom),r=c.getBoundingClientRect();
+  if(!r.width||!r.height)return;
+  const f=Math.min((w.width-32)/r.width,(w.bottom-top-24)/r.height);
+  ZOOM.anchor={k:0,u:.5,v:0,tx:w.left+w.width/2,ty:top+12};
+  setZoom(ZOOM.z*f,false);
 }
 $('#bPdf').onclick=()=>exportPDF();
 async function overwriteOpen(){
