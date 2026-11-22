@@ -1273,19 +1273,24 @@ function buildSVG(opt){
 const PAPERS={A4:[297,210],A3:[420,297],A2:[594,420],A1:[841,594]};
 function pdfOpts(){const f=$('#xFmt').value;let [w,h]=f==='custom'?[+$('#xW').value||420,+$('#xH').value||297]:PAPERS[f];if($('#xOr').value==='portrait')[w,h]=[Math.min(w,h),Math.max(w,h)];else [w,h]=[Math.max(w,h),Math.min(w,h)];return {w,h,scale:Math.max(1e-6,+$('#xScale').value||1),lw:Math.max(0.01,+$('#xLw').value||0.25),color:$('#xCol').value,onlySel:$('#xSel').checked&&S.sel.size>0};}
 function updPdfInfo(){$('#xCustom').hidden=$('#xFmt').value!=='custom';const o=pdfOpts();const {info}=buildSVG(o);const fits=info.w<=o.w-10&&info.h<=o.h-10;$('#xInfo').innerHTML=`Dessin sur le papier : ${Math.round(info.w)} × ${Math.round(info.h)} mm${fits?'':' — <b style="color:#b3261e">dépasse la feuille</b>'}`;}
-$('#bPdf').onclick=()=>{$('#xSel').checked=S.sel.size>0;$('#xSel').disabled=!S.sel.size;updPdfInfo();$('#pdfDlg').showModal();};
+const openPdfDlg=()=>{$('#xSel').checked=S.sel.size>0;$('#xSel').disabled=!S.sel.size;updPdfInfo();$('#pdfDlg').showModal();};
+$('#bPdf').onclick=openPdfDlg;
 ['xFmt','xOr','xScale','xW','xH','xSel'].forEach(id=>$('#'+id).addEventListener('input',updPdfInfo));
 $('#xFit').onclick=()=>{const o=pdfOpts();o.scale=1;const {info}=buildSVG(o);const N=Math.max(info.w/(o.w-20),info.h/(o.h-20));const nice=[1,1.5,2,2.5,5,7.5,10,15,20,25,50,75,100,200,250,500,1000];let s=nice.find(v=>v>=N)||Math.ceil(N);if(N<1)s=Math.max(0.01,Math.round(N*100)/100);$('#xScale').value=s;updPdfInfo();};
 $('#xCancel').onclick=()=>$('#pdfDlg').close();
-$('#xOk').onclick=async()=>{
-  const o=pdfOpts();$('#pdfDlg').close();
-  try{
+async function cadPdfDoc(o){
     const {svg}=buildSVG(o);
     const doc=new window.jspdf.jsPDF({orientation:o.w>o.h?'landscape':'portrait',unit:'mm',format:[o.w,o.h],compress:true});
     const el=new DOMParser().parseFromString(svg,'image/svg+xml').documentElement;const host=document.createElement('div');host.style.cssText='position:absolute;left:-99999px';host.appendChild(document.importNode(el,true));document.body.appendChild(host);
     await doc.svg(host.firstChild,{x:0,y:0,width:o.w,height:o.h});host.remove();
     doc.text(`Échelle 1:${o.scale}`,o.w-8,o.h-6,{align:'right',baseline:'bottom'});
-    doc.save((S.meta.name||'plan')+'.pdf');log(`PDF exporté à l’échelle 1:${o.scale}.`);
+    return doc;
+}
+$('#xOk').onclick=async()=>{
+  const o=pdfOpts();$('#pdfDlg').close();
+  try{
+    const doc=await cadPdfDoc(o);
+    AtelierSave.save(doc.output('blob'),(S.meta.name||'plan')+'.pdf');log(`PDF exporté à l’échelle 1:${o.scale}.`);
   }catch(e){console.error(e);alert('Export PDF impossible : '+(e.message||e));}
 };
 $('#bSvg').onclick=()=>{const o={w:420,h:297,scale:1,lw:0.25,color:'layers',onlySel:false};const {info}=buildSVG(o);o.w=Math.ceil(info.w+20);o.h=Math.ceil(info.h+20);download(new Blob([buildSVG(o).svg],{type:'image/svg+xml'}),(S.meta.name||'plan')+'.svg');log('SVG exporté à l’échelle 1:1 (unités en mm).');};
@@ -1325,5 +1330,14 @@ AtelierDrop.init({app:'plan',accept:f=>ext(f)==='dxf',open:async fs=>feed('#fDxf
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#bPdf');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
 <script src="../lib/mpanel.js"></script>
 <script src="../lib/colorpop.js"></script><script>AtelierMPanel.init({bp:900});</script>
+<script src="../lib/savebar.js"></script><script>
+$('#bDxf').style.display='none';$('#bSvg').style.display='none';
+AtelierSaveBar.init({app:'plan',save:'#bSave',exp:'#bPdf',name:()=>(S.meta.name||'plan').replace(/[\\/:*?"<>|]+/g,' ').trim()||'plan',
+  key:()=>S.meta,serverId:()=>S.meta&&S.meta.id,saveServer:()=>saveDoc(false),
+  copy:()=>download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),(S.meta.name||'plan')+'.json'),
+  pdf:async()=>(await cadPdfDoc(pdfOpts())).output('arraybuffer'),
+  pages:()=>{const o=pdfOpts();return{n:1,W:o.w,H:o.h};},
+  formats:[{id:'pdf',label:'PDF…',hint:'à l’échelle, choix du papier',run:()=>openPdfDlg()},{id:'dxf',label:'DXF',hint:'pour AutoCAD, découpe…',run:()=>exportDXF()},{id:'svg',label:'SVG',run:()=>$('#bSvg').onclick()}]});
+</script>
 </body>
 </html>
