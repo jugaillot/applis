@@ -194,6 +194,13 @@ body.amini #mini{display:flex;flex-direction:column;align-items:stretch;gap:8px}
 
 /* réglages de l'outil : bande au-dessus de la zone de travail (ne recouvre jamais le dessin) */
 #toolBar{left:0!important;right:0!important;top:0!important;max-width:none!important;border-radius:0!important;border:0!important;border-bottom:1px solid var(--line)!important;box-shadow:none!important;background:var(--panel,#fff)!important}
+/* barres C M J N : fines, avec aperçu du résultat sur chaque barre */
+.cmx input[type=range]{-webkit-appearance:none;appearance:none;height:10px!important;min-height:0!important;border-radius:5px;background:var(--g,#ddd);margin:0;padding:0;border:1px solid rgba(0,0,0,.18);min-width:0}
+.cmx input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:16px;border-radius:4px;background:#fff;border:1px solid #555;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.cmx input[type=range]::-moz-range-thumb{width:9px;height:14px;border-radius:4px;background:#fff;border:1px solid #555}
+.cmx input[type=range]::-moz-range-track{background:transparent}
+.cmx label{display:flex!important;flex-direction:row!important;align-items:center!important;gap:6px;margin:1px 0!important;line-height:1}
+.cmx label b{width:12px;font-size:12px}.cmx label input{flex:1;width:auto}.cmx label span{width:24px;text-align:right;font-size:11px;color:#77756f}
 </style>
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#1d1d1f">
@@ -734,11 +741,11 @@ addEventListener('keydown',e=>{if(e.ctrlKey&&e.altKey&&(e.key==='d'||e.key==='D'
   function apply(fin){if(!cur)return;cur.value=cmykToHex(vals);cur.dispatchEvent(new Event('input',{bubbles:true}));if(fin)cur.dispatchEvent(new Event('change',{bubbles:true}));}
   function open(inp){
     close();cur=inp;vals=hexToCmyk(inp.value||'#000000');
-    pop=document.createElement('div');pop.style.cssText='position:fixed;z-index:99999;background:#fff;border:1px solid #cfcbc2;border-radius:10px;padding:8px 10px;box-shadow:0 6px 24px rgba(0,0,0,.25);width:230px;font:12px system-ui,sans-serif';
-    pop.innerHTML=[['C','#00a6d6'],['M','#e6007e'],['J','#f2c200'],['N','#333']].map(([l,c],i)=>`<label style="display:flex;align-items:center;gap:6px;margin:3px 0"><b style="width:12px;color:${c}">${l}</b><input type="range" min="0" max="100" value="${vals[i]}" data-i="${i}" style="flex:1;accent-color:${c}"><span style="width:26px;text-align:right;color:#77756f">${vals[i]}</span></label>`).join('');
-    document.body.appendChild(pop);
-    const r=inp.getBoundingClientRect();pop.style.left=Math.max(8,Math.min(innerWidth-246,r.left-100))+'px';pop.style.top=Math.min(innerHeight-130,r.bottom+6)+'px';
-    pop.addEventListener('input',e=>{const i=+e.target.dataset.i;vals[i]=+e.target.value;e.target.nextElementSibling.textContent=vals[i];apply(false);});
+    pop=document.createElement('div');pop.className='cmx';pop.style.cssText='position:fixed;z-index:99999;background:#fff;border:1px solid #cfcbc2;border-radius:10px;padding:6px 10px;box-shadow:0 6px 24px rgba(0,0,0,.25);width:220px;font:12px system-ui,sans-serif';
+    pop.innerHTML=[['C','#00a6d6'],['M','#e6007e'],['J','#f2c200'],['N','#333']].map(([l,c],i)=>`<label><b style="color:${c}">${l}</b><input type="range" min="0" max="100" value="${vals[i]}" data-i="${i}"><span>${vals[i]}</span></label>`).join('');
+    document.body.appendChild(pop);paintCmykG(pop,vals);
+    const r=inp.getBoundingClientRect();pop.style.left=Math.max(8,Math.min(innerWidth-236,r.left-100))+'px';pop.style.top=Math.max(8,Math.min(innerHeight-pop.offsetHeight-8,r.bottom+6))+'px';
+    pop.addEventListener('input',e=>{const i=+e.target.dataset.i;vals[i]=+e.target.value;e.target.nextElementSibling.textContent=vals[i];paintCmykG(pop,vals);apply(false);});
     pop.addEventListener('change',()=>apply(true));
   }
   document.addEventListener('click',e=>{
@@ -818,6 +825,8 @@ function syncPanel(){
 }
 /* couleur du calque Couleur en C M J N (conversion simple, sans profil d'imprimante) */
 function hexToCmyk(h){const n=parseInt(h.slice(1),16),r=(n>>16&255)/255,g=(n>>8&255)/255,b=(n&255)/255,k=1-Math.max(r,g,b);if(k>=1)return[0,0,0,100];return[(1-r-k)/(1-k),(1-g-k)/(1-k),(1-b-k)/(1-k),k].map(v=>Math.round(v*100));}
+function cmykG(v,i){const a=v.slice(),b=v.slice();a[i]=0;b[i]=100;return 'linear-gradient(to right,'+cmykToHex(a)+','+cmykToHex(b)+')';}
+function paintCmykG(box,v){box.querySelectorAll('input[type=range]').forEach((r,i)=>r.style.setProperty('--g',cmykG(v,i)));}
 function cmykToHex(c){const k=1-c[3]/100,f=v=>Math.round(255*(1-c[v]/100)*k).toString(16).padStart(2,'0');return'#'+f(0)+f(1)+f(2);}
 let cmykOpen=false;
 function cmykNow(){return S.cmyk&&cmykToHex(S.cmyk)===S.color?S.cmyk:(S.cmyk=hexToCmyk(S.color));}
@@ -827,7 +836,7 @@ function renderLayers(){
   $('#layers').innerHTML=['blanc','couleur','aqua'].map(r=>{const n=cnt(r),vis=roleVisible(r),lk=roleLocked(r);
     const dot=r==='aqua'?'background:linear-gradient(135deg,#e7b04f,#f6dca0)':`background:${roleColor(r)}`;
     let extra='';
-    if(r==='couleur'){const cm=cmykNow();extra=`<div class="lx"><span class="muted">Couleur du dessin</span><input type="color" data-la="col" value="${S.color}"></div>${cmykOpen?`<div class="cmyk">${[['c','C','#00a6d6'],['m','M','#e6007e'],['y','J','#f2c200'],['k','N','#333']].map(([k,l,col],i)=>`<label><b style="color:${col}">${l}</b><input type="range" min="0" max="100" step="1" value="${cm[i]}" data-la="cmyk" data-k="${i}" style="accent-color:${col}"><span class="cv">${cm[i]}</span></label>`).join('')}</div>`:''}`;}
+    if(r==='couleur'){const cm=cmykNow();extra=`<div class="lx"><span class="muted">Couleur du dessin</span><input type="color" data-la="col" value="${S.color}"></div>${cmykOpen?`<div class="cmyk cmx">${[['c','C','#00a6d6'],['m','M','#e6007e'],['y','J','#f2c200'],['k','N','#333']].map(([k,l,col],i)=>`<label><b style="color:${col}">${l}</b><input type="range" min="0" max="100" step="1" value="${cm[i]}" data-la="cmyk" data-k="${i}" style="--g:${cmykG(cm,i)}"><span class="cv">${cm[i]}</span></label>`).join('')}</div>`:''}`;}
     if(r==='aqua')extra=`<div class="lx"><label class="btn sm">${S.aqua.key?'Changer l’image…':'Choisir l’image (JPG)…'}<input type="file" data-la="img" accept="image/*" hidden></label>${S.aqua.key?`<button class="btn sm${S.aquaEdit?' on':''}" data-la="adj" title="Déplacer, agrandir ou tourner l’aquarelle sous les formes">${S.aquaEdit?'✓ Terminer':'Ajuster l’image'}</button>`:''}<span class="aqTr"><button class="btn sm${S.aqua.trace?' on':''}" data-la="trace" title="Voir toutes les zones de l’aquarelle en aplat uni (l’image est masquée) — n’entre pas dans les exports">Tracé</button><input type="color" data-la="tcol" value="${S.aqua.tcol||'#e7b04f'}" title="Couleur du tracé"></span></div>`;
     return`<div class="layer${r===activeRole?' on':''}" data-r="${r}">
     <button class="ico${vis?'':' off'}" data-la="vis" title="Afficher / masquer">👁</button>
@@ -3177,7 +3186,7 @@ LY.addEventListener('click',e=>{const c=e.target.closest&&e.target.closest('inpu
 /* les barres se referment dès qu'on clique ailleurs (ou Échap) */
 document.addEventListener('pointerdown',e=>{if(!cmykOpen)return;const t=e.target;if(t.closest&&(t.closest('.cmyk')||t.closest('input[data-la=col]')))return;cmykOpen=false;renderLayers();},true);
 addEventListener('keydown',e=>{if(e.key==='Escape'&&cmykOpen){cmykOpen=false;renderLayers();}},true);
-LY.addEventListener('input',e=>{if(e.target.dataset.la==='cmyk'){const box=e.target.closest('.cmyk'),v=[...box.querySelectorAll('input[type=range]')].map(x=>+x.value);S.cmyk=v;S.color=cmykToHex(v);box.querySelectorAll('.cv').forEach((x,i)=>x.textContent=v[i]);const ci=e.target.closest('.layer').querySelector('input[data-la=col]');if(ci)ci.value=S.color;enforceColors();P.view.update();renderSwatches();return;}
+LY.addEventListener('input',e=>{if(e.target.dataset.la==='cmyk'){const box=e.target.closest('.cmyk'),v=[...box.querySelectorAll('input[type=range]')].map(x=>+x.value);S.cmyk=v;S.color=cmykToHex(v);box.querySelectorAll('.cv').forEach((x,i)=>x.textContent=v[i]);paintCmykG(box,v);const ci=e.target.closest('.layer').querySelector('input[data-la=col]');if(ci)ci.value=S.color;enforceColors();P.view.update();renderSwatches();return;}
   if(e.target.dataset.la==='tcol'){S.aqua.tcol=e.target.value;enforceColors();P.view.update();scheduleAutosave();return;}if(e.target.dataset.la==='col'){S.color=e.target.value;S.cmyk=hexToCmyk(S.color);{const bx=e.target.closest('.layer').querySelector('.cmyk');if(bx){const rs=bx.querySelectorAll('input[type=range]'),cv=bx.querySelectorAll('.cv');S.cmyk.forEach((x,i)=>{rs[i].value=x;cv[i].textContent=x;});}}enforceColors();P.view.update();renderSwatches();clearTimeout(colT);colT=setTimeout(()=>commit(),400);}});
 let colT=0;
 LY.addEventListener('change',e=>{if(e.target.dataset.la==='cmyk'){clearTimeout(colT);commit();return;}if(e.target.dataset.la==='img'){const f=e.target.files[0];e.target.value='';if(f)setAquaImage(f);}});
