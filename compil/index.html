@@ -155,7 +155,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn primary" id="bOpen" title="Ouvrir un ou plusieurs fichiers : chacun dans son propre onglet (Ctrl+O)">Ouvrir…</button>
   <label class="btn" title="Ajoute les pages de ces fichiers au document de l’onglet actif (assemblage)">Ajouter des fichiers…<input type="file" id="fIn" multiple accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.pptx" hidden></label>
   <span class="sp"></span>
-  <button class="btn" id="bKeep" title="Enregistrer ce document (fichiers sources, pages, annotations) sur le serveur pour le retrouver sur un autre ordinateur">Enregistrer sur le serveur</button>
+  
   <button class="btn" id="bMy" title="Rouvrir un document gardé sur le serveur">Mes PDF</button><span id="syncBadge"></span>
   <button class="btn" id="bPrint">Imprimer…</button>
   <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
@@ -1067,77 +1067,7 @@ async function actualOnOpen(){
   const r=$('#work').getBoundingClientRect();ZOOM.anchor={k:0,u:.5,v:0,tx:r.left+r.width/2,ty:Math.max(r.top,$('#shBar').getBoundingClientRect().bottom)+20};
   setZoom(96/25.4*sheetMM()/240,false);
 }
-/* Exporter… : PDF, ou JPG (une image par page, réunies dans un fichier ZIP) */
-function zipStore(files){
-  const T=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[n]=c>>>0;}
-  const crc=d=>{let c=0xFFFFFFFF;for(let i=0;i<d.length;i++)c=T[(c^d[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0;};
-  const enc=new TextEncoder(),parts=[],cen=[];let off=0;
-  for(const f of files){const nm=enc.encode(f.name),d=f.data,cr=crc(d);
-    const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint32(14,cr,true);h.setUint32(18,d.length,true);h.setUint32(22,d.length,true);h.setUint16(26,nm.length,true);
-    parts.push(new Uint8Array(h.buffer),nm,d);
-    const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint32(16,cr,true);c.setUint32(20,d.length,true);c.setUint32(24,d.length,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);
-    cen.push(new Uint8Array(c.buffer),nm);off+=30+nm.length+d.length;}
-  const cl=cen.reduce((n,x)=>n+x.length,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cl,true);e.setUint32(16,off,true);
-  return new Blob([...parts,...cen,new Uint8Array(e.buffer)],{type:'application/zip'});
-}
-async function exportJPG(dpi){
-  if(!S.pages.length)return;
-  try{
-    NOATT=true;let bytes;try{bytes=await buildPDF();}finally{NOATT=false;}
-    const pdf=await pdfjsLib.getDocument({data:bytes.slice?bytes.slice(0):bytes,isEvalSupported:false}).promise;
-    const files=[],w=String(pdf.numPages).length<3?3:String(pdf.numPages).length;
-    for(let n=1;n<=pdf.numPages;n++){
-      await busy('Création des images… '+n+' / '+pdf.numPages);
-      const pg=await pdf.getPage(n),v1=pg.getViewport({scale:1}),k=Math.min(dpi/72,12000/Math.max(v1.width,v1.height)),vp=pg.getViewport({scale:k});
-      const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
-      await pg.render({canvasContext:x,viewport:vp}).promise;
-      const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));c.width=c.height=1;
-      files.push({name:'page-'+String(n).padStart(w,'0')+'.jpg',data:new Uint8Array(await b.arrayBuffer())});
-    }
-    await busy();
-    if(files.length===1)await AtelierSave.save(new Blob([files[0].data],{type:'image/jpeg'}),'compil-'+stamp()+'.jpg');
-    else{
-      const how=await new Promise(res=>{
-        const d=document.createElement('dialog');d.style.cssText='width:min(380px,94vw);border:1px solid var(--line,#ddd);border-radius:12px;padding:16px';
-        d.innerHTML='<div style="font-weight:600;margin-bottom:6px">'+files.length+' images prêtes</div><div style="color:#77756f;font-size:13px;margin-bottom:12px">Comment les recevoir ?</div><div style="display:flex;flex-direction:column;gap:8px"><button class="btn accent" data-h="zip">Un seul fichier ZIP</button><button class="btn" data-h="files">Un fichier JPG par page</button><button class="btn" data-h="">Annuler</button></div>';
-        d.addEventListener('click',e=>{const h=e.target.closest&&e.target.closest('button');if(h){d._r=h.dataset.h||null;d.close();}});
-        d.addEventListener('close',()=>{res(d._r||null);d.remove();});document.body.appendChild(d);d.showModal();});
-      if(how==='zip')await AtelierSave.save(zipStore(files),'compil-'+stamp()+'-images.zip');
-      else if(how==='files'){for(const f of files){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([f.data],{type:'image/jpeg'}));a.download='compil-'+stamp()+'-'+f.name;document.body.appendChild(a);a.click();a.remove();await new Promise(r=>setTimeout(r,350));}}
-      else return;
-    }
-    markClean();
-  }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
-  await busy();
-}
-function jpgEstimate(dpi){/* estimation grossière : ~0,4 octet par pixel pour un JPG de qualité 92 % */
-  let n=S.pages.length,W=210,H=297;try{const r=buildSheets();n=r.sheets.length;W=r.L.W;H=r.L.H;}catch(e){}
-  const px=(W/25.4*dpi)*(H/25.4*dpi),one=px*0.4,mo=b=>{const m=b/1048576;return m<10?m.toFixed(1).replace('.',','):Math.round(m);};
-  return'≈ '+mo(one)+' Mo par image'+(n>1?' · ≈ '+mo(one*n)+' Mo en tout':'');
-}
-function exportChoice(){
-  if(!S.pages.length)return;
-  let d=$('#exDlg');if(d)d.remove();
-  d=document.createElement('dialog');d.id='exDlg';d.style.cssText='width:min(380px,94vw);border:1px solid var(--line,#ddd);border-radius:12px;padding:16px';
-  d.innerHTML='<div style="font-weight:600;margin-bottom:10px">Exporter</div>'+
-   '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="radio" name="exF" value="pdf" checked> PDF</label>'+
-   (SRC?'<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="radio" name="exF" value="over"> Remplacer le fichier ouvert <span style="color:#77756f;font-size:12px">(« '+SRC.name.replace(/[<&]/g,'')+' »)</span></label>':'')+
-   '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="radio" name="exF" value="jpg"> Images JPG <span style="color:#77756f;font-size:12px">(une image par page)</span></label>'+
-   '<div id="exQ" style="display:none;margin:4px 0 0 26px;font-size:13px">Définition : <select id="exDpi">'+[[100,'Légère'],[150,'Écran'],[200,'Bonne'],[300,'Impression']].map(([v,l])=>'<option value="'+v+'"'+(v===200?' selected':'')+'>'+l+' — '+v+' dpi, '+jpgEstimate(v)+'</option>').join('')+'</select></div>'+
-   '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" id="exNo">Annuler</button><button class="btn accent" id="exOk">Exporter</button></div>';
-  document.body.appendChild(d);
-  d.addEventListener('change',()=>{d.querySelector('#exQ').style.display=d.querySelector('input[value=jpg]').checked?'block':'none';});
-  d.querySelector('#exNo').onclick=()=>d.close();d.addEventListener('close',()=>d.remove());
-  d.querySelector('#exOk').onclick=()=>{const jpg=d.querySelector('input[value=jpg]').checked,over=d.querySelector('input[value=over]')&&d.querySelector('input[value=over]').checked,dpi=+d.querySelector('#exDpi').value;d.close();if(jpg)exportJPG(dpi);else if(over)overwriteOpen();else exportPDF();};
-  d.showModal();
-}
-$('#bPdf').onclick=exportChoice;
-/* Enregistrer : si le document est déjà gardé sur le serveur → on l'y enregistre ; sinon → mêmes choix que « Exporter… » */
-$('#bSave').onclick=async()=>{
-  if(!S.pages.length)return;
-  const k=window.__compilKeep;if(k&&k.pid){try{await k.keep();toast('Enregistré sur le serveur.');}catch(e){alert('Envoi impossible : '+(e.message||e));}return;}
-  exportChoice();
-};
+$('#bPdf').onclick=()=>exportPDF();
 async function overwriteOpen(){
   if(!S.pages.length)return;
   if(!SRC){toast('Pour écraser un fichier, ouvre-le avec « Ajouter des fichiers… » (Chrome sur ordinateur). Export classique à la place.');return exportPDF();}
@@ -1535,7 +1465,7 @@ AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='appl
 <script>
 /* ---------- garder le document de l'onglet sur le serveur (OVH) : fichiers sources + pages + annotations ---------- */
 (function(){
-if(!window.AtelierSync){['#bKeep','#bMy'].forEach(q=>$(q).hidden=true);return;}
+if(!window.AtelierSync){['#bMy'].forEach(q=>$(q).hidden=true);return;}
 $('#syncBadge').appendChild(AtelierSync.badge());
 let T=0;
 const tab=()=>TABS[ACT];
@@ -1573,12 +1503,11 @@ async function open(id,st,inf){
   finally{LOADING--;renderTabs();}
 }
 function mine(){AtelierSync.openDialog({app:'compil',title:'Mes PDF gardés sur le serveur',current:tab()&&tab().pid,onOpen:open});}
-$('#bKeep').onclick=()=>keep().catch(e=>alert('Envoi impossible : '+(e.message||e)));
 $('#bMy').onclick=mine;
 /* une fois le document gardé, les changements suivants sont envoyés tout seuls */
 setInterval(()=>{const t=tab();if(!t||!t.pid||LOADING||!S.pages.length)return;if(stateSig()!==t.psig){clearTimeout(T);T=setTimeout(()=>persist().catch(()=>{}),800);}},3000);
 addEventListener('atelier-conflict',e=>{const t=TABS.find(x=>x.pid===e.detail.id);if(!t)return;t.pid=e.detail.copyId;t.pname=e.detail.name;S.files.forEach(f=>f.bsaved=null);persist().catch(()=>{});alert('Ce document a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
-window.__compilKeep={keep,open,get pid(){return tab().pid;}};
+window.__compilKeep={keep,open,get pid(){return tab().pid;},get tab(){return tab();}};
 })();
 </script>
 
@@ -1588,5 +1517,15 @@ addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey
 <script>addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&String(e.key).toLowerCase()==='s'){e.preventDefault();try{window.__compilKeep&&window.__compilKeep.keep();}catch(x){}}});</script>
 <script src="../lib/mpanel.js"></script>
 <script src="../lib/colorpop.js"></script><script>AtelierMPanel.init({bp:820,rows:true});</script>
+<script src="../lib/savebar.js"></script><script>
+AtelierSaveBar.init({app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',busy:(m)=>busy(m),
+  key:()=>window.__compilKeep?window.__compilKeep.tab:null,
+  serverId:()=>window.__compilKeep?window.__compilKeep.pid:null,
+  saveServer:async()=>{if(!window.__compilKeep)throw new Error('Le serveur n’est pas disponible.');await window.__compilKeep.keep();},
+  file:()=>SRC?{name:SRC.name,overwrite:()=>overwriteOpen()}:null,
+  pdf:async(forJpg)=>{if(!forJpg)return buildPDF();NOATT=true;try{return await buildPDF();}finally{NOATT=false;}},
+  pages:()=>{try{const r=buildSheets();return{n:r.sheets.length,W:r.L.W,H:r.L.H};}catch(e){return{n:S.pages.length};}},
+  formats:[{id:'pdf',label:'PDF',hint:'avec les options de poids et de découpage',run:()=>exportPDF()}]});
+</script>
 </body>
 </html>
