@@ -157,7 +157,6 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span class="sp"></span>
   <button class="btn" id="bKeep" title="Enregistrer ce document (fichiers sources, pages, annotations) sur le serveur pour le retrouver sur un autre ordinateur">Enregistrer sur le serveur</button>
   <button class="btn" id="bMy" title="Rouvrir un document gardé sur le serveur">Mes PDF</button><span id="syncBadge"></span>
-  <button class="btn" id="bClear">Tout vider</button>
   <button class="btn" id="bPrint">Imprimer…</button>
   <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
   <button class="btn" id="bSave" title="Enregistre sur le serveur si le document y est déjà ; sinon propose PDF, JPG ou de remplacer le fichier ouvert">Enregistrer</button>
@@ -267,6 +266,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
     <div class="bar" id="pgBar">
       <h2 id="pgHead" style="cursor:pointer;user-select:none" title="Replier / déplier les pages"><span id="pgTw" style="display:inline-block;font-size:9px;transition:transform .15s">▼</span> <span id="pgTitle">Pages</span></h2>
       <button class="btn sm" id="pAll">Tout sélectionner</button>
+      <button class="btn sm" id="bClear">Tout vider</button>
       <span class="muted" id="pgHelp">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : modifier la page</b></span>
     </div>
     <div id="pages"><div id="empty">Glisse ici des PDF ou des images (JPG, PNG),<br>ou utilise « Ajouter des fichiers… ».</div></div>
