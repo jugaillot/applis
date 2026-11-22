@@ -59,8 +59,11 @@ Dépôt GitHub `jugaillot/applis`. Hébergement OVH (mutualisé, PHP) : **déplo
 - Messages de commit en français : `<Appli> : <ce qui change>`.
 - Pied de commit (obligatoire) : `Co-Authored-By: Claude …` + `Claude-Session: …` tels que fournis par la session.
 
-## Enregistrement serveur par appli
-Deux comportements seulement :
-- **Automatique** (une fois le document enregistré une première fois) : Paysage, Mise en page, Cahier (et BD, Civco, Dossiers).
-- **À la demande**, bouton « Enregistrer sur le serveur » (Ctrl+S) : Vecto, CAD, Riso, Laser, Photo, PDF. Une fois enregistré sur le serveur, les changements suivants partent tout seuls ; le bouton force l’envoi immédiat. Avant le premier enregistrement : brouillon local seulement.
+## Enregistrer / Exporter (communs : `lib/savebar.js`, `AtelierSaveBar.init`)
+Vecto, Paysage, CAD, Riso, Mise en page, Photo, PDF (et Laser pour l'enregistrement) ont les mêmes deux boutons :
+- **Enregistrer** (Ctrl+S) : si le document vient du serveur (ou y est déjà), il y est enregistré. Sinon, la 1re fois : choix « écraser le fichier d'origine » (PDF et Photo, quand le navigateur a gardé le fichier) / « enregistrer sur le serveur » / « télécharger un fichier » ; le choix est gardé jusqu'à la fermeture du document (clé = objet du document, `key()`).
+- **Exporter…** : choix du format (PDF, SVG, DXF, IDML… propres à l'appli, + **Images JPG** automatiquement quand l'appli fournit `pdf()`), définition + estimation du poids, et **dossier** (showDirectoryPicker ; sinon « Enregistrer sous »). JPG : 1 page = 1 fichier, plusieurs = ZIP ou un fichier par page.
+- `AtelierSave.setDir(handle)` fait écrire `AtelierSave.save` dans le dossier choisi.
+Une nouvelle appli : charger `lib/savebar.js` et appeler `AtelierSaveBar.init({...})` en fin de page.
+Enregistrement automatique des changements une fois sur le serveur : Paysage, Mise en page, Cahier (et BD, Civco, Dossiers) tout de suite ; Vecto, CAD, Riso, Laser, Photo, PDF après le premier enregistrement.
 L'aide de chaque appli affiche l'espace utilisé (`api.php?a=usage`) et propose « Nettoyer l'historique ».
