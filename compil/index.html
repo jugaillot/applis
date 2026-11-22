@@ -1094,8 +1094,18 @@ async function exportJPG(dpi){
       const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));c.width=c.height=1;
       files.push({name:'page-'+String(n).padStart(w,'0')+'.jpg',data:new Uint8Array(await b.arrayBuffer())});
     }
+    await busy();
     if(files.length===1)await AtelierSave.save(new Blob([files[0].data],{type:'image/jpeg'}),'compil-'+stamp()+'.jpg');
-    else await AtelierSave.save(zipStore(files),'compil-'+stamp()+'-images.zip');
+    else{
+      const how=await new Promise(res=>{
+        const d=document.createElement('dialog');d.style.cssText='width:min(380px,94vw);border:1px solid var(--line,#ddd);border-radius:12px;padding:16px';
+        d.innerHTML='<div style="font-weight:600;margin-bottom:6px">'+files.length+' images prêtes</div><div style="color:#77756f;font-size:13px;margin-bottom:12px">Comment les recevoir ?</div><div style="display:flex;flex-direction:column;gap:8px"><button class="btn accent" data-h="zip">Un seul fichier ZIP</button><button class="btn" data-h="files">Un fichier JPG par page</button><button class="btn" data-h="">Annuler</button></div>';
+        d.addEventListener('click',e=>{const h=e.target.closest&&e.target.closest('button');if(h){d._r=h.dataset.h||null;d.close();}});
+        d.addEventListener('close',()=>{res(d._r||null);d.remove();});document.body.appendChild(d);d.showModal();});
+      if(how==='zip')await AtelierSave.save(zipStore(files),'compil-'+stamp()+'-images.zip');
+      else if(how==='files'){for(const f of files){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([f.data],{type:'image/jpeg'}));a.download='compil-'+stamp()+'-'+f.name;document.body.appendChild(a);a.click();a.remove();await new Promise(r=>setTimeout(r,350));}}
+      else return;
+    }
     markClean();
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
@@ -1106,7 +1116,7 @@ function exportChoice(){
   d=document.createElement('dialog');d.id='exDlg';d.style.cssText='width:min(380px,94vw);border:1px solid var(--line,#ddd);border-radius:12px;padding:16px';
   d.innerHTML='<div style="font-weight:600;margin-bottom:10px">Exporter</div>'+
    '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="radio" name="exF" value="pdf" checked> PDF</label>'+
-   '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="radio" name="exF" value="jpg"> Images JPG <span style="color:#77756f;font-size:12px">(une image par page, dans un ZIP)</span></label>'+
+   '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="radio" name="exF" value="jpg"> Images JPG <span style="color:#77756f;font-size:12px">(une image par page)</span></label>'+
    '<div id="exQ" style="display:none;margin:4px 0 0 26px;font-size:13px">Définition : <select id="exDpi"><option value="100">Légère (100 dpi)</option><option value="150">Écran (150 dpi)</option><option value="200" selected>Bonne (200 dpi)</option><option value="300">Impression (300 dpi)</option></select></div>'+
    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" id="exNo">Annuler</button><button class="btn accent" id="exOk">Exporter</button></div>';
   document.body.appendChild(d);
