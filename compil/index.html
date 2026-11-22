@@ -160,7 +160,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <button class="btn" id="bClear">Tout vider</button>
   <button class="btn" id="bPrint">Imprimer…</button>
   <button class="btn" id="bXfer" title="Envoyer ce document vers une autre appli de La Suite (s’ouvre dans un nouvel onglet)">Transférer vers…</button>
-  <button class="btn" id="bSave" title="Remplace le fichier PDF ouvert par la version modifiée (ouvre-le avec « Ajouter des fichiers… » sur ordinateur)">Enregistrer</button>
+  <button class="btn" id="bSave" title="Enregistre sur le serveur si le document y est déjà ; sinon propose PDF, JPG ou de remplacer le fichier ouvert">Enregistrer</button>
   <button class="btn accent" id="bPdf">Exporter…</button>
 </header>
 <main>
@@ -1110,23 +1110,35 @@ async function exportJPG(dpi){
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
 }
+function jpgEstimate(dpi){/* estimation grossière : ~0,4 octet par pixel pour un JPG de qualité 92 % */
+  let n=S.pages.length,W=210,H=297;try{const r=buildSheets();n=r.sheets.length;W=r.L.W;H=r.L.H;}catch(e){}
+  const px=(W/25.4*dpi)*(H/25.4*dpi),one=px*0.4,mo=b=>{const m=b/1048576;return m<10?m.toFixed(1).replace('.',','):Math.round(m);};
+  return'≈ '+mo(one)+' Mo par image'+(n>1?' · ≈ '+mo(one*n)+' Mo en tout':'');
+}
 function exportChoice(){
   if(!S.pages.length)return;
   let d=$('#exDlg');if(d)d.remove();
   d=document.createElement('dialog');d.id='exDlg';d.style.cssText='width:min(380px,94vw);border:1px solid var(--line,#ddd);border-radius:12px;padding:16px';
   d.innerHTML='<div style="font-weight:600;margin-bottom:10px">Exporter</div>'+
    '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="radio" name="exF" value="pdf" checked> PDF</label>'+
+   (SRC?'<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="radio" name="exF" value="over"> Remplacer le fichier ouvert <span style="color:#77756f;font-size:12px">(« '+SRC.name.replace(/[<&]/g,'')+' »)</span></label>':'')+
    '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:6px 0"><input type="radio" name="exF" value="jpg"> Images JPG <span style="color:#77756f;font-size:12px">(une image par page)</span></label>'+
-   '<div id="exQ" style="display:none;margin:4px 0 0 26px;font-size:13px">Définition : <select id="exDpi"><option value="100">Légère (100 dpi)</option><option value="150">Écran (150 dpi)</option><option value="200" selected>Bonne (200 dpi)</option><option value="300">Impression (300 dpi)</option></select></div>'+
+   '<div id="exQ" style="display:none;margin:4px 0 0 26px;font-size:13px">Définition : <select id="exDpi">'+[[100,'Légère'],[150,'Écran'],[200,'Bonne'],[300,'Impression']].map(([v,l])=>'<option value="'+v+'"'+(v===200?' selected':'')+'>'+l+' — '+v+' dpi, '+jpgEstimate(v)+'</option>').join('')+'</select></div>'+
    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" id="exNo">Annuler</button><button class="btn accent" id="exOk">Exporter</button></div>';
   document.body.appendChild(d);
   d.addEventListener('change',()=>{d.querySelector('#exQ').style.display=d.querySelector('input[value=jpg]').checked?'block':'none';});
   d.querySelector('#exNo').onclick=()=>d.close();d.addEventListener('close',()=>d.remove());
-  d.querySelector('#exOk').onclick=()=>{const jpg=d.querySelector('input[value=jpg]').checked,dpi=+d.querySelector('#exDpi').value;d.close();jpg?exportJPG(dpi):exportPDF();};
+  d.querySelector('#exOk').onclick=()=>{const jpg=d.querySelector('input[value=jpg]').checked,over=d.querySelector('input[value=over]')&&d.querySelector('input[value=over]').checked,dpi=+d.querySelector('#exDpi').value;d.close();if(jpg)exportJPG(dpi);else if(over)overwriteOpen();else exportPDF();};
   d.showModal();
 }
 $('#bPdf').onclick=exportChoice;
+/* Enregistrer : si le document est déjà gardé sur le serveur → on l'y enregistre ; sinon → mêmes choix que « Exporter… » */
 $('#bSave').onclick=async()=>{
+  if(!S.pages.length)return;
+  const k=window.__compilKeep;if(k&&k.pid){try{await k.keep();toast('Enregistré sur le serveur.');}catch(e){alert('Envoi impossible : '+(e.message||e));}return;}
+  exportChoice();
+};
+async function overwriteOpen(){
   if(!S.pages.length)return;
   if(!SRC){toast('Pour écraser un fichier, ouvre-le avec « Ajouter des fichiers… » (Chrome sur ordinateur). Export classique à la place.');return exportPDF();}
   try{if(await SRC.queryPermission({mode:'readwrite'})!=='granted'&&await SRC.requestPermission({mode:'readwrite'})!=='granted'){toast('Autorisation refusée : le fichier n’a pas été modifié.');return;}}
