@@ -1121,5 +1121,15 @@ AtelierDrop.init({app:'riso',accept:f=>['svg','pdf','ai','json'].includes(ext(f)
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#printBtn');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
 <script src="../lib/mpanel.js"></script>
 <script src="../lib/colorpop.js"></script><script>AtelierMPanel.init({bp:820,rows:true});</script>
+<script src="../lib/savebar.js"></script><script>
+AtelierSaveBar.init({app:'riso',save:'#saveProj',exp:'#exportBtn',name:()=>((S.doc&&S.doc.name)||'riso').replace(/[\\/:*?"<>|]+/g,' ').trim()||'riso',busy:m=>busy(m),
+  key:()=>S.doc,serverId:()=>S.doc&&S.doc.id,saveServer:()=>saveProject(false),copy:()=>downloadProject(),
+  pdf:async()=>{if(!S.layers.some(l=>l.visible&&l.src)){alert('Aucun calque visible à exporter.');throw new Error('annulé');}
+    const m=await askExport();if(!m)throw new Error('annulé');lastExportMode=m;let cap=null;const orig=AtelierSave.save;AtelierSave.save=async b=>{cap=b;return true;};
+    try{if(m==='couleur')await exportPDFcouleur();else await exportPDFgris();}finally{AtelierSave.save=orig;}
+    if(!cap)throw new Error('PDF non créé');return new Uint8Array(await cap.arrayBuffer());},
+  pages:()=>{const[w,h]=pageSize();return{n:Math.max(1,S.layers.length),W:w,H:h};},
+  formats:[{id:'pdf',label:'PDF',hint:'une page par encre, ou en couleur',run:()=>exportPDF()}]});
+</script>
 </body>
 </html>
