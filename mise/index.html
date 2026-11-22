@@ -1618,5 +1618,12 @@ tbEl.addEventListener('input',e=>{if(e.target.id==='tdN'){const v=Math.max(3,Mat
 <script>if(window.AtelierRecent)AtelierRecent.init({app:'mise',openDocs:()=>document.getElementById('bOpen').click()});</script>
 <script src="../lib/mpanel.js"></script>
 <script src="../lib/colorpop.js"></script><script>AtelierMPanel.init({bp:900,rows:true});</script>
+<script src="../lib/savebar.js"></script><script>
+AtelierSaveBar.init({app:'mise',save:'#bSave',exp:'#bPrint',name:()=>(S.name||'mise-en-page').replace(/[\\/:*?"<>|]+/g,' ').trim()||'mise-en-page',
+  key:()=>S.doc,serverId:()=>S.id,saveServer:()=>saveDoc(false),
+  copy:()=>AtelierSave.save(new Blob([JSON.stringify(S.doc)],{type:'application/json'}),(S.name||'mise-en-page')+'.json'),
+  formats:[{id:'pdf',label:'PDF / Imprimer',hint:'pour l’imprimeur ou pour envoyer',run:()=>printDoc()},{id:'idml',label:'IDML (InDesign)',hint:'cadres, textes chaînés, styles, images',run:()=>exportIDML()}]});
+$('#xPrint').onclick=()=>$('#bPrint').click();
+</script>
 </body>
 </html>
