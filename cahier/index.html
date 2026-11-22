@@ -270,6 +270,7 @@ async function openDoc(id,data){
 ls.set('cahier.last',DOC.id);
   $('#bName').textContent='📓 '+DOC.name;
   refresh();go(LIST.length-1);// à l'ouverture : la dernière page du cahier
+  setTimeout(resumePending,600);
 }
 /* fusionne les copies « (conflit …) » du cahier ouvert dans un seul cahier : toutes les pages et tous les croquis sont gardés,
    pour une même page c'est la version du cahier principal qui reste ; les copies fusionnées sont ensuite supprimées */
@@ -512,6 +513,22 @@ async function skCreate(){const zr=ZR;if(!zr)return;busy('Découpe…');const b=
   const bm=await createImageBitmap(b),t=document.createElement('canvas');t.width=240;t.height=Math.max(1,Math.round(bm.height*240/bm.width));t.getContext('2d').drawImage(bm,0,0,t.width,t.height);
   const k={id:nid(),page:zr.p.id,title:'',tags:'',note:'',thumb:t.toDataURL('image/jpeg',0.7),ar:(bm.width/bm.height).toFixed(3),ts:Date.now()};zoneClear();openSk(k,true,b);}
 
+/* ---------- photos en attente : gardées en mémoire (sur l'appareil) tant qu'elles ne sont pas recadrées et validées ---------- */
+const PEND=(()=>{let db=null;const open=()=>db?Promise.resolve(db):new Promise((ok,ko)=>{const r=indexedDB.open('cahier-pending',1);r.onupgradeneeded=()=>r.result.createObjectStore('q',{keyPath:'id'});r.onsuccess=()=>{db=r.result;ok(db);};r.onerror=()=>ko(r.error);});
+  const tx=(m,f)=>open().then(d=>new Promise((ok,ko)=>{const t=d.transaction('q',m),st=t.objectStore('q'),r=f(st);t.oncomplete=()=>ok(r.result);t.onerror=()=>ko(t.error);}));
+  return{put:f=>tx('readwrite',s=>s.put({id:f._pid,doc:DOC?DOC.id:'',name:f.name,type:f.type,blob:f,ts:Date.now()})).catch(()=>{}),
+    del:f=>f&&f._pid?tx('readwrite',s=>s.delete(f._pid)).catch(()=>{}):Promise.resolve(),
+    list:doc=>tx('readonly',s=>s.getAll()).then(a=>(a||[]).filter(x=>x.doc===doc).sort((x,y)=>x.ts-y.ts)).catch(()=>[])};})();
+let CURF=null;
+const nPid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function enqueue(files){for(const f of files){if(!f._pid)f._pid=nPid();PEND.put(f);QUEUE.push(f);}}
+async function resumePending(){
+  if(!DOC||!DOC.id||QUEUE.length||CURF||!$('#crop').hidden||$('#dNew').open||CAM)return;
+  const a=await PEND.list(DOC.id);if(!a.length)return;
+  if(!confirm(a.length+' photo'+(a.length>1?'s':'')+' prise'+(a.length>1?'s':'')+' dans « '+DOC.name+' » n’ont pas encore été recadrée'+(a.length>1?'s':'')+' et validée'+(a.length>1?'s':'')+'.\n\nLes reprendre maintenant ? (Annuler : elles restent gardées pour plus tard.)'))return;
+  for(const x of a){const f=new File([x.blob],x.name||'page.jpg',{type:x.type||'image/jpeg'});f._pid=x.id;QUEUE.push(f);}
+  nextPhoto();
+}
 /* ---------- ajout de pages : photo → repères → redressement ---------- */
 let QUEUE=[],PH={img:null,q:[],drag:-1,k:1,ox:0,oy:0,detected:false};
 const MOBILE=matchMedia('(pointer:coarse)').matches&&/Android|iPhone|iPad/i.test(navigator.userAgent);
@@ -550,11 +567,11 @@ $('#camOk').onclick=camClose;
 $('#camS').onclick=async()=>{if(!CAM)return;let blob=null;
   try{if(CAM.ic)blob=await CAM.ic.takePhoto();}catch(e){blob=null;}
   if(!blob){const v=$('#camV'),c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));}
-  if(!blob)return;QUEUE.push(new File([blob],'page-'+Date.now()+'.jpg',{type:'image/jpeg'}));CAM.n++;camMsg();
+  if(!blob)return;enqueue([new File([blob],'page-'+Date.now()+'.jpg',{type:'image/jpeg'})]);CAM.n++;camMsg();
   $('#camV').style.opacity=.3;setTimeout(()=>$('#camV').style.opacity=1,120);};
 $('#bGal').onclick=()=>{if(!DOC){chooser();return;}$('#fIn').click();};
-$('#fIn').onchange=$('#fCam').onchange=e=>{QUEUE.push(...e.target.files);e.target.value='';if($('#crop').hidden&&!$('#dNew').open)nextPhoto();};
-async function nextPhoto(){const f=QUEUE.shift();if(!f)return;
+$('#fIn').onchange=$('#fCam').onchange=e=>{enqueue([...e.target.files]);e.target.value='';if($('#crop').hidden&&!$('#dNew').open)nextPhoto();};
+async function nextPhoto(){const f=QUEUE.shift();CURF=f||null;if(!f)return;
   busy('Lecture de la photo…');
   try{let bmp;try{bmp=await createImageBitmap(f,{imageOrientation:'from-image'});}catch(e){bmp=await createImageBitmap(f);}
     const k=Math.min(1,Math.sqrt(14e6/(bmp.width*bmp.height)));
@@ -564,7 +581,7 @@ async function nextPhoto(){const f=QUEUE.shift();if(!f)return;
     if(q){PH.q=q;$('#cMode').value=withX?'rep':'page';}else{const w=c.width,h=c.height,m=noX?0.012:0.06;PH.q=[[w*m,h*m],[w*(1-m),h*m],[w*(1-m),h*(1-m)],[w*m,h*(1-m)]];$('#cMode').value='page';}
     $('#cMsg').textContent=q?(withX?'Croix trouvées : vérifie les 4 points (la croix entourée = haut gauche), puis continue.':'Bords de la page trouvés : vérifie les 4 points, puis continue (« Tourner » si la page est dans le mauvais sens).'):noX?'Sans croix : place les 4 points sur les coins de la page (haut gauche en premier ; « Tourner » si la page est couchée).':'Croix non trouvées : place les 4 points sur les croix (entourée = haut gauche) ou sur les coins de la page.';
     busy();$('#crop').hidden=false;requestAnimationFrame(draw);
-  }catch(e){busy();alert('Photo illisible : '+(e.message||e));nextPhoto();}
+  }catch(e){busy();alert('Photo illisible : '+(e.message||e));PEND.del(f);nextPhoto();}
 }
 /* détection des 4 croix tracées à la main (celle en haut à gauche est entourée) :
    on cherche, à plusieurs tailles, « de l'encre sur les 2 axes d'une croix et rien dans ses 4 coins » */
@@ -660,7 +677,7 @@ addEventListener('resize',()=>{if(!$('#crop').hidden)draw();});
 $('#cRot').onclick=()=>{const s=PH.img,c=document.createElement('canvas');c.width=s.height;c.height=s.width;const x=c.getContext('2d');x.translate(c.width,0);x.rotate(Math.PI/2);x.drawImage(s,0,0);
   const H=s.height;PH.q=PH.q.map(([px,py])=>[H-py,px]);PH.q=[PH.q[3],PH.q[0],PH.q[1],PH.q[2]];PH.img=c;draw();};
 $('#cMode').onchange=()=>ls.set('cahier.mode',$('#cMode').value);
-$('#cNo').onclick=()=>{$('#crop').hidden=true;PH.img=null;nextPhoto();};
+$('#cNo').onclick=()=>{$('#crop').hidden=true;PH.img=null;PEND.del(CURF);nextPhoto();};
 
 /* redressement : les 4 points (repères ou coins) deviennent un rectangle aux proportions de la feuille */
 function warp(img,q,Wo,Ho,mi){
@@ -747,7 +764,7 @@ function askMeta(){
 }
 $('#nD').addEventListener('input',()=>{$('#nD').dataset.touched='1';});
 $('#nAdj').onclick=()=>{if(!PH.img)return;CUR=null;$('#dNew').close();$('#cMsg').textContent='Déplace les 4 points avec le doigt (une loupe s’affiche), puis continue.';$('#crop').hidden=false;requestAnimationFrame(draw);};
-$('#nSkip').onclick=()=>{CUR=null;$('#dNew').close();nextPhoto();};
+$('#nSkip').onclick=()=>{CUR=null;$('#dNew').close();PEND.del(CURF);nextPhoto();};
 $('#dNew').addEventListener('cancel',e=>e.preventDefault());
 $('#nOk').onclick=async()=>{
   if(JSON.stringify(SET())!==CUR.st)await build(CUR);
@@ -757,7 +774,7 @@ $('#nOk').onclick=async()=>{
   await AtelierSync.saveBlob(blobKey(p),CUR.blob);DOC.pages.push(p);CUR=null;$('#dNew').close();persist(true);
   FLT='all';QS='';$('#q').value='';$('#flt').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t==='all'));
   refresh();const i=LIST.findIndex(x=>x.id===p.id);if(i>=0)go(i);
-  nextPhoto();
+  PEND.del(CURF);nextPhoto();
 };
 
 /* ---------- barre d'outils : Zone (entourer une partie de la page pour l'envoyer ailleurs) ---------- */
