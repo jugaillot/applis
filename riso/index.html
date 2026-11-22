@@ -1119,6 +1119,7 @@ AtelierDrop.init({app:'riso',accept:f=>['svg','pdf','ai','json'].includes(ext(f)
 <script>if(window.AtelierRecent)AtelierRecent.init({app:'riso',openDocs:()=>openDocs()});</script>
 <script>/* Ctrl+P = bouton Imprimer / Export PDF de l'appli */
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#printBtn');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
-<script src="../lib/mpanel.js"></script><script>AtelierMPanel.init({bp:820,rows:true});</script>
+<script src="../lib/mpanel.js"></script>
+<script src="../lib/colorpop.js"></script><script>AtelierMPanel.init({bp:820,rows:true});</script>
 </body>
 </html>
