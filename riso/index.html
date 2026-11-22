@@ -164,7 +164,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span class="sp"></span>
   <span class="muted" id="docName" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
   <span id="syncBadge"></span>
-  <button class="btn" id="openProj" title="Ouvrir un projet enregistré (chacun dans son onglet)">Ouvrir…</button><input type="file" id="projIn" accept=".json,application/json" hidden>
+  <button class="btn" id="openProj" title="Ouvrir un tirage enregistré (chacun dans son onglet)">Mes tirages</button><input type="file" id="projIn" accept=".json,application/json" hidden>
   <button class="btn" id="saveProj" title="Enregistrer sur le serveur (Ctrl+S) pour le retrouver sur un autre ordinateur">Enregistrer sur le serveur</button>
   <button class="btn" id="exportBtn">Exporter PDF</button>
   <button class="btn accent" id="printBtn" title="Imprimer une encre sur la riso">Imprimer…</button>
@@ -723,7 +723,7 @@ async function saveProject(asNew){
 /* une fois enregistré sur le serveur, les changements suivants suivent tout seuls */
 let _rLast='';setInterval(()=>{if(!S.doc||!S.doc.id||!window.AtelierSync)return;try{const j=JSON.stringify(buildProject());if(!_rLast){_rLast=j;return;}if(j!==_rLast){_rLast=j;AtelierSync.save('riso',S.doc.id,S.doc.name,JSON.parse(j),{lazy:true});}}catch(e){}},5000);
 function openDocs(){
-  AtelierSync.openDialog({app:'riso',title:'Mes projets riso',current:S.doc.id,
+  AtelierSync.openDialog({app:'riso',title:'Mes tirages',current:S.doc.id,
     onOpen:async(id,P,inf)=>{if(window.AtelierTabs){AtelierTabs.open(id,inf?inf.name:id,P);return;}await openProjectData(P);S.doc={id,name:inf?inf.name:id};showDoc();},
     onRename:(id,n)=>{if(id===S.doc.id){S.doc.name=n;showDoc();}},
     onDelete:id=>{if(id===S.doc.id){S.doc={id:null,name:''};showDoc();}},

@@ -87,7 +87,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <span id="syncBadge"></span>
   <span class="sp"></span>
   <button class="btn" id="bNew">Nouveau</button>
-  <button class="btn" id="bOpen" title="Ouvrir un plan enregistré (chacun dans son onglet)">Ouvrir…</button>
+  <button class="btn" id="bOpen" title="Ouvrir un dessin enregistré (chacun dans son onglet)">Mes dessins</button>
   <button class="btn" id="bSave" title="Enregistrer sur le serveur (Ctrl+S) pour le retrouver sur un autre ordinateur">Enregistrer sur le serveur</button>
   <label class="btn">Ouvrir DXF<input type="file" id="fDxf" accept=".dxf" hidden></label>
   <button class="btn" id="bDxf">Export DXF</button>
@@ -1091,7 +1091,7 @@ async function saveDoc(asNew){
   S.meta.id=await AtelierSync.save('plan',S.meta.id,S.meta.name,projectData());showDoc();scheduleAutosave();log('Plan enregistré : '+S.meta.name);
 }
 function openDocs(){
-  AtelierSync.openDialog({app:'plan',title:'Mes plans',current:S.meta.id,
+  AtelierSync.openDialog({app:'plan',title:'Mes dessins',current:S.meta.id,
     onOpen:(id,data,inf)=>{try{if(window.AtelierTabs)AtelierTabs.open(id,inf?inf.name:id,data);else{loadData(data);S.meta={id,name:inf?inf.name:id};showDoc();zoomExtents();scheduleAutosave();}}catch(e){alert('Ouverture impossible : '+e.message);}},
     onRename:(id,n)=>{if(id===S.meta.id){S.meta.name=n;showDoc();}},
     onDelete:id=>{if(id===S.meta.id){S.meta={id:null,name:''};showDoc();}},
