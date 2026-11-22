@@ -2798,7 +2798,8 @@ function buildSVG(){
 }
 function download(blob,name){return AtelierSave.save(blob,name);}
 const stamp=()=>new Date().toISOString().slice(0,10);
-async function exportPDF(){
+const docFile=()=>((S.doc&&S.doc.name)||'paysage').replace(/[\\/:*?"<>|]+/g,' ').trim()||'paysage';
+async function exportPDF(ret){
   if(!window.jspdf||!window.jspdf.jsPDF)return alert('Bibliothèque PDF non chargée.');
   await busy('Création du PDF vectoriel…');
   try{
@@ -2808,7 +2809,8 @@ async function exportPDF(){
     const host=document.createElement('div');host.style.cssText='position:absolute;left:-99999px;top:0';host.appendChild(document.importNode(el,true));document.body.appendChild(host);
     await doc.svg(host.firstChild,{x:0,y:0,width:W,height:H});
     host.remove();
-    AtelierSave.save(doc.output('blob'),`vecto-${stamp()}.pdf`);
+    if(ret){await busy();return doc.output('arraybuffer');}
+    AtelierSave.save(doc.output('blob'),`${docFile()}-${stamp()}.pdf`);
   }catch(e){console.error(e);alert('Export PDF impossible : '+(e.message||e));}
   await busy();
 }
@@ -3841,5 +3843,13 @@ AtelierDrop.init({app:'paysage',accept:f=>['svg','pdf','ai','json'].includes(ext
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.key==='p'||e.key==='P')){e.preventDefault();e.stopPropagation();const b=document.querySelector('#bPdf');if(b&&!b.disabled&&!document.querySelector('dialog[open]'))b.click();}},true);</script>
 <script>$('#bXfer').onclick=()=>AtelierDrop.transfer('paysage','paysage.svg','image/svg+xml',async()=>new File([buildSVG()],`${fileBase()}.svg`,{type:'image/svg+xml'}));</script>
 <script src="../lib/mpanel.js"></script><script>AtelierMPanel.init({bp:900,rows:true});</script>
+<script src="../lib/savebar.js"></script><script>
+$('#bSvg').style.display='none';
+AtelierSaveBar.init({app:'paysage',save:'#bSave',exp:'#bPdf',name:docFile,busy:m=>busy(m),
+  key:()=>S.doc,serverId:()=>S.doc&&S.doc.id,saveServer:()=>saveDoc(false),
+  copy:()=>download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`${docFile()}-${stamp()}.json`),
+  pdf:()=>exportPDF(true),pages:()=>({n:1,W:S.page.w,H:S.page.h}),
+  formats:[{id:'pdf',label:'PDF',hint:'vectoriel, page entière',run:()=>exportPDF()},{id:'pdfl',label:'PDF par calque…',hint:'un PDF par calque, pour la découpe',run:()=>$('#pdfDlg').showModal()},{id:'svg',label:'SVG',run:()=>$('#bSvg').onclick()}]});
+</script>
 </body>
 </html>

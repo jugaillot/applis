@@ -2500,7 +2500,8 @@ function buildSVG(){
 }
 function download(blob,name){return AtelierSave.save(blob,name);}
 const stamp=()=>new Date().toISOString().slice(0,10);
-async function exportPDF(){
+const docFile=()=>((S.doc&&S.doc.name)||'vecto').replace(/[\\/:*?"<>|]+/g,' ').trim()||'vecto';
+async function exportPDF(ret){
   if(!window.jspdf||!window.jspdf.jsPDF)return alert('Bibliothèque PDF non chargée.');
   await busy('Création du PDF vectoriel…');
   try{
@@ -2510,7 +2511,8 @@ async function exportPDF(){
     const host=document.createElement('div');host.style.cssText='position:absolute;left:-99999px;top:0';host.appendChild(document.importNode(el,true));document.body.appendChild(host);
     await doc.svg(host.firstChild,{x:0,y:0,width:W,height:H});
     host.remove();
-    AtelierSave.save(doc.output('blob'),`vecto-${stamp()}.pdf`);
+    if(ret){await busy();return doc.output('arraybuffer');}
+    AtelierSave.save(doc.output('blob'),`${docFile()}-${stamp()}.pdf`);
   }catch(e){console.error(e);alert('Export PDF impossible : '+(e.message||e));}
   await busy();
 }
@@ -2761,7 +2763,7 @@ if(window.AtelierSync)$('#syncBadge').appendChild(AtelierSync.badge());
 window.addEventListener('atelier-inks',renderSwatches);
 window.addEventListener('atelier-conflict',e=>{if(e.detail.id!==S.doc.id)return;S.doc={id:e.detail.copyId,name:e.detail.name};showDoc();IDB.set('vecto.autosave',Object.assign({},projectData(),{doc:S.doc}));alert('Ce document a aussi été modifié sur un autre appareil.\nLes deux versions sont gardées : la tienne s’appelle maintenant « '+e.detail.name+' ».');});
 $('#fProj').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{loadProject(JSON.parse(await f.text()));S.doc={id:null,name:f.name.replace(/\.json$/i,'')};showDoc();scheduleAutosave();}catch(err){alert('Ouverture impossible : '+err.message);}};
-$('#bSvg').onclick=()=>download(new Blob([buildSVG()],{type:'image/svg+xml'}),`vecto-${stamp()}.svg`);
+$('#bSvg').onclick=()=>download(new Blob([buildSVG()],{type:'image/svg+xml'}),`${docFile()}-${stamp()}.svg`);
 $('#bPdf').onclick=exportPDF;
 $('#bPts').onclick=()=>{showPts=!showPts;$('#bPts').classList.toggle('on',showPts);drawPts();};
 $('#bRiso').onclick=sendToRiso;
@@ -3222,5 +3224,13 @@ addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey
 <script>$('#bXfer').onclick=()=>AtelierDrop.transfer('vecto','vecto.svg','image/svg+xml',async()=>new File([buildSVG()],`vecto-${stamp()}.svg`,{type:'image/svg+xml'}));</script>
 <script src="../lib/mpanel.js"></script>
 <script src="../lib/colorpop.js"></script><script>AtelierMPanel.init({bp:900,rows:true});</script>
+<script src="../lib/savebar.js"></script><script>
+$('#bSvg').style.display='none';
+AtelierSaveBar.init({app:'vecto',save:'#bSave',exp:'#bPdf',name:docFile,busy:m=>busy(m),
+  key:()=>S.doc,serverId:()=>S.doc&&S.doc.id,saveServer:()=>saveDoc(false),
+  copy:()=>download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`${docFile()}-${stamp()}.json`),
+  pdf:()=>exportPDF(true),pages:()=>({n:1,W:S.page.w,H:S.page.h}),
+  formats:[{id:'pdf',label:'PDF',hint:'vectoriel, page entière',run:()=>exportPDF()},{id:'svg',label:'SVG',run:()=>$('#bSvg').onclick()}]});
+</script>
 </body>
 </html>
