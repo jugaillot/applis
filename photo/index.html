@@ -1474,5 +1474,13 @@ window.__photoKeep={keep,open,get pid(){return PID;}};
 <script>$('#bXfer').onclick=()=>AtelierDrop.transfer('photo',(cur()?fname(cur()):'image.jpg'),(cur()&&cur().st.out.fmt==='png'?'image/png':'image/jpeg'),async()=>{const it=cur();if(!it)return null;await busy('Préparation de l’image…');try{const c=await renderFull(it);const b=await encode(it,c);return new File([b],fname(it),{type:b.type});}finally{await busy();}});</script>
 <script src="../lib/mpanel.js"></script>
 <script src="../lib/colorpop.js"></script><script>AtelierMPanel.init({bp:900});</script>
+<script src="../lib/savebar.js"></script><script>
+$('#bKeep').style.display='none';$('#bExportAll').style.display='none';
+AtelierSaveBar.init({app:'photo',save:'#bSaveOne',exp:'#bExportOne',noKeys:true,
+  key:()=>cur(),serverId:()=>window.__photoKeep&&window.__photoKeep.pid,saveServer:async()=>{if(!window.__photoKeep)throw new Error('Le serveur n’est pas disponible.');await window.__photoKeep.keep();},
+  file:()=>{const it=cur();return it&&it.handle?{name:it.handle.name,overwrite:()=>saveItem(cur())}:null;},
+  copy:()=>saveItem(cur()),
+  formats:[{id:'one',label:'Cette image',hint:'JPG ou PNG, selon les réglages d’export',run:()=>exportItem(cur())},{id:'all',label:'Toutes les images'+(S.sel&&S.sel.size?' sélectionnées':''),hint:'un fichier ZIP',run:()=>$('#bExportAll').onclick()}]});
+</script>
 </body>
 </html>
