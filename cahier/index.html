@@ -259,7 +259,12 @@ let DOC=null,LIST=[],POS=0,saveT=0;
 const blobKey=p=>'cahier.'+DOC.id+'.'+p.id;
 /* images d'un cahier enregistré sous un autre identifiant (copie, version rétablie, fusion…) : on cherche aussi sous les anciens */
 const altKeys=k=>{const pre='cahier.'+DOC.id+'.';return k.startsWith(pre)&&DOC.alts?DOC.alts.filter(a=>a!==DOC.id).map(a=>'cahier.'+a+'.'+k.slice(pre.length)):[];};
-async function GB(k){let b=await AtelierSync.getBlob(k);if(b)return b;for(const a of altKeys(k)){b=await AtelierSync.getBlob(a);if(b){AtelierSync.saveBlob(k,b);return b;}}return null;}
+let ALLK=null;
+/* dernier recours : une image du même nom de page rangée sous n'importe quel autre cahier */
+async function findAlt(k){const pre='cahier.'+DOC.id+'.';if(!k.startsWith(pre))return null;const sfx='.'+k.slice(pre.length);
+  if(!ALLK)ALLK=await AtelierSync.blobKeys();return ALLK.find(x=>x!==k&&x.startsWith('cahier.')&&x.endsWith(sfx))||null;}
+async function GB(k){let b=await AtelierSync.getBlob(k);if(b)return b;for(const a of altKeys(k)){b=await AtelierSync.getBlob(a);if(b){AtelierSync.saveBlob(k,b);return b;}}
+  const f=await findAlt(k);if(f){b=await AtelierSync.getBlob(f);if(b){AtelierSync.saveBlob(k,b);return b;}}return null;}
 function sorted(){return DOC.pages.slice();}
 const pos=p=>DOC.pages.indexOf(p)+1;
 function persist(now){clearTimeout(saveT);const go=()=>AtelierSync.save('cahier',DOC.id,DOC.name,DOC);if(now)return go();saveT=setTimeout(go,400);}
@@ -332,7 +337,7 @@ async function loadSlide(i){const s=$('#slider').children[i];if(!s||s.dataset.ok
 async function checkCahier(){
   if(!DOC||!DOC.id)return;busy('Vérification du cahier…');
   try{const keys=DOC.pages.map(blobKey),all=[...keys];keys.forEach(k=>all.push(...altKeys(k)));const st=await AtelierSync.blobCheck(all);busy();
-    const only=[],lost=[],fix=[];DOC.pages.forEach((p,i)=>{const x=st[keys[i]];if(x.server===null||x.server===0){if(x.local)only.push(i);else{const al=altKeys(keys[i]).find(a=>st[a].local||st[a].server);if(al){fix.push([keys[i],al]);}else lost.push(i);}}});
+    const only=[],lost=[],fix=[];for(const [i,p] of DOC.pages.entries()){const x=st[keys[i]];if(x.server===null||x.server===0){if(x.local)only.push(i);else{const al=altKeys(keys[i]).find(a=>st[a].local||st[a].server)||await findAlt(keys[i]);if(al){fix.push([keys[i],al]);}else lost.push(i);}}}
     for(const [k,al] of fix){const b=await GB(k);if(b)await AtelierSync.saveBlob(k,b);}
     const ok=DOC.pages.length-only.length-lost.length-fix.length,pn=a=>a.map(i=>pos(DOC.pages[i])).join(', ');
     let m=DOC.pages.length+' pages : '+ok+' en bon état.';
