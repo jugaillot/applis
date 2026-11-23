@@ -205,7 +205,7 @@ header{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollb
 <!-- nouvelle page : infos -->
 <dialog id="dNew"><div class="h" id="nwH">Nouvelle page</div><div class="b">
   <img id="nwImg" style="max-width:100%;max-height:34vh;display:block;margin:0 auto 10px;border:1px solid var(--line)">
-  <div class="muted" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap"><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nClean"> Fond blanc</label><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nColor"> Couleur</label><label style="display:flex;gap:6px;align-items:center;flex:1 1 100%">Contraste <input type="range" id="nCt" min="0" max="100" style="flex:1"></label></div>
+  <div class="muted" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap"><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nClean"> Fond blanc</label><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="nColor"> Couleur</label><label style="display:flex;gap:6px;align-items:center;flex:1 1 100%">Contraste <input type="range" id="nCt" min="-100" max="100" style="flex:1"></label></div>
   <label><span>Date</span><input type="date" id="nD"><small id="nDhint" class="muted"></small></label>
   <label><span>Type</span><span class="seg tseg" id="nType"><button type="button" data-v="note" data-ic="note" title="Notes (texte)" aria-label="Notes"></button><button type="button" data-v="croquis" data-ic="pen" title="Croquis (dessin)" aria-label="Croquis"></button></span></label>
   <label><span>Titre (tapé)</span><input type="text" id="nTitle"></label>
@@ -724,7 +724,8 @@ function warp(img,q,Wo,Ho,mi){
   ox.putImageData(od,0,0);return out;
 }
 /* fond de la feuille ramené au blanc : on estime la couleur du papier localement (zones sans trait), puis on divise */
-function whiten(c,t){t=t==null?0.4:t;const LO=0.1+0.3*t,HI=0.97-0.17*t;const w=c.width,h=c.height,x=c.getContext('2d'),im=x.getImageData(0,0,w,h),d=im.data;
+function whiten(c,t){t=t==null?0.4:t;const tp=Math.max(0,t),LO=0.1+0.3*tp,HI=0.97-0.17*tp,G=t<0?1+(-t)*2.4:1;   // t < 0 : on fonce les gris (crayon)
+  const w=c.width,h=c.height,x=c.getContext('2d'),im=x.getImageData(0,0,w,h),d=im.data;
   const K=14,gw=Math.ceil(w/K),gh=Math.ceil(h/K),bg=[new Float32Array(gw*gh),new Float32Array(gw*gh),new Float32Array(gw*gh)];
   for(let ch=0;ch<3;ch++){const m=new Float32Array(gw*gh);
     for(let gy=0;gy<gh;gy++)for(let gx=0;gx<gw;gx++){const v=[];for(let j=0;j<K;j+=3)for(let i=0;i<K;i+=3){const X=Math.min(w-1,gx*K+i),Y=Math.min(h-1,gy*K+j);v.push(d[(Y*w+X)*4+ch]);}v.sort((p,q)=>p-q);m[gy*gw+gx]=v[Math.floor(v.length*0.85)];}
@@ -734,7 +735,7 @@ function whiten(c,t){t=t==null?0.4:t;const LO=0.1+0.3*t,HI=0.97-0.17*t;const w=c
   for(let y=0;y<h;y++){const fy=Math.max(0,Math.min(gh-1.001,y/K-0.5)),y0=fy|0,ty=fy-y0;
     for(let xx=0;xx<w;xx++){const fx=Math.max(0,Math.min(gw-1.001,xx/K-0.5)),x0=fx|0,tx=fx-x0,t=(y*w+xx)*4;
       for(let ch=0;ch<3;ch++){const B=bg[ch],b=(B[y0*gw+x0]*(1-tx)+B[y0*gw+x0+1]*tx)*(1-ty)+(B[(y0+1)*gw+x0]*(1-tx)+B[(y0+1)*gw+x0+1]*tx)*ty;
-        const r=d[t+ch]/b,o=(r-LO)/(HI-LO);d[t+ch]=o<=0?0:o>=1?255:Math.round(255*(o*o*(3-2*o)*0.55+o*0.45));}}}
+        const r=d[t+ch]/b,o=(r-LO)/(HI-LO);d[t+ch]=o<=0?0:o>=1?255:Math.round(255*Math.pow(o*o*(3-2*o)*0.55+o*0.45,G));}}}
   x.putImageData(im,0,0);}
 let CUR=null;
 const SET=()=>({clean:ls.get('cahier.clean')!=='0',t:+(ls.get('cahier.ct')||40)/100,color:ls.get('cahier.color')==='1'});
