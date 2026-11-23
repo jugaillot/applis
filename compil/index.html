@@ -98,7 +98,8 @@ input[type=number],select{font:inherit;color:var(--ink);border:1px solid var(--l
 #toolBar #nCol{width:36px}
 #toolBar .muted{font-size:11px;max-width:320px}
 .bar h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:0 8px 0 0;font-weight:600}
-#pages{display:flex;flex-wrap:wrap;gap:10px;min-height:120px;padding:4px;border-radius:10px}
+#pages{display:flex;flex-wrap:wrap;gap:10px;min-height:120px;max-height:32vh;overflow:auto;position:sticky;top:var(--pgBarH,44px);z-index:2;background:var(--bg);padding:4px;border-radius:10px;align-content:flex-start}
+.sh{scroll-margin-top:var(--stk,120px)}
 #pages.drop{outline:2px dashed var(--sel);outline-offset:2px}
 .pg{width:116px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;cursor:pointer;user-select:none;position:relative}
 .pg.on{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel)}
@@ -1146,11 +1147,14 @@ addEventListener('DOMContentLoaded',()=>{if(window.AtelierZoom)AtelierZoom.init(
   onEnd:()=>tbSync(),pct:()=>300*Math.max(1,ZOOM.z*0.8)/sheetMM()/(96/25.4)*100});});
 try{const z=+localStorage.getItem('atelierCompil.zoom');if(z)setZoom(z,false);}catch(e){}
 /* les deux barres restent visibles en haut quand on fait défiler : celle des feuilles se cale sous celle des pages */
-const tbTop=()=>{$('#shBar').style.top=$('#pgBar').offsetHeight+'px';};new ResizeObserver(tbTop).observe($('#pgBar'));new ResizeObserver(tbTop).observe($('#shBar'));
+/* les pages restent figées en haut (repliables avec le titre « Pages ») ; la barre des feuilles se cale dessous */
+const tbTop=()=>{const w=$('#work'),pb=$('#pgBar').offsetHeight,pg=$('#pages'),ph=pg.style.display==='none'?0:pg.offsetHeight+4;
+  w.style.setProperty('--pgBarH',pb+'px');$('#shBar').style.top=(pb+ph)+'px';w.style.setProperty('--stk',(pb+ph+$('#shBar').offsetHeight+10)+'px');};
+new ResizeObserver(tbTop).observe($('#pgBar'));new ResizeObserver(tbTop).observe($('#shBar'));new ResizeObserver(tbTop).observe($('#pages'));
 /* pages : repliables (état retenu) */
 function setPgFold(f,save){$('#pages').style.display=f?'none':'';$('#pgHelp').style.display=f?'none':'';$('#pgTw').style.transform=f?'rotate(-90deg)':'';if(save)try{localStorage.setItem('atelierCompil.fold',f?'1':'0');}catch(e){}}
 $('#pgHead').addEventListener('click',()=>{const f=$('#pages').style.display!=='none';setPgFold(f,true);if(!f)$('#work').scrollTo({top:0,behavior:'smooth'});});
-setPgFold(true,false);/* à l'ouverture : pages repliées */
+setPgFold(false,false);/* pages affichées et figées en haut (repliables) */
 /* ---------- PDF modifiable : l'état de l'Atelier (fichiers sources, pages, réglages, textes, signatures) est joint au PDF exporté ---------- */
 async function attachState(out){
   const used=[...new Set(S.pages.map(p=>p.fileId).filter(Boolean))];
