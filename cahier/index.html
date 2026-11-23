@@ -318,8 +318,25 @@ function buildSlides(){
 }
 const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)loadSlide(+e.target.dataset.i);});},{root:null,rootMargin:'0px 100% 0px 100%'});
 async function loadSlide(i){const s=$('#slider').children[i];if(!s||s.dataset.ok)return;s.dataset.ok='1';const p=LIST[i];if(!p)return;
-  const u=await pageURL(p);if(!u){s.innerHTML='<span class="ph">Image pas encore disponible (hors connexion ?)</span>';delete s.dataset.ok;return;}
+  const u=await pageURL(p);if(!u){const why=AtelierSync.blobWhy||'';
+    s.innerHTML='<div class="ph" style="flex-direction:column;gap:10px;text-align:center;padding:14px">'+(p.thumb?'<img alt="" src="'+p.thumb+'" style="max-width:70%;max-height:55%;opacity:.55;border-radius:4px">':'')+'<span>Image pas disponible'+(why?' ('+why+')':'')+'</span><span><button class="btn" data-a="retry">Réessayer</button> <button class="btn" data-a="check">Vérifier le cahier</button></span></div>';
+    s.querySelector('[data-a=retry]').onclick=ev=>{ev.stopPropagation();delete s.dataset.ok;s.innerHTML='<span class="ph">…</span>';loadSlide(i);};
+    s.querySelector('[data-a=check]').onclick=ev=>{ev.stopPropagation();checkCahier();};
+    delete s.dataset.ok;return;}
   s.innerHTML='';const im=new Image();im.src=u;im.alt='Page '+pos(p);s.appendChild(im);}
+/* vérification du cahier : quelles pages ont leur image sur cet appareil / sur le serveur, et réparation de ce qui peut l'être */
+async function checkCahier(){
+  if(!DOC||!DOC.id)return;busy('Vérification du cahier…');
+  try{const keys=DOC.pages.map(blobKey),st=await AtelierSync.blobCheck(keys);busy();
+    const only=[],lost=[];DOC.pages.forEach((p,i)=>{const x=st[keys[i]];if(x.server===null||x.server===0){if(x.local)only.push(i);else lost.push(i);}});
+    const ok=DOC.pages.length-only.length-lost.length,pn=a=>a.map(i=>pos(DOC.pages[i])).join(', ');
+    let m=DOC.pages.length+' pages : '+ok+' en bon état.';
+    if(only.length)m+='\n\n'+only.length+' page(s) seulement sur cet appareil (n° '+pn(only)+') : je les renvoie au serveur.';
+    if(lost.length)m+='\n\n'+lost.length+' page(s) introuvables ici et sur le serveur (n° '+pn(lost)+') : seule la vignette reste. Vérifie sur l’autre appareil (ordinateur ou portable) où elles ont été prises : ouvre le cahier là-bas, laisse synchroniser, puis reviens ici.';
+    if(only.length)await AtelierSync.blobResend(only.map(i=>keys[i]));
+    alert(m);
+  }catch(e){busy();alert('Vérification impossible : '+(e.message||e));}
+}
 /* deux pages côte à côte quand la fenêtre est assez large (réglable avec le bouton ▯▯) */
 let TWO=ls.get('cahier.two')!=='0';
 function isTwo(){try{const sl=$('#slider');return TWO&&LIST.length>1&&sl.clientWidth>=1.45*sl.clientHeight&&TOOL!=='zone'&&Z.s<=1.001;}catch(e){return false;}}
