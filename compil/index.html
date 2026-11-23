@@ -1020,6 +1020,14 @@ const isFiles=e=>e.dataTransfer&&[...e.dataTransfer.types].includes('Files');
 window.addEventListener('dragenter',e=>{if(!isFiles(e))return;dragDepth++;$('#dropAll').hidden=false;});
 window.addEventListener('dragleave',e=>{if(!isFiles(e))return;dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)$('#dropAll').hidden=true;});
 window.addEventListener('dragover',e=>{if(isFiles(e))e.preventDefault();});
+/* fichiers déposés sur la zone des pages : ils s'ajoutent au document en cours (au lieu d'ouvrir un nouveau document) */
+const okDrop=f=>/\.(pdf|pptx)$/i.test(f.name)||f.type==='application/pdf'||/^image\//.test(f.type)||/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name);
+window.addEventListener('dragover',e=>{if(isFiles(e)&&PG.contains(e.target)){e.preventDefault();PG.classList.add('drop');}},true);
+window.addEventListener('dragleave',e=>{if(isFiles(e)&&!PG.contains(e.relatedTarget))PG.classList.remove('drop');},true);
+window.addEventListener('drop',e=>{PG.classList.remove('drop');if(!isFiles(e)||!PG.contains(e.target))return;
+  const fs=[...e.dataTransfer.files].filter(okDrop);if(!fs.length)return;
+  e.preventDefault();e.stopImmediatePropagation();dragDepth=0;$('#dropAll').hidden=true;
+  addFiles(fs).catch(err=>alert('Ajout impossible : '+(err.message||err)));},true);
 window.addEventListener('drop',e=>{if(!isFiles(e))return;e.preventDefault();dragDepth=0;$('#dropAll').hidden=true;openFiles(e.dataTransfer.files);});
 $('#fIn').onchange=e=>{const f=[...e.target.files];e.target.value='';addFiles(f);};
 let SRC=null;// fichier PDF ouvert (poignée du navigateur) : sert à l'écraser avec « Enregistrer »
