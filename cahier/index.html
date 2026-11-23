@@ -257,6 +257,9 @@ const nid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 /* ---------- le cahier ---------- */
 let DOC=null,LIST=[],POS=0,saveT=0;
 const blobKey=p=>'cahier.'+DOC.id+'.'+p.id;
+/* images d'un cahier enregistré sous un autre identifiant (copie, version rétablie, fusion…) : on cherche aussi sous les anciens */
+const altKeys=k=>{const pre='cahier.'+DOC.id+'.';return k.startsWith(pre)&&DOC.alts?DOC.alts.filter(a=>a!==DOC.id).map(a=>'cahier.'+a+'.'+k.slice(pre.length)):[];};
+async function GB(k){let b=await AtelierSync.getBlob(k);if(b)return b;for(const a of altKeys(k)){b=await AtelierSync.getBlob(a);if(b){AtelierSync.saveBlob(k,b);return b;}}return null;}
 function sorted(){return DOC.pages.slice();}
 const pos=p=>DOC.pages.indexOf(p)+1;
 function persist(now){clearTimeout(saveT);const go=()=>AtelierSync.save('cahier',DOC.id,DOC.name,DOC);if(now)return go();saveT=setTimeout(go,400);}
@@ -265,7 +268,8 @@ async function newDoc(){
   const d={id:AtelierSync.genId('cahier'),name,pages:[]};await openDoc(d.id,d);persist(true);
 }
 async function openDoc(id,data){
-  DOC=Object.assign({pages:[]},data);DOC.id=id||DOC.id;
+  DOC=Object.assign({pages:[]},data);const emb=DOC.id;DOC.id=id||DOC.id;
+  if(emb&&emb!==DOC.id){DOC.alts=DOC.alts||[];if(!DOC.alts.includes(emb))DOC.alts.push(emb);}
   if(DOC.pages.some(p=>p.n!=null)){DOC.pages.sort((a,b)=>((a.n||0)-(b.n||0))||((a.ts||0)-(b.ts||0)));DOC.pages.forEach(p=>{delete p.n;});persist();}// ancien classement par n° : devient l'ordre du cahier
 ls.set('cahier.last',DOC.id);
   $('#bName').textContent='📓 '+DOC.name;
@@ -309,7 +313,7 @@ $('#bName').onclick=chooser;
 
 /* ---------- affichage : feuilleter ---------- */
 const URLS=new Map();
-async function pageURL(p){const k=blobKey(p);if(URLS.has(k))return URLS.get(k);const b=await AtelierSync.getBlob(k);if(!b)return null;const u=URL.createObjectURL(b);URLS.set(k,u);return u;}
+async function pageURL(p){const k=blobKey(p);if(URLS.has(k))return URLS.get(k);const b=await GB(k);if(!b)return null;const u=URL.createObjectURL(b);URLS.set(k,u);return u;}
 function buildSlides(){
   const sl=$('#slider');sl.innerHTML='';
   if(!LIST.length){sl.innerHTML='<div class="slide"><div class="ph empty">'+(DOC.pages.length?'Aucune page ne correspond.':'Ce cahier est vide.<br>Imprime des pages avec « Imprimer des pages… », écris dessus,<br>puis « Ajouter des pages » pour les photographier.')+'</div></div>';updNav();return;}
@@ -327,11 +331,13 @@ async function loadSlide(i){const s=$('#slider').children[i];if(!s||s.dataset.ok
 /* vérification du cahier : quelles pages ont leur image sur cet appareil / sur le serveur, et réparation de ce qui peut l'être */
 async function checkCahier(){
   if(!DOC||!DOC.id)return;busy('Vérification du cahier…');
-  try{const keys=DOC.pages.map(blobKey),st=await AtelierSync.blobCheck(keys);busy();
-    const only=[],lost=[];DOC.pages.forEach((p,i)=>{const x=st[keys[i]];if(x.server===null||x.server===0){if(x.local)only.push(i);else lost.push(i);}});
-    const ok=DOC.pages.length-only.length-lost.length,pn=a=>a.map(i=>pos(DOC.pages[i])).join(', ');
+  try{const keys=DOC.pages.map(blobKey),all=[...keys];keys.forEach(k=>all.push(...altKeys(k)));const st=await AtelierSync.blobCheck(all);busy();
+    const only=[],lost=[],fix=[];DOC.pages.forEach((p,i)=>{const x=st[keys[i]];if(x.server===null||x.server===0){if(x.local)only.push(i);else{const al=altKeys(keys[i]).find(a=>st[a].local||st[a].server);if(al){fix.push([keys[i],al]);}else lost.push(i);}}});
+    for(const [k,al] of fix){const b=await GB(k);if(b)await AtelierSync.saveBlob(k,b);}
+    const ok=DOC.pages.length-only.length-lost.length-fix.length,pn=a=>a.map(i=>pos(DOC.pages[i])).join(', ');
     let m=DOC.pages.length+' pages : '+ok+' en bon état.';
     if(only.length)m+='\n\n'+only.length+' page(s) seulement sur cet appareil (n° '+pn(only)+') : je les renvoie au serveur.';
+    if(fix.length)m+='\n\n'+fix.length+' page(s) retrouvées sous un ancien identifiant du cahier : je les rattache à ce cahier.';
     if(lost.length)m+='\n\n'+lost.length+' page(s) introuvables ici et sur le serveur (n° '+pn(lost)+') : seule la vignette reste. Vérifie sur l’autre appareil (ordinateur ou portable) où elles ont été prises : ouvre le cahier là-bas, laisse synchroniser, puis reviens ici.';
     if(only.length)await AtelierSync.blobResend(only.map(i=>keys[i]));
     alert(m);
@@ -460,7 +466,7 @@ $('#recPdf').onclick=async()=>{
   busy('Préparation du PDF…');
   try{await new Promise((res,rej)=>{if(window.jspdf)return res();const sc=document.createElement('script');sc.src='../lib/jspdf.umd.min.js';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
     const {jsPDF}=window.jspdf;let doc=null,n=0;
-    for(const p of list){busy('Préparation '+(++n)+' / '+list.length+'…');const b=await AtelierSync.getBlob(blobKey(p));if(!b)continue;
+    for(const p of list){busy('Préparation '+(++n)+' / '+list.length+'…');const b=await GB(blobKey(p));if(!b)continue;
       const bm=await createImageBitmap(b),c=document.createElement('canvas'),k=Math.min(1,1500/Math.max(bm.width,bm.height));c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
       const W=180,H=W*c.height/c.width;if(!doc)doc=new jsPDF({unit:'mm',format:[W,H],orientation:H>W?'p':'l'});else doc.addPage([W,H],H>W?'p':'l');
       doc.addImage(c.toDataURL('image/jpeg',0.82),'JPEG',0,0,W,H);doc.setFillColor(255,255,255);doc.rect(W-34,1,33,9,'F');doc.setTextColor(200,30,30);doc.setFontSize(13);doc.text('Page '+pos(p),W-32,7.5);}
@@ -506,7 +512,7 @@ $('#bCt').onclick=openContacts;$('#ctOk').onclick=()=>{$('#dCt').close();updBtns
 /* ---------- base de croquis : zones entourées, avec titre, mots-clés et note ---------- */
 const skKey=k=>'cahier.'+DOC.id+'.s.'+k.id;
 let SK=null,SKQ='';
-async function skURL(k){const key=skKey(k);if(URLS.has(key))return URLS.get(key);const b=await AtelierSync.getBlob(key);if(!b)return null;const u=URL.createObjectURL(b);URLS.set(key,u);return u;}
+async function skURL(k){const key=skKey(k);if(URLS.has(key))return URLS.get(key);const b=await GB(key);if(!b)return null;const u=URL.createObjectURL(b);URLS.set(key,u);return u;}
 function renderSk(){const c=$('#skc');if(!c||!DOC)return;c.innerHTML='';
   const zs=(DOC.sketches||[]).map(k=>({k,ts:k.ts||0,hay:[k.title,k.tags,k.note]}));
   const ps=DOC.pages.filter(p=>p.type==='croquis').map(p=>({p,ts:p.ts||0,hay:[p.title,p.tags,(p.heads||[]).join(' '),p.ocr]}));
@@ -798,7 +804,7 @@ $('#nOk').onclick=async()=>{
 let TOOL='hand',ZR=null,ZD=null;
 function setTool(t){TOOL=t;setTimeout(()=>{if(typeof layout==='function')layout();if(typeof updSide==='function')updSide();},0);$('#tHand').classList.toggle('on',t==='hand');$('#tZone').classList.toggle('on',t==='zone');$('#slider').classList.toggle('zone',t==='zone');if(t!=='zone')zoneClear();else{if($('#view').hidden)setMode('view');go(POS);}}
 $('#tb').insertAdjacentHTML('beforeend','<button id="tRot" title="Tourner la page de 90° (dans le sens des aiguilles d’une montre)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4.5h-4.5"/></svg></button>');
-$('#tRot').onclick=async()=>{const p=LIST[selIdx()];if(!p)return;const k=blobKey(p),b=await AtelierSync.getBlob(k);if(!b){alert('Image de la page introuvable.');return;}
+$('#tRot').onclick=async()=>{const p=LIST[selIdx()];if(!p)return;const k=blobKey(p),b=await GB(k);if(!b){alert('Image de la page introuvable.');return;}
   const bm=await createImageBitmap(b),c=document.createElement('canvas');c.width=bm.height;c.height=bm.width;const x=c.getContext('2d');x.translate(c.width,0);x.rotate(Math.PI/2);x.drawImage(bm,0,0);
   const nb=await new Promise(r=>c.toBlob(r,'image/jpeg',0.9));if(!nb)return;
   const t=document.createElement('canvas');t.width=150;t.height=Math.round(c.height*150/c.width);t.getContext('2d').drawImage(c,0,0,t.width,t.height);
@@ -837,7 +843,7 @@ $('#slider').addEventListener('pointerup',()=>{if(!ZD)return;const bx=ZD.box,r=Z
   ZR={p:LIST[POS],x:(bx[0]-r.left)/r.width,y:(bx[1]-r.top)/r.height,w:bx[2]/r.width,h:bx[3]/r.height};
   const z=document.createElement('div');z.id='zbar';z.innerHTML='<button class="btn primary" data-a="sk">＋ Aux croquis</button><button class="btn" data-a="xfer">Transférer vers…</button><button class="btn" data-a="save">Enregistrer l’image</button><button class="btn" data-a="copy">Copier</button><button class="btn" data-a="no">✕</button>';document.body.appendChild(z);
   z.onclick=async ev=>{const a=ev.target.dataset.a;if(!a)return;if(a==='no'){zoneClear();return;}await zoneAct(a);};});
-async function zoneBlob(){const zr=ZR;if(!zr)return null;const b=await AtelierSync.getBlob(blobKey(zr.p));if(!b)return null;const bm=await createImageBitmap(b);
+async function zoneBlob(){const zr=ZR;if(!zr)return null;const b=await GB(blobKey(zr.p));if(!b)return null;const bm=await createImageBitmap(b);
   const sx=Math.round(zr.x*bm.width),sy=Math.round(zr.y*bm.height),sw=Math.max(1,Math.round(zr.w*bm.width)),sh=Math.max(1,Math.round(zr.h*bm.height));
   const c=document.createElement('canvas');c.width=sw;c.height=sh;c.getContext('2d').drawImage(bm,sx,sy,sw,sh,0,0,sw,sh);
   return new Promise(r=>c.toBlob(r,'image/png'));}
@@ -853,7 +859,7 @@ $('#sidePrev').onclick=()=>go(POS-nStep(),true);$('#sideNext').onclick=()=>go(PO
 /* ---------- démarrage ---------- */
 if(window.AtelierDrop)AtelierDrop.init({accept:()=>false});
 $('#bXfer').onclick=()=>{const p=LIST[selIdx()];if(!p){alert('Aucune page à transférer.');return;}const nm='cahier-p'+pos(p)+'.jpg';
-  AtelierDrop.transfer('cahier',nm,'image/jpeg',async()=>{const b=await AtelierSync.getBlob(blobKey(p));return b?new File([b],nm,{type:'image/jpeg'}):null;});};
+  AtelierDrop.transfer('cahier',nm,'image/jpeg',async()=>{const b=await GB(blobKey(p));return b?new File([b],nm,{type:'image/jpeg'}):null;});};
 window.__cahier={parseImport,detectPage,openCam,detectMarkers,warp,parseDate,cur:()=>CUR};
 (async()=>{
   $('#bdg').appendChild(AtelierSync.badge());
