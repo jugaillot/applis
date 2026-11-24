@@ -266,6 +266,7 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
   <div id="work">
     <div class="bar" id="pgBar">
       <h2 id="pgHead" style="cursor:pointer;user-select:none" title="Replier / déplier les pages"><span id="pgTw" style="display:inline-block;font-size:9px;transition:transform .15s">▼</span> <span id="pgTitle">Pages</span></h2>
+      <button class="btn sm" id="hUndo" title="Annuler (Ctrl+Z)" disabled>↶ Annuler</button><button class="btn sm" id="hRedo" title="Rétablir (Ctrl+Maj+Z ou Ctrl+Y)" disabled>↷ Rétablir</button>
       <button class="btn sm" id="pAll">Tout sélectionner</button>
       <button class="btn sm" id="bClear">Tout vider</button>
       <span class="muted" id="pgHelp">Clic : choisir · Maj+clic : plage · Ctrl+clic : ajouter · glisser pour réordonner · <b>double-clic : modifier la page</b></span>
@@ -1008,7 +1009,7 @@ $('#pDup').onclick=()=>{const out=[];const ns=new Set();S.pages.forEach(p=>{out.
 $('#pDel').onclick=()=>{S.pages=S.pages.filter(p=>!S.sel.has(p.uid));S.sel.clear();cleanupFiles();renderPages();renderSheets();};
 $('#pBlank').onclick=()=>{const b=blankPage();const sel=selected();if(sel.length){const i=S.pages.indexOf(sel[sel.length-1]);S.pages.splice(i+1,0,b);}else S.pages.push(b);renderPages();renderSheets();};
 $('#bClear').onclick=async()=>{if(unsaved()){const r=window.AtelierUnsaved?await AtelierUnsaved.ask('',{title:'Exporter le PDF avant de tout vider ?',text:'Les pages ont été modifiées depuis le dernier export. Si tu vides sans exporter, ces modifications seront perdues.',verb:'Exporter le PDF…'}):'discard';if(!r)return;if(r==='save'){await exportPDF();if(unsaved())return;}}else if(!confirm('Retirer toutes les pages ?'))return;SRC=null;S.pages=[];S.sel.clear();cleanupFiles();renderPages();renderSheets();};
-function cleanupFiles(){const used=new Set(S.pages.map(p=>p.fileId));for(const [id,f] of S.files)if(!used.has(id)){if(f.doc)f.doc.destroy();S.files.delete(id);}}
+function cleanupFiles(){const used=new Set(S.pages.map(p=>p.fileId));if(window.__hist)__hist.keep(used);for(const [id,f] of S.files)if(!used.has(id)){if(f.doc)f.doc.destroy();S.files.delete(id);}}
 document.addEventListener('keydown',e=>{
   if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;
   if((e.key==='Delete'||e.key==='Backspace')&&S.sel.size){e.preventDefault();$('#pDel').click();}
@@ -1543,5 +1544,35 @@ AtelierSaveBar.init({app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',bu
   pages:()=>{try{const r=buildSheets();return{n:r.sheets.length,W:r.L.W,H:r.L.H};}catch(e){return{n:S.pages.length};}},
   formats:[{id:'pdf',label:'PDF',hint:'avec les options de poids et de découpage',run:()=>exportPDF()}]});
 </script>
+
+<script>/* Annuler / Rétablir (Ctrl+Z, Ctrl+Maj+Z, Ctrl+Y) : pages, ordre, rotations, recadrages, annotations, textes */
+(function(){
+  const plain=v=>v&&typeof v==='object'&&(Array.isArray(v)||Object.getPrototypeOf(v)===Object.prototype);
+  const cl=d=>{const o={};for(const k in d){const v=d[k];o[k]=plain(v)?JSON.parse(JSON.stringify(v)):v;}return o;};
+  const snap=()=>({pages:S.pages.map(p=>({p,d:cl(p)})),sel:[...S.sel]});
+  const sig=()=>{try{return JSON.stringify(S.pages.map(p=>Object.fromEntries(Object.entries(p).filter(([k,v])=>k!=='thumb'&&k[0]!=='_'&&(plain(v)||typeof v!=='object')))));}catch(e){return String(Math.random());}};
+  let U=[],R=[],last=snap(),lastSig=sig(),busy=false;
+  const MAX=40;
+  function btns(){const u=document.getElementById('hUndo'),r=document.getElementById('hRedo');if(u)u.disabled=!U.length;if(r)r.disabled=!R.length;}
+  function track(){if(busy)return;const s=sig();if(s===lastSig)return;U.push(last);if(U.length>MAX)U.shift();R=[];last=snap();lastSig=s;btns();}
+  function reset(){U=[];R=[];last=snap();lastSig=sig();btns();}
+  function restore(sn){busy=true;try{
+    S.pages=sn.pages.map(({p,d})=>{for(const k of Object.keys(p))if(!(k in d))delete p[k];Object.assign(p,cl(d));return p;});
+    const ids=new Set(S.pages.map(p=>p.uid));S.sel=new Set(sn.sel.filter(u=>ids.has(u)));
+    renderPages();renderSheets();
+  }finally{busy=false;}last=snap();lastSig=sig();btns();}
+  function undo(){track();if(!U.length)return;R.push(last);restore(U.pop());if(window.toast)toast('Annulé.');}
+  function redo(){if(!R.length)return;U.push(last);restore(R.pop());if(window.toast)toast('Rétabli.');}
+  const rp=renderPages;renderPages=function(){const r=rp.apply(this,arguments);track();return r;};
+  const rs=_renderSheets;_renderSheets=function(){const r=rs.apply(this,arguments);track();return r;};
+  const lt=loadTab;loadTab=function(){const r=lt.apply(this,arguments);reset();return r;};
+  window.__hist={keep(used){[...U,...R,last].forEach(sn=>sn.pages.forEach(({p})=>used.add(p.fileId)));},reset};
+  document.getElementById('hUndo').onclick=undo;document.getElementById('hRedo').onclick=redo;
+  addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const k=e.key.toLowerCase();
+    if(k!=='z'&&k!=='y')return;
+    if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)||document.activeElement.isContentEditable||document.querySelector('dialog[open]'))return;
+    e.preventDefault();if(k==='y'||e.shiftKey)redo();else undo();});
+  btns();
+})();</script>
 </body>
 </html>
