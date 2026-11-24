@@ -502,7 +502,7 @@ $('#fNo').onclick=()=>$('#dFind').close();
 $('#bFindG').onclick=()=>{QS=norm($('#q').value).trim();refresh();$('#q').focus();};
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')$('#bFindG').click();});
 $('#flt').onclick=e=>{const b=e.target.closest('button');if(!b)return;FLT=b.dataset.t;$('#flt').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));refresh();};
-function setMode(m){$('#bXfer').hidden=m!=='view';$('#view').hidden=m!=='view';$('#grid').hidden=m!=='grid';$('#skv').hidden=m!=='sk';if(m!=='view'&&TOOL==='zone')setTool('hand');$('#mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));if(m==='view')requestAnimationFrame(()=>go(POS));}
+function setMode(m){$('#bXfer').hidden=m!=='view';$('#view').hidden=m!=='view';$('#grid').hidden=m!=='grid';$('#skv').hidden=m!=='sk';if(m!=='view'&&TOOL==='zone')setTool('hand');$('#mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));if(m==='view')requestAnimationFrame(()=>go(POS));if(m==='grid')requestAnimationFrame(()=>{const g=$('#grid');g.scrollTop=g.scrollHeight;});}
 $('#mode').onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.m);};
 
 /* ---------- infos d'une page ---------- */
