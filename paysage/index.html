@@ -3849,7 +3849,7 @@ AtelierSaveBar.init({app:'paysage',save:'#bSave',exp:'#bPdf',name:docFile,busy:m
   key:()=>S.doc,serverId:()=>S.doc&&S.doc.id,saveServer:()=>saveDoc(false),
   copy:()=>download(new Blob([JSON.stringify(projectData())],{type:'application/json'}),`${docFile()}-${stamp()}.json`),
   pdf:()=>exportPDF(true),pages:()=>({n:1,W:S.page.w,H:S.page.h}),
-  formats:[{id:'pdf',label:'PDF',hint:'vectoriel, page entière',run:()=>exportPDF()},{id:'pdfl',label:'PDF par calque…',hint:'un PDF par calque, pour la découpe',run:()=>$('#pdfDlg').showModal()},{id:'svg',label:'SVG',run:()=>$('#bSvg').onclick()}]});
+  formats:[{id:'pdf',label:'PDF',hint:'vectoriel, page entière',pre:()=>true,run:()=>exportPDF()},{id:'pdfl',label:'PDF par calque…',hint:'un PDF par calque, pour la découpe',run:()=>$('#pdfDlg').showModal()},{id:'svg',label:'SVG',pre:()=>true,run:()=>$('#bSvg').onclick()}]});
 </script>
 </body>
 </html>

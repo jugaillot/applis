@@ -1564,7 +1564,7 @@ AtelierSaveBar.init({app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',bu
   file:()=>SRC?{name:SRC.name,overwrite:()=>overwriteOpen()}:null,
   pdf:async(forJpg)=>{if(!forJpg)return buildPDF();NOATT=true;try{return await buildPDF();}finally{NOATT=false;}},
   pages:()=>{try{const r=buildSheets();return{n:r.sheets.length,W:r.L.W,H:r.L.H};}catch(e){return{n:S.pages.length};}},
-  formats:[{id:'pdf',label:'PDF',hint:'avec les options de poids et de découpage',run:()=>exportPDF()},{id:'split',label:'Un PDF par page',hint:'divise le PDF : un fichier par page (ZIP ou dossier)',run:ctx=>exportOnePerPage(ctx)}]});
+  formats:[{id:'pdf',label:'PDF',hint:'avec les options de poids et de découpage',pre:()=>!S.opt.split,run:()=>exportPDF()},{id:'split',label:'Un PDF par page',hint:'divise le PDF : un fichier par page (ZIP ou dossier)',run:ctx=>exportOnePerPage(ctx)}]});
 </script>
 
 <script>/* Annuler / Rétablir (Ctrl+Z, Ctrl+Maj+Z, Ctrl+Y) : pages, ordre, rotations, recadrages, annotations, textes */
