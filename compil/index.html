@@ -737,10 +737,11 @@ async function exportOnePerPage(ctx){
       const d=await PDFLib.PDFDocument.create();const [pg]=await d.copyPages(src,[i]);d.addPage(pg);d.setTitle('Page '+(i+1));d.setProducer('La Suite PDF');
       files.push({name:base+'-'+String(i+1).padStart(w,'0')+'.pdf',data:await d.save()});}
     await busy();
-    const dir=ctx&&ctx.dir;let how='zip';
+    let dir=ctx&&ctx.dir;let how='zip';
     if(n===1)how='files';else if(dir)how='files';
     else how=await AtelierSaveBar.ask(n+' fichiers PDF prêts','Comment les recevoir ?',[{label:'Un seul fichier ZIP',value:'zip',main:true},{label:'Un fichier PDF par page',value:'files'}]);
     if(!how)return;
+    if(how==='files'&&!dir&&n>1&&window.showDirectoryPicker){try{dir=await showDirectoryPicker({mode:'readwrite',id:'compil-split'});}catch(e){if(e.name==='AbortError')return;}}
     if(how==='zip'){const z=AtelierSaveBar.zipStore(files.map(f=>({name:f.name,data:f.data})));await AtelierSave.save(z,base+'-pages.zip');}
     else for(const f of files){const b=new Blob([f.data],{type:'application/pdf'});
       if(dir){const fh=await dir.getFileHandle(f.name,{create:true});const ws=await fh.createWritable();await ws.write(b);await ws.close();}
