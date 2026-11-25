@@ -228,17 +228,9 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
       <div class="muted" style="margin-top:4px">« Taille réelle » garde le 100 % quand la page tient dans sa case, et la réduit sinon.</div>
     </section>
     <section data-sec="export">
-      <h2 class="fold"><span class="tw">▼</span>Export</h2>
+      <h2 class="fold"><span class="tw">▼</span>Livret</h2>
       <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oBook"> Format livret</label>
       <div id="oBookBox" hidden class="muted" style="margin:2px 0 8px">Les pages sont imposées 2 par feuille, à l’italienne, dans l’ordre d’un livret plié au centre (complété par des pages blanches jusqu’à un multiple de 4). Imprime en <b>recto verso, retournement bord court</b>, plie et agrafe. Vaut aussi pour « Imprimer ».</div>
-      <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oPx"> Exporter en pixels (images)</label>
-      <div id="oPxBox" hidden style="margin:4px 0 8px"><label>Résolution<select id="oPxDpi"><option value="150">150 dpi (léger)</option><option value="200">200 dpi</option><option value="300">300 dpi (impression)</option><option value="600">600 dpi (très fin)</option></select></label>
-        <div class="muted" style="margin-top:4px">Chaque feuille devient une image : rendu identique partout, mais le texte n’est plus sélectionnable.</div></div>
-      <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oSplit"> Une page par fichier</label>
-      <div id="oSplitBox" hidden class="muted" style="margin:2px 0 8px">Chaque feuille est enregistrée dans un PDF séparé (compil-date-01.pdf, -02…). Sur ordinateur, tu choisis le dossier où les ranger ; sinon, le navigateur peut demander d’autoriser plusieurs téléchargements.</div>
-      <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="oRed"> Réduire le poids du fichier</label>
-      <div id="oRedBox" hidden style="margin-top:6px"><label>Poids maximum (Mo)<input type="number" id="oRedMb" min="0.1" step="0.1" value="2"></label>
-        <div class="muted" style="margin-top:4px">Si le PDF dépasse ce poids, ses pages sont converties en images de plus en plus légères jusqu’à passer en dessous. S’il est déjà plus léger, il est gardé tel quel. Un PDF réduit ne se rouvre pas modifiable.</div></div>
     </section>
     <section data-sec="sum">
       <h2 class="fold"><span class="tw">▼</span>Résumé</h2>
@@ -254,11 +246,8 @@ window.addEventListener('error',e=>{if(window.__bootOk)return;const m=(e&&e.mess
 <button type="button" class="mb" data-px="#oN [data-v='2']" title="2 pages par feuille"><b>2</b></button>
 <button type="button" class="mb" data-px="#oN [data-v='4']" title="4 pages par feuille"><b>4</b></button>
 <button type="button" class="mb" data-px="#oN [data-v='8']" title="8 pages par feuille"><b>8</b></button>
-      <div class="mlab">Export</div>
+      <div class="mlab">Livret</div>
 <button type="button" class="mb" data-px="#oBook" title="Format livret (recto verso, plié au centre)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 6c-2.5-1.6-5.5-2-9-1.5v14c3.5-.5 6.5-.1 9 1.5 2.5-1.6 5.5-2 9-1.5v-14c-3.5-.5-6.5-.1-9 1.5zM12 6v14"/></svg></button>
-<button type="button" class="mb" data-px="#oPx" title="Exporter en pixels (images)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16"/></svg></button>
-<button type="button" class="mb" data-px="#oSplit" title="Une page par fichier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="5" width="8" height="12" rx="1"/><rect x="13" y="7" width="8" height="12" rx="1"/></svg></button>
-<button type="button" class="mb" data-px="#oRed" title="Réduire le poids du fichier (poids maximum dans le panneau déplié)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v7M9 7l3 3 3-3M12 21v-7M9 17l3-3 3 3M4 12h16"/></svg></button>
 <button type="button" class="mb" data-px="#bPrint" title="Imprimer…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/></svg></button>
 <button type="button" class="mb" data-px="#bPdf" title="Exporter… (PDF ou images JPG)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg></button>
     </div>
@@ -778,7 +767,7 @@ async function exportPDF(over){
       }
     }
     if(over&&SRC){const w=await SRC.createWritable();await w.write(bytes);await w.close();markClean();toast('« '+SRC.name+' » enregistré.');}
-    else if(S.opt.split)await saveSplit(bytes);else dl(bytes,`compil-${stamp()}.pdf`);markClean();
+    else dl(bytes,`compil-${stamp()}.pdf`);markClean();
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
   const msgs=[];if(RASTERED)msgs.push(RASTERED+' page'+(RASTERED>1?'s':'')+' de ce PDF n’a pas pu être recopiée telle quelle (fichier un peu abîmé) : '+(RASTERED>1?'elles sont passées':'elle est passée')+' en image haute définition (300 dpi).');if(note)msgs.push(note);
@@ -1130,14 +1119,6 @@ function segBind(id,key,num){
 }
 $('#oBook').checked=!!S.opt.book;$('#oBookBox').hidden=!S.opt.book;
 $('#oBook').onchange=e=>{S.opt.book=e.target.checked;$('#oBookBox').hidden=!S.opt.book;saveOpt();renderSheets();};
-$('#oPx').checked=!!S.opt.px;$('#oPxBox').hidden=!S.opt.px;$('#oPxDpi').value=String(S.opt.pxDpi||300);
-$('#oPx').onchange=e=>{S.opt.px=e.target.checked;$('#oPxBox').hidden=!S.opt.px;saveOpt();};
-$('#oPxDpi').onchange=e=>{S.opt.pxDpi=+e.target.value;saveOpt();};
-$('#oSplit').checked=!!S.opt.split;$('#oSplitBox').hidden=!S.opt.split;
-$('#oSplit').onchange=e=>{S.opt.split=e.target.checked;$('#oSplitBox').hidden=!S.opt.split;saveOpt();};
-$('#oRed').checked=!!S.opt.red;$('#oRedBox').hidden=!S.opt.red;$('#oRedMb').value=S.opt.redMb||2;
-$('#oRed').onchange=e=>{S.opt.red=e.target.checked;$('#oRedBox').hidden=!S.opt.red;saveOpt();};
-$('#oRedMb').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0){S.opt.redMb=v;saveOpt();}});
 function syncOptUI(){[['oOr','or'],['oN','n'],['oMode','mode'],['oOrder','order'],['oFit','fit']].forEach(([id,k])=>$('#'+id).querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(S.opt[k])===b.dataset.v)));
   $('#oFmt').value=S.opt.fmt;$('#customBox').hidden=S.opt.fmt!=='custom';$('#oW').value=S.opt.w;$('#oH').value=S.opt.h;$('#oM').value=S.opt.m;$('#oG').value=S.opt.g;}
 segBind('oOr','or');segBind('oN','n',true);segBind('oMode','mode');segBind('oOrder','order');segBind('oFit','fit');
@@ -1564,7 +1545,18 @@ AtelierSaveBar.init({app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',bu
   file:()=>SRC?{name:SRC.name,overwrite:()=>overwriteOpen()}:null,
   pdf:async(forJpg)=>{if(!forJpg)return buildPDF();NOATT=true;try{return await buildPDF();}finally{NOATT=false;}},
   pages:()=>{try{const r=buildSheets();return{n:r.sheets.length,W:r.L.W,H:r.L.H};}catch(e){return{n:S.pages.length};}},
-  formats:[{id:'pdf',label:'PDF',hint:'avec les options de poids et de découpage',pre:()=>!S.opt.split,run:()=>exportPDF()},{id:'split',label:'Un PDF par page',hint:'divise le PDF : un fichier par page (ZIP ou dossier)',run:ctx=>exportOnePerPage(ctx)}]});
+  optionsHtml:()=>'<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="oPx"> Exporter en pixels (images)</label>'+
+    '<div id="oPxBox" hidden style="margin:2px 0 6px 0"><label style="display:block">Résolution <select id="oPxDpi" style="font:inherit"><option value="150">150 dpi (léger)</option><option value="200">200 dpi</option><option value="300">300 dpi (impression)</option><option value="600">600 dpi (très fin)</option></select></label><div style="color:#77756f;font-size:12px;margin-top:3px">Chaque feuille devient une image : rendu identique partout, mais le texte n’est plus sélectionnable.</div></div>'+
+    '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="oRed"> Réduire le poids du fichier</label>'+
+    '<div id="oRedBox" hidden style="margin:2px 0 6px 0"><label style="display:block">Poids maximum (Mo) <input type="number" id="oRedMb" min="0.1" step="0.1" value="2" style="font:inherit;width:70px"></label><div style="color:#77756f;font-size:12px;margin-top:3px">Si le PDF dépasse ce poids, ses pages sont converties en images de plus en plus légères jusqu’à passer en dessous. S’il est déjà plus léger, il est gardé tel quel. Un PDF réduit ne se rouvre pas modifiable.</div></div>',
+  optionsInit:(d)=>{const $d=q=>d.querySelector(q);
+    $d('#oPx').checked=!!S.opt.px;$d('#oPxBox').hidden=!S.opt.px;$d('#oPxDpi').value=String(S.opt.pxDpi||300);
+    $d('#oPx').onchange=e=>{S.opt.px=e.target.checked;$d('#oPxBox').hidden=!S.opt.px;saveOpt();};
+    $d('#oPxDpi').onchange=e=>{S.opt.pxDpi=+e.target.value;saveOpt();};
+    $d('#oRed').checked=!!S.opt.red;$d('#oRedBox').hidden=!S.opt.red;$d('#oRedMb').value=S.opt.redMb||2;
+    $d('#oRed').onchange=e=>{S.opt.red=e.target.checked;$d('#oRedBox').hidden=!S.opt.red;saveOpt();};
+    $d('#oRedMb').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0){S.opt.redMb=v;saveOpt();}});},
+  formats:[{id:'pdf',label:'PDF',hint:'avec les options ci-dessous',pre:()=>true,opts:true,run:()=>exportPDF()},{id:'split',label:'Un PDF par page',hint:'divise le PDF : un fichier par page (ZIP ou dossier)',run:ctx=>exportOnePerPage(ctx)}]});
 </script>
 
 <script>/* Annuler / Rétablir (Ctrl+Z, Ctrl+Maj+Z, Ctrl+Y) : pages, ordre, rotations, recadrages, annotations, textes */
