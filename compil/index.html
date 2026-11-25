@@ -717,10 +717,10 @@ async function rasterPdf(bytes,dpi,q){
 const mo=n=>(n/1048576).toFixed(n<1048576?2:1).replace('.',',')+' Mo';
 function dl(bytes,name){return AtelierSave.save(new Blob([bytes],{type:'application/pdf'}),name);}
 /* une page par fichier : le PDF final est découpé feuille par feuille */
-async function exportOnePerPage(ctx){
+async function exportOnePerPage(ctx,bytes0){
   if(!S.pages.length)return;
   try{
-    const bytes=await buildPDF();const src=await PDFLib.PDFDocument.load(bytes);const n=src.getPageCount(),w=Math.max(2,String(n).length),base='compil-'+stamp();
+    const bytes=bytes0||await buildPDF();const src=await PDFLib.PDFDocument.load(bytes);const n=src.getPageCount(),w=Math.max(2,String(n).length),base='compil-'+stamp();
     const files=[];
     for(let i=0;i<n;i++){await busy(`Division du PDF — page ${i+1} / ${n}`);
       const d=await PDFLib.PDFDocument.create();const [pg]=await d.copyPages(src,[i]);d.addPage(pg);d.setTitle('Page '+(i+1));d.setProducer('La Suite PDF');
@@ -767,7 +767,7 @@ async function exportPDF(over){
       }
     }
     if(over&&SRC){const w=await SRC.createWritable();await w.write(bytes);await w.close();markClean();toast('« '+SRC.name+' » enregistré.');}
-    else dl(bytes,`compil-${stamp()}.pdf`);markClean();
+    else if(S.opt.split){await exportOnePerPage({},bytes);}else dl(bytes,`compil-${stamp()}.pdf`);markClean();
   }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
   await busy();
   const msgs=[];if(RASTERED)msgs.push(RASTERED+' page'+(RASTERED>1?'s':'')+' de ce PDF n’a pas pu être recopiée telle quelle (fichier un peu abîmé) : '+(RASTERED>1?'elles sont passées':'elle est passée')+' en image haute définition (300 dpi).');if(note)msgs.push(note);
@@ -1547,16 +1547,20 @@ AtelierSaveBar.init({app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',bu
   pages:()=>{try{const r=buildSheets();return{n:r.sheets.length,W:r.L.W,H:r.L.H};}catch(e){return{n:S.pages.length};}},
   optionsHtml:()=>'<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="oPx"> Exporter en pixels (images)</label>'+
     '<div id="oPxBox" hidden style="margin:2px 0 6px 0"><label style="display:block">Résolution <select id="oPxDpi" style="font:inherit"><option value="150">150 dpi (léger)</option><option value="200">200 dpi</option><option value="300">300 dpi (impression)</option><option value="600">600 dpi (très fin)</option></select></label><div style="color:#77756f;font-size:12px;margin-top:3px">Chaque feuille devient une image : rendu identique partout, mais le texte n’est plus sélectionnable.</div></div>'+
+    '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="oSplit"> Un PDF par page</label>'+
+    '<div id="oSplitBox" hidden style="margin:2px 0 6px 0;color:#77756f;font-size:12px">Divise le PDF : un fichier par page, en ZIP ou dans un dossier au choix.</div>'+
     '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="oRed"> Réduire le poids du fichier</label>'+
     '<div id="oRedBox" hidden style="margin:2px 0 6px 0"><label style="display:block">Poids maximum (Mo) <input type="number" id="oRedMb" min="0.1" step="0.1" value="2" style="font:inherit;width:70px"></label><div style="color:#77756f;font-size:12px;margin-top:3px">Si le PDF dépasse ce poids, ses pages sont converties en images de plus en plus légères jusqu’à passer en dessous. S’il est déjà plus léger, il est gardé tel quel. Un PDF réduit ne se rouvre pas modifiable.</div></div>',
   optionsInit:(d)=>{const $d=q=>d.querySelector(q);
     $d('#oPx').checked=!!S.opt.px;$d('#oPxBox').hidden=!S.opt.px;$d('#oPxDpi').value=String(S.opt.pxDpi||300);
     $d('#oPx').onchange=e=>{S.opt.px=e.target.checked;$d('#oPxBox').hidden=!S.opt.px;saveOpt();};
     $d('#oPxDpi').onchange=e=>{S.opt.pxDpi=+e.target.value;saveOpt();};
+    $d('#oSplit').checked=!!S.opt.split;$d('#oSplitBox').hidden=!S.opt.split;
+    $d('#oSplit').onchange=e=>{S.opt.split=e.target.checked;$d('#oSplitBox').hidden=!S.opt.split;saveOpt();};
     $d('#oRed').checked=!!S.opt.red;$d('#oRedBox').hidden=!S.opt.red;$d('#oRedMb').value=S.opt.redMb||2;
     $d('#oRed').onchange=e=>{S.opt.red=e.target.checked;$d('#oRedBox').hidden=!S.opt.red;saveOpt();};
     $d('#oRedMb').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0){S.opt.redMb=v;saveOpt();}});},
-  formats:[{id:'pdf',label:'PDF',hint:'avec les options ci-dessous',pre:()=>true,opts:true,run:()=>exportPDF()},{id:'split',label:'Un PDF par page',hint:'divise le PDF : un fichier par page (ZIP ou dossier)',run:ctx=>exportOnePerPage(ctx)}]});
+  formats:[{id:'pdf',label:'PDF',hint:'avec les options ci-dessous',pre:()=>!S.opt.split,opts:true,run:()=>exportPDF()}]});
 </script>
 
 <script>/* Annuler / Rétablir (Ctrl+Z, Ctrl+Maj+Z, Ctrl+Y) : pages, ordre, rotations, recadrages, annotations, textes */
