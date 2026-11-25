@@ -140,7 +140,7 @@ header{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollb
   <div id="view">
     <div id="slider"></div>
     <button class="side" id="sidePrev" title="Page précédente (←)" hidden>‹</button><button class="side" id="sideNext" title="Page suivante (→)" hidden>›</button>
-    <div id="txtp" hidden><div class="th"><span id="txtTitle">Texte de la page</span><button class="btn" id="txtX">✕</button></div><div id="txtb"></div><div id="pinfo" hidden><div class="b">
+    <div id="txtp" hidden><div class="th"><span id="txtTitle">Texte de la page</span><button class="btn" id="txtEd" style="margin-left:auto;margin-right:6px">✎ Corriger</button><button class="btn" id="txtX">✕</button></div><div id="txtb"></div><div id="pinfo" hidden><div class="b">
   <div class="two"><label><span>Position dans le cahier</span><input type="number" id="iN" min="1"></label><label><span>Date</span><input type="date" id="iD"></label></div>
   <label><span>Type</span><span class="seg tseg" id="iT"><button type="button" data-v="note" data-ic="note" title="Notes (texte)" aria-label="Notes"></button><button type="button" data-v="croquis" data-ic="pen" title="Croquis (dessin)" aria-label="Croquis"></button></span></label>
   <label><span>Titre (tapé)</span><input type="text" id="iTitle" placeholder="Une phrase pour retrouver la page"></label>
@@ -368,18 +368,25 @@ let SELP=0;
 function selIdx(){return POS+(nStep()===2&&SELP===1&&POS+1<LIST.length?1:0);}
 function markSel(){document.querySelectorAll('#slider .slide').forEach((sd,i)=>sd.classList.toggle('sel',nStep()===2&&i===selIdx()));}
 function updType(){const p=LIST[selIdx()],b=$('#bType'),k=!!p&&p.type==='croquis';b.disabled=!p;b.className=!p?'':(k?'tk':'tn');b.innerHTML=p?(k?IC.sketch+'<span>Croquis</span>':IC.note+'<span>Note</span>'):'';b.title=p?(p.type==='croquis'?'Croquis (dessin) — cliquer pour passer en Notes (texte)':'Notes (texte) — cliquer pour passer en Croquis (dessin)'):'';}
-function showTxt(){markSel();updType();const p=LIST[selIdx()];if(PM==='info'&&p&&EDIT!==p)fillInfo(p);if(PM==='txt'){$('#txtb').innerHTML=((p&&nStep()===2)?'<div class="hd">Page '+pos(p)+' (clique sur l’autre page pour voir son texte)</div>':'')+((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
+let EDTX=false;
+function showTxt(){$('#txtEd').textContent=EDTX?'✓ Terminé':'✎ Corriger';markSel();updType();const p=LIST[selIdx()];if(PM==='info'&&p&&EDIT!==p)fillInfo(p);if(PM==='txt'&&EDTX&&p){const b=$('#txtb');
+    b.innerHTML='<div class="hd">Corrige le texte : l’enregistrement est automatique.</div><textarea id="txA" spellcheck="false" style="width:100%;min-height:46vh;font:inherit;line-height:1.5;padding:8px;border:1px solid var(--line);border-radius:8px;box-sizing:border-box;resize:vertical"></textarea><div class="hd" style="margin-top:10px">Parties (une par ligne)</div><textarea id="txH" spellcheck="false" style="width:100%;min-height:70px;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;box-sizing:border-box;resize:vertical"></textarea>';
+    const A=$('#txA'),H=$('#txH');A.value=p.ocr||'';H.value=(p.heads||[]).join('\n');
+    const sv=()=>{p.ocr=A.value;p.heads=H.value.split('\n').map(x=>x.trim()).filter(Boolean);persist();};
+    A.oninput=sv;H.oninput=sv;}
+  else if(PM==='txt'){$('#txtb').innerHTML=((p&&nStep()===2)?'<div class="hd">Page '+pos(p)+' (clique sur l’autre page pour voir son texte)</div>':'')+((p&&(p.heads||[]).length)?'<div class="hd">Parties : '+esc(p.heads.join(' · '))+'</div>':'')+renderText(p&&p.ocr);}}
 function fillInfo(p){EDIT=p;$('#iN').value=pos(p);$('#iD').value=p.date||'';$('#iT').value=p.type||'note';$('#iTitle').value=p.title||'';$('#iTags').value=p.tags||'';$('#iOcr').value=p.ocr||'';$('#iHeads').value=(p.heads||[]).join('\n');}
 /* panneau de droite : « Texte » ou « Infos » (un seul à la fois) */
 let PM=ls.get('cahier.txt')==='1'?'txt':null;
 let LASTPM='txt';
-function setPanel(m){if(m)LASTPM=m;PM=m;const tp=$('#txtp');tp.hidden=!m;$('#txtb').hidden=m!=='txt';$('#pinfo').hidden=m!=='info';$('#txtTitle').textContent=m==='info'?'Infos de la page':'Texte de la page';
+function setPanel(m){if(m)LASTPM=m;PM=m;const tp=$('#txtp');tp.hidden=!m;$('#txtb').hidden=m!=='txt';$('#pinfo').hidden=m!=='info';$('#txtTitle').textContent=m==='info'?'Infos de la page':'Texte de la page';$('#txtEd').hidden=m!=='txt';
   $('#bTxt').classList.toggle('on',m==='txt');$('#bExp').classList.toggle('on',!!m);$('#bInfo').classList.toggle('on',m==='info');ls.set('cahier.txt',m==='txt'?'1':'0');
   if(m==='info'){const p=LIST[selIdx()];if(p)fillInfo(p);else{setPanel(null);return;}}
   showTxt();txtLay();}
 function txtLay(){$('#view').classList.toggle('withtxt',!$('#txtp').hidden);requestAnimationFrame(()=>{layout();go(POS);});}
 $('#bType').onclick=()=>{const p=LIST[selIdx()];if(!p)return;const id=p.id;p.type=p.type==='croquis'?'note':'croquis';persist(true);refresh();const i=LIST.findIndex(x=>x.id===id);if(i>=0)go(i);else updNav();if(PM==='info'){const q=LIST[selIdx()];if(q)fillInfo(q);}};
 $('#bExp').onclick=()=>setPanel(PM?null:(LASTPM||'txt'));
+$('#txtEd').onclick=()=>{EDTX=!EDTX;showTxt();};
 $('#bTxt').onclick=()=>setPanel(PM==='txt'?null:'txt');
 $('#bInfo').onclick=()=>{if(PM==='info')setPanel(null);else if(LIST[selIdx()])setPanel('info');};
 $('#txtX').onclick=()=>setPanel(null);
