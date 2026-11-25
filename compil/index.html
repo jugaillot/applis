@@ -728,6 +728,27 @@ async function rasterPdf(bytes,dpi,q){
 const mo=n=>(n/1048576).toFixed(n<1048576?2:1).replace('.',',')+' Mo';
 function dl(bytes,name){return AtelierSave.save(new Blob([bytes],{type:'application/pdf'}),name);}
 /* une page par fichier : le PDF final est découpé feuille par feuille */
+async function exportOnePerPage(ctx){
+  if(!S.pages.length)return;
+  try{
+    const bytes=await buildPDF();const src=await PDFLib.PDFDocument.load(bytes);const n=src.getPageCount(),w=Math.max(2,String(n).length),base='compil-'+stamp();
+    const files=[];
+    for(let i=0;i<n;i++){await busy(`Division du PDF — page ${i+1} / ${n}`);
+      const d=await PDFLib.PDFDocument.create();const [pg]=await d.copyPages(src,[i]);d.addPage(pg);d.setTitle('Page '+(i+1));d.setProducer('La Suite PDF');
+      files.push({name:base+'-'+String(i+1).padStart(w,'0')+'.pdf',data:await d.save()});}
+    await busy();
+    const dir=ctx&&ctx.dir;let how='zip';
+    if(n===1)how='files';else if(dir)how='files';
+    else how=await AtelierSaveBar.ask(n+' fichiers PDF prêts','Comment les recevoir ?',[{label:'Un seul fichier ZIP',value:'zip',main:true},{label:'Un fichier PDF par page',value:'files'}]);
+    if(!how)return;
+    if(how==='zip'){const z=AtelierSaveBar.zipStore(files.map(f=>({name:f.name,data:f.data})));await AtelierSave.save(z,base+'-pages.zip');}
+    else for(const f of files){const b=new Blob([f.data],{type:'application/pdf'});
+      if(dir){const fh=await dir.getFileHandle(f.name,{create:true});const ws=await fh.createWritable();await ws.write(b);await ws.close();}
+      else{dl(f.data,f.name);await new Promise(r=>setTimeout(r,350));}}
+    markClean();toast(n+' fichier'+(n>1?'s':'')+' PDF enregistré'+(n>1?'s':'')+'.');
+  }catch(e){console.error(e);alert('Export impossible : '+(e.message||e));}
+  await busy();
+}
 async function saveSplit(bytes){
   const src=await PDFLib.PDFDocument.load(bytes);const n=src.getPageCount();const w=String(n).length<2?2:String(n).length;
   let dir=null;if(window.showDirectoryPicker&&n>1){try{dir=await showDirectoryPicker({mode:'readwrite',id:'compil-split'});}catch(e){if(e.name==='AbortError')return;}}
@@ -1542,7 +1563,7 @@ AtelierSaveBar.init({app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',bu
   file:()=>SRC?{name:SRC.name,overwrite:()=>overwriteOpen()}:null,
   pdf:async(forJpg)=>{if(!forJpg)return buildPDF();NOATT=true;try{return await buildPDF();}finally{NOATT=false;}},
   pages:()=>{try{const r=buildSheets();return{n:r.sheets.length,W:r.L.W,H:r.L.H};}catch(e){return{n:S.pages.length};}},
-  formats:[{id:'pdf',label:'PDF',hint:'avec les options de poids et de découpage',run:()=>exportPDF()}]});
+  formats:[{id:'pdf',label:'PDF',hint:'avec les options de poids et de découpage',run:()=>exportPDF()},{id:'split',label:'Un PDF par page',hint:'divise le PDF : un fichier par page (ZIP ou dossier)',run:ctx=>exportOnePerPage(ctx)}]});
 </script>
 
 <script>/* Annuler / Rétablir (Ctrl+Z, Ctrl+Maj+Z, Ctrl+Y) : pages, ordre, rotations, recadrages, annotations, textes */
