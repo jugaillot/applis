@@ -889,7 +889,7 @@ if(window.AtelierZoom)AtelierZoom.init({area:'#slider',tools:'#tb',wheel:true,zo
   sl.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,1);if(Z.s>1&&TOOL!=='zone'&&ptrs.size===1&&e.target.tagName==='IMG'){last={x:e.clientX,y:e.clientY};sl.setPointerCapture(e.pointerId);}});
   sl.addEventListener('pointermove',e=>{if(!last||ptrs.size!==1)return;Z.x+=e.clientX-last.x;Z.y+=e.clientY-last.y;last={x:e.clientX,y:e.clientY};zApply();});
   const end=e=>{ptrs.delete(e.pointerId);last=null;};sl.addEventListener('pointerup',end);sl.addEventListener('pointercancel',end);
-  sl.addEventListener('dblclick',e=>{if(TOOL==='zone')return;const im=curImg();if(!im)return;const r=im.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)return;if(Z.s>1)zReset();else zZoomBy(2.5,e.clientX,e.clientY);});}
+  sl.addEventListener('dblclick',e=>{if(TOOL==='zone')return;const im=curImg();if(!im)return;const r=im.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)return;if(Z.s>1){zReset();return;}if(PM!=='txt')setPanel('txt');});}
 $('#slider').addEventListener('pointerdown',e=>{if(TOOL!=='zone')return;const im=curImg();if(!im)return;const r=im.getBoundingClientRect();
   if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)return;
   zoneClear();ZD={x:e.clientX,y:e.clientY,r};$('#slider').setPointerCapture(e.pointerId);
