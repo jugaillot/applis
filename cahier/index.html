@@ -386,6 +386,7 @@ function setPanel(m){if(m)LASTPM=m;PM=m;const tp=$('#txtp');tp.hidden=!m;$('#txt
 function txtLay(){$('#view').classList.toggle('withtxt',!$('#txtp').hidden);requestAnimationFrame(()=>{layout();go(POS);});}
 $('#bType').onclick=()=>{const p=LIST[selIdx()];if(!p)return;const id=p.id;p.type=p.type==='croquis'?'note':'croquis';persist(true);refresh();const i=LIST.findIndex(x=>x.id===id);if(i>=0)go(i);else updNav();if(PM==='info'){const q=LIST[selIdx()];if(q)fillInfo(q);}};
 $('#bExp').onclick=()=>setPanel(PM?null:(LASTPM||'txt'));
+$('#txtb').addEventListener('dblclick',e=>{if(!EDTX&&PM==='txt'&&LIST[selIdx()]){EDTX=true;showTxt();const a=$('#txA');if(a)a.focus();}});
 $('#txtEd').onclick=()=>{EDTX=!EDTX;showTxt();};
 $('#bTxt').onclick=()=>setPanel(PM==='txt'?null:'txt');
 $('#bInfo').onclick=()=>{if(PM==='info')setPanel(null);else if(LIST[selIdx()])setPanel('info');};
