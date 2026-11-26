@@ -1042,7 +1042,11 @@ window.addEventListener('drop',e=>{PG.classList.remove('drop');if(!isFiles(e)||!
   const fs=[...e.dataTransfer.files].filter(okDrop);if(!fs.length)return;
   e.preventDefault();e.stopImmediatePropagation();dragDepth=0;$('#dropAll').hidden=true;
   addFiles(fs).catch(err=>alert('Ajout impossible : '+(err.message||err)));},true);
-window.addEventListener('drop',e=>{if(!isFiles(e))return;e.preventDefault();dragDepth=0;$('#dropAll').hidden=true;openFiles(e.dataTransfer.files);});
+window.addEventListener('drop',e=>{if(!isFiles(e))return;e.preventDefault();dragDepth=0;$('#dropAll').hidden=true;
+  /* on garde le « lien » vers le fichier du bureau (Chrome/Edge) pour pouvoir l'écraser à l'enregistrement */
+  const its=[...e.dataTransfer.items||[]].filter(i=>i.kind==='file'),fs=[...e.dataTransfer.files];
+  const hp=its.map(i=>i.getAsFileSystemHandle?i.getAsFileSystemHandle().catch(()=>null):Promise.resolve(null));
+  Promise.all(hp).then(hs=>openFiles(fs,hs.map(h=>h&&h.kind==='file'?h:null)));});
 $('#fIn').onchange=e=>{const f=[...e.target.files];e.target.value='';addFiles(f);};
 let SRC=null;// fichier PDF ouvert (poignée du navigateur) : sert à l'écraser avec « Enregistrer »
 
