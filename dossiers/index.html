@@ -530,12 +530,35 @@ let editor=null,suppress=false;
 /* surlignage (coup de stabilo) : balise <mark> gardée dans le Markdown */
 const HL_RENDER={htmlInline:{mark(node,{entering}){return entering?{type:'openTag',tagName:'mark',attributes:node.attrs}:{type:'closeTag',tagName:'mark'};}}};
 let imgHook=null;
+/* coller du Markdown dans l'éditeur visuel : titres, listes, gras… sont mis en forme */
+let mdPasting=false;
+function looksMarkdown(t){
+  if(!t||t.length<2)return false;
+  const blocks=(t.match(/^(#{1,6}\s+\S|\s*[-*+]\s+\S|\s*\d+[.)]\s+\S|>\s*\S|```|\|.+\|\s*$|-{3,}\s*$)/gm)||[]).length;
+  const inl=/(\*\*[^*\n]+\*\*|__[^_\n]+__|\[[^\]\n]+\]\([^)\n]+\)|`[^`\n]+`|!\[[^\]\n]*\]\([^)\n]+\))/.test(t);
+  return blocks>0||inl;
+}
+function initMdPaste(){
+  $('#edBox').addEventListener('paste',e=>{
+    if(mdPasting||!editor||!editor.isWysiwygMode())return;
+    const cd=e.clipboardData;if(!cd)return;
+    if([...(cd.files||[])].length||[...(cd.items||[])].some(i=>i.kind==='file'))return;
+    const text=cd.getData('text/plain'),html=cd.getData('text/html');
+    if(!looksMarkdown(text))return;
+    if(html&&/<(h[1-6]|ul|ol|li|table|strong|b|em|i|a|img|blockquote)[\s>]/i.test(html))return;
+    e.preventDefault();e.stopPropagation();
+    const h=mdToHtml(text);
+    try{const dt=new DataTransfer();dt.setData('text/html',h);dt.setData('text/plain',text);
+      mdPasting=true;e.target.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));}
+    finally{mdPasting=false;}
+  },true);
+}
 function makeEditor(){
   editor=new toastui.Editor({el:$('#edBox'),customHTMLRenderer:HL_RENDER,height:'100%',initialEditType:'wysiwyg',previewStyle:'tab',language:'fr-FR',usageStatistics:false,autofocus:false,
     placeholder:'Écris ici… (titres, listes, tableaux, images par glisser-déposer ou copier-coller)',
     hooks:{addImageBlobHook:imgHook=async(blob,cb)=>{if(!S.cur)return;await busy('Ajout de l’image…');try{const b=await prepImage(blob);const ext=b.type==='image/png'?'png':'jpg';const path=`images/${S.cur}/${Date.now().toString(36)}.${ext}`;await idb.set('imgpend:'+path,{blob:b});const u=URL.createObjectURL(b);S.imgUrl.set(path,u);S.urlPath.set(u,path);cb(u,(blob.name||'image').replace(/\.[^.]+$/,''));schedulePush(800);}finally{await busy();}}}});
   editor.on('change',()=>{if(!suppress)onEdit();});
-  initEdTools();
+  initEdTools();initMdPaste();
   /* mobile : un appui dans le corps du document ouvre le clavier directement */
   $('#edBox').addEventListener('touchend',e=>{if(e.target.closest('.toastui-editor-toolbar,.toastui-editor-mode-switch,.toastui-editor-popup,button,input,a'))return;
     const ww=$('#edBox .toastui-editor-ww-container .ProseMirror'),md=$('#edBox .toastui-editor-md-container .ProseMirror');
