@@ -137,7 +137,7 @@ if ($a === 'inbox_put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   $d = inbox_dir($id); if (!is_dir($d)) @mkdir($d, 0700, true);
   if (!is_dir($d) || !is_writable($d)) out(500, array('error' => 'dossier de réception impossible à créer sur le serveur'));
   $t = isset($_GET['type']) ? $_GET['type'] : 'image/jpeg';
-  $ext = $t === 'image/png' ? 'png' : 'jpg';
+  $ext = $t === 'image/png' ? 'png' : ($t === 'application/pdf' ? 'pdf' : 'jpg');
   $body = file_get_contents('php://input');
   $n = ($body === false) ? 0 : strlen($body);
   if ($n < 1) out(400, array('error' => 'envoi vide ou trop lourd pour le serveur (' . ini_get('post_max_size') . ' au plus)'));
@@ -161,7 +161,7 @@ if ($a === 'inbox_put' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($a === 'inbox_list') {
   if (!okid($id)) out(400, array('error' => 'identifiant invalide'));
   $d = inbox_dir($id); $l = array();
-  if (is_dir($d)) foreach (scandir($d) as $f) { if (!preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) continue; $nf = $d . '/' . $f . '.name'; $vf = $d . '/' . $f . '.vx';
+  if (is_dir($d)) foreach (scandir($d) as $f) { if (!preg_match('/^\d+-[a-f0-9]+\.(jpg|png|pdf)$/', $f)) continue; $nf = $d . '/' . $f . '.name'; $vf = $d . '/' . $f . '.vx';
     $l[] = array('f' => $f, 'size' => filesize($d . '/' . $f), 'at' => (float) $f, 'name' => is_file($nf) ? file_get_contents($nf) : '', 'vx' => is_file($vf) ? json_decode(file_get_contents($vf)) : null); }
   out(200, array('items' => $l));
 }
@@ -174,19 +174,19 @@ if ($a === 'inbox_all') {
   // tous les documents qui ont des envois en attente (pour proposer une photo envoyée vers un autre document)
   flock($lock, LOCK_SH); $j = idx_read(); flock($lock, LOCK_UN); $o = array(); $base = $dir . '/inbox';
   if (is_dir($base)) foreach (scandir($base) as $d) { if (!okid($d) || !is_dir($base . '/' . $d)) continue; $n = 0;
-    foreach (scandir($base . '/' . $d) as $f) if (preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) $n++;
-    if ($n) $o[$d] = array('n' => $n, 'app' => isset($j['docs'][$d]['app']) ? $j['docs'][$d]['app'] : '', 'name' => isset($j['docs'][$d]['name']) ? $j['docs'][$d]['name'] : $d); }
+    foreach (scandir($base . '/' . $d) as $f) if (preg_match('/^\d+-[a-f0-9]+\.(jpg|png|pdf)$/', $f)) $n++;
+    if ($n) $o[$d] = array('n' => $n, 'app' => isset($j['docs'][$d]['app']) ? $j['docs'][$d]['app'] : (strpos($d, 'inbox-') === 0 ? substr($d, 6) : ''), 'name' => isset($j['docs'][$d]['name']) ? $j['docs'][$d]['name'] : $d); }
   out(200, array('docs' => (object) $o));
 }
 if ($a === 'inbox_get') {
   $f = isset($_GET['f']) ? $_GET['f'] : '';
-  if (!okid($id) || !preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) out(400, array('error' => 'identifiant invalide'));
+  if (!okid($id) || !preg_match('/^\d+-[a-f0-9]+\.(jpg|png|pdf)$/', $f)) out(400, array('error' => 'identifiant invalide'));
   $p = inbox_dir($id) . '/' . $f; if (!is_file($p)) out(404, array('error' => 'introuvable'));
-  header('Content-Type: ' . (substr($f, -3) === 'png' ? 'image/png' : 'image/jpeg')); readfile($p); exit;
+  header('Content-Type: ' . (substr($f, -3) === 'png' ? 'image/png' : (substr($f, -3) === 'pdf' ? 'application/pdf' : 'image/jpeg'))); readfile($p); exit;
 }
 if ($a === 'inbox_del' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   $f = isset($_GET['f']) ? $_GET['f'] : '';
-  if (!okid($id) || !preg_match('/^\d+-[a-f0-9]+\.(jpg|png)$/', $f)) out(400, array('error' => 'identifiant invalide'));
+  if (!okid($id) || !preg_match('/^\d+-[a-f0-9]+\.(jpg|png|pdf)$/', $f)) out(400, array('error' => 'identifiant invalide'));
   $p = inbox_dir($id) . '/' . $f; @unlink($p); @unlink($p . '.name'); @unlink($p . '.vx'); @rmdir(inbox_dir($id));
   out(200, array('ok' => true));
 }

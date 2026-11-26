@@ -1400,6 +1400,7 @@ async function pptxToPdf(file){
 /* glisser un fichier depuis l’ordinateur : il s’ouvre ici, ou dans l’appli qui le lit */
 (function(){const feed=(sel,fs)=>{const i=document.querySelector(sel);if(!i)return;const dt=new DataTransfer();fs.forEach(f=>dt.items.add(f));i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}));};
 const ext=f=>((f.name||'').split('.').pop()||'').toLowerCase();const isImg=f=>/^image\//.test(f.type)&&f.type!=='image/svg+xml'||['jpg','jpeg','png','webp','gif','bmp'].includes(ext(f));
+addEventListener('DOMContentLoaded',()=>{if(window.AtelierInbox)AtelierInbox.init({app:'compil',fixedId:'inbox-compil',docId:()=>null,open:async f=>{await openFiles([f]);}});});
 AtelierDrop.init({app:'compil',own:true,accept:f=>ext(f)==='pdf'||f.type==='application/pdf'||isImg(f)||ext(f)==='pptx',take:f=>ext(f)==='pptx',open:fs=>openFiles(fs)});})();
 </script>
 <script src="../lib/help.js"></script>
@@ -1538,7 +1539,8 @@ addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey
 <script>addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&String(e.key).toLowerCase()==='s'){e.preventDefault();try{window.__compilKeep&&window.__compilKeep.keep();}catch(x){}}});</script>
 <script src="../lib/mpanel.js"></script>
 <script src="../lib/colorpop.js"></script><script>AtelierMPanel.init({bp:820,rows:true});</script>
-<script src="../lib/savebar.js"></script><script>
+<script src="../lib/savebar.js"></script>
+<script src="../lib/inbox.js"></script><script>
 AtelierSaveBar.init({noDefault:true,app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',busy:(m)=>busy(m),
   key:()=>window.__compilKeep?window.__compilKeep.tab:null,
   serverId:()=>window.__compilKeep?window.__compilKeep.pid:null,

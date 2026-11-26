@@ -53,14 +53,16 @@ main{flex:1;overflow:auto;padding:14px 16px 90px}
 <body>
 <header><h1>Envoyer un dessin</h1><a href="/">La Suite</a></header>
 <main>
-  <div class="seg"><button data-app="paysage">Paysage</button><button data-app="vecto">Vecto</button></div>
+  <div class="seg"><button data-app="paysage">Paysage</button><button data-app="vecto">Vecto</button><button data-app="pdf">PDF</button></div>
   <div class="seg" id="modeSeg"><button data-mode="photo">Envoyer la photo</button><button data-mode="vx">Vectoriser avant</button></div>
   <p class="muted" id="hint">Choisis le document ouvert sur l’ordinateur : les photos y arriveront dans quelques secondes.</p>
   <div id="docs"><p class="muted">Chargement…</p></div>
+  <div id="pdfBox" hidden><b id="pdfN"></b><div class="sent" id="pdfPages"></div></div>
   <div id="sentBox" hidden><b>Envoyées</b><div class="sent" id="sent"></div></div>
 </main>
 <div class="bar">
   <label class="btn primary" id="bCam">📷 Photo<input type="file" id="fCam" accept="image/*" capture="environment" hidden></label>
+  <button class="btn primary" id="bDone" hidden style="flex:1.3">✓ Terminé</button>
   <label class="btn" id="bGal">🖼 Galerie<input type="file" id="fGal" accept="image/*" multiple hidden></label>
 </div>
 
@@ -89,6 +91,7 @@ main{flex:1;overflow:auto;padding:14px 16px 90px}
 </div>
 <div id="busy" hidden>…</div>
 
+<script src="../lib/pdf-lib.min.js"></script>
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
@@ -106,7 +109,11 @@ async function loadDocs(){
   render();
 }
 function render(){
-  document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.app===APP));
+  document.querySelectorAll('.seg button[data-app]').forEach(b=>b.classList.toggle('on',b.dataset.app===APP));
+  const isPdf=APP==='pdf';if(typeof MODE!=='undefined')syncMode();$('#modeSeg').hidden=isPdf;$('#docs').hidden=isPdf;$('#pdfBox').hidden=!isPdf;$('#sentBox').hidden=isPdf||!$('#sent').children.length;
+  $('#hint').textContent=isPdf?'Prends toutes les pages en photo (chacune est redressée), puis appuie sur Terminé : un seul PDF est envoyé vers l’appli PDF.':'Choisis le document ouvert sur l’ordinateur : les photos y arriveront dans quelques secondes.';
+  if(isPdf){pdfRender();$('#bCam').classList.remove('dis');$('#fCam').disabled=$('#fGal').disabled=false;return;}
+  $('#bDone').hidden=true;
   const list=DOCS.filter(d=>d.app===APP).sort((a,b)=>b.updated-a.updated);
   const last=ls.get('envoyer.doc.'+APP);
   if(!DOC||DOC.app!==APP)DOC=list.find(d=>d.id===last)||list[0]||null;
@@ -117,7 +124,7 @@ function render(){
     b.onclick=()=>{DOC=d;ls.set('envoyer.doc.'+APP,d.id);render();};box.appendChild(b);});
   $('#bCam').classList.toggle('dis',!DOC);$('#fCam').disabled=$('#fGal').disabled=!DOC;
 }
-document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{APP=b.dataset.app;ls.set('envoyer.app',APP);DOC=null;render();});
+document.querySelectorAll('.seg button[data-app]').forEach(b=>b.onclick=()=>{APP=b.dataset.app;ls.set('envoyer.app',APP);DOC=null;render();});
 
 /* ---------- recadrage et redressement (4 coins) ---------- */
 const PH={img:null,q:null,drag:-1,k:1,ox:0,oy:0,name:''};
@@ -186,14 +193,14 @@ function phWarp(){
 $('#cRot').onclick=phRotate;$('#cAll').onclick=()=>{phReset(0);phDraw();};
 $('#cNo').onclick=()=>{$('#crop').hidden=true;PH.img=null;next();};
 $('#cOk').onclick=async()=>{
-  if(!DOC)return;busy('Redressement…');await new Promise(r=>setTimeout(r,30));
+  if(APP!=='pdf'&&!DOC)return;busy('Redressement…');await new Promise(r=>setTimeout(r,30));
   let blob;try{const c=phWarp();blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92));}catch(e){busy();alert('Redressement impossible : '+(e.message||e));return;}
-  $('#crop').hidden=true;const nm=PH.name;PH.img=null;if(MODE==='vx'){busy();const c=await createImageBitmap(blob);await vOpen(c,blob,nm);return;}await send(blob,nm);next();
+  $('#crop').hidden=true;const nm=PH.name;PH.img=null;if(APP==='pdf'){busy();PAGES.push(blob);pdfRender();next();return;}if(MODE==='vx'){busy();const c=await createImageBitmap(blob);await vOpen(c,blob,nm);return;}await send(blob,nm);next();
 };
 
 /* ---------- vectoriser sur le portable (aperçu) : l'ordinateur refait le calcul en pleine définition avec ces réglages ---------- */
 let MODE=ls.get('envoyer.mode')||'photo';
-function syncMode(){document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===MODE));$('#cOk').textContent=MODE==='vx'?'Vectoriser':'Envoyer';}
+function syncMode(){document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===MODE));$('#cOk').textContent=APP==='pdf'?'Ajouter la page':MODE==='vx'?'Vectoriser':'Envoyer';}
 document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>{MODE=b.dataset.mode;ls.set('envoyer.mode',MODE);syncMode();});syncMode();
 const V={c:null,blob:null,name:'',id:0,wk:null,t:0,base:{seuil:50,flou:0,tache:4,liser:0,lisse:1,ferme:0,lignes:false,blanc:true,ouv:0,prec:0.2,def:12,inv:false,mode:'sep'},presets:[]};
 const vIds={seuil:'vSeuil',tache:'vTache',lisse:'vLisse',ferme:'vFerme',flou:'vFlou'};
@@ -232,22 +239,46 @@ $('#vNo').onclick=()=>{$('#vec').hidden=true;V.c=null;next();};
 $('#vOk').onclick=async()=>{const p=vParams();ls.set('envoyer.vx',JSON.stringify(p));$('#vec').hidden=true;const b=V.blob,n=V.name;V.c=null;await send(b,n,p);next();};
 
 /* ---------- envoi ---------- */
-async function send(blob,name,vx){
-  const d=DOC;const tile=document.createElement('div');const im=document.createElement('img');im.src=URL.createObjectURL(blob);const tag=document.createElement('i');tag.textContent='envoi…';tile.append(im,tag);
-  $('#sent').prepend(tile);$('#sentBox').hidden=false;
+async function send(blob,name,vx,tgt){
+  const d=tgt||DOC;const tile=document.createElement('div');const tag=document.createElement('i');tag.textContent='envoi…';
+  if(!tgt){const im=document.createElement('img');im.src=URL.createObjectURL(blob);tile.append(im,tag);$('#sent').prepend(tile);$('#sentBox').hidden=false;}
   busy('Envoi vers « '+(d.name||'Sans titre')+' »…');
   try{// envoi par morceaux de 700 Ko : passe même si le serveur limite la taille des requêtes
     const CH=700*1024,of=Math.max(1,Math.ceil(blob.size/CH)),up=Math.random().toString(36).slice(2,10);let j=null;
-    for(let k=0;k<of;k++){const q=API+'?a=inbox_put&id='+encodeURIComponent(d.id)+'&type=image/jpeg&name='+encodeURIComponent(name||'')+(vx?'&vx='+encodeURIComponent(JSON.stringify(vx)):'')+'&up='+up+'&part='+k+'&of='+of;
+    for(let k=0;k<of;k++){const q=API+'?a=inbox_put&id='+encodeURIComponent(d.id)+'&type='+(tgt?tgt.type:'image/jpeg')+'&name='+encodeURIComponent(name||'')+(vx?'&vx='+encodeURIComponent(JSON.stringify(vx)):'')+'&up='+up+'&part='+k+'&of='+of;
       busy('Envoi vers « '+(d.name||'Sans titre')+' »… '+(of>1?Math.round(100*k/of)+' %':''));
       const r=await fetch(q,{method:'POST',credentials:'same-origin',body:blob.slice(k*CH,(k+1)*CH)});j=null;try{j=await r.json();}catch(e){}
       if(!r.ok||!j||!j.ok)throw new Error(j&&j.error?j.error:'réponse inattendue du serveur ('+r.status+')');}
-    tag.textContent=vx?'✓ vecto':'✓';}
+    tag.textContent=vx?'✓ vecto':'✓';busy();return true;}
   catch(e){tag.textContent='échec';alert('Envoi impossible : '+(e.message||e)+'\nVérifie la connexion et réessaie.');}
-  busy();
+  busy();return false;
 }
+/* ---------- envoi vers PDF : toutes les photos assemblées en un seul PDF ---------- */
+let PAGES=[];
+function pdfRender(){
+  const box=$('#pdfPages');box.innerHTML='';
+  PAGES.forEach((b,i)=>{const t=document.createElement('div');const im=document.createElement('img');im.src=URL.createObjectURL(b);const tag=document.createElement('i');tag.textContent=(i+1)+' ✕';tag.style.cursor='pointer';
+    tag.onclick=()=>{if(confirm('Retirer la page '+(i+1)+' ?')){PAGES.splice(i,1);pdfRender();}};t.append(im,tag);box.appendChild(t);});
+  $('#pdfN').textContent=PAGES.length?PAGES.length+' page'+(PAGES.length>1?'s':'')+' prête'+(PAGES.length>1?'s':''):'Aucune page pour l’instant';
+  $('#bDone').hidden=APP!=='pdf'||!PAGES.length;$('#bDone').textContent='✓ Terminé ('+PAGES.length+')';
+}
+async function pdfBuild(){
+  const doc=await PDFLib.PDFDocument.create();
+  for(const b of PAGES){const img=await doc.embedJpg(await b.arrayBuffer());const land=img.width>img.height,W=land?841.89:595.28,H=land?595.28:841.89;
+    const k=Math.min(W/img.width,H/img.height),w=img.width*k,h=img.height*k;const pg=doc.addPage([W,H]);pg.drawImage(img,{x:(W-w)/2,y:(H-h)/2,width:w,height:h});}
+  doc.setTitle('Photos du portable');doc.setProducer('La Suite');
+  return new Blob([await doc.save()],{type:'application/pdf'});
+}
+$('#bDone').onclick=async()=>{
+  if(!PAGES.length)return;busy('Assemblage du PDF…');
+  try{const pdf=await pdfBuild();
+    const ok=await send(pdf,'photos-'+new Date().toISOString().slice(0,10),null,{id:'inbox-compil',name:'PDF',type:'application/pdf'});
+    if(ok){const n=PAGES.length;PAGES=[];pdfRender();$('#hint').textContent='✓ PDF de '+n+' page'+(n>1?'s':'')+' envoyé. Sur l’ordinateur, ouvre l’appli PDF : il s’ouvre depuis le bandeau « PDF reçu du portable ».';}}
+  catch(e){busy();alert('Assemblage impossible : '+(e.message||e));}
+  busy();
+};
 function next(){const f=QUEUE.shift();if(f)phLoad(f);}
-function take(files){if(!DOC){alert('Choisis d’abord un document.');return;}QUEUE.push(...files);if($('#crop').hidden&&$('#vec').hidden&&!PH.img)next();}
+function take(files){if(APP!=='pdf'&&!DOC){alert('Choisis d’abord un document.');return;}QUEUE.push(...files);if($('#crop').hidden&&$('#vec').hidden&&!PH.img)next();}
 $('#fCam').onchange=e=>{const f=[...e.target.files];e.target.value='';take(f);};
 $('#fGal').onchange=e=>{const f=[...e.target.files];e.target.value='';take(f);};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('#crop').hidden&&$('#vec').hidden)loadDocs();});
