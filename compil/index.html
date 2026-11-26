@@ -728,6 +728,7 @@ async function exportOnePerPage(ctx,bytes0){
     await busy();
     let dir=ctx&&ctx.dir;let how='zip';
     if(n===1)how='files';else if(dir)how='files';
+    else if(S.opt.splitHow)how=S.opt.splitHow;
     else how=await AtelierSaveBar.ask(n+' fichiers PDF prêts','Comment les recevoir ?',[{label:'Un seul fichier ZIP',value:'zip',main:true},{label:'Un fichier PDF par page',value:'files'}]);
     if(!how)return;
     if(how==='files'&&!dir&&n>1&&window.showDirectoryPicker){try{dir=await showDirectoryPicker({mode:'readwrite',id:'compil-split'});}catch(e){if(e.name==='AbortError')return;}}
@@ -1538,7 +1539,7 @@ addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey
 <script src="../lib/mpanel.js"></script>
 <script src="../lib/colorpop.js"></script><script>AtelierMPanel.init({bp:820,rows:true});</script>
 <script src="../lib/savebar.js"></script><script>
-AtelierSaveBar.init({app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',busy:(m)=>busy(m),
+AtelierSaveBar.init({noDefault:true,app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',busy:(m)=>busy(m),
   key:()=>window.__compilKeep?window.__compilKeep.tab:null,
   serverId:()=>window.__compilKeep?window.__compilKeep.pid:null,
   saveServer:async()=>{if(!window.__compilKeep)throw new Error('Le serveur n’est pas disponible.');await window.__compilKeep.keep();},
@@ -1548,7 +1549,7 @@ AtelierSaveBar.init({app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',bu
   optionsHtml:()=>'<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="oPx"> Exporter en pixels (images)</label>'+
     '<div id="oPxBox" hidden style="margin:2px 0 6px 0"><label style="display:block">Résolution <select id="oPxDpi" style="font:inherit"><option value="150">150 dpi (léger)</option><option value="200">200 dpi</option><option value="300">300 dpi (impression)</option><option value="600">600 dpi (très fin)</option></select></label><div style="color:#77756f;font-size:12px;margin-top:3px">Chaque feuille devient une image : rendu identique partout, mais le texte n’est plus sélectionnable.</div></div>'+
     '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="oSplit"> Un PDF par page</label>'+
-    '<div id="oSplitBox" hidden style="margin:2px 0 6px 0;color:#77756f;font-size:12px">Divise le PDF : un fichier par page, en ZIP ou dans un dossier au choix.</div>'+
+    '<div id="oSplitBox" hidden style="margin:2px 0 6px 0"><label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:3px 0"><input type="radio" name="oSplitHow" value="zip"> Un seul fichier ZIP</label><label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:3px 0"><input type="radio" name="oSplitHow" value="files"> Un fichier PDF par page</label></div>'+
     '<label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:4px 0"><input type="checkbox" id="oRed"> Réduire le poids du fichier</label>'+
     '<div id="oRedBox" hidden style="margin:2px 0 6px 0"><label style="display:block">Poids maximum (Mo) <input type="number" id="oRedMb" min="0.1" step="0.1" value="2" style="font:inherit;width:70px"></label><div style="color:#77756f;font-size:12px;margin-top:3px">Si le PDF dépasse ce poids, ses pages sont converties en images de plus en plus légères jusqu’à passer en dessous. S’il est déjà plus léger, il est gardé tel quel. Un PDF réduit ne se rouvre pas modifiable.</div></div>',
   optionsInit:(d)=>{const $d=q=>d.querySelector(q);
@@ -1556,6 +1557,7 @@ AtelierSaveBar.init({app:'compil',save:'#bSave',exp:'#bPdf',name:()=>'compil',bu
     $d('#oPx').onchange=e=>{S.opt.px=e.target.checked;$d('#oPxBox').hidden=!S.opt.px;saveOpt();};
     $d('#oPxDpi').onchange=e=>{S.opt.pxDpi=+e.target.value;saveOpt();};
     $d('#oSplit').checked=!!S.opt.split;$d('#oSplitBox').hidden=!S.opt.split;
+    d.querySelectorAll('input[name=oSplitHow]').forEach(r=>{r.checked=r.value===(S.opt.splitHow||'zip');r.onchange=()=>{S.opt.splitHow=r.value;saveOpt();};});
     $d('#oSplit').onchange=e=>{S.opt.split=e.target.checked;$d('#oSplitBox').hidden=!S.opt.split;saveOpt();};
     $d('#oRed').checked=!!S.opt.red;$d('#oRedBox').hidden=!S.opt.red;$d('#oRedMb').value=S.opt.redMb||2;
     $d('#oRed').onchange=e=>{S.opt.red=e.target.checked;$d('#oRedBox').hidden=!S.opt.red;saveOpt();};
