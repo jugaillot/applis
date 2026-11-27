@@ -23,6 +23,7 @@ Dépôt GitHub `jugaillot/applis`. Hébergement OVH (mutualisé, PHP) : **déplo
 | `envoyer/` | Envoyer un dessin | page mobile : photographier, redresser, (pré)vectoriser et envoyer vers un document Paysage/Vecto ouvert sur l'ordinateur |
 | `cahier/` | Cahier | cahier numérique : pages à imprimer avec repères, photos redressées, feuilletage, planche, recherche, zone → autre appli |
 | `laser/` | Laser | prépare un SVG (Vecto/Paysage) pour le graveur CO2 G-Weike (contrôleur Ruida) : couleur → découper/graver, vitesse, puissance, passes ; exporte un `.rd` (`laser/rd.js`, vérifié avec MeerK40t) à copier sur clé USB |
+| `video/` | Vidéo | montage vidéo simple (< 2 min, réseaux sociaux) : import avec compression (MediaRecorder), plans sur ligne de temps, fondus, vitesse, cadrage, export MP4 en temps réel ; vidéos stockées sur le serveur en blobs (`putblob` par morceaux) |
 | `bd/`, `civco/` | BD, Civco | collection de BD ; petit jeu coopératif |
 | `index.html` | Accueil | rubriques Outils / Dessin / Projet / Perso, tuiles avec icône |
 

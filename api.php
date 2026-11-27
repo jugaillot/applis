@@ -100,7 +100,20 @@ if ($a === 'del' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($a === 'putblob' && $_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!okid($id)) out(400, array('error' => 'identifiant invalide'));
-  $in = fopen('php://input', 'rb'); $o = fopen($dir . '/blobs/' . $id, 'wb'); $n = stream_copy_to_stream($in, $o); fclose($o); fclose($in);
+  // envoi en morceaux (up = identifiant d'envoi, part / of) : les hébergeurs limitent la taille d'une requête
+  $up = isset($_GET['up']) ? preg_replace('/[^a-z0-9]/', '', substr($_GET['up'], 0, 20)) : '';
+  $part = isset($_GET['part']) ? (int) $_GET['part'] : 0; $of = isset($_GET['of']) ? (int) $_GET['of'] : 1;
+  $dest = $dir . '/blobs/' . $id;
+  if ($up !== '' && $of > 1) {
+    $tmp = $dest . '.up-' . $up; if ($part === 0) @unlink($tmp);
+    $in = fopen('php://input', 'rb'); $o = fopen($tmp, 'ab'); if (!$o) out(500, array('error' => 'écriture impossible sur le serveur'));
+    $n = stream_copy_to_stream($in, $o); fclose($o); fclose($in);
+    if ($part < $of - 1) out(200, array('ok' => true, 'part' => $part));
+    @unlink($dest); if (!@rename($tmp, $dest)) out(500, array('error' => 'écriture impossible sur le serveur'));
+    $n = filesize($dest);
+  } else {
+    $in = fopen('php://input', 'rb'); $o = fopen($dest, 'wb'); $n = stream_copy_to_stream($in, $o); fclose($o); fclose($in);
+  }
   flock($lock, LOCK_EX); $j = idx_read();
   $j['blobs'][$id] = array('size' => $n, 'type' => isset($_GET['type']) ? substr($_GET['type'], 0, 60) : '', 'updated' => now_ms());
   idx_write($j); flock($lock, LOCK_UN);
@@ -113,8 +126,9 @@ if ($a === 'getblob') {
   if (!is_file($f)) out(404, array('error' => 'introuvable'));
   flock($lock, LOCK_SH); $j = idx_read(); flock($lock, LOCK_UN);
   $t = isset($j['blobs'][$id]['type']) && $j['blobs'][$id]['type'] ? $j['blobs'][$id]['type'] : 'application/octet-stream';
-  header('Content-Type: ' . $t);
-  readfile($f); exit;
+  header('Content-Type: ' . $t); header('Content-Length: ' . filesize($f));
+  while (ob_get_level()) @ob_end_clean();
+  $h = fopen($f, 'rb'); while (!feof($h)) { echo fread($h, 262144); flush(); } fclose($h); exit;
 }
 
 if ($a === 'versions') {
