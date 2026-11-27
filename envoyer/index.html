@@ -287,9 +287,13 @@ function pdfRender(){
   $('#pdfN').textContent=PAGES.length?PAGES.length+' page'+(PAGES.length>1?'s':'')+' prête'+(PAGES.length>1?'s':''):'Aucune page pour l’instant';
   $('#bDone').hidden=APP!=='pdf'||!PAGES.length;$('#bDone').textContent='✓ Terminé ('+PAGES.length+')';
 }
+/* photos allégées (2400 px au plus) : un PDF de plusieurs pages reste léger à envoyer et à télécharger */
+async function pdfShrink(b){const bm=await createImageBitmap(b),k=Math.min(1,2400/Math.max(bm.width,bm.height));if(k>=1&&b.size<900e3)return b;
+  const c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
+  return await new Promise(r=>c.toBlob(r,'image/jpeg',0.82));}
 async function pdfBuild(){
   const doc=await PDFLib.PDFDocument.create();
-  for(const b of PAGES){const img=await doc.embedJpg(await b.arrayBuffer());const land=img.width>img.height,W=land?841.89:595.28,H=land?595.28:841.89;
+  for(const b0 of PAGES){const b=await pdfShrink(b0);const img=await doc.embedJpg(await b.arrayBuffer());const land=img.width>img.height,W=land?841.89:595.28,H=land?595.28:841.89;
     const k=Math.min(W/img.width,H/img.height),w=img.width*k,h=img.height*k;const pg=doc.addPage([W,H]);pg.drawImage(img,{x:(W-w)/2,y:(H-h)/2,width:w,height:h});}
   doc.setTitle('Photos du portable');doc.setProducer('La Suite');
   return new Blob([await doc.save()],{type:'application/pdf'});

@@ -127,7 +127,7 @@ if ($a === 'getver') {
   $v = isset($_GET['v']) ? (int) $_GET['v'] : -1;
   if (!okid($id) || $v < 0) out(400, array('error' => 'identifiant invalide'));
   $p = $dir . '/versions/' . $id . '/' . $v . '.json'; if (!is_file($p)) out(404, array('error' => 'introuvable'));
-  header('Content-Type: application/json; charset=utf-8'); readfile($p); exit;
+  header('Content-Type: application/json; charset=utf-8'); while (ob_get_level()) @ob_end_clean(); header('Content-Length: ' . filesize($p)); $h = fopen($p, 'rb'); if ($h) { while (!feof($h)) { echo fread($h, 262144); flush(); } fclose($h); } exit;
 }
 
 /* boîte de réception d'un document : photos envoyées depuis le portable (« Envoyer un dessin ») */
