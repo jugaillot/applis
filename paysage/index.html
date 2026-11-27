@@ -2325,7 +2325,7 @@ async function doMerge(sel,tok){
         if(its.length<1){alert('Sélectionne au moins une forme ou un tracé.');return;}
         const part=new Map();its.forEach(it=>{const l=it.p.layer;if(!part.has(l))part.set(l,[]);part.get(l).push(it);});
         const out=[],par=new Set(leaves.map(p=>p.parent));
-        const ring=r=>{r=C.Clipper.CleanPolygon(r,4);if(r.length<3)return null;const q=new P.Path({segments:r.map(z=>[z.X/CPK,z.Y/CPK]),closed:true,insert:false});if(q.segments.length>12)q.simplify(0.004);return q;};
+        const ring=r=>{r=C.Clipper.CleanPolygon(r,4);if(r.length<3)return null;const q=new P.Path({segments:r.map(z=>[z.X/CPK,z.Y/CPK]),closed:true,insert:false});return q;};
         for(const arr of part.values()){
           const groups=new Map();let cov=[];
           for(let i=arr.length-1;i>=0;i--){const it=arr[i];if((arr.length-i)%6===0)await stepCheck(tok);
@@ -3242,7 +3242,7 @@ document.addEventListener('keydown',e=>{
   if(ctrl&&(k==='d'||k==='D')){e.preventDefault();cmd('dup');return;}
   if(ctrl&&(k==='g'||k==='G')){e.preventDefault();cmd(e.shiftKey?'ungroup':'group');return;}
   if(ctrl&&(k==='a'||k==='A')){e.preventDefault();setTool('select');setSel(allTop());return;}
-  if(ctrl&&(k==='c'||k==='C')){if(sel.length&&!S.aquaEdit)clipWrite(sel);return;}
+  if(ctrl&&(k==='c'||k==='C')){if(sel.length&&!S.aquaEdit){if(e.shiftKey){e.preventDefault();copyAsImage(sel);}else clipWrite(sel);}return;}
   if(ctrl&&(k==='x'||k==='X')){if(sel.length&&!S.aquaEdit){clipWrite(sel);cmd('del');}return;}
   if(ctrl&&(k==='v'||k==='V')){return;} // géré par l'événement « paste »
   if(ctrl&&k==='0'){e.preventDefault();fitView();return;}
@@ -3508,7 +3508,7 @@ function exitAquaEdit(){if(!S.aquaEdit)return;S.aquaEdit=false;if(aquaRaster)S.a
 async function clipWrite(items){
   const data={app:APP,t:Date.now(),items:items.map(s=>s.exportJSON({asString:true})),roles:items.map(s=>roleOf(s.layer))};
   S.clip=data;await IDB.set('pressepapier',data);systemCopy(items);
-  $('#hint').textContent=items.length+' objet'+(items.length>1?'s':'')+' copié'+(items.length>1?'s':'')+' — Ctrl+V pour coller ici, dans Vecto, ou en vectoriel dans Illustrator / Inkscape';
+  $('#hint').textContent=items.length+' objet'+(items.length>1?'s':'')+' copié'+(items.length>1?'s':'')+' — Ctrl+V pour coller ici, dans Vecto, ou en vectoriel dans Illustrator / Inkscape. Pour InDesign : Ctrl+Maj+C (copie en image)';
 }
 let lastPaste=0;
 async function pasteClip(){
